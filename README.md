@@ -36,6 +36,18 @@ every example YAML carries its own validated finding.**
 <td colspan="2" align="center"><i>GPU MPPI (3D, n=64 rollouts) — translucent cyan: sampled rollouts; orange: softmax-best rollout; red spheres: bouncing dynamic obstacles. Reproduce: <code>uav-nav run examples/exp_gpu_mppi_demo.yaml &amp;&amp; uav-nav anim results/gpu_mppi_demo</code>.</i></td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" alt="Side-by-side 3D demo: GPU MPPI (left) shows its rollout sample cloud and softmax-best line; CPU MPC (right) takes a single deterministic minimum-cost trajectory through the same scenario. Both reach the goal on the same 40×40×12 voxel world with three bouncing dynamic obstacles." width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i>GPU MPPI vs CPU MPC head-to-head, same scenario / same seed — left pane visualizes the population the GPU planner is averaging over, right pane shows the single-trajectory MPC baseline. Reproduce: <code>uav-nav run examples/exp_gpu_mppi_demo.yaml &amp;&amp; uav-nav run examples/exp_mpc_demo_3d.yaml &amp;&amp; uav-nav anim results/gpu_mppi_demo &amp;&amp; uav-nav anim results/mpc_demo_3d &amp;&amp; python scripts/render_compare_gif.py results/gpu_mppi_demo/episode_000.gif results/mpc_demo_3d/episode_000.gif --out docs/images/compare_gpu_mppi_vs_mpc_3d.gif --left-label "GPU MPPI" --right-label "CPU MPC" --fps 10 --frame-stride 2 --max-total-width 960</code>.</i></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" alt="Side-by-side 4-drone 3D cross pattern: CPU MPC (left) and GPU MPPI (right) on the same scenario/seed. Both planners thread the same crossing geometry; the right pane shows GPU MPPI's rollout cloud decorrelating peer-conflict outcomes across episodes." width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i>Multi-drone (3D, N=4) — same crossing pattern, planner swapped from CPU MPC (n=8, h=40) to GPU MPPI (n=64, h=20). Per-drone success stays at 95 % (statistically unchanged), but joint succ lifts 83.3 → 86.7 % and the coordination Δ over indep⁴ flips from −1 pp to +5.2 pp — see <a href="docs/findings.md#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ">findings.md</a>. Reproduce: <code>uav-nav run examples/exp_multi_drone_3d_4_gpu_mppi.yaml</code>.</i></td>
+</tr>
+<tr>
 <td colspan="2"><img src="docs/images/demo_airsim.gif" alt="Pareto-MPC + airsim_bridge + a 16-channel AirSim LiDAR feeding the pointcloud_occupancy sensor, driving a SimpleFlight multirotor through Microsoft AirSim's Blocks Unreal Engine env. The drone sees no obstacles in the planner's static map — it builds the occupancy grid online from LiDAR returns and weaves between cube clusters." width="560"></td>
 </tr>
 <tr>
@@ -286,6 +298,13 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   Pareto frontier, and the 3D Pareto cell (n=64-256, h=20 → 100 %)
   Pareto-dominates the CPU MPC 3D baseline (88 % / 70 ms) at 3.5 ms
   steady-state.
+- **Multi-drone GPU MPPI** — same 4-drone 3D cross pattern (`exp_multi_drone_3d_4`)
+  but with `gpu_mppi` instead of MPC. Per-drone success is statistically
+  indistinguishable from the MPC baseline (95.0 % vs 95.8 %), but the
+  rollout cloud decorrelates failures across drones so **joint succ
+  lifts 83.3 → 86.7 % and the coordination Δ flips from −1 pp to
+  +5.2 pp** — sample diversity is a substitute for explicit peer
+  prediction in escape-volume regimes.
 
 ## ✅ Status
 

@@ -1,0 +1,85 @@
+# GPU MPPI counterpart of exp_multi_drone_3d_4.yaml — same 4-drone
+# cross-pattern on the same 40×40×12 voxel world, but each drone plans
+# with `gpu_mppi` instead of `mpc`. Each drone sees the others as
+# dynamic obstacles through `_peers_view` (same plumbing the MPC version
+# uses) and runs constant-velocity prediction with `use_prediction: true`.
+#
+# Hypothesis: the GPU MPPI sample cloud has more directional diversity
+# per replan than CPU MPC's small batch (n=8 vs n=64), so it should at
+# least match — and possibly exceed — the MPC joint success rate on the
+# same scenario. The MPC baseline at n=30 reported per-drone 95.8 %,
+# joint 83.3 % (Δ -1.0 pp over indep^4) — see findings.md "3D escape
+# volume erases the coordination Δ" / the MPC YAML header.
+#
+# Planner config: validated GPU MPPI 3D Pareto cell from
+# exp_gpu_mppi_pareto_3d.yaml — n_samples=64, horizon=20 (100 % / 3.5 ms
+# steady-state). Re-using the demo-validated cell rather than the larger
+# n=256 because 4 simultaneous GPU MPPI planners would otherwise contend
+# for the same CUDA stream.
+#
+# Reproduce:
+#   uav-nav run examples/exp_multi_drone_3d_4_gpu_mppi.yaml
+#   uav-nav eval results/multi_drone_3d_4_gpu_mppi
+# Compare side-by-side:
+#   uav-nav compare results/multi_drone_3d_4 results/multi_drone_3d_4_gpu_mppi
+
+name: multi_drone_3d_4_gpu_mppi
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  drones:
+    - name: east
+      start: [3.0, 20.0, 6.0]
+      goal:  [37.0, 20.0, 6.0]
+      radius: 0.4
+    - name: west
+      start: [37.0, 20.0, 6.0]
+      goal:  [3.0, 20.0, 6.0]
+      radius: 0.4
+    - name: north
+      start: [20.0, 3.0, 6.0]
+      goal:  [20.0, 37.0, 6.0]
+      radius: 0.4
+    - name: south
+      start: [20.0, 37.0, 6.0]
+      goal:  [20.0, 3.0, 6.0]
+      radius: 0.4
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/multi_drone_3d_4_gpu_mppi

@@ -27,6 +27,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim vs dummy_3d transferability: same plan, different physics](#airsim-vs-dummy_3d-transferability-same-plan-different-physics)
 
 - [GPU MPPI: post-goal-mask fix unlocks long-horizon cells, 3D MPPI beats 3D MPC](#gpu-mppi-post-goal-mask-fix-unlocks-long-horizon-cells-3d-mppi-beats-3d-mpc)
+- [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
@@ -806,6 +807,62 @@ into the "invalid" category, the softmax goes flat, and what looks
 like a fundamental MPPI limitation is a transcription bug. Always
 re-validate the per-sample bookkeeping when moving from a Python
 for-loop to a tensor kernel.
+
+### Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ
+
+`examples/exp_multi_drone_3d_4_gpu_mppi.yaml` — same 4-drone cross
+pattern, same 40×40×12 voxel world, same 30 random obstacles, same
+n=30 seed schedule as the MPC baseline `exp_multi_drone_3d_4.yaml`
+("3D escape volume erases the coordination Δ" above). Planner family
+swapped from `mpc` (n=8, h=40) to `gpu_mppi` (n=64, h=20) and nothing
+else.
+
+| planner                | per-drone (CI)      | joint (CI)         | indep `per^4` | Δ over indep |
+|---|---|---|---|---|
+| MPC      (n=8,  h=40)  | 95.8 % [90.6, 98.2] | 83.3 % [66, 93]    | 84.3 %        | −1.0 pp      |
+| GPU MPPI (n=64, h=20)  | 95.0 % [89.5, 97.7] | **86.7 %** [70, 95]| 81.5 %        | **+5.2 pp**  |
+
+Three observations:
+
+1. **Per-drone success is statistically indistinguishable** (95.0 vs
+   95.8 — well inside each other's CIs). With both planners at their
+   3D-Pareto-optimal cell, the n=8 deterministic MPC samples and the
+   n=64 stochastic MPPI rollouts converge to the same per-agent
+   failure rate at this scenario's escape-volume budget.
+2. **Joint success lifts +3.3 pp.** CIs ([66, 93] vs [70, 95]) overlap
+   so this alone is not significant at n=30, but it points the
+   direction the `indep^4` math predicts when failures *decorrelate*
+   across drones.
+3. **Coordination Δ flips from −1 to +5.2 pp.** This is the actual
+   signal. At ≈the same per-drone success the GPU MPPI run's failures
+   are *more spread across episodes* than the MPC run's. The sample-
+   cloud planner produces more directional diversity per replan, so
+   two peers approaching the same waypoint sometimes pick different
+   rollouts and the failure pattern decorrelates instead of compounding.
+
+Mechanistic read: in the 3D escape-volume regime where MPC's joint
+≤ indep⁴ (no coordination win to extract), MPPI doesn't win by
+*coordinating better* — it wins by *failing less in lockstep*. Sample
+diversity is a *substitute* for explicit peer prediction in regimes
+where per-agent free volume is already large.
+
+Caveat — plan-time: planner_dt is 73.9 ms ± 17.6 ms / replan (p95
+105.6 ms), the same envelope as MPC (73.2 ms ± 17.1 ms). The 3.5 ms
+steady-state from the single-drone GPU MPPI Pareto table does *not*
+transfer to the 4-drone case because each per-drone planner instance
+pays its own first-call CUDA warmup *every episode*, and four
+instances also serialize on the same CUDA stream. A real-world
+multi-agent system would warm up once at startup and amortize across
+many minutes of flight; this benchmark is dominated by per-episode
+warmups at small N. So the speed advantage GPU MPPI showed at single-
+drone *doesn't survive multi-drone in this measurement setup*, even
+though it survives at the per-rollout level inside each call.
+
+Reproduce:
+```
+uav-nav run examples/exp_multi_drone_3d_4_gpu_mppi.yaml
+uav-nav compare results/multi_drone_3d_4 results/multi_drone_3d_4_gpu_mppi
+```
 
 
 ## ROS 2 bridge: spatial equivalence verified

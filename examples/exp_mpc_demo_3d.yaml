@@ -1,0 +1,72 @@
+# CPU MPC counterpart of exp_gpu_mppi_demo.yaml — same 3D voxel world,
+# same dynamic obstacles, same seed.  Renders the MPC trajectory next
+# to GPU MPPI for the README side-by-side demo (no rollout overlay
+# since `mpc` is the deterministic-sample planner, but trajectory +
+# avoidance behaviour is the same comparison axis).
+#
+# Planner config matches the validated 3D Pareto-optimal MPC cell
+# (n_samples=8, horizon=20) — see exp_3d_compare_mpc.yaml / findings.md
+# "3D Pareto: n_samples preference flips".
+#
+# Reproduce:
+#   uav-nav run examples/exp_mpc_demo_3d.yaml
+#   uav-nav anim results/mpc_demo_3d
+
+name: mpc_demo_3d
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: voxel_world
+  size: [40, 40, 12]
+  start: [3.0, 3.0, 6.0]
+  goal: [37.0, 37.0, 6.0]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  dynamic_obstacles:
+    - start: [20.0, 8.0, 6.0]
+      velocity: [0.0, 5.0, 0.5]
+      reflect: true
+      radius: 0.8
+    - start: [8.0, 25.0, 5.0]
+      velocity: [4.0, 0.0, -0.4]
+      reflect: true
+      radius: 0.8
+    - start: [28.0, 20.0, 7.0]
+      velocity: [-3.0, 2.0, 0.3]
+      reflect: true
+      radius: 0.8
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1200
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  # 3D MPC Pareto cell from exp_3d_compare_mpc.yaml.
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/mpc_demo_3d
