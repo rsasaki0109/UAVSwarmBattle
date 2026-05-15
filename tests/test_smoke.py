@@ -2023,6 +2023,29 @@ def test_voxel_world_dynamic_obstacles_advance_and_collide() -> None:
     assert not sc.is_collision(np.array([15.0, 15.0, 5.0]), radius=0.4)
 
 
+def test_voxel_world_random_layer_obstacles_stay_on_requested_z() -> None:
+    """random_layer supports dense same-altitude AirSim latency sweeps
+    without committing hundreds of explicit obstacle cells to YAML."""
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+
+    voxel_cls = SCENARIO_REGISTRY.get("voxel_world")
+    sc = voxel_cls.from_config(
+        {
+            "size": [30, 30, 8],
+            "start": [2.0, 2.0, 4.0],
+            "goal": [27.0, 27.0, 4.0],
+            "resolution": 1.0,
+            "obstacles": {"type": "random_layer", "count": 80, "seed": 7, "z": 4},
+        }
+    )
+
+    occupied = np.argwhere(sc.occupancy)
+    assert occupied.shape[0] == 80
+    assert set(occupied[:, 2].tolist()) == {4}
+    assert not sc.occupancy[2, 2, 4]
+    assert not sc.occupancy[27, 27, 4]
+
+
 def test_lidar_dynamics_filtered_by_range() -> None:
     from uav_nav_lab.sensor import SENSOR_REGISTRY
 

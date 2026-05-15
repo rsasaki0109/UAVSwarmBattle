@@ -22,6 +22,7 @@ class _ObstacleSpec:
     type: str = "random"
     count: int = 0
     seed: int = 0
+    z: int | None = None
     cells: list[tuple[int, int, int]] | None = None
 
 
@@ -88,6 +89,7 @@ class VoxelWorldScenario(Scenario):
             type=str(obs_cfg.get("type", "random")),
             count=int(obs_cfg.get("count", 0)),
             seed=int(obs_cfg.get("seed", 0)),
+            z=int(obs_cfg["z"]) if "z" in obs_cfg else None,
             cells=obs_cfg.get("cells"),
         )
         dynamic_specs = cfg.get("dynamic_obstacles", []) or []
@@ -166,7 +168,7 @@ class VoxelWorldScenario(Scenario):
             return
         if self._obs_spec.type == "none":
             return
-        if self._obs_spec.type != "random":
+        if self._obs_spec.type not in ("random", "random_layer"):
             raise ValueError(f"unknown obstacle type: {self._obs_spec.type}")
 
         n = self._obs_spec.count
@@ -176,12 +178,21 @@ class VoxelWorldScenario(Scenario):
                 for dy in range(-2, 3):
                     for dz in range(-2, 3):
                         forbidden.add((anchor[0] + dx, anchor[1] + dy, anchor[2] + dz))
+        layer_z = None
+        if self._obs_spec.type == "random_layer":
+            default_z = self._cell(self._start)[2]
+            layer_z = int(np.clip(
+                self._obs_spec.z if self._obs_spec.z is not None else default_z,
+                0,
+                self.size[2] - 1,
+            ))
+            forbidden = {cell for cell in forbidden if cell[2] == layer_z}
         placed = 0
         tries = 0
         while placed < n and tries < n * 30:
             ix = int(self._rng.integers(0, self.size[0]))
             iy = int(self._rng.integers(0, self.size[1]))
-            iz = int(self._rng.integers(0, self.size[2]))
+            iz = layer_z if layer_z is not None else int(self._rng.integers(0, self.size[2]))
             if (ix, iy, iz) in forbidden or self._static_occ[ix, iy, iz]:
                 tries += 1
                 continue
