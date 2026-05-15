@@ -1,0 +1,92 @@
+# n=30 paired AirSim multi-drone — UNIFORM altitude, MPC baseline.
+#
+# Same 4-way cross-pattern as `exp_airsim_multi_n30.yaml`, but every
+# drone flies at z=30 m (no ±2-4 m staggering). The n=30 staggered
+# study found both planners at 100 % joint success — the AirSim demo
+# scenario was too easy to exercise the dummy_3d Δ-flip mechanism.
+# This config explicitly removes the staggering safety to force
+# real inter-drone conflict at the (30,30,30) crossing centre, so
+# we can put a number on whether the coordination Δ flip survives
+# AirSim physics.
+#
+# The n=1 demo YAML's own header warned that this geometry is
+# fragile in AirSim: "a uniform-altitude 4-way centre crossing
+# remains fragile due to AirSim's physical mesh-to-mesh collisions
+# between drones — even perfect CV peer prediction cannot perfectly
+# coordinate 4 drones converging on (30,30,30) simultaneously."
+# That's the point — we want failures so the Δ over indep^4 is
+# measurable, and we want them to *cluster* per seed (MPC argmin
+# vs GPU MPPI softmax over 64 rollouts) the way dummy_3d showed.
+#
+# Pair: `exp_airsim_multi_uniform_n30_gpu_mppi.yaml`. Same seeds
+# 42..71, planner swapped to gpu_mppi at the 3D Pareto cell.
+#
+# Operational caveat (same as `exp_airsim_multi_n30.yaml`): AirSim's
+# RPC handler wedges after 1-2 sequential multi-drone reset() calls,
+# so this YAML is driven from `scripts/run_airsim_multi_chunked.sh`
+# which bounces Blocks between every episode. The bridge fix
+# `airsim_bridge.py: simPause(True) after client.reset()` is also
+# load-bearing here.
+#
+# Run:
+#   scripts/run_airsim_multi_chunked.sh mpc      30 42 \
+#       results/airsim_multi_uniform_n30_mpc
+#   scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
+#       results/airsim_multi_uniform_n30_gpu_mppi
+# Paired comparison:
+#   python3 scripts/paired_analysis_airsim_multi.py \
+#       results/airsim_multi_uniform_n30_mpc \
+#       results/airsim_multi_uniform_n30_gpu_mppi
+
+name: airsim_multi_uniform_n30
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  # All four drones at the SAME altitude z=30 m — the fragile geometry
+  # the n=1 demo header warned about. This is deliberate: we want the
+  # crossing centre (30,30,30) to be a single 4-way conflict point.
+  drones:
+    - {name: east,  start: [5.0,  30.0, 30.0], goal: [55.0, 30.0, 30.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 30.0], goal: [5.0,  30.0, 30.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 30.0], goal: [30.0, 5.0,  30.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 400
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+
+planner:
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_uniform_n30_mpc
+  save_camera_frames: false

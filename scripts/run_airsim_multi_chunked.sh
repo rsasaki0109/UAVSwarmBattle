@@ -12,7 +12,9 @@
 #
 # Usage:
 #   scripts/run_airsim_multi_chunked.sh <mpc|gpu_mppi> <n_episodes> \
-#                                       <base_seed> <out_dir>
+#                                       <base_seed> <out_dir> [<yaml_path>]
+# If <yaml_path> is omitted, defaults to
+#   examples/exp_airsim_multi_n30{,_gpu_mppi}.yaml depending on <planner>.
 # Env:
 #   AIRSIM_BLOCKS_DIR: path to Blocks/LinuxNoEditor (default /tmp/airsim-blocks/...)
 
@@ -22,20 +24,25 @@ PLANNER="${1:-mpc}"
 N="${2:-30}"
 BASE_SEED="${3:-42}"
 OUT_DIR="${4:-results/airsim_multi_n30_mpc}"
+TPL_OVERRIDE="${5:-}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BLOCKS_DIR="${AIRSIM_BLOCKS_DIR:-/tmp/airsim-blocks/Blocks/LinuxNoEditor}"
 
-case "$PLANNER" in
-  mpc)
-    TPL="$REPO_ROOT/examples/exp_airsim_multi_n30.yaml"
-    ;;
-  gpu_mppi)
-    TPL="$REPO_ROOT/examples/exp_airsim_multi_n30_gpu_mppi.yaml"
-    ;;
-  *)
-    echo "unknown planner: $PLANNER"; exit 1 ;;
-esac
+if [ -n "$TPL_OVERRIDE" ]; then
+  TPL="$TPL_OVERRIDE"
+else
+  case "$PLANNER" in
+    mpc)
+      TPL="$REPO_ROOT/examples/exp_airsim_multi_n30.yaml"
+      ;;
+    gpu_mppi)
+      TPL="$REPO_ROOT/examples/exp_airsim_multi_n30_gpu_mppi.yaml"
+      ;;
+    *)
+      echo "unknown planner: $PLANNER"; exit 1 ;;
+  esac
+fi
 
 mkdir -p "$OUT_DIR"
 
