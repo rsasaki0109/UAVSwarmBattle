@@ -1,0 +1,114 @@
+# AirSim multi-drone with virtual planner obstacles — MPC baseline.
+#
+# Same 4-drone Blocks crossing as `exp_airsim_multi_demo.yaml`
+# (staggered altitudes, CV peer prediction), but the planner's
+# static map now carries 30 random voxel obstacles at the crossing
+# altitude band. The obstacles are *virtual* — AirSim's physics
+# engine sees an empty scene at z=28-32 (Blocks cubes are well below),
+# but each drone's planner treats them as hard constraints, so
+# trajectories curve through the volume instead of flying straight.
+#
+# Purpose: produce visually-dynamic 4-drone GIFs for the README hero
+# row that show the planner family actually weaving (the original
+# `exp_airsim_multi_demo.yaml` produces straight-line flight because
+# the no-obstacle staggered geometry doesn't exercise the avoidance
+# layer). The pair `exp_airsim_multi_obstacles_demo_gpu_mppi.yaml`
+# does the same with `gpu_mppi`, so side-by-side rendering via
+# `scripts/record_airsim_multi_compare.py` (pointed at these YAMLs)
+# captures the planner-family difference under non-trivial avoidance.
+#
+# Note: obstacles are only in the planner's *occupancy* map, NOT the
+# Blocks scene. Drone1's front-center camera (Blocks FPV) sees the
+# normal Unreal env. The curvature is visible in the FPV as the
+# drone yaws/banks around invisible cubes.
+#
+# Run:
+#   uav-nav run examples/exp_airsim_multi_obstacles_demo.yaml
+#   uav-nav run examples/exp_airsim_multi_obstacles_demo_gpu_mppi.yaml
+# Render the side-by-side GIF for the README hero row:
+#   python scripts/record_airsim_multi_compare.py
+#   (point its RUNS list at these two YAMLs first)
+
+name: airsim_multi_obstacles_demo
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  # Four pillar walls + slab obstacles surrounding the (30, 30)
+  # crossing centre. Each pillar is a 1-cell-wide vertical column
+  # spanning z=26-32 (the full drone-altitude band), positioned at
+  # x,y ∈ {22, 38} so every drone's straight-line path through y=30
+  # or x=30 is blocked at the centre. The four corner pillars force
+  # east/west and north/south alike to weave around the centre block.
+  # Eight additional "slab" cells stretch perpendicular to each
+  # drone's flight line at the crossing centre — they don't block
+  # the straight path but make the corridor narrow enough that the
+  # MPC + GPU MPPI obstacle terms produce visible avoidance arcs.
+  obstacles:
+    type: random   # ignored when `cells` is set (voxel_world.py)
+    cells:
+      # Centerline "gate" obstacles — placed directly on each drone's
+      # straight-line path at the (30, 30) crossing centre. Each drone
+      # has an obstacle at its exact x, y, transit-z so it cannot fly
+      # straight through. Paired with `planner.inflate: 2` (below) the
+      # 1-cell obstacle inflates to a 5×5×5 forbidden region, forcing
+      # ~2-3 m detours visible from the FPV camera.
+      - [30, 30, 28]   # east transit altitude
+      - [30, 30, 32]   # west transit altitude
+      - [30, 30, 30]   # north transit altitude
+      - [30, 30, 26]   # south transit altitude
+      # Off-path deflectors at ±5 cells from center, also at transit z
+      - [25, 30, 28]
+      - [35, 30, 28]
+      - [25, 30, 32]
+      - [35, 30, 32]
+      - [30, 25, 30]
+      - [30, 35, 30]
+      - [30, 25, 26]
+      - [30, 35, 26]
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 26.0], goal: [30.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 600    # bumped from demo's 400 to allow curve-following
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+  cameras:
+    - {name: "front_center", image_type: scene}
+
+planner:
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 2          # bumped from demo's 0 — inflates each 1-cell
+                      # obstacle to a 5×5×5 forbidden region so MPC
+                      # curves visibly around the centerline gates
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_obstacles_demo
+  save_camera_frames: true

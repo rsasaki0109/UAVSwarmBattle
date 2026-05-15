@@ -34,10 +34,10 @@ every example YAML carries its own validated finding.**
 <td colspan="2" align="center"><i><b>Headline (multi-drone, N=4, n=100 paired)</b> — same crossing, planner swap MPC → GPU MPPI. Joint success is tied (78.0 vs 77.0 %); coordination Δ over indep⁴ separates: MPC +0.8 pp vs GPU MPPI <b>+11.4 pp</b> (GPU MPPI's failures cluster on hard seeds). Same joint rate, different failure shape — <a href="docs/findings.md#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ">findings.md</a>.</i></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left) vs GPU MPPI (right) on the same Blocks scene" width="720"></td>
+<td colspan="2"><img src="docs/images/compare_airsim_multi_obstacles.gif" alt="Side-by-side AirSim 4-drone cross with virtual planner obstacles: MPC (left) vs GPU MPPI (right) both detour around centerline gates" width="720"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i><b>AirSim transferability</b> — same 4-drone cross in Microsoft AirSim's Blocks. n=30 paired across three altitude-stagger cells (±2-4 m, ±1 m, 0 m): bimodal response — non-zero z-spread keeps both at 100 %, uniform z=30 drops MPC to 46.7 % joint and GPU MPPI to <b>0/30</b> (McNemar p ≈ 0.00012). Trajectory-spread mechanism preserved across cells (GPU/MPC 4-27 ×) — <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>.</i></td>
+<td colspan="2" align="center"><i><b>AirSim transferability</b> — same 4-drone Blocks cross, planner family swap. Virtual centerline obstacles in each planner's static map force visible detours (MPC max path 51 m, GPU MPPI smoother at 48 m). On the no-obstacle scenario, n=30 paired across three altitude-stagger cells (±2-4 m, ±1 m, 0 m) shows a bimodal response — non-zero z-spread keeps both at 100 % joint, uniform z=30 drops MPC to 46.7 % and GPU MPPI to <b>0/30</b> (McNemar p ≈ 0.00012). Trajectory-spread mechanism preserved across cells (GPU/MPC 4-27 ×) — <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>.</i></td>
 </tr>
 </table>
 
@@ -70,6 +70,12 @@ every example YAML carries its own validated finding.**
 </tr>
 <tr>
 <td colspan="2" align="center"><i>AirSim multi-drone — 4 quadrotors cross under <code>multi_drone_voxel</code> + MPC + CV peer prediction, 4 <code>airsim_bridge</code> instances bound to <code>Drone1..Drone4</code>.</i></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="AirSim 4-drone straight-line crossing: MPC (left) vs GPU MPPI (right) on the no-obstacle staggered scenario" width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i>AirSim multi-drone (no obstacles, straight-line crossing) — reference for the n=1 no-obstacle parity story. MPC finishes at 12.85 s lockstep, GPU MPPI at 17.65 s with 0.55 s arrival spread.</i></td>
 </tr>
 </table>
 

@@ -1,0 +1,76 @@
+# AirSim multi-drone with virtual planner obstacles — GPU MPPI pair.
+#
+# Pair of `exp_airsim_multi_obstacles_demo.yaml` (MPC baseline).
+# Same staggered-altitude 4-drone crossing + 30 virtual obstacles at
+# the z=30 layer, planner swapped to gpu_mppi at the 3D Pareto cell.
+# Used for the README hero side-by-side GIF showing both planner
+# families weaving through the same obstacle layer.
+
+name: airsim_multi_obstacles_demo_gpu_mppi
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    # Same centerline-gate set as the MPC pair YAML — see
+    # exp_airsim_multi_obstacles_demo.yaml header for the layout.
+    type: random
+    cells:
+      - [30, 30, 28]
+      - [30, 30, 32]
+      - [30, 30, 30]
+      - [30, 30, 26]
+      - [25, 30, 28]
+      - [35, 30, 28]
+      - [25, 30, 32]
+      - [35, 30, 32]
+      - [30, 25, 30]
+      - [30, 35, 30]
+      - [30, 25, 26]
+      - [30, 35, 26]
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 26.0], goal: [30.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 1000     # GPU MPPI 1.87 m/s × curving = longer
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 3.0
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+  cameras:
+    - {name: "front_center", image_type: scene}
+
+planner:
+  type: gpu_mppi
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 2          # match MPC pair YAML's inflate (5×5×5 forbidden
+                      # region around each centerline gate)
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_obstacles_demo_gpu_mppi
+  save_camera_frames: true
