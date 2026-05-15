@@ -32,13 +32,13 @@ RUNS = [
         "tag": "mpc",
         "yaml": REPO_ROOT / "examples" / "exp_airsim_multi_obstacles_demo.yaml",
         "results": REPO_ROOT / "results" / "airsim_multi_obstacles_demo",
-        "label": "MPC (n=16, h=30) · 8.15s",
+        "label": "MPC (n=16, h=30) · 10.85s · path 56-61 m",
     },
     {
         "tag": "gpu_mppi",
         "yaml": REPO_ROOT / "examples" / "exp_airsim_multi_obstacles_demo_gpu_mppi.yaml",
         "results": REPO_ROOT / "results" / "airsim_multi_obstacles_demo_gpu_mppi",
-        "label": "GPU MPPI (n=64, h=20) · 11.00s",
+        "label": "GPU MPPI (n=64, h=20) · 11.55s · path 50-51 m",
     },
 ]
 COMPARE_OUT = REPO_ROOT / "docs" / "images" / "compare_airsim_multi_obstacles.gif"

@@ -49,26 +49,160 @@ scenario:
   # MPC + GPU MPPI obstacle terms produce visible avoidance arcs.
   obstacles:
     type: random   # ignored when `cells` is set (voxel_world.py)
+    # Vertical pillars (z=22..38 full drone band) placed with mirrored
+    # y/x offsets along each drone's path so the planner is forced
+    # into a horizontal S-snake instead of dipping below the obstacle.
+    # Combined with `planner.inflate: 3` each pillar inflates to a
+    # 7×7×(pillar_height+6) forbidden volume.
+    #
+    # East/west share the y=30 line (z=28 and z=32 respectively). Pillars
+    # along that line, offset alternately in y so the planner must zigzag:
+    #   x=15, y=33  → drone detours to y<30
+    #   x=25, y=27  → drone detours to y>30
+    #   x=35, y=33  → drone detours to y<30
+    #   x=45, y=27  → drone detours to y>30
+    # North/south share the x=30 line (z=30 and z=26). Same offset pattern
+    # transposed:
+    #   y=15, x=27  / y=25, x=33  / y=35, x=27  / y=45, x=33
     cells:
-      # Centerline "gate" obstacles — placed directly on each drone's
-      # straight-line path at the (30, 30) crossing centre. Each drone
-      # has an obstacle at its exact x, y, transit-z so it cannot fly
-      # straight through. Paired with `planner.inflate: 2` (below) the
-      # 1-cell obstacle inflates to a 5×5×5 forbidden region, forcing
-      # ~2-3 m detours visible from the FPV camera.
-      - [30, 30, 28]   # east transit altitude
-      - [30, 30, 32]   # west transit altitude
-      - [30, 30, 30]   # north transit altitude
-      - [30, 30, 26]   # south transit altitude
-      # Off-path deflectors at ±5 cells from center, also at transit z
-      - [25, 30, 28]
-      - [35, 30, 28]
-      - [25, 30, 32]
-      - [35, 30, 32]
-      - [30, 25, 30]
-      - [30, 35, 30]
-      - [30, 25, 26]
-      - [30, 35, 26]
+      # East/west zigzag pillars (z=22..38, every column)
+      - [15, 33, 22]
+      - [15, 33, 23]
+      - [15, 33, 24]
+      - [15, 33, 25]
+      - [15, 33, 26]
+      - [15, 33, 27]
+      - [15, 33, 28]
+      - [15, 33, 29]
+      - [15, 33, 30]
+      - [15, 33, 31]
+      - [15, 33, 32]
+      - [15, 33, 33]
+      - [15, 33, 34]
+      - [15, 33, 35]
+      - [15, 33, 36]
+      - [15, 33, 37]
+      - [15, 33, 38]
+      - [25, 27, 22]
+      - [25, 27, 23]
+      - [25, 27, 24]
+      - [25, 27, 25]
+      - [25, 27, 26]
+      - [25, 27, 27]
+      - [25, 27, 28]
+      - [25, 27, 29]
+      - [25, 27, 30]
+      - [25, 27, 31]
+      - [25, 27, 32]
+      - [25, 27, 33]
+      - [25, 27, 34]
+      - [25, 27, 35]
+      - [25, 27, 36]
+      - [25, 27, 37]
+      - [25, 27, 38]
+      - [35, 33, 22]
+      - [35, 33, 23]
+      - [35, 33, 24]
+      - [35, 33, 25]
+      - [35, 33, 26]
+      - [35, 33, 27]
+      - [35, 33, 28]
+      - [35, 33, 29]
+      - [35, 33, 30]
+      - [35, 33, 31]
+      - [35, 33, 32]
+      - [35, 33, 33]
+      - [35, 33, 34]
+      - [35, 33, 35]
+      - [35, 33, 36]
+      - [35, 33, 37]
+      - [35, 33, 38]
+      - [45, 27, 22]
+      - [45, 27, 23]
+      - [45, 27, 24]
+      - [45, 27, 25]
+      - [45, 27, 26]
+      - [45, 27, 27]
+      - [45, 27, 28]
+      - [45, 27, 29]
+      - [45, 27, 30]
+      - [45, 27, 31]
+      - [45, 27, 32]
+      - [45, 27, 33]
+      - [45, 27, 34]
+      - [45, 27, 35]
+      - [45, 27, 36]
+      - [45, 27, 37]
+      - [45, 27, 38]
+      # North/south zigzag pillars (transposed)
+      - [27, 15, 22]
+      - [27, 15, 23]
+      - [27, 15, 24]
+      - [27, 15, 25]
+      - [27, 15, 26]
+      - [27, 15, 27]
+      - [27, 15, 28]
+      - [27, 15, 29]
+      - [27, 15, 30]
+      - [27, 15, 31]
+      - [27, 15, 32]
+      - [27, 15, 33]
+      - [27, 15, 34]
+      - [27, 15, 35]
+      - [27, 15, 36]
+      - [27, 15, 37]
+      - [27, 15, 38]
+      - [33, 25, 22]
+      - [33, 25, 23]
+      - [33, 25, 24]
+      - [33, 25, 25]
+      - [33, 25, 26]
+      - [33, 25, 27]
+      - [33, 25, 28]
+      - [33, 25, 29]
+      - [33, 25, 30]
+      - [33, 25, 31]
+      - [33, 25, 32]
+      - [33, 25, 33]
+      - [33, 25, 34]
+      - [33, 25, 35]
+      - [33, 25, 36]
+      - [33, 25, 37]
+      - [33, 25, 38]
+      - [27, 35, 22]
+      - [27, 35, 23]
+      - [27, 35, 24]
+      - [27, 35, 25]
+      - [27, 35, 26]
+      - [27, 35, 27]
+      - [27, 35, 28]
+      - [27, 35, 29]
+      - [27, 35, 30]
+      - [27, 35, 31]
+      - [27, 35, 32]
+      - [27, 35, 33]
+      - [27, 35, 34]
+      - [27, 35, 35]
+      - [27, 35, 36]
+      - [27, 35, 37]
+      - [27, 35, 38]
+      - [33, 45, 22]
+      - [33, 45, 23]
+      - [33, 45, 24]
+      - [33, 45, 25]
+      - [33, 45, 26]
+      - [33, 45, 27]
+      - [33, 45, 28]
+      - [33, 45, 29]
+      - [33, 45, 30]
+      - [33, 45, 31]
+      - [33, 45, 32]
+      - [33, 45, 33]
+      - [33, 45, 34]
+      - [33, 45, 35]
+      - [33, 45, 36]
+      - [33, 45, 37]
+      - [33, 45, 38]
   drones:
     - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
     - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
@@ -96,9 +230,10 @@ planner:
   dt_plan: 0.05
   n_samples: 16
   resolution: 1.0
-  inflate: 2          # bumped from demo's 0 — inflates each 1-cell
-                      # obstacle to a 5×5×5 forbidden region so MPC
-                      # curves visibly around the centerline gates
+  inflate: 3          # 7×7×7 forbidden region per cell. Pillars
+                      # already block the z-dip shortcut, so this
+                      # value only needs to widen y/x reachability —
+                      # planner picks horizontal detours by default
   goal_radius: 2.5
   safety_margin: 0.6
   use_prediction: true
