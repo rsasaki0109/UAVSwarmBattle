@@ -30,6 +30,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer](#temperature-ablation-at-the-3d-pareto-cell-the-cpu-rules-dont-transfer)
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
+- [AirSim multi-drone parity: stack runs end-to-end, decorrelation still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-decorrelation-still-visible-at-44)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
@@ -1008,6 +1009,62 @@ more time in proximity, which can suppress the Δ-flip mechanism
 (less per-replan directional spread per unit of mission time). The
 next AirSim study is multi-drone GPU MPPI vs MPC at matched
 `max_steps` budgets.
+
+### AirSim multi-drone parity: stack runs end-to-end, decorrelation still visible at 4/4
+
+`examples/exp_airsim_multi_demo_gpu_mppi.yaml` — 4-drone cross at
+staggered altitudes (28/32/30/26 m) through Blocks, paired against
+the MPC baseline `exp_airsim_multi_demo.yaml`. Same scenario,
+sim/sensor/seed; planner family swapped, n=1 episode each.
+
+| planner   | per-drone | joint   | avg_v (m/s) | max final_t | plan_dt steady-state (mean / p95) |
+|---|---|---|---|---|---|
+| MPC       | 4/4 succ  | success | 3.72        | 12.85 s     | 87.4 / 237.1 ms                   |
+| GPU MPPI  | 4/4 succ  | success | 2.76        | 17.65 s     | 105.4 / 311.0 ms                  |
+
+Three observations (n=1 carries no Δ-coordination statistics — these
+are *mechanism* checks):
+
+1. **Portability ✓**: 4-drone GPU MPPI with peer prediction runs
+   end-to-end through `airsim_bridge`, all four drones reach goal
+   without inter-drone or static-obstacle collision. The single-drone
+   parity finding extends to multi-drone.
+2. **avg_v 26 % lower, time-to-goal 37 % longer** (2.76 vs 3.72 m/s;
+   17.65 vs 12.85 s) — same shape as the single-drone parity result.
+   The softmax-average conservatism that costs ~30 % single-drone
+   speed costs roughly the same on multi-drone with peer prediction
+   enabled, so adding peers does *not* amplify the speed penalty
+   (no peer-induced congestion overhead beyond what the planner
+   already pays per-replan).
+3. **Trajectory decorrelation is visible even at 4/4 success**:
+   MPC drones finish within **0.05 s** of each other (12.80–12.85 s).
+   GPU MPPI drones spread by **0.55 s** (17.10–17.65 s). This is
+   qualitatively consistent with the same sample-cloud diversity
+   mechanism that gave the Δ flip on dummy_3d — when 4 drones are
+   under MPC's argmin against the same cost landscape, they follow
+   nearly identical waypoint timing; under MPPI's softmax across 64
+   rollouts, each drone's pick is decorrelated from the others' even
+   when they all succeed.
+
+Headline question — **does the +5.2 pp Δ flip survive on AirSim?** —
+stays open. n=1 cannot answer it. The qualitative finding above
+(decorrelation visible even in success cases) is the strongest
+signal we can get from a single episode; the n ≥ 30 paired AirSim
+run is the next study.
+
+Plan-time budget caveat: 1 multi-drone episode on AirSim costs
+~17 s sim + ~60 s for the 4 GPU MPPI planners' CUDA warmup +
+~30 s AirSim reset/teleport overhead = ~100 s wall clock. An
+n=30 × 2-planner paired run is ~100 minutes — doable overnight,
+not in a single interactive session.
+
+Reproduce:
+```
+# Blocks server + Drone1..4 in settings.json
+uav-nav run examples/exp_airsim_multi_demo_gpu_mppi.yaml
+uav-nav run examples/exp_airsim_multi_demo.yaml
+uav-nav compare results/airsim_multi_demo results/airsim_multi_demo_gpu_mppi
+```
 
 
 ## ROS 2 bridge: spatial equivalence verified

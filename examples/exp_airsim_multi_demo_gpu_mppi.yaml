@@ -1,0 +1,159 @@
+# AirSim multi-drone GPU MPPI: same 4-drone cross at staggered
+# altitudes through Blocks, planner swapped from `mpc` (n=16, h=30 —
+# the `exp_airsim_multi_demo.yaml` baseline) to `gpu_mppi` at the
+# validated 3D Pareto cell (n=64, h=20, T=1.0 — same as the multi-
+# drone dummy_3d study `exp_multi_drone_3d_4_gpu_mppi.yaml`).
+#
+# Purpose: answer the open question from
+# findings.md §"AirSim + GPU MPPI parity":
+#
+#   Does the +5.2 pp multi-drone coordination Δ flip (the headline
+#   result of `exp_multi_drone_3d_4_gpu_mppi.yaml`) survive on AirSim
+#   physics, given that single-drone GPU MPPI commands ~30 % slower
+#   speeds (1.87 vs 2.40 m/s) than MPC on the same Blocks scenario?
+#
+# Two competing effects:
+#   - PRO Δ flip: GPU MPPI's softmax across 64 rollouts still
+#     decorrelates failures across drones (same mechanism that gave
+#     +5.2 pp on dummy_3d).
+#   - AGAINST Δ flip: slower drones spend MORE time in proximity at
+#     the crossing centre, narrowing the temporal window in which the
+#     directional spread per replan can decorrelate failures. Slower
+#     coordinated agents tend to *amplify* coupled failures.
+#
+# The MPC baseline `exp_airsim_multi_demo.yaml` was tuned with
+# staggered altitudes (28, 32, 30, 26) specifically because uniform-
+# altitude 4-way center crossing is fragile in AirSim physics regardless
+# of peer prediction. We keep the staggered geometry so the comparison
+# isolates *planner* differences, not crossing-geometry differences.
+#
+# Setup (additional to single-drone AirSim+GPU MPPI):
+#   - settings.json must declare Drone1..Drone4 (all four) per the
+#     `exp_airsim_multi_demo.yaml` header — only Drone1 carries cameras.
+#     The single-drone YAML's LidarFront on Drone1 is NOT used here
+#     (sensor: perfect). For a perception-driven study this YAML would
+#     need LidarFront on every drone — see future-work TODO at bottom.
+#   - GPU MPPI's autograd compile pays its warmup ONCE PER PLANNER
+#     INSTANCE. With 4 drones that's 4 × ~14 s = ~56 s of warmup time.
+#     AirSim is paused throughout (per the bridge's simPause(True)
+#     after reset()), so drones don't fall, but the user-visible
+#     "first replan" wall clock is dominated by these compiles.
+#
+# Run:
+#   uav-nav run examples/exp_airsim_multi_demo_gpu_mppi.yaml
+# Compare:
+#   uav-nav compare results/airsim_multi_demo results/airsim_multi_demo_gpu_mppi
+#
+# Result (n=1; paired against `exp_airsim_multi_demo.yaml` on the same
+# seed=42 / staggered-altitude crossing). plan_dt steady-state drops
+# the first replan/episode to remove the autograd-compile outlier:
+#
+#   planner   per-drone   joint     avg_v       max final_t   plan_dt steady-state
+#                                   (m/s, mean)               mean / p95
+#   MPC       4/4 succ    success   3.72        12.85 s        87.4 / 237.1 ms
+#   GPU MPPI  4/4 succ    success   2.76        17.65 s       105.4 / 311.0 ms
+#
+# Three observations (at n=1 the per-drone / joint rates carry no
+# coordination-Δ information — these are *mechanism* not *statistics*):
+#
+# 1) **Portability ✓**: 4-drone GPU MPPI runs end-to-end through
+#    `airsim_bridge` with peer prediction, all four drones reach goal
+#    without inter-drone or static-obstacle collision. The single-
+#    drone parity finding extends to multi-drone.
+#
+# 2) **avg_v 26 % lower, time-to-goal 37 % longer** (2.76 vs 3.72 m/s;
+#    17.65 vs 12.85 s) — same shape as the single-drone parity result.
+#    The softmax-average conservatism that costs ~30 % single-drone
+#    speed costs roughly the same on multi-drone with peer prediction
+#    enabled, so neither effect is amplified by adding peers.
+#
+# 3) **Trajectory decorrelation visible even at 4/4 success**:
+#    MPC drones finish within 0.05 s of each other (12.80–12.85 s),
+#    GPU MPPI drones spread by 0.55 s (17.10–17.65 s). The same
+#    sample-cloud diversity that decorrelates failures in the
+#    dummy_3d Δ-flip study (multi-drone GPU MPPI § findings.md) also
+#    decorrelates *successful* trajectories on AirSim. Qualitative
+#    only — but consistent with the mechanism predicted to flip the
+#    coordination Δ.
+#
+# Headline question (does the +5.2 pp Δ flip from `dummy_3d`
+# **survive** on AirSim?) stays open pending n ≥ 30 paired episodes.
+# Each n=1 takes ~17 s sim + ~60 s CUDA warmup + ~30 s AirSim
+# reset/teleport = ~100 s wall clock; n=30 × 2 planners = ~100 min.
+#
+# Future-work TODOs:
+#   - n ≥ 30 paired run for the Δ-flip survival question above.
+#     Reproduce: `uav-nav sweep examples/exp_airsim_multi_demo_gpu_mppi.yaml
+#     --param num_episodes=30 -j 1` (and same for the MPC YAML).
+#   - LidarFront on Drone1..Drone4 + sensor: pointcloud_occupancy for
+#     a perception+coordination joint study (closer to a real onboard
+#     deployment).
+
+name: airsim_multi_demo_gpu_mppi
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 26.0], goal: [30.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  # max_steps bumped from MPC baseline's 400 (= 20 s) to 800 (= 40 s).
+  # Single-drone GPU MPPI on AirSim ran at 1.87 m/s vs MPC's 2.40 m/s
+  # (~30 % slower); a 50 m cross at 1.87 m/s is ~27 s before slowdowns,
+  # well inside 40 s but past the MPC baseline's 20 s budget.
+  max_steps: 800
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  # settle_after_teleport bumped from 0.3 → 3.0. Single-drone parity
+  # found that GPU MPPI's first replan is ~14 s (autograd graph
+  # compile + Dijkstra cost-to-go); the longer teleport-pause headroom
+  # is needed to avoid a stale t=0 collision flag. Each drone's
+  # planner instance pays its own warmup, but all four pay it during
+  # the same long-paused window so the settle bump only needs to cover
+  # ONE drone's warmup boundary.
+  settle_after_teleport: 3.0
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+  cameras:
+    - {name: "front_center", image_type: scene}
+
+planner:
+  type: gpu_mppi
+  max_speed: 4.0          # match MPC baseline (4.0) for fair comparison
+  replan_period: 0.2      # match MPC baseline (0.2 = 5 Hz)
+  horizon: 20             # GPU MPPI 3D Pareto cell
+  dt_plan: 0.05
+  n_samples: 64           # GPU MPPI 3D Pareto cell
+  resolution: 1.0
+  inflate: 0              # match MPC baseline
+  goal_radius: 2.5
+  safety_margin: 0.6      # match MPC baseline
+  use_prediction: true    # CV peer prediction — the dummy_3d study
+                          # found peer info is load-bearing even in
+                          # escape volume (findings.md §"3D peer-
+                          # prediction ablation")
+  w_goal: 1.0
+  w_obs: 200.0            # match MPC baseline
+  w_smooth: 0.05
+  temperature: 1.0        # validated 3D default (see T-ablation
+                          # finding — T=0.1 is significantly worse on
+                          # the n=64 GPU sample budget)
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_demo_gpu_mppi
+  save_camera_frames: true

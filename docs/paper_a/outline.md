@@ -188,15 +188,18 @@ framing.
   number; the scaffold is functional but the comparison is not yet
   paper-worthy.
 - ~~AirSim + GPU MPPI stack test exists in isolation (`demo_airsim` flow
-  with the new planner)~~ **Done — see
-  `exp_airsim_demo_gpu_mppi.yaml` and findings.md §"AirSim + GPU MPPI
-  parity".** Both planners reach the goal on the same Blocks scenario;
-  plan_dt is dominated by sim overhead so the GPU MPPI plan-time edge
-  is *not* portable, and GPU MPPI commands ~30 % slower speeds
-  (1.87 vs 2.40 m/s) under sparse online perception. The
-  conservative-speed effect is the dual of the multi-drone Δ flip.
-  **Remaining future-work TODO: AirSim multi-drone GPU MPPI parity
-  (does the +5.2 pp Δ flip survive the speed penalty?).**
+  with the new planner)~~ **Done — single-drone (see
+  `exp_airsim_demo_gpu_mppi.yaml`) and multi-drone (`exp_airsim_multi_demo_gpu_mppi.yaml`)
+  both run end-to-end on AirSim, all drones reach goal at 4/4.**
+  Single-drone parity: GPU MPPI ~30 % slower wall-clock (1.87 vs
+  2.40 m/s), plan_dt dominated by sim overhead so the dummy_3d
+  speed edge is not portable. Multi-drone parity: same shape, +
+  qualitative signal that trajectory **decorrelation** is visible
+  even at 4/4 (GPU MPPI per-drone final_t spread 0.55 s vs MPC's
+  0.05 s) — mechanism consistent with the dummy_3d Δ flip. **Remaining
+  future-work TODO: n ≥ 30 paired AirSim multi-drone run to put a
+  number on whether the +5.2 pp Δ flip survives the AirSim speed
+  penalty (~100 min wall-clock, overnight study).**
 
 ## 7. Reproducibility map (appendix)
 
@@ -210,7 +213,8 @@ framing.
 | §4.1 3D GPU MPPI T-ablation | `exp_gpu_mppi_temp_ablation_3d.yaml` | "Temperature ablation at the 3D Pareto cell" |
 | §4.2 goal-mask fix | commit `2a9d196` + `uav_nav_lab/planner/gpu_mppi.py` | "The goal-mask bug fix that changed every cell" |
 | §4.4 AirSim vs dummy_3d | `exp_airsim_transfer.yaml` (TBD) | "AirSim vs dummy_3d transferability" |
-| §4.4 AirSim + GPU MPPI parity | `exp_airsim_demo_gpu_mppi.yaml` | "AirSim + GPU MPPI parity" |
+| §4.4 AirSim + GPU MPPI parity (single) | `exp_airsim_demo_gpu_mppi.yaml` | "AirSim + GPU MPPI parity" |
+| §4.4 AirSim + GPU MPPI parity (multi) | `exp_airsim_multi_demo_gpu_mppi.yaml` | "AirSim multi-drone parity" |
 | §4.4 ROS 2 bridge | `scripts/ros2_dummy_sim.py` + `exp_basic.yaml` | "ROS 2 bridge: spatial equivalence verified" |
 | §4.4 AirSim + ROS 2 | `exp_airsim_ros2.yaml`, `exp_airsim_ros2_direct.yaml` | "AirSim over ROS 2 parity harness" |
 | §5 escape volume | `exp_multi_drone_3d_4.yaml` (sparse), `_density_8x` variant | "3D density ablation" |
