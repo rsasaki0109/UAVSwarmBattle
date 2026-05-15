@@ -55,10 +55,24 @@ class EpisodeRecorder:
                 }
         self.steps.append(row)
 
-    def log_replan(self, t: float, plan_length: int, planner_dt_ms: float) -> None:
-        self.replans.append(
-            {"t": float(t), "plan_length": int(plan_length), "planner_dt_ms": float(planner_dt_ms)}
-        )
+    def log_replan(
+        self,
+        t: float,
+        plan_length: int,
+        planner_dt_ms: float,
+        rollouts: list | None = None,
+        best_rollout_idx: int | None = None,
+    ) -> None:
+        entry: dict[str, Any] = {
+            "t": float(t),
+            "plan_length": int(plan_length),
+            "planner_dt_ms": float(planner_dt_ms),
+        }
+        if rollouts is not None:
+            entry["rollouts"] = rollouts
+            if best_rollout_idx is not None:
+                entry["best_rollout_idx"] = int(best_rollout_idx)
+        self.replans.append(entry)
 
     def set_outcome(self, outcome: str, **extra: Any) -> None:
         self.outcome = outcome

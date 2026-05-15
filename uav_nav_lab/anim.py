@@ -173,6 +173,25 @@ def _animate_episode_3d(plt, animation, cfg: ExperimentConfig, ep: dict, scenari
     (traj_line,) = ax.plot([], [], [], "-", color="tab:blue", lw=1.5, label="true")
     drone_pt = ax.scatter([], [], [], c="tab:blue", s=60, depthshade=True)
     dyn_scatter = ax.scatter([], [], [], s=120, c="tab:red", marker="o", edgecolors="black")
+
+    # MPPI rollout overlay: prepare a fixed pool of translucent lines so we
+    # can update geometry per frame without re-creating artists. Pool size
+    # follows the largest replan in the log; replans without `rollouts`
+    # (non-sampling planners) hide all lines for that frame.
+    replans = ep.get("replans", []) or []
+    rollouts_max = max(
+        (len(r.get("rollouts") or []) for r in replans),
+        default=0,
+    )
+    rollout_lines = [
+        ax.plot([], [], [], "-", color="tab:cyan", lw=0.6, alpha=0.30, zorder=2)[0]
+        for _ in range(rollouts_max)
+    ]
+    (best_rollout_line,) = ax.plot(
+        [], [], [], "-", color="tab:orange", lw=1.2, alpha=0.85, zorder=3,
+        label="MPPI best" if rollouts_max else None,
+    )
+
     title = ax.set_title("")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -212,6 +231,15 @@ def _animate_episode_3d(plt, animation, cfg: ExperimentConfig, ep: dict, scenari
             zs.append(pos[2])
         return xs, ys, zs
 
+    def _replan_at_or_before(cur_t: float) -> dict | None:
+        chosen: dict | None = None
+        for r in replans:
+            if r["t"] > cur_t + 1e-9:
+                break
+            if r.get("rollouts") is not None:
+                chosen = r
+        return chosen
+
     def update(frame_i: int) -> tuple[Any, ...]:
         j = frame_indices[frame_i]
         # Trajectory up to j.
@@ -223,13 +251,34 @@ def _animate_episode_3d(plt, animation, cfg: ExperimentConfig, ep: dict, scenari
         drone_pt._offsets3d = ([tx[-1]], [ty[-1]], [tz[-1]])
         dx, dy, dz = dyn_at_step_index(j)
         dyn_scatter._offsets3d = (dx, dy, dz)
+
+        # Refresh rollout overlay from the most recent replan with rollouts.
+        cur_replan = _replan_at_or_before(steps[j]["t"]) if rollout_lines else None
+        rolls = (cur_replan.get("rollouts") if cur_replan else None) or []
+        best_idx = int(cur_replan.get("best_rollout_idx", -1)) if cur_replan else -1
+        for k, line in enumerate(rollout_lines):
+            if k < len(rolls):
+                pts = rolls[k]
+                line.set_data([p[0] for p in pts], [p[1] for p in pts])
+                line.set_3d_properties([p[2] for p in pts])
+            else:
+                line.set_data([], [])
+                line.set_3d_properties([])
+        if 0 <= best_idx < len(rolls):
+            pts = rolls[best_idx]
+            best_rollout_line.set_data([p[0] for p in pts], [p[1] for p in pts])
+            best_rollout_line.set_3d_properties([p[2] for p in pts])
+        else:
+            best_rollout_line.set_data([], [])
+            best_rollout_line.set_3d_properties([])
+
         # Slow rotating view, +120° over the episode for a sense of depth.
         ax.view_init(elev=22.0, azim=-60.0 + (frame_i / max(1, len(frame_indices) - 1)) * 120.0)
         title.set_text(
             f"ep {ep['meta']['episode']:03d}  outcome={ep.get('outcome','?')}  "
             f"t={steps[j]['t']:.1f}s"
         )
-        return traj_line, drone_pt, dyn_scatter, title
+        return (traj_line, drone_pt, dyn_scatter, best_rollout_line, *rollout_lines, title)
 
     anim = animation.FuncAnimation(
         fig, update, frames=len(frame_indices), interval=1000 / fps, blit=False

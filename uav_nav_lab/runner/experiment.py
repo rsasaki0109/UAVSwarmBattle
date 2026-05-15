@@ -136,7 +136,13 @@ def _run_episode(
             )
             planner_dt_ms = (time.perf_counter() - t0) * 1000.0
             last_replan_t = t
-            rec.log_replan(t=t, plan_length=int(plan.waypoints.shape[0]), planner_dt_ms=planner_dt_ms)
+            rec.log_replan(
+                t=t,
+                plan_length=int(plan.waypoints.shape[0]),
+                planner_dt_ms=planner_dt_ms,
+                rollouts=plan.meta.get("rollouts"),
+                best_rollout_idx=plan.meta.get("best_rollout_idx"),
+            )
 
         cmd = _follow_plan(
             plan, observation, planner.max_speed,

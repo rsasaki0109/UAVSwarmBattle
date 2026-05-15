@@ -242,14 +242,29 @@ class GPUMPPIPlanner(Planner):
             occ_collision = occ_t[cell_indices[:, :, 0], cell_indices[:, :, 1], cell_indices[:, :, 2]].float()
         collision_mask = occ_collision + oob.float()  # OOB = collision
 
-        collision_pen = collision_mask.sum(dim=1)  # [S]
+        # CTG: gather cost-to-go values at each rollout position (needed
+        # below; pre-computed here so we can also use the goal-reach mask
+        # to scope collision sums to pre-goal steps — matching CPU MPPI's
+        # `break` after the first goal reach so rollouts aren't penalised
+        # for incidental obstacles past the goal).
+        dist2 = ((rollouts - gl_t[None, None, :]) ** 2).sum(dim=-1)  # [S, H]
+        reaches_goal_any = (dist2 <= gr2).any(dim=1)  # [S]
+        first_goal_h = torch.where(
+            reaches_goal_any,
+            (dist2 <= gr2).float().argmax(dim=1),
+            torch.tensor(self.horizon, device=device),
+        )
+        step_idx = torch.arange(self.horizon, device=device)  # [H]
+        pre_goal_mask = (step_idx[None, :] < first_goal_h[:, None]).float()  # [S, H]
+
+        collision_pen = (collision_mask * pre_goal_mask).sum(dim=1)  # [S]
         if pred_traj is not None and r2_arr is not None:
             pred_t = _to_tensor(pred_traj, device)  # [O, H, D]
             r2_t = _to_tensor(r2_arr, device)  # [O]
             diffs = rollouts[:, None, :, :] - pred_t[None, :, :, :]  # [S, O, H, D]
             sep2 = (diffs * diffs).sum(dim=-1)  # [S, O, H]
             dyn_collision = (sep2 <= r2_t[None, :, None]).any(dim=1).float()  # [S, H]
-            collision_pen = collision_pen + dyn_collision.sum(dim=1)
+            collision_pen = collision_pen + (dyn_collision * pre_goal_mask).sum(dim=1)
 
         # CTG: gather cost-to-go values at each rollout position
         if ndim == 2:
@@ -260,11 +275,8 @@ class GPUMPPIPlanner(Planner):
         ctg_roll = torch.where(torch.isfinite(ctg_roll), ctg_roll, torch.tensor(unreachable_penalty, device=device))
         ctg_min = ctg_roll.min(dim=1).values  # [S]
         ctg_avg = ctg_roll.mean(dim=1)  # [S]
-
-        # Goal reach: check if any step is within goal_radius
-        dist2 = ((rollouts - gl_t[None, None, :]) ** 2).sum(dim=-1)  # [S, H]
-        reaches_goal_any = (dist2 <= gr2).any(dim=1)  # [S]
-        first_goal_h = torch.where(reaches_goal_any, (dist2 <= gr2).float().argmax(dim=1), torch.tensor(self.horizon, device=device))
+        # `dist2` / `reaches_goal_any` / `first_goal_h` already computed above
+        # to build the pre-goal collision mask.
 
         # Cost computation (matches CPU mppi logic)
         smooth_pen = torch.zeros(self.n_samples, device=device)
@@ -306,6 +318,22 @@ class GPUMPPIPlanner(Planner):
         if reaches_goal_any[best_k]:
             best_full = best_full[: first_goal_h[best_k].item() + 2]
 
+        # Subsampled rollouts for anim overlay: K uniformly-spaced samples
+        # prepended with `obs` so each polyline starts at the drone. Stored
+        # in `meta` for the recorder; cost is ~K * (H+1) * D floats per
+        # replan, dominated by JSON overhead.
+        k_vis = min(24, self.n_samples)
+        if k_vis > 0:
+            stride = max(1, self.n_samples // k_vis)
+            rollouts_vis_t = rollouts[::stride][:k_vis]
+            obs_prefix = obs_t[None, None, :].expand(rollouts_vis_t.shape[0], 1, ndim)
+            rollouts_vis = torch.cat([obs_prefix, rollouts_vis_t], dim=1).cpu().numpy()
+            best_vis_idx = min(best_k // stride, rollouts_vis.shape[0] - 1)
+            rollouts_meta = np.round(rollouts_vis, 3).tolist()
+        else:
+            rollouts_meta = None
+            best_vis_idx = 0
+
         chosen_action = chosen_action_t.cpu().numpy()
         self._prev_action = chosen_action
 
@@ -319,5 +347,7 @@ class GPUMPPIPlanner(Planner):
                 "weight_entropy": float((-weights * torch.log(weights + 1e-12)).sum().item()),
                 "n_samples": self.n_samples,
                 "device": str(device),
+                "rollouts": rollouts_meta,
+                "best_rollout_idx": int(best_vis_idx),
             },
         )

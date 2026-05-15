@@ -1,0 +1,76 @@
+# GPU MPPI showcase — 3D voxel world with bouncing dynamic obstacles.
+#
+# `gpu_mppi` (n_samples=256, h=20) emits its sampled rollouts in
+# `Plan.meta["rollouts"]` so `uav-nav anim` can overlay them as
+# translucent cyan lines + an orange "best" line, producing the
+# characteristic MPPI "sample cloud avoids dynamic obstacles" GIF.
+#
+# Reproduce:
+#   uav-nav run examples/exp_gpu_mppi_demo.yaml
+#   uav-nav anim results/gpu_mppi_demo
+#
+# Requires `pip install -e '.[gpu,viz]'`.
+
+name: gpu_mppi_demo
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: voxel_world
+  size: [40, 40, 12]
+  start: [3.0, 3.0, 6.0]
+  goal: [37.0, 37.0, 6.0]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  dynamic_obstacles:
+    - start: [20.0, 8.0, 6.0]
+      velocity: [0.0, 5.0, 0.5]
+      reflect: true
+      radius: 0.8
+    - start: [8.0, 25.0, 5.0]
+      velocity: [4.0, 0.0, -0.4]
+      reflect: true
+      radius: 0.8
+    - start: [28.0, 20.0, 7.0]
+      velocity: [-3.0, 2.0, 0.3]
+      reflect: true
+      radius: 0.8
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1200
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  # 3D MPPI Pareto config (see exp_compare_mppi_3d.yaml): n_samples=8,
+  # h=20, dt_plan=0.05, T=1.0 — 86.7 % succ on this scenario.  GPU MPPI
+  # at n=256 dilutes too many directions in 3D and stalls (population-
+  # mean collapse), so we keep the validated CPU MPPI config but route
+  # it through the GPU rollout for the cleaner sample-cloud overlay.
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/gpu_mppi_demo
