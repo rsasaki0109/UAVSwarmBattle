@@ -170,6 +170,12 @@ scenario:
       - [33, 45, 36]
       - [33, 45, 37]
       - [33, 45, 38]
+  # Same dynamic spheres as the MPC pair YAML.
+  dynamic_obstacles:
+    - {start: [10.0, 30.0, 27.0], velocity: [2.5,  0.0, 0.0], radius: 1.2, reflect: true}
+    - {start: [50.0, 30.0, 31.0], velocity: [-2.5, 0.0, 0.0], radius: 1.2, reflect: true}
+    - {start: [30.0, 10.0, 29.0], velocity: [0.0,  2.5, 0.0], radius: 1.2, reflect: true}
+    - {start: [30.0, 50.0, 27.0], velocity: [0.0, -2.5, 0.0], radius: 1.2, reflect: true}
   drones:
     - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
     - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}

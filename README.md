@@ -37,7 +37,7 @@ every example YAML carries its own validated finding.**
 <td colspan="2"><img src="docs/images/compare_airsim_multi_obstacles.gif" alt="Side-by-side AirSim 4-drone cross with virtual planner obstacles: MPC (left) vs GPU MPPI (right) both detour around centerline gates" width="720"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i><b>AirSim transferability</b> — same 4-drone Blocks cross, planner family swap. Virtual zigzag pillars (z=22-38) in each planner's static map force horizontal S-curves through the (30, 30) crossing — MPC commits to bigger detours (path 56-61 m, +12-22 % over 50 m direct), GPU MPPI's softmax averages tighter (50-51 m, +0-2 %). On the no-obstacle scenario, n=30 paired across three altitude-stagger cells (±2-4 m, ±1 m, 0 m) shows a bimodal response — non-zero z-spread keeps both at 100 % joint, uniform z=30 drops MPC to 46.7 % and GPU MPPI to <b>0/30</b> (McNemar p ≈ 0.00012). Trajectory-spread mechanism preserved across cells (GPU/MPC 4-27 ×) — <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>.</i></td>
+<td colspan="2" align="center"><i><b>AirSim transferability</b> — same 4-drone Blocks cross, planner family swap. Each planner's static map carries zigzag pillars (z=22-38) at the crossing centre plus four dynamic obstacles cycling through the volume at "gap" altitudes (z=27/29/31, 2.5 m/s, reflect at world bounds). The planners react in real time on top of the static avoidance: MPC commits to wider arcs (path 57-67 m, +14-34 % over 50 m direct, max perpendicular detour 5.4-9.2 m); GPU MPPI's softmax averages tighter (path 52-55 m, max perp 4.7-5.7 m). On the no-obstacle scenario, n=30 paired across three altitude-stagger cells (±2-4 m, ±1 m, 0 m) shows a bimodal response — non-zero z-spread keeps both at 100 % joint, uniform z=30 drops MPC to 46.7 % and GPU MPPI to <b>0/30</b> (McNemar p ≈ 0.00012). Trajectory-spread mechanism preserved across cells (GPU/MPC 4-27 ×) — <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>.</i></td>
 </tr>
 </table>
 
@@ -65,21 +65,16 @@ every example YAML carries its own validated finding.**
 <tr>
 <td colspan="2" align="center"><i>AirSim single-drone — Pareto-MPC + <code>airsim_bridge</code> with a 16-channel LiDAR + <code>pointcloud_occupancy</code> sensor, weaving through Blocks cube clusters from an empty static map.</i></td>
 </tr>
-<tr>
-<td colspan="2"><img src="docs/images/demo_airsim_multi.gif" alt="4 SimpleFlight multirotors crossing through Blocks" width="560"></td>
-</tr>
-<tr>
-<td colspan="2" align="center"><i>AirSim multi-drone — 4 quadrotors cross under <code>multi_drone_voxel</code> + MPC + CV peer prediction, 4 <code>airsim_bridge</code> instances bound to <code>Drone1..Drone4</code>.</i></td>
-</tr>
-<tr>
-<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="AirSim 4-drone straight-line crossing: MPC (left) vs GPU MPPI (right) on the no-obstacle staggered scenario" width="720"></td>
-</tr>
-<tr>
-<td colspan="2" align="center"><i>AirSim multi-drone (no obstacles, straight-line crossing) — reference for the n=1 no-obstacle parity story. MPC finishes at 12.85 s lockstep, GPU MPPI at 17.65 s with 0.55 s arrival spread.</i></td>
-</tr>
 </table>
 
 </details>
+
+The no-obstacle straight-line AirSim 4-drone crossing GIF
+(`compare_airsim_multi_mpc_vs_gpu_mppi.gif`,
+`demo_airsim_multi.gif`) is the reference for the n=1 parity story
+but visually carries little — see the table in
+[findings.md "AirSim multi-drone parity"](docs/findings.md#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
+for the same data without the GIF overhead.
 
 </div>
 
