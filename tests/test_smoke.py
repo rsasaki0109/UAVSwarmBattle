@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np  # noqa: F401
@@ -40,6 +41,46 @@ def test_run_then_eval(tmp_path: Path) -> None:
     assert summary["n_episodes"] == 2
     assert 0.0 <= summary["success_rate"] <= 1.0
     assert (run_dir / "summary.json").exists()
+
+
+def test_compare_spatial_runs_accepts_matching_episode_logs(tmp_path: Path) -> None:
+    from scripts.compare_spatial_runs import compare_runs
+
+    def write_ep(run_dir: Path, name: str, xs: list[float]) -> None:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        steps = [
+            {
+                "t": i * 0.05,
+                "true_pos": [x, x + 1.0, 2.0],
+                "true_vel": [1.0, 1.0, 0.0],
+                "observed_pos": [x, x + 1.0, 2.0],
+                "cmd": [1.0, 1.0, 0.0],
+                "collision": False,
+                "goal_reached": False,
+            }
+            for i, x in enumerate(xs)
+        ]
+        (run_dir / name).write_text(
+            json.dumps(
+                {
+                    "meta": {"episode": 0, "seed": 42},
+                    "outcome": "success",
+                    "summary": {"final_t": len(xs) * 0.05},
+                    "replans": [],
+                    "steps": steps,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    left = tmp_path / "direct"
+    right = tmp_path / "ros2"
+    write_ep(left, "episode_000.json", [0.0, 1.0, 2.0, 3.0])
+    write_ep(right, "episode_000.json", [0.02, 1.02, 2.02, 3.02])
+
+    report = compare_runs(left, right)
+    assert report["passed"] is True
+    assert report["max_final_position_delta_m"] < 0.1
 
 
 def test_straight_baseline_runs(tmp_path: Path) -> None:
@@ -1172,6 +1213,58 @@ def test_ros2_bridge_step_round_trips_enu_via_mock_adapter() -> None:
     assert last[2] == 0.0  # 2D scenario → vz = 0
     assert np.allclose(out_state.position, np.array([3.0, 4.0]))
     assert info.collision is False
+
+
+def test_ros2_bridge_can_convert_ned_wrappers_via_mock_adapter() -> None:
+    """AirSim's ROS wrapper defaults to NED odometry / velocity commands.
+    Ros2Bridge should still expose ENU state to the framework."""
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+    from uav_nav_lab.sim.ros2_bridge import Ros2Bridge
+
+    voxel_cls = SCENARIO_REGISTRY.get("voxel_world")
+    sc = voxel_cls.from_config(
+        {
+            "size": [10, 10, 10],
+            "start": [1.0, 2.0, 3.0],
+            "goal": [9.0, 8.0, 7.0],
+            "obstacles": {"type": "none"},
+        }
+    )
+
+    class FakeNedAdapter:
+        def __init__(self) -> None:
+            self.commands: list[tuple[float, float, float]] = []
+            self.teleports: list[np.ndarray] = []
+            self._pose_ned = np.array([4.0, 3.0, -2.0])
+            self._vel_ned = np.array([0.6, 0.5, -0.1])
+
+        def publish_velocity(self, vx: float, vy: float, vz: float) -> None:
+            self.commands.append((vx, vy, vz))
+
+        def latest_pose_velocity(self):
+            return (self._pose_ned.copy(), self._vel_ned.copy())
+
+        def latest_collision(self) -> bool:
+            return False
+
+        def tick(self, _timeout_s: float) -> None:
+            pass
+
+        def teleport(self, pos_ros: np.ndarray) -> None:
+            self.teleports.append(np.asarray(pos_ros).copy())
+
+    fake = FakeNedAdapter()
+    bridge = Ros2Bridge(dt=0.05, scenario=sc, adapter=fake, frame="ned")
+    state = bridge.reset()
+
+    # start [1, 2, 3] ENU is sent to the wrapper as [2, 1, -3] NED.
+    assert np.allclose(fake.teleports[0], np.array([2.0, 1.0, -3.0]))
+    # Odom [4, 3, -2] NED is surfaced to the framework as [3, 4, 2] ENU.
+    assert np.allclose(state.position, np.array([3.0, 4.0, 2.0]))
+    assert np.allclose(state.velocity, np.array([0.5, 0.6, 0.1]))
+
+    bridge.step(np.array([1.0, 2.0, 3.0]))
+    assert fake.commands[-1] == pytest.approx((2.0, 1.0, -3.0))
 
 
 def test_ros2_bridge_surfaces_lidar_camera_via_mock_adapter() -> None:

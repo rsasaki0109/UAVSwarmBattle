@@ -1,0 +1,64 @@
+# AirSim-over-ROS2 half of the AirSim RPC vs ROS2 bridge parity check.
+#
+# Expected AirSim ROS2 wrapper surface:
+#   odom: /airsim_node/Drone1/odom_local_ned      nav_msgs/Odometry
+#   cmd:  /airsim_node/vel_cmd_world_frame        airsim_interfaces/VelCmd
+#
+# The bridge config below sets `frame: ned`, so the framework still sees
+# ENU state/commands while the AirSim wrapper keeps its default NED topics.
+# If you launch the wrapper with world_frame_id:=world_enu, switch `frame`
+# to `enu` and `odom_topic` to /airsim_node/Drone1/odom_local_enu.
+#
+# Run:
+#   source <ros2_ws_with_airsim_interfaces>/install/setup.bash
+#   ros2 launch airsim_ros_pkgs airsim_node.launch.py
+#   uav-nav run examples/exp_airsim_ros2.yaml
+#
+# Compare against the direct bridge:
+#   python3 scripts/compare_spatial_runs.py \
+#     results/airsim_ros2_direct results/airsim_ros2
+
+name: airsim_ros2
+seed: 42
+num_episodes: 3
+
+scenario:
+  type: voxel_world
+  size: [60, 60, 40]
+  start: [0.0, 0.0, 30.0]
+  goal:  [0.0, 30.0, 30.0]
+  resolution: 1.0
+  obstacles:
+    type: none
+
+simulator:
+  type: ros2
+  cmd_topic: /airsim_node/vel_cmd_world_frame
+  cmd_msg_type: airsim_vel_cmd
+  odom_topic: /airsim_node/Drone1/odom_local_ned
+  frame: ned
+  dt: 0.05
+  max_steps: 400
+  goal_radius: 2.0
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.1
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.0
+  safety_margin: 0.5
+  use_prediction: false
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_ros2

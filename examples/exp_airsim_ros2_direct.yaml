@@ -1,0 +1,54 @@
+# Direct AirSim half of the AirSim RPC vs AirSim-over-ROS2 parity check.
+#
+# Run after starting Blocks / Colosseum with Drone1 available:
+#   uav-nav run examples/exp_airsim_ros2_direct.yaml
+#
+# Then run the ROS2 half in exp_airsim_ros2.yaml and compare:
+#   python3 scripts/compare_spatial_runs.py \
+#     results/airsim_ros2_direct results/airsim_ros2
+
+name: airsim_ros2_direct
+seed: 42
+num_episodes: 3
+
+scenario:
+  type: voxel_world
+  size: [60, 60, 40]
+  start: [0.0, 0.0, 30.0]
+  goal:  [0.0, 30.0, 30.0]
+  resolution: 1.0
+  obstacles:
+    type: none
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  vehicle: Drone1
+  dt: 0.05
+  max_steps: 400
+  goal_radius: 2.0
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.1
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.0
+  safety_margin: 0.5
+  use_prediction: false
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_ros2_direct

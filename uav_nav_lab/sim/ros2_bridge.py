@@ -15,7 +15,7 @@ Contract:
                           adapter.teleport(...), spins once so the first
                           /odom message lands. Falls back to scenario.start
                           if no odom arrives within the dt window.
-  - step(velocity_cmd) → publish a Twist on cmd_topic, advance time by
+  - step(velocity_cmd) → publish a velocity command on cmd_topic, advance time by
                           `dt` (wall-clock by default; sim-time if
                           `use_sim_time` is enabled — see below), then
                           read latest pose/velocity back. Collision flag
@@ -29,12 +29,12 @@ Contract:
 
 Coordinate frames:
   - Framework: ENU (east-north-up, +z up).
-  - ROS 2:     ENU per REP-103 for outdoor robotics — pass-through here.
-    PX4-NED users should convert in their MAVROS / setpoint layer; this
-    bridge does not flip frames.
+  - ROS 2:     ENU per REP-103 by default. Set `frame: ned` for wrappers
+    that publish NED odometry / consume NED velocity commands, such as
+    AirSim's default ROS wrapper topics.
 
 Topology:
-  - publish:   cmd_topic        geometry_msgs/Twist    (ENU velocity setpoint)
+  - publish:   cmd_topic        geometry_msgs/Twist or airsim_interfaces/VelCmd
   - subscribe: odom_topic       nav_msgs/Odometry      (true pose+velocity)
   - subscribe: collision_topic  std_msgs/Bool          (optional)
   - subscribe: lidars[*]        sensor_msgs/PointCloud2 (optional)
@@ -74,6 +74,20 @@ import numpy as np
 from .base import SIM_REGISTRY, SimInterface, SimState, SimStepInfo
 
 
+def _enu_to_ned(p: np.ndarray) -> np.ndarray:
+    """(x, y, z)_ENU -> (y, x, -z)_NED. Pads / truncates to 3D."""
+    p = np.asarray(p, dtype=float)
+    out = np.zeros(3)
+    out[: p.size] = p[:3]
+    return np.array([out[1], out[0], -out[2]])
+
+
+def _ned_to_enu(p: np.ndarray) -> np.ndarray:
+    """(y, x, -z)_NED -> (x, y, z)_ENU."""
+    p = np.asarray(p, dtype=float)
+    return np.array([p[1], p[0], -p[2]])
+
+
 @SIM_REGISTRY.register("ros2")
 class Ros2Bridge(SimInterface):
     def __init__(
@@ -87,6 +101,8 @@ class Ros2Bridge(SimInterface):
         max_steps: int = 2000,
         lidars: list[str] | None = None,
         cameras: list[str] | None = None,
+        frame: str = "enu",
+        cmd_msg_type: str = "twist",
         use_sim_time: bool = False,
         clock_topic: str = "/clock",
         sim_time_wall_timeout: float = 5.0,
@@ -105,6 +121,12 @@ class Ros2Bridge(SimInterface):
         # sensor_msgs/Image topics. Each step's latest frame is encoded
         # to PNG bytes and stashed at state.extra["camera_images"][topic].
         self.cameras: list[str] = list(cameras or [])
+        self.frame = str(frame).lower()
+        if self.frame not in ("enu", "ned"):
+            raise ValueError("ros2 simulator frame must be 'enu' or 'ned'")
+        self.cmd_msg_type = str(cmd_msg_type).lower()
+        if self.cmd_msg_type not in ("twist", "airsim_vel_cmd"):
+            raise ValueError("ros2 cmd_msg_type must be 'twist' or 'airsim_vel_cmd'")
         # When True, the bridge advances time by waiting for `/clock` to
         # advance by `dt` rather than ticking wall-clock. This lets
         # PX4-SITL fast-forward (and Gazebo `--lockstep`) speed the
@@ -136,6 +158,8 @@ class Ros2Bridge(SimInterface):
             max_steps=int(cfg.get("max_steps", 2000)),
             lidars=[str(t) for t in (cfg.get("lidars") or [])],
             cameras=[str(t) for t in (cfg.get("cameras") or [])],
+            frame=str(cfg.get("frame", "enu")),
+            cmd_msg_type=str(cfg.get("cmd_msg_type", "twist")),
             use_sim_time=bool(cfg.get("use_sim_time", False)),
             clock_topic=str(cfg.get("clock_topic", "/clock")),
             sim_time_wall_timeout=float(cfg.get("sim_time_wall_timeout", 5.0)),
@@ -151,8 +175,17 @@ class Ros2Bridge(SimInterface):
             lidar_topics=self.lidars,
             camera_topics=self.cameras,
             clock_topic=self.clock_topic if self.use_sim_time else None,
+            cmd_msg_type=self.cmd_msg_type,
         )
         return self._adapter
+
+    def _from_ros_frame(self, vec: np.ndarray) -> np.ndarray:
+        v = np.asarray(vec, dtype=float)
+        return _ned_to_enu(v) if self.frame == "ned" else v
+
+    def _to_ros_frame(self, vec: np.ndarray) -> np.ndarray:
+        v = np.asarray(vec, dtype=float)
+        return _enu_to_ned(v) if self.frame == "ned" else v
 
     def _advance_time(self, adapter: Any) -> float:
         """Wait one `dt` of time and return the actual sim-time observed.
@@ -207,7 +240,7 @@ class Ros2Bridge(SimInterface):
         if callable(teleport):
             pos3 = np.zeros(3)
             pos3[:ndim] = start[:ndim]
-            teleport(pos3)
+            teleport(self._to_ros_frame(pos3))
         # Reset the sim-time anchor — set on the first step() rather than
         # here so any odom arriving during the wall-clock spin below
         # doesn't get attributed to a sim-time advance.
@@ -218,7 +251,7 @@ class Ros2Bridge(SimInterface):
         adapter.tick(self.dt)
         latest = adapter.latest_pose_velocity()
         if latest is not None:
-            pos_enu, vel_enu = latest
+            pos_enu, vel_enu = (self._from_ros_frame(v) for v in latest)
             self._state = SimState(
                 t=0.0,
                 position=np.asarray(pos_enu, dtype=float)[:ndim].copy(),
@@ -237,7 +270,8 @@ class Ros2Bridge(SimInterface):
         v = np.asarray(command, dtype=float)
         v3 = np.zeros(3)
         v3[: min(3, v.size)] = v[:3]  # 2D scenarios pad vz=0
-        adapter.publish_velocity(float(v3[0]), float(v3[1]), float(v3[2]))
+        ros_v = self._to_ros_frame(v3)
+        adapter.publish_velocity(float(ros_v[0]), float(ros_v[1]), float(ros_v[2]))
         # Wall-clock vs sim-time: `_advance_time` returns the elapsed time
         # of this step. In sim-time mode the value tracks `/clock` exactly
         # so a fast-forwarded sim makes `state.t` advance at the sim's
@@ -246,7 +280,7 @@ class Ros2Bridge(SimInterface):
         latest = adapter.latest_pose_velocity()
         ndim = self.scenario.ndim
         if latest is not None:
-            pos_enu, vel_enu = latest
+            pos_enu, vel_enu = (self._from_ros_frame(v) for v in latest)
             self._state.position = np.asarray(pos_enu, dtype=float)[:ndim].copy()
             self._state.velocity = np.asarray(vel_enu, dtype=float)[:ndim].copy()
         # else: keep previous state (sensor dropout); planner replan handles it.
@@ -301,6 +335,7 @@ class _RclpyAdapter:  # pragma: no cover
         lidar_topics: list[str] | None = None,
         camera_topics: list[str] | None = None,
         clock_topic: str | None = None,
+        cmd_msg_type: str = "twist",
     ) -> None:
         try:
             import rclpy  # type: ignore[import-not-found]
@@ -319,9 +354,25 @@ class _RclpyAdapter:  # pragma: no cover
         if not rclpy.ok():
             rclpy.init()
         self._rclpy = rclpy
-        self._Twist = Twist
+        self._cmd_msg_type = str(cmd_msg_type).lower()
+        if self._cmd_msg_type == "twist":
+            self._CmdMsg = Twist
+        elif self._cmd_msg_type == "airsim_vel_cmd":
+            try:
+                from airsim_interfaces.msg import VelCmd  # type: ignore[import-not-found]
+            except ImportError:
+                try:
+                    from airsim_ros_pkgs.msg import VelCmd  # type: ignore[import-not-found]
+                except ImportError as e:
+                    raise SystemExit(
+                        "AirSim ROS2 VelCmd message is not on PYTHONPATH. "
+                        "Source the AirSim ROS2 workspace before running this experiment."
+                    ) from e
+            self._CmdMsg = VelCmd
+        else:
+            raise ValueError("cmd_msg_type must be 'twist' or 'airsim_vel_cmd'")
         self._node = rclpy.create_node("uav_nav_lab_ros2_bridge")
-        self._cmd_pub = self._node.create_publisher(Twist, cmd_topic, 10)
+        self._cmd_pub = self._node.create_publisher(self._CmdMsg, cmd_topic, 10)
         self._latest_odom: Any = None
         self._latest_collision: bool = False
         self._latest_clouds: dict[str, np.ndarray] = {}
@@ -368,11 +419,12 @@ class _RclpyAdapter:  # pragma: no cover
         self._latest_sim_time = float(msg.clock.sec) + float(msg.clock.nanosec) * 1e-9
 
     def publish_velocity(self, vx: float, vy: float, vz: float) -> None:
-        twist = self._Twist()
-        twist.linear.x = float(vx)
-        twist.linear.y = float(vy)
-        twist.linear.z = float(vz)
-        self._cmd_pub.publish(twist)
+        msg = self._CmdMsg()
+        target = msg.twist if self._cmd_msg_type == "airsim_vel_cmd" else msg
+        target.linear.x = float(vx)
+        target.linear.y = float(vy)
+        target.linear.z = float(vz)
+        self._cmd_pub.publish(msg)
 
     def latest_pose_velocity(self) -> tuple[np.ndarray, np.ndarray] | None:
         msg = self._latest_odom

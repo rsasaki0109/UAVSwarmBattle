@@ -326,9 +326,13 @@ External backends:
   `/collision`), spins once per `dt` so the latest message is
   consumed each step. Run via `examples/exp_ros2.yaml` after sourcing
   ROS 2 and bringing up a sim (Gazebo / Ignition / PX4-SITL via
-  MAVROS). Frames assumed ENU per REP-103; PX4-NED users convert one
-  layer up. Mock-injectable adapter makes the plumbing CI-testable
-  without rclpy. Optional `lidars: [topic, …]` subscribes to
+  MAVROS). Frames default to ENU per REP-103; set `frame: ned` for
+  NED-speaking wrappers. `cmd_msg_type: airsim_vel_cmd` publishes
+  AirSim's ROS wrapper velocity message instead of a plain Twist, so
+  `examples/exp_airsim_ros2.yaml` can exercise AirSim through ROS 2
+  and be compared with the direct bridge via
+  `scripts/compare_spatial_runs.py`. Mock-injectable adapter makes the
+  plumbing CI-testable without rclpy. Optional `lidars: [topic, …]` subscribes to
   `sensor_msgs/PointCloud2` and decodes each step's latest cloud to
   (N, 3) ENU points at `state.extra["lidar_points"][topic]` — same key
   as the AirSim bridge, so `pointcloud_occupancy` consumes both
