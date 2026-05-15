@@ -29,6 +29,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [GPU MPPI: post-goal-mask fix unlocks long-horizon cells, 3D MPPI beats 3D MPC](#gpu-mppi-post-goal-mask-fix-unlocks-long-horizon-cells-3d-mppi-beats-3d-mpc)
 - [Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer](#temperature-ablation-at-the-3d-pareto-cell-the-cpu-rules-dont-transfer)
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
+- [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
@@ -934,6 +935,79 @@ Reproduce:
 uav-nav run examples/exp_multi_drone_3d_4_gpu_mppi.yaml
 uav-nav compare results/multi_drone_3d_4 results/multi_drone_3d_4_gpu_mppi
 ```
+
+### AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost
+
+`examples/exp_airsim_demo_gpu_mppi.yaml` — single-drone parity check
+of GPU MPPI against the MPC baseline `exp_airsim_demo.yaml` on the
+same Blocks scenario (start [0, 0, 5] → goal [45, 0, 12], LiDAR-built
+occupancy, n=1 episode). Planner family swapped, sim/sensor/scenario
+held constant.
+
+| planner                | outcome | final_t | avg_v      | path_len | plan_ms mean/p95 |
+|---|---|---|---|---|---|
+| MPC      (n=32, h=40)  | success | 18.7 s  | 2.40 m/s   | 44.78 m  | 188 / 323        |
+| GPU MPPI (n=64, h=20, T=1.0) | success | 24.2 s  | 1.87 m/s   | 45.05 m  | 180 / 334        |
+
+Three observations:
+
+1. **GPU MPPI runs end-to-end through `airsim_bridge`**, reaches the
+   goal, and traces a path within 0.6 % of MPC's length (45.05 vs
+   44.78 m) — the portability check that this section was designed to
+   answer passes. The framework's planner / sensor / scenario boundary
+   that PRs #44 / #45 secured for MPC transfers cleanly to GPU MPPI
+   with no bridge-side changes.
+2. **plan_dt is dominated by AirSim LiDAR + occupancy-update + RPC
+   roundtrip, not planner internals.** MPC's 188 ms and GPU MPPI's
+   180 ms are within 5 %; on `dummy_3d` GPU MPPI ran at 3.5 ms
+   steady-state vs MPC's 70 ms (20 × faster). On AirSim the sim-side
+   overhead is ~150 ms per replan and the planner choice is in the
+   noise. The dummy_3d → AirSim transferability finding (same plan,
+   different physics) **extends to plan_dt: the planner's compute
+   advantage is *not* portable when the sim itself dominates the
+   loop**.
+3. **GPU MPPI is ~30 % slower wall-clock (24.2 vs 18.7 s) at the same
+   `max_speed=3.0`.** avg_v 1.87 vs MPC's 2.40. The softmax average
+   across 64 rollouts is more conservative than MPC's argmin on n=8
+   when LiDAR-built occupancy is sparse / uncertain — more "stop" and
+   "side-step" rollouts get folded into the population mean.
+
+Mechanistic read: this is the dual of the multi-drone Δ flip
+(findings.md §"Multi-drone: GPU MPPI's rollout cloud flips the
+coordination Δ"). The same sample-cloud averaging that **decorrelates
+failures across drones** also **commands more conservative single-
+drone speeds under online perception**. Sample diversity buys you
+coordination-Δ pp at the cost of single-drone speed pp. Whether the
++5.2 pp multi-drone Δ survives this single-drone speed penalty on
+AirSim is the next study.
+
+Bridge-side caveat — long settle for CUDA warmup:
+`simulator.settle_after_teleport` is bumped from 0.3 s (MPC baseline)
+to **3.0 s** in this YAML. The first GPU MPPI plan compiles the
+autograd graph (≈14 s wall clock vs MPC's ≈10 s Dijkstra warmup);
+the bridge holds AirSim paused during that wait, but during the
+short window between teleport and the pause hand-off, 0.3 s is not
+enough headroom for the engine to fully register the teleport before
+the long planner wait begins. Without the bump the first step()
+inherits a stale collision flag and t=0 collision ends the episode
+immediately. The MPC baseline didn't need this because Dijkstra's
+warmup is shorter and the engine's collision cache shrugs it off.
+`max_steps` was also raised from 400 (= 20 s) to **800** (= 40 s) to
+absorb the lower avg_v.
+
+Reproduce:
+```
+# Blocks server running on 127.0.0.1:41451 with LidarFront in settings.json
+uav-nav run examples/exp_airsim_demo_gpu_mppi.yaml
+uav-nav compare results/airsim_demo results/airsim_demo_gpu_mppi
+```
+
+Open question: does the +5.2 pp multi-drone Δ flip survive at the
+GPU MPPI's 1.87 m/s vs MPC's 2.40 m/s on AirSim? Slower drones spend
+more time in proximity, which can suppress the Δ-flip mechanism
+(less per-replan directional spread per unit of mission time). The
+next AirSim study is multi-drone GPU MPPI vs MPC at matched
+`max_steps` budgets.
 
 
 ## ROS 2 bridge: spatial equivalence verified

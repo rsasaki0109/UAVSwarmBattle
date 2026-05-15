@@ -187,9 +187,16 @@ framing.
 - RL baseline (SAC) requires 100k–500k timesteps to reach a comparable
   number; the scaffold is functional but the comparison is not yet
   paper-worthy.
-- AirSim + GPU MPPI stack test exists in isolation (`demo_airsim` flow
-  with the new planner), but no multi-drone GPU MPPI on AirSim run yet.
-  **Future-work TODO: AirSim multi-drone GPU MPPI parity.**
+- ~~AirSim + GPU MPPI stack test exists in isolation (`demo_airsim` flow
+  with the new planner)~~ **Done — see
+  `exp_airsim_demo_gpu_mppi.yaml` and findings.md §"AirSim + GPU MPPI
+  parity".** Both planners reach the goal on the same Blocks scenario;
+  plan_dt is dominated by sim overhead so the GPU MPPI plan-time edge
+  is *not* portable, and GPU MPPI commands ~30 % slower speeds
+  (1.87 vs 2.40 m/s) under sparse online perception. The
+  conservative-speed effect is the dual of the multi-drone Δ flip.
+  **Remaining future-work TODO: AirSim multi-drone GPU MPPI parity
+  (does the +5.2 pp Δ flip survive the speed penalty?).**
 
 ## 7. Reproducibility map (appendix)
 
@@ -203,6 +210,7 @@ framing.
 | §4.1 3D GPU MPPI T-ablation | `exp_gpu_mppi_temp_ablation_3d.yaml` | "Temperature ablation at the 3D Pareto cell" |
 | §4.2 goal-mask fix | commit `2a9d196` + `uav_nav_lab/planner/gpu_mppi.py` | "The goal-mask bug fix that changed every cell" |
 | §4.4 AirSim vs dummy_3d | `exp_airsim_transfer.yaml` (TBD) | "AirSim vs dummy_3d transferability" |
+| §4.4 AirSim + GPU MPPI parity | `exp_airsim_demo_gpu_mppi.yaml` | "AirSim + GPU MPPI parity" |
 | §4.4 ROS 2 bridge | `scripts/ros2_dummy_sim.py` + `exp_basic.yaml` | "ROS 2 bridge: spatial equivalence verified" |
 | §4.4 AirSim + ROS 2 | `exp_airsim_ros2.yaml`, `exp_airsim_ros2_direct.yaml` | "AirSim over ROS 2 parity harness" |
 | §5 escape volume | `exp_multi_drone_3d_4.yaml` (sparse), `_density_8x` variant | "3D density ablation" |

@@ -1,0 +1,146 @@
+# AirSim + GPU MPPI stack test: same scenario, sim, and sensor as
+# `exp_airsim_demo.yaml` (Pareto-MPC + airsim_bridge + LiDAR-built
+# occupancy through Blocks), with `planner.type` swapped from `mpc`
+# (n=32 Pareto cell) to `gpu_mppi` (3D Pareto cell n=64, h=20, T=1.0
+# — see `exp_gpu_mppi_pareto_3d.yaml` and the T-ablation result in
+# findings.md §"Temperature ablation at the 3D Pareto cell").
+#
+# Purpose: confirm GPU MPPI runs end-to-end through the AirSim bridge
+# on the same scenario where MPC produced the README hero
+# `demo_airsim.gif`. The dummy_3d → AirSim transferability question
+# was answered for MPC (`exp_transfer_airsim.yaml` / findings.md
+# §"AirSim vs dummy_3d transferability"); this YAML extends the same
+# question to GPU MPPI.
+#
+# Why this matters: the multi-drone GPU MPPI result
+# (`exp_multi_drone_3d_4_gpu_mppi.yaml`) was measured on `dummy_3d`.
+# Until the same planner runs against AirSim physics, the +5.2 pp
+# coordination Δ is a `dummy_3d`-only claim. This single-drone parity
+# is the prerequisite portability check before any multi-drone
+# AirSim+GPU MPPI study.
+#
+# Result (n=1 single-drone parity vs MPC baseline `exp_airsim_demo.yaml`
+# on the same scenario):
+#
+#   planner           outcome   final_t   avg_v       path_len   plan_ms mean/p95
+#   MPC (n=32, h=40)  success   18.7 s    2.40 m/s    44.78 m    188 / 323
+#   GPU MPPI (n=64,   success   24.2 s    1.87 m/s    45.05 m    180 / 334
+#       h=20, T=1.0)
+#
+# Three observations:
+# 1) Both planners reach the goal on the same Blocks cube-cluster path
+#    with nearly identical path lengths (44.78 vs 45.05 m). GPU MPPI
+#    works end-to-end through `airsim_bridge` — the portability check
+#    passes.
+# 2) plan_dt is dominated by AirSim LiDAR + occupancy-update + RPC
+#    roundtrip, NOT planner internals. MPC's 188 ms and GPU MPPI's
+#    180 ms are within 5 %; the dummy_3d-side speed advantage (GPU MPPI
+#    3.5 ms steady-state) is lost because each replan now has ~150 ms
+#    of sim-side overhead that no planner can amortize against.
+# 3) GPU MPPI is ~30 % slower wall-clock (24.2 vs 18.7 s) at the same
+#    max_speed=3.0. Same effect we'd hypothesize from the multi-drone
+#    study: the softmax average across 64 rollouts is more conservative
+#    than MPC's argmin on n=8 — it brings more "stop" / "side-step"
+#    rollouts into the population mean when LiDAR-built occupancy is
+#    sparse and the planner is uncertain. **Sample diversity is a
+#    substitute for explicit peer prediction (multi-drone Δ flip), but
+#    on AirSim it also commands lower single-drone speed**, costing
+#    ~30 % wall-clock per episode. Whether the multi-drone Δ flip
+#    transfers under this speed penalty is the next study to run.
+#
+# Setup (from memory `airsim_local_setup.md`):
+#   /tmp/airsim-blocks/Blocks/LinuxNoEditor/Blocks.sh \
+#     -RenderOffscreen -ResX=720 -ResY=405
+#   # python client is in /tmp/airsim-venv/ (uses --no-build-isolation
+#   # install for Py3.12 — see memory for full incantation). NOTE:
+#   # /tmp/ may be wiped on reboot; both paths need restoring if so.
+#   #
+#   # The GPU MPPI planner additionally needs PyTorch — the airsim
+#   # venv does NOT have torch installed by default. To make this YAML
+#   # runnable end-to-end, install torch into the airsim venv:
+#   #   /tmp/airsim-venv/bin/pip install --no-build-isolation \
+#   #     torch --index-url https://download.pytorch.org/whl/cu128
+#   # (CUDA wheel matching `nvidia-smi`; CPU-only wheel is sufficient
+#   # if the system has no GPU — gpu_mppi auto-detects device.)
+#
+# Run:
+#   /tmp/airsim-venv/bin/python -c \
+#     "import sys; sys.argv=['uav-nav','run','examples/exp_airsim_demo_gpu_mppi.yaml']; \
+#      from uav_nav_lab.cli import main; main()"
+#
+# Compare with the MPC baseline:
+#   uav-nav compare results/airsim_demo results/airsim_demo_gpu_mppi
+#
+# Coord frames: same as `exp_airsim_demo.yaml` — ENU x_E = NED y_N etc.
+# Start [0, 0, 5] is the AirSim spawn at 5 m altitude. Goal [45, 0, 12]
+# is the matching east-bound weave through the Blocks cube clusters.
+
+name: airsim_demo_gpu_mppi
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: voxel_world
+  size: [60, 60, 16]
+  # Same start/goal as exp_airsim_demo.yaml so the comparison is direct
+  # (planner is the only knob that differs between the two).
+  start: [0.0, 0.0, 5.0]
+  goal:  [45.0, 0.0, 12.0]
+  resolution: 1.0
+  obstacles:
+    type: none
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  vehicle: Drone1
+  dt: 0.05
+  # max_steps=800 (= 40 s @ dt=0.05) vs the MPC baseline's 400. GPU MPPI
+  # at this single-drone cell averages 1.87 m/s on AirSim — slower than
+  # MPC's 2.40 m/s — and needs the larger time budget to reach the goal
+  # without timeouts. The MPC baseline reaches goal in 18.7 s; GPU MPPI
+  # in 24.2 s on the same path.
+  max_steps: 800
+  goal_radius: 2.0
+  settle_after_reset: 1.0
+  # settle_after_teleport bumped from the MPC baseline's 0.3 → 3.0.
+  # The GPU MPPI first replan compiles the autograd graph and takes
+  # ~14 s of wall clock (vs MPC's ~10 s Dijkstra warmup); during that
+  # time AirSim must hold the drone paused at the teleported pose, and
+  # 0.3 s is not enough headroom for the engine to fully register the
+  # teleport before the first long planner wait. Without this bump the
+  # first step() triggers a stale t=0 collision flag and the episode
+  # ends immediately.
+  settle_after_teleport: 3.0
+  lidars: [LidarFront]
+  cameras:
+    - {name: "front_center", image_type: scene}
+
+planner:
+  type: gpu_mppi
+  max_speed: 3.0          # match MPC baseline for fair comparison
+  replan_period: 0.1      # 10 Hz — same as MPC baseline
+  horizon: 20             # GPU MPPI 3D Pareto cell
+  dt_plan: 0.05
+  n_samples: 64           # GPU MPPI 3D Pareto cell
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 2.0
+  safety_margin: 1.0
+  use_prediction: false   # no peer / dyn obstacles in this scenario
+  w_goal: 1.0
+  w_obs: 400.0
+  w_smooth: 0.05
+  temperature: 1.0        # validated by T-ablation §findings.md
+
+sensor:
+  type: pointcloud_occupancy
+  resolution: 1.0
+  memory: true
+  inflate: 2
+  range_m: 20.0
+
+output:
+  dir: results/airsim_demo_gpu_mppi
+  save_camera_frames: true
