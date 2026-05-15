@@ -314,22 +314,25 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   seeds let all 4 through). Same joint rate, very different failure
   shape — the n=30 pilot's "+5.2 pp" estimate was biased; the
   n=100 paired re-run more than doubles it.
-- **AirSim multi-drone n=30 paired** (`exp_airsim_multi_n30*.yaml`,
-  `exp_airsim_multi_uniform_n30*.yaml`) — Δ-flip portability check
-  on Blocks at two crossing geometries:
-  - **Staggered altitude** (±2-4 m): both planners hit 100 % joint
-    success — scenario ceiling-limited, failure-level Δ-flip
-    unobservable. Trajectory-level signal preserved (mean per-drone
-    arrival spread 0.02 s MPC vs 0.55 s GPU MPPI).
-  - **Uniform altitude** (all z=30, 4-way conflict at the centre):
+- **AirSim multi-drone n=30 paired** (three crossing geometries:
+  `exp_airsim_multi_n30*.yaml`, `..._mid_n30*.yaml`,
+  `..._uniform_n30*.yaml`) — Δ-flip portability check on Blocks:
+  - **±2-4 m staggered** (z range 6 m): both planners 100 % joint.
+  - **±1 m mid-stagger** (z range 2 m): both planners 100 % joint.
+  - **0 m uniform** (all z=30, 4-way conflict at the centre):
     MPC holds **46.7 %** [30.2, 63.9] joint; GPU MPPI **collapses
-    to 0/30 = 0.0 %** joint (28.3 % per-drone vs 65.0 % MPC). McNemar
-    paired exact p ≈ 0.00012 — only AirSim cell where planners
-    statistically separate. GPU MPPI's softmax-conservative ~30 %-
-    slower commands leave drones at the (30,30,30) conflict centre
-    long enough for most to collide. **GPU MPPI is not a drop-in
-    replacement for MPC in tight-coupling deployments**, even when
-    it ties on dummy_3d obstacle-rich scenarios.
+    to 0/30 = 0.0 %** joint (28.3 % per-drone vs 65.0 % MPC).
+    McNemar paired exact p ≈ 0.00012.
+  - AirSim altitude-stagger response is **essentially bimodal**:
+    every non-zero z-spread we have measured stays at the 4/4
+    ceiling; z-coincidence drops both planners (GPU MPPI
+    catastrophically). The dummy_3d Δ-flip's discriminating regime
+    (per-drone 60-90 %) doesn't exist on the no-obstacle scenario.
+    GPU MPPI's per-drone arrival spread is still 4-27× wider than
+    MPC's across all measurable cells — softmax mechanism preserved
+    even where the failure-level Δ can't register. **GPU MPPI is not
+    a drop-in replacement for MPC in tight-coupling deployments**,
+    even when it ties on dummy_3d obstacle-rich scenarios.
 - **AirSim bridge: pause-after-reset stale-collision fix** — the
   multi-drone reset path used to leave AirSim's cumulative
   `simGetCollisionInfo().has_collided` flag set to True at t=0 for

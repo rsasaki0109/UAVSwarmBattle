@@ -1,0 +1,96 @@
+# n=30 paired AirSim multi-drone — MID altitude stagger, MPC baseline.
+#
+# Bracket-closer between `exp_airsim_multi_n30.yaml` (demo stagger
+# ±2-4 m, range 6 m → both planners 100 % joint, ceiling-limited)
+# and `exp_airsim_multi_uniform_n30.yaml` (uniform z=30, range 0 m
+# → MPC 47 % / GPU MPPI 0 % joint, floor-limited for GPU MPPI). This
+# config uses 1/3 of the demo's altitude spread (range 2 m, all four
+# drones unique within 29 ≤ z ≤ 31) so each pair at the crossing
+# centre has between 0.5 m and 2 m vertical separation — close
+# enough that the crossing is fragile, far enough that the per-drone
+# rate stays in indep⁴'s measurable headroom (60-90 % target band).
+#
+# The dummy_3d n=100 paired study found GPU MPPI's softmax-amplified
+# Δ-flip mechanism gives +11.4 pp over indep⁴ at the 90 % per-drone
+# operating point. This YAML pair is built to land roughly in the
+# same per-drone band on AirSim, where the failure-level Δ-flip
+# signal can register if it transfers.
+#
+# z assignments at the (x,y) crossing centre = (30, 30):
+#   east  → z=29.0  (-1 from mean)
+#   west  → z=31.0  (+1)
+#   north → z=30.5  (+0.5)
+#   south → z=29.5  (-0.5)
+# Adjacent z pairs: east-south = 0.5 m, north-south = 1.0 m,
+# east-north = 1.5 m, east-west = 2.0 m, north-west = 0.5 m,
+# south-west = 1.5 m. Drone radius is 0.4 m, so the tightest pairs
+# (0.5 m vertical) clear by ~0.1 m mesh-to-mesh — high collision
+# risk but not certain.
+#
+# Pair: `exp_airsim_multi_mid_n30_gpu_mppi.yaml`. Same seeds 42..71,
+# planner swapped to gpu_mppi at the 3D Pareto cell. Drive both
+# from `scripts/run_airsim_multi_chunked.sh` (the AirSim multi-drone
+# reset-hang workaround + bridge pause-after-reset fix apply here
+# the same way they apply to the other two AirSim n=30 YAMLs).
+#
+# Run:
+#   scripts/run_airsim_multi_chunked.sh mpc      30 42 \
+#       results/airsim_multi_mid_n30_mpc \
+#       examples/exp_airsim_multi_mid_n30.yaml
+#   scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
+#       results/airsim_multi_mid_n30_gpu_mppi \
+#       examples/exp_airsim_multi_mid_n30_gpu_mppi.yaml
+# Paired comparison:
+#   python3 scripts/paired_analysis_airsim_multi.py \
+#       results/airsim_multi_mid_n30_mpc \
+#       results/airsim_multi_mid_n30_gpu_mppi
+
+name: airsim_multi_mid_n30
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: east,  start: [5.0,  30.0, 29.0],  goal: [55.0, 30.0, 29.0],  radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 31.0],  goal: [5.0,  30.0, 31.0],  radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.5],  goal: [30.0, 55.0, 30.5],  radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 29.5],  goal: [30.0, 5.0,  29.5],  radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 400
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+
+planner:
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_mid_n30_mpc
+  save_camera_frames: false

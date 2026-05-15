@@ -224,14 +224,26 @@ framing.
     p ≈ 0.00012 — the only AirSim cell where the planner
     comparison rejects the null. GPU MPPI's softmax-conservative
     1.87 m/s through a 4-way crossing leaves drones at the centre
-    long enough for most of them to collide. Combined reading: the
-    dummy_3d Δ-flip mechanism is bracketed but not directly
-    measured on AirSim — easier scenario ceilings out, harder
-    scenario drops GPU MPPI's per-drone rate below indep⁴'s
-    measurement floor. The right discriminating AirSim cell
-    (per-drone in 60-90 % band) is **the** remaining future-work
-    TODO — staggered-altitude + Blocks static obstacles is the
-    next obvious config.
+    long enough for most of them to collide.
+  - Mid-stagger ±1 m (z=29/31/30.5/29.5): both planners 100 %
+    again. Tightest pair has 0.5 m vertical separation, clearing
+    AirSim mesh radii by 0.1 m — picked deliberately to land in
+    the discriminating per-drone 60-90 % band, but the response
+    is essentially bimodal at the AirSim multi-drone task:
+    every non-zero z-spread stays at the 4/4 ceiling; only
+    z-coincidence drops it. Trajectory-spread ratio is preserved
+    (GPU/MPC = 4× here vs 27× at ±2-4 m), so the softmax
+    *trajectory-level* mechanism is robust across cells; only
+    the *failure-level* Δ-flip cannot be exercised on the
+    no-obstacle scenario.
+  - **Combined reading**: the dummy_3d Δ-flip mechanism is
+    bracketed but not directly measured on AirSim — easier
+    scenarios ceiling out, uniform geometry drops GPU MPPI's
+    per-drone rate below indep⁴'s measurement floor. The right
+    discriminating AirSim cell (per-drone in 60-90 % band) is
+    **the** remaining future-work TODO — staggered-altitude +
+    Blocks static obstacles (lower altitude or LiDAR perception)
+    is the next obvious config.
 
 ## 7. Reproducibility map (appendix)
 
@@ -249,6 +261,7 @@ framing.
 | §4.4 AirSim + GPU MPPI parity (multi) | `exp_airsim_multi_demo_gpu_mppi.yaml` | "AirSim multi-drone parity" |
 | §4.4 AirSim multi-drone n=30 paired (staggered) | `exp_airsim_multi_n30*.yaml`, `scripts/run_airsim_multi_chunked.sh` | "AirSim multi-drone n=30 paired" |
 | §4.4 AirSim multi-drone n=30 paired (uniform-z) | `exp_airsim_multi_uniform_n30*.yaml`, same runner | "AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %" |
+| §4.4 AirSim multi-drone n=30 paired (±1 m mid-stagger) | `exp_airsim_multi_mid_n30*.yaml`, same runner | "AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m" |
 | §6 bridge fix (AirSim pause-after-reset) | `uav_nav_lab/sim/airsim_bridge.py` reset() | "Bridge fix: pause-after-reset" |
 | §4.4 ROS 2 bridge | `scripts/ros2_dummy_sim.py` + `exp_basic.yaml` | "ROS 2 bridge: spatial equivalence verified" |
 | §4.4 AirSim + ROS 2 | `exp_airsim_ros2.yaml`, `exp_airsim_ros2_direct.yaml` | "AirSim over ROS 2 parity harness" |

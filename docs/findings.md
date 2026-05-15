@@ -33,6 +33,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
 - [AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %](#airsim-multi-drone-uniform-altitude-n30-gpu-mppi-collapses-to-0--joint-while-mpc-holds-467-)
+- [AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m](#airsim-multi-drone-1-m-mid-stagger-n30-still-ceiling-limited-cliff-between-0-and-1-m)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
@@ -1285,6 +1286,90 @@ scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
 python3 scripts/paired_analysis_airsim_multi.py \
     results/airsim_multi_uniform_n30_mpc \
     results/airsim_multi_uniform_n30_gpu_mppi
+```
+
+
+### AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m
+
+`examples/exp_airsim_multi_mid_n30.yaml` + `..._gpu_mppi.yaml` —
+third cell between the demo's `±2-4 m` staggered crossing (6 m
+z-spread) and the uniform-altitude crossing (0 m spread). This
+config drops the four drones to z=29 / 31 / 30.5 / 29.5 (2 m
+spread, every pair vertically separated by 0.5–2 m). The crossing-
+centre tightest pair (east-south or north-west, both 0.5 m apart)
+clears AirSim's 0.4 m drone radii by ~0.1 m mesh-to-mesh —
+deliberately picked to land the per-drone rate in indep⁴'s
+measurable headroom (60–90 %) for the failure-level Δ-flip signal
+the dummy_3d study attributes to GPU MPPI's softmax.
+
+| planner               | per-drone (CI)              | joint (CI)                  | indep⁴ | Δ      | mean final_t | drone-spread (mean / max) |
+|---|---|---|---|---|---|---|
+| MPC      (n=16, h=30) | 120/120 = 100.0% [96.9, 100.0] | 30/30 = 100.0% [88.6, 100.0] | 100.0% | +0.0 pp | 7.89 s | **0.10 s** / 0.20 s |
+| GPU MPPI (n=64, h=20) | 120/120 = 100.0% [96.9, 100.0] | 30/30 = 100.0% [88.6, 100.0] | 100.0% | +0.0 pp | 10.28 s | **0.39 s** / 0.45 s |
+
+McNemar paired-seed joint: both-succ 30, MPC-only-succ 0, GPU-only-succ 0, neither-succ 0.
+
+Combined with the prior two cells, the AirSim altitude-stagger
+response curve is now:
+
+| stagger (z range) | MPC per-drone | GPU MPPI per-drone | MPC joint | GPU MPPI joint |
+|---|---|---|---|---|
+| ±2-4 m (6 m, demo)        | 100 % | 100 % | 100 %        | 100 %        |
+| ±1 m (2 m, mid, this run) | 100 % | 100 % | 100 %        | 100 %        |
+| 0 m (uniform)             | 65.0 % | 28.3 % | 46.7 %     | **0.0 %**    |
+
+The AirSim multi-drone response is essentially **bimodal**: every
+non-zero z-spread we have measured stays at the 4/4-success ceiling,
+and any drone-pair convergence to the same z drops both planners
+sharply (GPU MPPI catastrophically). The dummy_3d Δ-flip's
+discriminating regime (per-drone ≈ 90 %, indep⁴ headroom ≈ 9 pp)
+does not exist on the no-obstacle staggered geometry — peer
+prediction + safety_margin = 0.6 m is enough to keep MPC and GPU
+MPPI both clean at any non-zero vertical gap. Once two drones share
+the z-axis, the bottleneck flips to physical mesh-mesh collision,
+and the planner-mechanism difference (MPC's argmin vs GPU MPPI's
+softmax) drops out of the failure analysis because GPU MPPI is too
+slow to clear the conflict in the first place.
+
+The trajectory-level signal IS preserved across the cliff:
+
+| stagger      | MPC spread / final_t | GPU MPPI spread / final_t | spread ratio (GPU / MPC) |
+|---|---|---|---|
+| ±2-4 m       | 0.02 s / 10.83 s     | 0.55 s / 14.88 s          | 27 ×    |
+| ±1 m         | 0.10 s / 7.89 s      | 0.39 s / 10.28 s          | 4 ×     |
+| 0 m          | n/a (failure)        | n/a (0/30)                | n/a     |
+
+GPU MPPI's per-drone-arrival spread is 4–27 × wider than MPC's at
+every measurable cell — the softmax-spread mechanism is universal
+across the AirSim cells we have, even where the failure-level Δ
+cannot register. MPC's relative spread (spread / final_t) climbs
+from 0.18 % at ±2-4 m to 1.27 % at ±1 m, suggesting that as
+drone separations approach the safety margin, MPC's argmin
+choices begin to correlate across drones too — but slowly.
+
+Implication for the dummy_3d → AirSim transferability question:
+adding altitude-stagger variants alone will not produce a
+discriminating cell on this scenario. The next experiment that
+*can* land in the right per-drone band is **adding Blocks static
+obstacles to the staggered crossing** (or equivalently: dropping
+the drones to z=8 where Blocks cubes are dense). Both require
+substantial extensions — a new perception path (LiDAR + occupancy)
+or a custom Blocks map — and remain future work. The Δ-flip
+mechanism is still measured directly on dummy_3d (§3, n=100,
++11.4 pp); its AirSim transferability is now established as
+*bracketed-but-not-confirmed* across three paired cells.
+
+Reproduce:
+```
+scripts/run_airsim_multi_chunked.sh mpc      30 42 \
+    results/airsim_multi_mid_n30_mpc \
+    examples/exp_airsim_multi_mid_n30.yaml
+scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
+    results/airsim_multi_mid_n30_gpu_mppi \
+    examples/exp_airsim_multi_mid_n30_gpu_mppi.yaml
+python3 scripts/paired_analysis_airsim_multi.py \
+    results/airsim_multi_mid_n30_mpc \
+    results/airsim_multi_mid_n30_gpu_mppi
 ```
 
 
