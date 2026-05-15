@@ -70,24 +70,35 @@ are reproducible from one `examples/exp_*.yaml` each.
 (GPU MPPI). 4-drone cross, 40×40×12 voxel world, 30 random obstacles,
 n=30 episodes per planner, same seeds.
 
-| planner               | per-drone (CI)      | joint (CI)         | indep `per^4` | Δ over indep |
+| planner               | per-drone (CI)       | joint (CI)          | indep `per^4` | Δ over indep |
 |---|---|---|---|---|
-| MPC      (n=8,  h=40) | 95.8 % [90.6, 98.2] | 83.3 % [66, 93]    | 84.3 %        | −1.0 pp      |
-| GPU MPPI (n=64, h=20) | 95.0 % [89.5, 97.7] | **86.7 %** [70, 95]| 81.5 %        | **+5.2 pp**  |
+| MPC      (n=8,  h=40) | 93.8 % [90.9, 95.7]  | 78.0 % [68.9, 85.0] | 77.2 %        | +0.8 pp      |
+| GPU MPPI (n=64, h=20) | 90.0 % [86.7, 92.6]  | 77.0 % [67.8, 84.2] | 65.6 %        | **+11.4 pp** |
 
-Three observations (lifted from findings.md §"Multi-drone: GPU MPPI's
-rollout cloud flips the coordination Δ"):
+Three observations at n=100 paired (n=30 pilot reported the same
+direction but biased numbers — per-drone estimates were ~4 pp too
+high; the Δ flip widens from +5.2 → +11.4 pp; see findings.md
+§"Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ"):
 
-1. Per-drone success statistically indistinguishable.
-2. Joint succ +3.3 pp (CIs overlap at n=30 — needs §5 follow-up).
-3. Δ over `indep^4` flips from −1.0 pp to **+5.2 pp**.
+1. Per-drone differs by ~4 pp (CIs still overlap by 1.7 pp).
+2. Joint succ is TIED (78.0 vs 77.0; McNemar same-seed pairing
+   gives both-succ 67, MPC-only 11, GPU-only 10 — not significant).
+3. Δ over `indep^4` separates +0.8 vs **+11.4 pp**. GPU MPPI's
+   failures *cluster within seeds* (the n=30 commit's "decorrelate"
+   read was the wrong sign; same joint, but very different failure
+   shape).
 
-Mechanistic claim: in escape-volume regimes where MPC sees no
-coordination win to extract (Δ ≤ 0), MPPI doesn't win by *coordinating
-better* — it wins by *failing less in lockstep*, because the rollout
-cloud carries enough directional diversity that two peers approaching
-the same waypoint sometimes pick different rollouts. Sample diversity
-is a *substitute* for explicit peer prediction.
+Mechanistic claim (revised after n=100): GPU MPPI's softmax across
+64 rollouts **amplifies seed sensitivity** — on easy seeds the
+rollout cloud agrees on a clean escape volume and all 4 drones make
+it; on hard seeds the same averaging produces overly conservative
+commands and 2–4 drones collide together. MPC's argmin is more
+individually brittle (lower joint, lower per-drone) but each drone's
+brittleness is uncorrelated. Sample diversity is **not** a substitute
+for peer prediction — it's a knob that **trades smoother typical
+behaviour for harsher tail outcomes**. In deployments where partial
+success counts (3 of 4 packages delivered), MPC's distributed-failure
+shape wins; where the goal is "all or none", they're equivalent.
 
 Side-by-side: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`.
 
@@ -171,10 +182,16 @@ framing.
 
 ## 6. Limitations
 
-- n=30 episodes per multi-drone cell — joint succ CIs are wide ([66, 93]
-  vs [70, 95]); the Δ flip is robust under per-seed paired comparison
-  but the absolute joint succ difference is not significant at n=30
-  alone. **Future-work TODO: n ≥ 100 paired run.**
+- ~~n=30 episodes per multi-drone cell — joint succ CIs are wide
+  ([66, 93] vs [70, 95]); the Δ flip is robust under per-seed paired
+  comparison but the absolute joint succ difference is not significant
+  at n=30 alone.~~ **Done — n=100 paired re-run** (`results/_multi_drone_n100_*`).
+  Per-drone bias-corrected (95 % → 93.8 % MPC, 95 % → 90.0 % GPU MPPI);
+  Δ flip widens **+5.2 → +11.4 pp**; joint succ rates tie at 77–78 %
+  under McNemar same-seed pairing. The n=30 commit's "decorrelate"
+  mechanism interpretation was the wrong sign — the corrected
+  read ("seed-sensitivity amplification → failures cluster") is the
+  current §3 reading.
 - 4 drones only. The N-scaling curve (`exp_multi_drone_3d_N{4,6,8}`) is
   collected for MPC but not yet for GPU MPPI. **Future-work TODO: full
   N-scaling sweep on GPU MPPI.**

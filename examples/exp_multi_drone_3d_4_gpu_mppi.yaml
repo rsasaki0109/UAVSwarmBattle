@@ -7,8 +7,8 @@
 # Hypothesis: the GPU MPPI sample cloud has more directional diversity
 # per replan than CPU MPC's small batch (n=8 vs n=64), so it should at
 # least match — and possibly exceed — the MPC joint success rate on the
-# same scenario. The MPC baseline at n=30 reported per-drone 95.8 %,
-# joint 83.3 % (Δ -1.0 pp over indep^4) — see findings.md "3D escape
+# same scenario. The MPC baseline at n=100 reports per-drone 93.8 %,
+# joint 78.0 % (Δ +0.8 pp over indep^4) — see findings.md "3D escape
 # volume erases the coordination Δ" / the MPC YAML header.
 #
 # Planner config: validated GPU MPPI 3D Pareto cell from

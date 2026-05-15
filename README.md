@@ -42,10 +42,10 @@ every example YAML carries its own validated finding.**
 <td colspan="2" align="center"><i>GPU MPPI vs CPU MPC head-to-head, same scenario / same seed — left pane visualizes the population the GPU planner is averaging over, right pane shows the single-trajectory MPC baseline. Reproduce: <code>uav-nav run examples/exp_gpu_mppi_demo.yaml &amp;&amp; uav-nav run examples/exp_mpc_demo_3d.yaml &amp;&amp; uav-nav anim results/gpu_mppi_demo &amp;&amp; uav-nav anim results/mpc_demo_3d &amp;&amp; python scripts/render_compare_gif.py results/gpu_mppi_demo/episode_000.gif results/mpc_demo_3d/episode_000.gif --out docs/images/compare_gpu_mppi_vs_mpc_3d.gif --left-label "GPU MPPI" --right-label "CPU MPC" --fps 10 --frame-stride 2 --max-total-width 960</code>.</i></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" alt="Side-by-side 4-drone 3D cross pattern: CPU MPC (left) and GPU MPPI (right) on the same scenario/seed. Both planners thread the same crossing geometry; the right pane shows GPU MPPI's rollout cloud decorrelating peer-conflict outcomes across episodes." width="720"></td>
+<td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" alt="Side-by-side 4-drone 3D cross pattern: CPU MPC (left) and GPU MPPI (right) on the same scenario/seed. Both planners thread the same crossing geometry; the right pane shows GPU MPPI's rollout cloud producing more correlated outcomes across the four drones — they tend to succeed together or fail together on the same seed." width="720"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i>Multi-drone (3D, N=4) — same crossing pattern, planner swapped from CPU MPC (n=8, h=40) to GPU MPPI (n=64, h=20). Per-drone success stays at 95 % (statistically unchanged), but joint succ lifts 83.3 → 86.7 % and the coordination Δ over indep⁴ flips from −1 pp to +5.2 pp — see <a href="docs/findings.md#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ">findings.md</a>. Reproduce: <code>uav-nav run examples/exp_multi_drone_3d_4_gpu_mppi.yaml</code>.</i></td>
+<td colspan="2" align="center"><i>Multi-drone (3D, N=4, n=100 paired seeds) — same crossing pattern, planner swapped from CPU MPC (n=8, h=40) to GPU MPPI (n=64, h=20). Per-drone success: MPC 93.8 %, GPU MPPI 90.0 % (1.7 pp CI gap). Joint success is tied (78.0 vs 77.0 %) but the coordination Δ over indep⁴ separates: MPC +0.8 pp (failures nearly independent across drones) vs GPU MPPI <strong>+11.4 pp</strong> (failures cluster within seeds). Same joint rate, very different failure shape — see <a href="docs/findings.md#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ">findings.md</a>. Reproduce: <code>uav-nav sweep examples/exp_multi_drone_3d_4_gpu_mppi.yaml --param num_episodes=100</code>.</i></td>
 </tr>
 <tr>
 <td colspan="2"><img src="docs/images/demo_airsim.gif" alt="Pareto-MPC + airsim_bridge + a 16-channel AirSim LiDAR feeding the pointcloud_occupancy sensor, driving a SimpleFlight multirotor through Microsoft AirSim's Blocks Unreal Engine env. The drone sees no obstacles in the planner's static map — it builds the occupancy grid online from LiDAR returns and weaves between cube clusters." width="560"></td>
@@ -60,10 +60,10 @@ every example YAML carries its own validated finding.**
 <td colspan="2" align="center"><i>AirSim multi-drone — 4 SimpleFlight quadrotors cross under <code>multi_drone_voxel</code> + the same MPC + CV peer prediction stack, driven via 4 <code>airsim_bridge</code> instances bound to <code>Drone1..Drone4</code>.</i></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left, n=16, h=30) finishes the crossing at 12.85 s with all four drones lockstep within 0.05 s. GPU MPPI (right, n=64, h=20, T=1.0) finishes at 17.65 s with per-drone final_t spreading 0.55 s — the same sample-cloud decorrelation visible in dummy_3d, now on AirSim physics." width="720"></td>
+<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left, n=16, h=30) finishes the crossing at 12.85 s with all four drones lockstep within 0.05 s. GPU MPPI (right, n=64, h=20, T=1.0) finishes at 17.65 s with per-drone final_t spreading 0.55 s — the per-drone timing spread that the dummy_3d n=100 study traces back to GPU MPPI's higher seed-sensitivity, now visible on AirSim physics." width="720"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i>AirSim multi-drone planner head-to-head — same staggered-altitude crossing, MPC (left) vs GPU MPPI (right). Both reach 4/4 success; GPU MPPI's softmax across 64 rollouts is ~26 % slower (avg_v 2.76 vs 3.72 m/s) but decorrelates per-drone arrival times 0.05 s → 0.55 s — the same sample-cloud mechanism that flipped the dummy_3d coordination Δ from −1 pp to +5.2 pp, now visible on real Unreal physics. The n ≥ 30 paired AirSim re-run to confirm Δ-flip survival is the open follow-up — see <a href="docs/findings.md#airsim-multi-drone-parity-stack-runs-end-to-end-decorrelation-still-visible-at-44">findings.md</a>. Reproduce: <code>python scripts/record_airsim_multi_compare.py</code> (drives both <code>exp_airsim_multi_demo.yaml</code> + <code>exp_airsim_multi_demo_gpu_mppi.yaml</code> on the same running Blocks server, ffmpegs Drone1's FPV from each run into per-pane GIFs, then side-by-sides via <code>render_compare_gif.py</code>).</i></td>
+<td colspan="2" align="center"><i>AirSim multi-drone planner head-to-head — same staggered-altitude crossing, MPC (left) vs GPU MPPI (right). Both reach 4/4 success on this seed; GPU MPPI's softmax across 64 rollouts is ~26 % slower (avg_v 2.76 vs 3.72 m/s) and produces per-drone arrival times 0.05 s → 0.55 s — same shape as the dummy_3d coordination signal (GPU MPPI's failures cluster on hard seeds, successes line up on easy ones), now visible on Unreal physics. n ≥ 30 paired AirSim re-run to put a number on the AirSim Δ remains the open follow-up — see <a href="docs/findings.md#airsim-multi-drone-parity-stack-runs-end-to-end-decorrelation-still-visible-at-44">findings.md</a>. Reproduce: <code>python scripts/record_airsim_multi_compare.py</code> (drives both <code>exp_airsim_multi_demo.yaml</code> + <code>exp_airsim_multi_demo_gpu_mppi.yaml</code> on the same running Blocks server, ffmpegs Drone1's FPV from each run into per-pane GIFs, then side-by-sides via <code>render_compare_gif.py</code>).</i></td>
 </tr>
 </table>
 
@@ -304,13 +304,16 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   Pareto frontier, and the 3D Pareto cell (n=64-256, h=20 → 100 %)
   Pareto-dominates the CPU MPC 3D baseline (88 % / 70 ms) at 3.5 ms
   steady-state.
-- **Multi-drone GPU MPPI** — same 4-drone 3D cross pattern (`exp_multi_drone_3d_4`)
-  but with `gpu_mppi` instead of MPC. Per-drone success is statistically
-  indistinguishable from the MPC baseline (95.0 % vs 95.8 %), but the
-  rollout cloud decorrelates failures across drones so **joint succ
-  lifts 83.3 → 86.7 % and the coordination Δ flips from −1 pp to
-  +5.2 pp** — sample diversity is a substitute for explicit peer
-  prediction in escape-volume regimes.
+- **Multi-drone GPU MPPI** (n=100 paired) — same 4-drone 3D cross
+  pattern (`exp_multi_drone_3d_4`) with `gpu_mppi` swapped for MPC.
+  Per-drone success: MPC 93.8 % vs GPU MPPI 90.0 % (1.7 pp CI gap).
+  Joint success is tied at 77–78 %, but the coordination Δ over
+  indep⁴ separates sharply: MPC **+0.8 pp** (failures nearly
+  independent across drones) vs GPU MPPI **+11.4 pp** (failures
+  cluster — bad seeds tend to take down 2–4 drones together; good
+  seeds let all 4 through). Same joint rate, very different failure
+  shape — the n=30 pilot's "+5.2 pp" estimate was biased; the
+  n=100 paired re-run more than doubles it.
 
 ## ✅ Status
 

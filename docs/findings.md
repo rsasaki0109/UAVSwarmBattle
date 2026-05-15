@@ -30,7 +30,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer](#temperature-ablation-at-the-3d-pareto-cell-the-cpu-rules-dont-transfer)
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
-- [AirSim multi-drone parity: stack runs end-to-end, decorrelation still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-decorrelation-still-visible-at-44)
+- [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
@@ -885,39 +885,68 @@ uav-nav sweep examples/exp_gpu_mppi_temp_ablation_3d.yaml \
 
 `examples/exp_multi_drone_3d_4_gpu_mppi.yaml` — same 4-drone cross
 pattern, same 40×40×12 voxel world, same 30 random obstacles, same
-n=30 seed schedule as the MPC baseline `exp_multi_drone_3d_4.yaml`
+seed schedule as the MPC baseline `exp_multi_drone_3d_4.yaml`
 ("3D escape volume erases the coordination Δ" above). Planner family
 swapped from `mpc` (n=8, h=40) to `gpu_mppi` (n=64, h=20) and nothing
-else.
+else. Initial study at n=30 episodes; re-run paired at **n=100** to
+narrow the CIs once the Δ-flip direction was confirmed.
 
-| planner                | per-drone (CI)      | joint (CI)         | indep `per^4` | Δ over indep |
+| planner               | per-drone (CI)       | joint (CI)          | indep `per^4` | Δ over indep |
 |---|---|---|---|---|
-| MPC      (n=8,  h=40)  | 95.8 % [90.6, 98.2] | 83.3 % [66, 93]    | 84.3 %        | −1.0 pp      |
-| GPU MPPI (n=64, h=20)  | 95.0 % [89.5, 97.7] | **86.7 %** [70, 95]| 81.5 %        | **+5.2 pp**  |
+| MPC      (n=8,  h=40) | 93.8 % [90.9, 95.7]  | 78.0 % [68.9, 85.0] | 77.2 %        | **+0.8 pp**  |
+| GPU MPPI (n=64, h=20) | 90.0 % [86.7, 92.6]  | **77.0 %** [67.8, 84.2] | 65.6 %    | **+11.4 pp** |
 
-Three observations:
+(n=30 numbers were MPC 95.8 → 93.8 per-drone, 83.3 → 78.0 joint;
+GPU MPPI 95.0 → 90.0 per-drone, 86.7 → 77.0 joint. Per-drone
+estimates were biased high at n=30; the n=100 re-run shifts both
+down but **widens the Δ gap** from +5.2 → +11.4 pp.)
 
-1. **Per-drone success is statistically indistinguishable** (95.0 vs
-   95.8 — well inside each other's CIs). With both planners at their
-   3D-Pareto-optimal cell, the n=8 deterministic MPC samples and the
-   n=64 stochastic MPPI rollouts converge to the same per-agent
-   failure rate at this scenario's escape-volume budget.
-2. **Joint success lifts +3.3 pp.** CIs ([66, 93] vs [70, 95]) overlap
-   so this alone is not significant at n=30, but it points the
-   direction the `indep^4` math predicts when failures *decorrelate*
-   across drones.
-3. **Coordination Δ flips from −1 to +5.2 pp.** This is the actual
-   signal. At ≈the same per-drone success the GPU MPPI run's failures
-   are *more spread across episodes* than the MPC run's. The sample-
-   cloud planner produces more directional diversity per replan, so
-   two peers approaching the same waypoint sometimes pick different
-   rollouts and the failure pattern decorrelates instead of compounding.
+Three observations at n=100:
 
-Mechanistic read: in the 3D escape-volume regime where MPC's joint
-≤ indep⁴ (no coordination win to extract), MPPI doesn't win by
-*coordinating better* — it wins by *failing less in lockstep*. Sample
-diversity is a *substitute* for explicit peer prediction in regimes
-where per-agent free volume is already large.
+1. **Per-drone success differs by ~4 pp** (93.8 vs 90.0). At n=30
+   the difference was 0.8 pp and inside both CIs; at n=100 the
+   point estimates separate but Wilson CIs still overlap ([86.7, 92.6]
+   vs [90.9, 95.7] — 1.7 pp gap). GPU MPPI is genuinely a bit worse
+   per-drone, not statistically indistinguishable as the n=30 result
+   suggested.
+2. **Joint success is tied** (78.0 vs 77.0; McNemar on the same-seed
+   pairing gives both-success 67, MPC-only 11, GPU-only 10, neither
+   12 — |11 − 10| = 1, χ²/(11+10) ≈ 0.05, not significant). On *any
+   given seed* the two planners are equally likely to land all 4
+   drones at goal.
+3. **Δ over indep⁴ tells the actual coordination story**. MPC's
+   +0.8 pp says drone failures are nearly independent — when MPC
+   fails, it fails one drone at a time. GPU MPPI's **+11.4 pp says
+   failures cluster** — when GPU MPPI fails on a seed, it tends to
+   take 2–4 drones down together. Looking at the failed seeds in
+   the GPU MPPI run, this is empirically visible: e.g. seed 119
+   produced `[collision, collision, collision, success]`,
+   seed 131 produced `[collision, collision, success, success]`,
+   seed 134 produced `[success, collision, collision, success]` —
+   joint failures dominated by multi-drone collisions, not lone
+   failures.
+
+Mechanistic read (revised from n=30): the n=30 commit interpreted
++5.2 pp as "failures more spread across episodes" / "decorrelate".
+The Δ-over-indep⁴ math actually points the opposite way: **Δ > 0
+means failures cluster within seeds, not spread across them.** What
+GPU MPPI's softmax does is **amplify seed sensitivity**. On easy
+seeds the rollout cloud agrees on a clean escape volume and all 4
+drones make it; on hard seeds the same averaging produces overly
+conservative commands across all 4 drones and they collide near the
+crossing. MPC's argmin is more individually brittle (lower per-drone
+success) but each drone's brittleness is uncorrelated with the
+others — failures spread one-at-a-time across episodes.
+
+What about joint succ being TIED then? Same joint, but very
+different shape: MPC trades a small constant tax (one drone of
+four occasionally fails, 78 % of episodes survive intact) for GPU
+MPPI's bimodality (some episodes all 4 reach goal, some episodes
+2–4 collide together — still 77 % of episodes get joint succ but
+the "bad" episodes are much worse). In a deployment where partial
+success has value (e.g. 3 of 4 packages delivered counts as
+progress) MPC is preferable. In one where all-or-nothing is the
+norm (e.g. formation flight) they're equivalent.
 
 Caveat — plan-time: planner_dt is 73.9 ms ± 17.6 ms / replan (p95
 105.6 ms), the same envelope as MPC (73.2 ms ± 17.1 ms). The 3.5 ms
@@ -973,14 +1002,18 @@ Three observations:
    when LiDAR-built occupancy is sparse / uncertain — more "stop" and
    "side-step" rollouts get folded into the population mean.
 
-Mechanistic read: this is the dual of the multi-drone Δ flip
-(findings.md §"Multi-drone: GPU MPPI's rollout cloud flips the
-coordination Δ"). The same sample-cloud averaging that **decorrelates
-failures across drones** also **commands more conservative single-
-drone speeds under online perception**. Sample diversity buys you
-coordination-Δ pp at the cost of single-drone speed pp. Whether the
-+5.2 pp multi-drone Δ survives this single-drone speed penalty on
-AirSim is the next study.
+Mechanistic read: same sample-cloud-conservatism that drives the
+multi-drone seed-sensitivity story (findings.md §"Multi-drone: GPU
+MPPI's rollout cloud flips the coordination Δ") shows up here as
+**lower commanded speeds under online perception**. The softmax
+average across 64 rollouts produces more "stop / side-step" rollouts
+when the LiDAR-built occupancy is uncertain, dragging the population
+mean down. On dummy_3d with perfect sensing, this conservatism showed
+up as clustered failures (bad seeds take down 2–4 drones together);
+on AirSim with sparse LiDAR, it shows up as slower single-drone
+speeds. Two faces of the same averaging operator — over rollouts in
+both cases, but the cost-landscape variance comes from peer prediction
+in the dummy_3d study and from sensor uncertainty here.
 
 Bridge-side caveat — long settle for CUDA warmup:
 `simulator.settle_after_teleport` is bumped from 0.3 s (MPC baseline)
@@ -1003,14 +1036,16 @@ uav-nav run examples/exp_airsim_demo_gpu_mppi.yaml
 uav-nav compare results/airsim_demo results/airsim_demo_gpu_mppi
 ```
 
-Open question: does the +5.2 pp multi-drone Δ flip survive at the
-GPU MPPI's 1.87 m/s vs MPC's 2.40 m/s on AirSim? Slower drones spend
-more time in proximity, which can suppress the Δ-flip mechanism
-(less per-replan directional spread per unit of mission time). The
-next AirSim study is multi-drone GPU MPPI vs MPC at matched
-`max_steps` budgets.
+Open question: does the +11.4 pp multi-drone Δ (n=100 dummy_3d
+re-run) survive at the GPU MPPI's 1.87 m/s vs MPC's 2.40 m/s on
+AirSim? The dummy_3d Δ signature is "failures cluster within seeds";
+under sparse AirSim LiDAR + slower commanded speeds, the same
+seed-sensitivity mechanism could amplify (slower drones spend more
+time in conflict zones) or dampen (LiDAR noise washes out the
+deterministic seed effect). The next AirSim study is the n ≥ 30
+paired multi-drone GPU MPPI vs MPC run.
 
-### AirSim multi-drone parity: stack runs end-to-end, decorrelation still visible at 4/4
+### AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4
 
 `examples/exp_airsim_multi_demo_gpu_mppi.yaml` — 4-drone cross at
 staggered altitudes (28/32/30/26 m) through Blocks, paired against
@@ -1036,21 +1071,23 @@ are *mechanism* checks):
    enabled, so adding peers does *not* amplify the speed penalty
    (no peer-induced congestion overhead beyond what the planner
    already pays per-replan).
-3. **Trajectory decorrelation is visible even at 4/4 success**:
+3. **Per-drone timing spread is visible even at 4/4 success**:
    MPC drones finish within **0.05 s** of each other (12.80–12.85 s).
    GPU MPPI drones spread by **0.55 s** (17.10–17.65 s). This is
-   qualitatively consistent with the same sample-cloud diversity
-   mechanism that gave the Δ flip on dummy_3d — when 4 drones are
-   under MPC's argmin against the same cost landscape, they follow
-   nearly identical waypoint timing; under MPPI's softmax across 64
-   rollouts, each drone's pick is decorrelated from the others' even
-   when they all succeed.
+   qualitatively consistent with GPU MPPI's softmax producing
+   per-drone-different rollout picks even when the cost landscape
+   is shared — MPC's argmin against the same shared landscape
+   collapses to near-identical waypoint timing across drones. Note:
+   timing spread is *not the same signal* as the dummy_3d Δ flip
+   (which is about clustered FAILURES, not clustered successes); the
+   AirSim multi-drone Δ requires an n ≥ 30 run to measure directly.
 
-Headline question — **does the +5.2 pp Δ flip survive on AirSim?** —
-stays open. n=1 cannot answer it. The qualitative finding above
-(decorrelation visible even in success cases) is the strongest
-signal we can get from a single episode; the n ≥ 30 paired AirSim
-run is the next study.
+Headline question — **does the +11.4 pp dummy_3d Δ (n=100 re-run)
+survive on AirSim?** — stays open. n=1 cannot answer it; n ≥ 30
+paired AirSim run is the next study. The per-drone timing spread
+above is at most a hint that the underlying softmax-vs-argmin
+behaviour difference is preserved on AirSim physics; it does not
+predict the Δ direction.
 
 Plan-time budget caveat: 1 multi-drone episode on AirSim costs
 ~17 s sim + ~60 s for the 4 GPU MPPI planners' CUDA warmup +
