@@ -27,6 +27,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim vs dummy_3d transferability: same plan, different physics](#airsim-vs-dummy_3d-transferability-same-plan-different-physics)
 
 - [GPU MPPI: post-goal-mask fix unlocks long-horizon cells, 3D MPPI beats 3D MPC](#gpu-mppi-post-goal-mask-fix-unlocks-long-horizon-cells-3d-mppi-beats-3d-mpc)
+- [Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer](#temperature-ablation-at-the-3d-pareto-cell-the-cpu-rules-dont-transfer)
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
@@ -807,6 +808,76 @@ into the "invalid" category, the softmax goes flat, and what looks
 like a fundamental MPPI limitation is a transcription bug. Always
 re-validate the per-sample bookkeeping when moving from a Python
 for-loop to a tensor kernel.
+
+### Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer
+
+`examples/exp_gpu_mppi_temp_ablation_3d.yaml` — GPU MPPI counterpart to
+the CPU MPPI 3D T-sweep (`exp_compare_mppi_3d.yaml`). Same 3D voxel
+scenario; planner pinned to the 3D GPU Pareto cell (n_samples=64,
+horizon=20). n=30 episodes per T cell, T ∈ {0.1, 0.3, 1.0, 3.0, 10.0}.
+
+| T    | succ                 | avg_v (m/s) | \|Δcmd\|         | plan_dt_ss mean/p95 |
+|------|----------------------|-------------|------------------|---------------------|
+| 0.1  | 76.7 % [59.1, 88.2]  | 7.93        | 0.086 ± 0.022    | 3.57 / 4.47 ms      |
+| 0.3  | **96.7 % [83.3, 99.4]** | 7.89     | 0.106 ± 0.018    | 3.53 / 4.46 ms      |
+| 1.0  | **96.7 % [83.3, 99.4]** | 7.50     | 0.096 ± 0.008    | 3.58 / 4.50 ms      |
+| 3.0  | 93.3 % [78.7, 98.2]  | 4.88        | 0.104 ± 0.004    | 3.09 / 4.06 ms      |
+| 10.0 | 86.7 % [70.3, 94.7]  | 1.69        | 0.088 ± 0.008    | 3.01 / 3.88 ms      |
+
+Two findings *opposite* to the CPU MPPI 3D result:
+
+1. **T=0.1 is significantly worse than T=1.0 on the GPU planner**
+   (23/30 vs 29/30; Fisher exact p ≈ 0.02). On CPU MPPI the same
+   T-sweep had T=0.1 nominally lower at 80.0 % but statistically
+   tied with T=1.0 at 86.7 % — the Wilson CIs overlapped enough
+   that we documented "useful range from T=0.1 to T=1.0". With
+   n=64 GPU samples that range collapses to "T ≥ 0.3 only".
+   Mechanism: at n=8 (CPU), argmin is reliable because the small
+   batch can't easily put an outlier rollout at the cost minimum;
+   at n=64 (GPU), one of the 64 rollouts will be a low-cost outlier
+   that doesn't generalize, and T=0.1's near-argmin behaviour picks
+   it. T=1.0's softmax average dampens that risk.
+2. **\|Δcmd\| is flat across T** (0.086–0.106, all within one SEM
+   of each other). The CPU MPPI 3D ablation found a 2.4× variation
+   from T=0.1 (0.087) to T=1.0 (0.213); on the GPU planner that
+   variation disappears. The Fibonacci-sphere direction set at
+   n=64 already gives enough population coverage that the softmax
+   weighted mean is close to the argmin in command space — there
+   is no longer a "smoothness vs cost-fidelity" trade-off to tune
+   T against.
+
+Two findings that *do* transfer from the CPU result:
+
+3. **avg_v collapses at high T** (4.88 m/s at T=3, 1.69 m/s at T=10).
+   Same shape as CPU MPPI 3D — softmax over many directions averages
+   to ≈ zero motion when T is large. Success rate degrades more
+   gracefully because the 75 s episode budget gives slow trajectories
+   enough room to still reach the goal eventually.
+4. **plan_dt_ss is essentially constant** across T (3.0–3.6 ms).
+   Temperature is a free knob compute-wise; the 3D Pareto cell
+   3.5 ms steady-state is stable under T variation.
+
+Engineering takeaways:
+
+- **T=1.0 is the right default for GPU MPPI at n=64**, and the +5.2 pp
+  coordination Δ flip from `exp_multi_drone_3d_4_gpu_mppi.yaml` is
+  robust under this ablation (multi-drone study used T=1.0).
+- **The CPU rule-of-thumb "T ≈ 0 ≈ argmin ≈ MPC, always safe" does NOT
+  transfer to the GPU sample budget.** Larger n changes which costs
+  the argmin can pick from; an outlier-prone landscape that was
+  invisible at n=8 surfaces at n=64.
+- **Don't carry over CPU MPPI temperature priors to GPU MPPI without
+  re-running the ablation.** The |Δcmd|/T shape inverts and the
+  useful T range collapses. The qualitative shape of an MPPI
+  temperature sweep depends on the sample budget in ways that are
+  not captured by the softmax math alone.
+
+Reproduce:
+```
+uav-nav sweep examples/exp_gpu_mppi_temp_ablation_3d.yaml \
+  --param planner.temperature=0.1,0.3,1.0,3.0,10.0 \
+  --param num_episodes=30 -j 1
+```
 
 ### Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ
 

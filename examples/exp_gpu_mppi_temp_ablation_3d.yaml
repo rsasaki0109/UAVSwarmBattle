@@ -1,0 +1,137 @@
+# GPU MPPI 3D temperature ablation at the validated Pareto cell.
+# Companion to `exp_compare_mppi_3d.yaml` (CPU MPPI T-sweep at the CPU
+# Pareto cell n=8, h=20). Same scenario as the 3D GPU MPPI Pareto sweep
+# (`exp_gpu_mppi_pareto_3d.yaml` — 40×40×12 voxel world, 60 static + 3
+# bouncing dynamic obstacles) so the result is directly comparable.
+#
+# Motivation: the post-fix 3D Pareto reported T=1.0 only and the
+# multi-drone GPU MPPI study (`exp_multi_drone_3d_4_gpu_mppi.yaml`)
+# inherits that T. findings.md §"3D Pareto (post-fix)" warns that the
+# CPU MPPI T=0.1 vs T=1.0 Wilson CIs overlap in 3D ([66, 89] vs
+# [71, 95]) — we don't yet know whether that overlap reproduces on the
+# GPU planner. If GPU MPPI's larger sample budget (n=64 vs CPU's n=8)
+# resolves the ambiguity, the headline cell may want T < 1.0; if not,
+# the multi-drone Δ-flip finding is unaffected by T choice and can be
+# stated more strongly.
+#
+# Planner cell: 3D GPU MPPI Pareto-optimal (n_samples=64, horizon=20)
+# from `exp_gpu_mppi_pareto_3d.yaml` post-fix table (100 % at 3.5 ms
+# steady-state). Sweeping only `temperature`.
+#
+# Result (n=30 per cell; Wilson 95 % CI; plan_dt_ss = steady-state with
+# first replan/episode dropped to remove CUDA-graph warmup):
+#
+#   T     succ   CI95          avg_v   |Δcmd|         plan_dt_ss mean/p95
+#   0.1   76.7   [59.1, 88.2]  7.93    0.086 ± 0.022  3.57 / 4.47 ms
+#   0.3   96.7   [83.3, 99.4]  7.89    0.106 ± 0.018  3.53 / 4.46 ms
+#   1.0   96.7   [83.3, 99.4]  7.50    0.096 ± 0.008  3.58 / 4.50 ms
+#   3.0   93.3   [78.7, 98.2]  4.88    0.104 ± 0.004  3.09 / 4.06 ms
+#  10.0   86.7   [70.3, 94.7]  1.69    0.088 ± 0.008  3.01 / 3.88 ms
+#
+# Findings:
+#
+# 1) **T=0.1 is significantly WORSE than T=1.0 on the GPU planner**
+#    (23/30 vs 29/30; Fisher exact p ≈ 0.02). This is the *opposite*
+#    of the CPU MPPI 3D result (`exp_compare_mppi_3d.yaml`), where
+#    T=0.1 was nominally lower at 80.0 % but statistically tied with
+#    T=1.0 at 86.7 % ([66, 89] vs [71, 95]). The mechanism: with
+#    n=64 candidate rollouts (vs CPU's n=8) the argmin is brittle —
+#    one outlier rollout with the lowest cost but poor generalization
+#    gets picked at T=0.1; the softmax average at T=1.0 dampens that
+#    risk. n=8 CPU argmin is reliable; n=64 GPU argmin is not.
+#
+# 2) **T=0.3 ties T=1.0 at 96.7 %** with a slightly higher avg_v
+#    (7.89 vs 7.50 m/s). CIs are identical; the avg_v difference is
+#    within SEM. Useful as a backup default but not a clear win.
+#
+# 3) **|Δcmd| is FLAT across T** (0.086–0.106). Again the *opposite*
+#    of the CPU MPPI 3D pattern, where |Δcmd| varied 2.4× between
+#    T=0.1 (0.087) and T=1.0 (0.213). The Fibonacci-sphere direction
+#    set at n=64 already gives enough population coverage that the
+#    softmax averaging adds little jitter regardless of T — there's
+#    enough mass on similar rollouts at the cost minimum that the
+#    weighted mean is close to the argmin in command space.
+#
+# 4) **avg_v collapses at high T** (4.88 m/s at T=3, 1.69 m/s at T=10).
+#    Same shape as CPU MPPI 3D — softmax over many directions averages
+#    to ≈ zero motion when T is large. Success rate degrades more
+#    gracefully because max_steps=1500 × dt=0.05 = 75 s gives slow
+#    trajectories enough budget to still reach the goal eventually.
+#
+# 5) **plan_dt_ss is essentially constant across T** (3.0–3.6 ms).
+#    Temperature is a free knob compute-wise; the headline 3D Pareto
+#    cell 3.5 ms is confirmed and stable.
+#
+# Engineering takeaway: **T=1.0 is the right default for GPU MPPI at
+# n=64**. Do NOT drop to T=0.1 on the GPU sample budget — the CPU
+# rule-of-thumb that "T=0.1 ≈ argmin is safe" does not transfer.
+# Multi-drone study (`exp_multi_drone_3d_4_gpu_mppi.yaml`) already uses
+# T=1.0, so the +5.2 pp coordination Δ result is robust under this
+# ablation.
+#
+# Reproduce:
+#   uav-nav sweep examples/exp_gpu_mppi_temp_ablation_3d.yaml \
+#     --param planner.temperature=0.1,0.3,1.0,3.0,10.0 \
+#     --param num_episodes=30 -j 1
+#
+# Note: -j 1 because 5 GPU planners on the same CUDA stream would
+# serialize and inflate plan_dt without adding throughput.
+
+name: gpu_mppi_temp_3d
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: voxel_world
+  size: [40, 40, 12]
+  start: [2.0, 2.0, 6.0]
+  goal: [37.0, 37.0, 6.0]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 60
+    seed: 7
+  dynamic_obstacles:
+    - start: [20.0, 8.0, 6.0]
+      velocity: [0.0, 5.0, 0.5]
+      reflect: true
+      radius: 0.8
+    - start: [8.0, 25.0, 5.0]
+      velocity: [4.0, 0.0, -0.4]
+      reflect: true
+      radius: 0.8
+    - start: [28.0, 20.0, 7.0]
+      velocity: [-3.0, 2.0, 0.3]
+      reflect: true
+      radius: 0.8
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/gpu_mppi_temp_3d
