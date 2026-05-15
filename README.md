@@ -63,7 +63,7 @@ every example YAML carries its own validated finding.**
 <td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left, n=16, h=30) finishes the crossing at 12.85 s with all four drones lockstep within 0.05 s. GPU MPPI (right, n=64, h=20, T=1.0) finishes at 17.65 s with per-drone final_t spreading 0.55 s — the per-drone timing spread that the dummy_3d n=100 study traces back to GPU MPPI's higher seed-sensitivity, now visible on AirSim physics." width="720"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i>AirSim multi-drone planner head-to-head — same staggered-altitude crossing, MPC (left) vs GPU MPPI (right). Both reach 4/4 success on this seed; GPU MPPI's softmax across 64 rollouts is ~26 % slower (avg_v 2.76 vs 3.72 m/s) and produces per-drone arrival times 0.05 s → 0.55 s — same shape as the dummy_3d coordination signal (GPU MPPI's failures cluster on hard seeds, successes line up on easy ones), now visible on Unreal physics. n ≥ 30 paired AirSim re-run to put a number on the AirSim Δ remains the open follow-up — see <a href="docs/findings.md#airsim-multi-drone-parity-stack-runs-end-to-end-decorrelation-still-visible-at-44">findings.md</a>. Reproduce: <code>python scripts/record_airsim_multi_compare.py</code> (drives both <code>exp_airsim_multi_demo.yaml</code> + <code>exp_airsim_multi_demo_gpu_mppi.yaml</code> on the same running Blocks server, ffmpegs Drone1's FPV from each run into per-pane GIFs, then side-by-sides via <code>render_compare_gif.py</code>).</i></td>
+<td colspan="2" align="center"><i>AirSim multi-drone planner head-to-head — same staggered-altitude crossing, MPC (left) vs GPU MPPI (right). Both reach 4/4 success on this seed; GPU MPPI's softmax across 64 rollouts is ~26 % slower (avg_v 2.76 vs 3.72 m/s) and produces per-drone arrival times 0.05 s → 0.55 s — same shape as the dummy_3d coordination signal (GPU MPPI's failures cluster on hard seeds, successes line up on easy ones), now visible on Unreal physics. <strong>n=30 paired AirSim run</strong> on this same staggered geometry: both planners hit 100 % joint success across 30 seeds — the demo scenario is ceiling-limited (no obstacles, ±2-4 m altitude stagger). Per-drone arrival spread is preserved at n=30 though: 0.02 s for MPC vs <strong>0.55 s</strong> for GPU MPPI, same ratio as n=1. Failure-level Δ-flip retry on a harder AirSim geometry (uniform-altitude crossing) is in progress — see <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>. Reproduce: <code>python scripts/record_airsim_multi_compare.py</code> (drives both <code>exp_airsim_multi_demo.yaml</code> + <code>exp_airsim_multi_demo_gpu_mppi.yaml</code> on the same running Blocks server, ffmpegs Drone1's FPV from each run into per-pane GIFs, then side-by-sides via <code>render_compare_gif.py</code>).</i></td>
 </tr>
 </table>
 
@@ -314,6 +314,25 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   seeds let all 4 through). Same joint rate, very different failure
   shape — the n=30 pilot's "+5.2 pp" estimate was biased; the
   n=100 paired re-run more than doubles it.
+- **AirSim multi-drone n=30 paired** (`exp_airsim_multi_n30*.yaml`) —
+  Δ-flip portability check on Blocks. Both planners hit 100 % joint
+  success at the demo's staggered geometry (no obstacles, ±2-4 m
+  altitude), so the dummy_3d failure-level Δ-flip is unobservable
+  here — the scenario is too easy. The **trajectory-level** signal
+  IS preserved though: mean per-drone arrival spread per episode is
+  0.02 s (MPC) vs 0.55 s (GPU MPPI) across 30 paired episodes.
+  Settling the failure-level Δ-flip transferability requires a harder
+  Blocks geometry (uniform-altitude in progress; obstacles, more
+  drones future).
+- **AirSim bridge: pause-after-reset stale-collision fix** — the
+  multi-drone reset path used to leave AirSim's cumulative
+  `simGetCollisionInfo().has_collided` flag set to True at t=0 for
+  every drone (drones sat on the ground during `settle_after_reset`
+  with engine unpaused, registering ground-contact collisions that
+  `simSetVehiclePose(ignore_collision=True)` did NOT clear). Fix:
+  `simPause(True)` immediately after `client.reset()`. The single-
+  drone n=1 demo was masking the bug via per-step `simGetImages`
+  RPC delays; uncovered during the n=30 paired study.
 
 ## ✅ Status
 
