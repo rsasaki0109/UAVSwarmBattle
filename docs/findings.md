@@ -31,6 +31,8 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
+- [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
+- [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
@@ -1102,6 +1104,129 @@ uav-nav run examples/exp_airsim_multi_demo_gpu_mppi.yaml
 uav-nav run examples/exp_airsim_multi_demo.yaml
 uav-nav compare results/airsim_multi_demo results/airsim_multi_demo_gpu_mppi
 ```
+
+
+### AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved
+
+`examples/exp_airsim_multi_n30.yaml` + `exp_airsim_multi_n30_gpu_mppi.yaml`
+— same 4-drone staggered-altitude crossing through Blocks as the n=1
+demo, num_episodes bumped to 30, both planners run on identical seeds
+42..71 paired per-episode (chunked: each ep in a fresh Blocks server
+to absorb the multi-drone `client.reset()` hang documented in
+[bridge-fix](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag),
+plus the bridge patch that fixes a stale-t=0 collision flag on
+multi-drone reset).
+
+| planner               | per-drone (CI)        | joint (CI)          | indep⁴ | Δ      | mean final_t | drone-spread/ep (mean / max) |
+|---|---|---|---|---|---|---|
+| MPC      (n=16, h=30) | 120/120 = 100.0% [96.9, 100.0] | 30/30 = 100.0% [88.6, 100.0] | 100.0% | +0.0 pp | 10.83 s | **0.02 s** / 0.15 s |
+| GPU MPPI (n=64, h=20) | 120/120 = 100.0% [96.9, 100.0] | 30/30 = 100.0% [88.6, 100.0] | 100.0% | +0.0 pp | 14.88 s | **0.55 s** / 0.80 s |
+
+McNemar same-seed: both-succ 30, MPC-only 0, GPU-only 0, neither 0 — no
+disagreement, joint rates statistically indistinguishable (both at the
+Wilson-CI ceiling 88.6–100.0%).
+
+Three findings:
+
+1. **Δ flip from dummy_3d does NOT transfer at this AirSim setup —
+   because the setup is too easy.** The dummy_3d n=100 result had
+   GPU MPPI at +11.4 pp coordination Δ over indep⁴ vs MPC's +0.8 pp
+   ([previous section](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-delta)),
+   driven by per-seed clustering of failures in a 40×40×12 voxel
+   volume with 30 random obstacles. The AirSim demo scenario uses
+   a 60×60×40 open volume with **zero obstacles** at altitude 26–32 m
+   in Blocks — too easy for either planner to fail. Both planners hit
+   100 % joint success across 30 seeds, so the coordination Δ
+   measurement degenerates to 0 ± 0 pp at the Wilson ceiling. **This
+   is a scenario-difficulty result, not a planner-portability one.**
+   The dummy_3d Δ-flip remains unfalsified on AirSim; settling the
+   transferability question requires a harder AirSim geometry —
+   added Blocks obstacles, uniform-altitude crossing, or more
+   drones.
+
+2. **Planner portability ✓ (re-confirmed, statistically)**: GPU MPPI
+   reaches goal at the same rate as MPC across 30 paired episodes
+   on real quadrotor physics. The single-drone (n=1) and 4-drone
+   (n=1 demo) parity findings extend to n=30 paired.
+
+3. **Per-drone timing spread is preserved at n=30**: MPC drones finish
+   within 0.02 s of each other on average (max 0.15 s); GPU MPPI
+   spreads by **0.55 s** (max 0.80 s) — same magnitude as the n=1 demo
+   observation, now over 30 episodes so it's not a single-seed
+   artifact. This is the AirSim signature of GPU MPPI's softmax-over-64
+   rollouts: even when all four drones succeed, they pick slightly
+   different per-replan velocities, accumulating across the ~15 s
+   trajectory into sub-second arrival spread. MPC's argmin against
+   the shared cost landscape collapses to near-identical timing.
+   Timing spread is **not the same signal** as the dummy_3d
+   coordination-Δ flip (which is about clustered *failures*, not
+   spread successes), but it is the mechanism-level signal that
+   would underlie a Δ flip if the scenario were hard enough to fail.
+
+Speed gap: GPU MPPI mean final_t is **37 % longer** than MPC (14.88 vs
+10.83 s), consistent with the single-drone result (single-drone +26 %,
+multi-drone +37 %). Adding peers widens the gap modestly, not
+catastrophically.
+
+Cost: ~2 min wall clock per chunked episode (~60 s AirSim restart +
+warmup + ~60 s sim + reset/teleport), 60 paired eps ≈ 2 h total
+(MPC ~65 min, GPU MPPI ~75 min). The reset-hang workaround is in
+`scripts/run_airsim_multi_chunked.sh` (referenced by both YAML headers).
+
+Reproduce:
+```
+# Each runs 30 1-ep invocations, bouncing Blocks between each — see
+# the script header for the AirSim multi-drone reset-hang background.
+./run_airsim_multi_chunked.sh mpc      30 42 results/airsim_multi_n30_mpc
+./run_airsim_multi_chunked.sh gpu_mppi 30 42 results/airsim_multi_n30_gpu_mppi
+python3 scripts/paired_analysis_airsim_multi.py \
+    results/airsim_multi_n30_mpc results/airsim_multi_n30_gpu_mppi
+```
+
+
+### Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag
+
+Discovered during the n=30 paired-runs attempt above. The
+multi-drone `airsim_bridge.py:reset()` path was leaving AirSim's
+collision flag set to True at t=0.0 for **every** drone, so the
+runner would record an immediate joint-collision outcome on the very
+first episode of any uav-nav invocation that omitted the
+`simulator.cameras: [...]` declaration. The single-drone demo with
+cameras attached worked by accident — the per-step `simGetImages`
+RPC was masking the bug.
+
+Root cause: `client.reset()` in AirSim sends every vehicle back to
+its `settings.json` spawn pose (which is at ground level, z ≈ 0). The
+bridge then ran `_time.sleep(settle_after_reset)` (1 s default) with
+the engine **unpaused**, so the 4 drones registered ground-contact
+collisions during that 1-second window. The subsequent
+`simSetVehiclePose(..., ignore_collision=True)` teleport relocated
+them to altitude but did **not** clear the cumulative
+`simGetCollisionInfo().has_collided` flag — and the first step()
+readback returned `collision=True` against the unchanged start
+position, ending the episode at t=0.05 s with all 4 drones flagged.
+
+Fix (`uav_nav_lab/sim/airsim_bridge.py`): call `client.simPause(True)`
+**immediately** after `client.reset()`, before the settle sleep, so
+the engine never ticks during the on-ground spawn window. The
+teleport-to-altitude still happens under pause (simSetVehiclePose
+works in paused mode), and the existing simPause(True) at end of
+reset() becomes redundant but harmless.
+
+Verified by replacing the bridge call and re-running a 1-episode
+multi-drone scenario without `cameras:` declared — collision flag now
+returns `False` for all 4 drones at t=0.0. Earlier hypothesis (that
+cameras' implicit per-step RPC delay was settling the flag) was a
+red herring: cameras just gave AirSim enough wall-clock to overwrite
+the stale flag, not actually fix the cumulative state.
+
+Side observation, not fixed: AirSim's multi-drone `client.reset()`
+sometimes wedges after 1–2 sequential resets, regardless of the
+collision-flag fix. The n=30 paired study above worked around this
+by running each episode as its own `uav-nav run` invocation with a
+fresh Blocks server (`scripts/run_airsim_multi_chunked.sh`). The
+underlying hang appears to be in AirSim itself (Blocks RPC handler
+becomes unresponsive) and remains as future work.
 
 
 ## ROS 2 bridge: spatial equivalence verified

@@ -286,6 +286,20 @@ class AirSimBridge(SimInterface):
         # already-teleported drone every time they reset themselves.
         if self._advance_scenario:
             client.reset()
+            # Pause IMMEDIATELY after `client.reset()` so the physics
+            # engine cannot tick while the (multi-)drone(s) are still at
+            # their settings.json spawn pose on the ground. Without this
+            # pause, AirSim runs physics for `settle_after_reset` seconds
+            # with the drone(s) resting on the ground, which registers a
+            # ground-contact collision in `simGetCollisionInfo` that the
+            # subsequent teleport (`ignore_collision=True`) does NOT
+            # clear — leaving the bridge to report a stale t=0 collision
+            # on the first step(). For multi-drone configs this is
+            # especially bad: passive sims teleport AFTER the master's
+            # settle window, so their drones spend the entire master
+            # settle on the ground.
+            if hasattr(client, "simPause"):
+                client.simPause(True)
             # Set global wind via API (settings.json Wind not supported
             # by all AirSim builds).  ENU → NED.
             try:
@@ -295,10 +309,10 @@ class AirSimBridge(SimInterface):
                 client.simSetWind(wind_ned)
             except Exception:
                 pass
-            # Let the world settle after reset() before issuing API
-            # calls. Without this, AirSim sometimes carries a transient
-            # collision flag from the just-cleared state into the
-            # first step().
+            # Brief settle (against a paused engine) to absorb residual
+            # post-reset RPC latency before issuing API calls. The flag
+            # ordering above means this no longer ticks physics, but
+            # keeping the sleep retains parity with single-drone runs.
             if hasattr(client, "simPause"):
                 import time as _time
                 _time.sleep(self.settle_after_reset)

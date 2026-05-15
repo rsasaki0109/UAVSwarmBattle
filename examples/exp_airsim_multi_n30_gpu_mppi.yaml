@@ -1,0 +1,75 @@
+# n=30 paired AirSim multi-drone — GPU MPPI counterpart.
+#
+# Pair of `exp_airsim_multi_n30.yaml` (the MPC baseline). Same staggered-
+# altitude 4-way crossing, same seeds 42..71, planner swapped to
+# `gpu_mppi` at the validated 3D Pareto cell (n=64, h=20, T=1.0).
+# Camera dumping disabled for the same reason as the MPC pair YAML.
+#
+# Settle/budget bumps inherited from `exp_airsim_multi_demo_gpu_mppi.yaml`:
+#   - `settle_after_teleport: 3.0` (vs MPC's 0.3) to absorb the ~14 s
+#     CUDA autograd-compile + Dijkstra cost-to-go on the first replan.
+#   - `max_steps: 800` (vs MPC's 400) because the single-drone parity
+#     finding had GPU MPPI commanding 1.87 m/s vs MPC's 2.40 m/s, and
+#     a 50 m crossing at 1.87 m/s is ~27 s — past the MPC baseline's
+#     20 s budget.
+#
+# Result: both planners hit 100 % joint success at n=30, AirSim demo
+# scenario is too easy to exercise the dummy_3d Δ-flip mechanism. See
+# findings.md §"AirSim multi-drone n=30 paired: planner portable,
+# scenario ceiling-limited, timing-spread signal preserved".
+#
+# Run: this YAML is meant to be driven from
+# `scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 results/airsim_multi_n30_gpu_mppi`
+# — not a single 30-episode `uav-nav run`. See the MPC pair YAML for
+# the operational caveat.
+
+name: airsim_multi_n30_gpu_mppi
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 26.0], goal: [30.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 800
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 3.0
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+
+planner:
+  type: gpu_mppi
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_n30_gpu_mppi
+  save_camera_frames: false

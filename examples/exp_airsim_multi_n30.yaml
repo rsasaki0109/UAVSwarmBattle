@@ -1,0 +1,92 @@
+# n=30 paired AirSim multi-drone — MPC baseline.
+#
+# Same staggered-altitude 4-way crossing as `exp_airsim_multi_demo.yaml`
+# (the n=1 demo whose Drone1 FPV drives the README GIF), bumped to
+# num_episodes=30 and with camera-frame dumping disabled so the 30
+# episodes don't write ~24 k PNG frames per drone.
+#
+# Pair: `exp_airsim_multi_n30_gpu_mppi.yaml` runs the same scenario on
+# seeds 42..71 with `gpu_mppi` swapped in. Both runs follow the same
+# seed → episode mapping (runner/multi.py: `seed = cfg.seed + ep`), so
+# the n=30 outcomes are directly paired per-episode and McNemar-able.
+#
+# Headline result (settles the open question from
+# findings.md §"Multi-drone: GPU MPPI's rollout cloud flips the
+# coordination Δ"): both planners hit 100 % joint success across 30
+# paired episodes — the AirSim demo scenario is too easy (no
+# obstacles, ±2-4 m altitude stagger) to exercise the dummy_3d Δ-flip
+# mechanism. See findings.md §"AirSim multi-drone n=30 paired:
+# planner portable, scenario ceiling-limited, timing-spread signal
+# preserved" for the full result table.
+#
+# Operational caveat: AirSim's RPC handler wedges after 1-2 sequential
+# multi-drone `client.reset()` calls, so this YAML is NOT meant to be
+# fed to a single 30-episode `uav-nav run`. Use the chunked runner
+# script `scripts/run_airsim_multi_chunked.sh` which restarts Blocks
+# between every episode and overrides --seed per iteration. The fix
+# to a separate stale-t=0 collision flag is documented in
+# findings.md §"Bridge fix: pause-after-reset…" and was landed in
+# `uav_nav_lab/sim/airsim_bridge.py` alongside this YAML.
+#
+# Run:
+#   scripts/run_airsim_multi_chunked.sh mpc      30 42 \
+#       results/airsim_multi_n30_mpc
+#   scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
+#       results/airsim_multi_n30_gpu_mppi
+# Paired comparison:
+#   python3 scripts/paired_analysis_airsim_multi.py \
+#       results/airsim_multi_n30_mpc results/airsim_multi_n30_gpu_mppi
+
+name: airsim_multi_n30
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 26.0], goal: [30.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 400
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+  # No camera declaration — bridge dumps no frames, keeping the 30-ep
+  # run under disk budget. The stale-t=0-collision bug that previously
+  # required `cameras: [...]` here was fixed in airsim_bridge.py by
+  # pausing immediately after client.reset().
+
+planner:
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_n30_mpc
+  save_camera_frames: false

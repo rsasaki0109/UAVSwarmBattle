@@ -210,13 +210,18 @@ framing.
   both run end-to-end on AirSim, all drones reach goal at 4/4.**
   Single-drone parity: GPU MPPI ~30 % slower wall-clock (1.87 vs
   2.40 m/s), plan_dt dominated by sim overhead so the dummy_3d
-  speed edge is not portable. Multi-drone parity: same shape, +
-  qualitative signal that trajectory **decorrelation** is visible
-  even at 4/4 (GPU MPPI per-drone final_t spread 0.55 s vs MPC's
-  0.05 s) — mechanism consistent with the dummy_3d Δ flip. **Remaining
-  future-work TODO: n ≥ 30 paired AirSim multi-drone run to put a
-  number on whether the +5.2 pp Δ flip survives the AirSim speed
-  penalty (~100 min wall-clock, overnight study).**
+  speed edge is not portable. Multi-drone parity at n=1: same shape +
+  qualitative signal that per-drone final_t spread (0.55 s GPU vs
+  0.05 s MPC) is preserved on AirSim. **n=30 paired done
+  (`exp_airsim_multi_n30*.yaml`)**: both planners hit 100 % joint
+  success across 30 paired seeds — the AirSim demo scenario is too
+  easy (no obstacles, ±2-4 m altitude stagger) to exercise the
+  dummy_3d Δ-flip mechanism. The mean per-drone arrival spread (0.02 s
+  MPC vs 0.55 s GPU MPPI) is preserved at n=30, so the trajectory-
+  level mechanism survives even when the failure-level signal can't be
+  measured. Settling the AirSim Δ-flip transferability question now
+  requires a harder Blocks geometry (added obstacles, tighter altitude
+  staggering, or more drones) — separate future-work TODO.
 
 ## 7. Reproducibility map (appendix)
 
@@ -232,6 +237,8 @@ framing.
 | §4.4 AirSim vs dummy_3d | `exp_airsim_transfer.yaml` (TBD) | "AirSim vs dummy_3d transferability" |
 | §4.4 AirSim + GPU MPPI parity (single) | `exp_airsim_demo_gpu_mppi.yaml` | "AirSim + GPU MPPI parity" |
 | §4.4 AirSim + GPU MPPI parity (multi) | `exp_airsim_multi_demo_gpu_mppi.yaml` | "AirSim multi-drone parity" |
+| §4.4 AirSim multi-drone n=30 paired | `exp_airsim_multi_n30*.yaml`, `scripts/run_airsim_multi_chunked.sh` | "AirSim multi-drone n=30 paired" |
+| §6 bridge fix (AirSim pause-after-reset) | `uav_nav_lab/sim/airsim_bridge.py` reset() | "Bridge fix: pause-after-reset" |
 | §4.4 ROS 2 bridge | `scripts/ros2_dummy_sim.py` + `exp_basic.yaml` | "ROS 2 bridge: spatial equivalence verified" |
 | §4.4 AirSim + ROS 2 | `exp_airsim_ros2.yaml`, `exp_airsim_ros2_direct.yaml` | "AirSim over ROS 2 parity harness" |
 | §5 escape volume | `exp_multi_drone_3d_4.yaml` (sparse), `_density_8x` variant | "3D density ablation" |
