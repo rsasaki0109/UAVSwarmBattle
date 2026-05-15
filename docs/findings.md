@@ -28,10 +28,8 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 
 - [GPU MPPI: flat plan-time scaling, right-shifted Pareto knee](#gpu-mppi-flat-plan-time-scaling-right-shifted-pareto-knee)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
-<<<<<<< HEAD
-=======
+- [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
->>>>>>> f09ffa8 (RL comparison baseline: gym.Env wrapper + SAC training scaffold)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -766,8 +764,30 @@ the full chain AirSim → ROS 2 → ros2_bridge should produce the
 same spatial behaviour as AirSim → airsim_bridge (direct), modulo
 the real-time clock constraint. The framework's planner/sensor/
 scenario boundary is proven invariant under the bridge hop.
-<<<<<<< HEAD
-=======
+
+
+## AirSim over ROS 2 parity harness
+
+The AirSim ROS 2 integration is now wired at the framework boundary:
+
+- `Ros2Bridge(frame: ned)` converts default AirSim ROS wrapper odometry
+  and velocity commands between NED and the framework's ENU convention.
+- `Ros2Bridge(cmd_msg_type: airsim_vel_cmd)` publishes AirSim's
+  `airsim_interfaces/VelCmd` / `airsim_ros_pkgs/VelCmd` wrapper message
+  instead of plain `geometry_msgs/Twist`.
+- `examples/exp_airsim_ros2_direct.yaml` and
+  `examples/exp_airsim_ros2.yaml` run the same empty `voxel_world`
+  MPC scenario through direct AirSim RPC and AirSim-over-ROS2.
+- `scripts/compare_spatial_runs.py` compares the two run directories
+  on outcome, final-position delta, RMS trajectory delta and path-length
+  delta.
+
+This does not claim a measured result yet; it is the repeatable harness
+for the next AirSim session. The remaining external requirement is the
+AirSim ROS 2 wrapper itself: it must publish `nav_msgs/Odometry` for the
+selected vehicle and subscribe to the velocity command topic. Reset /
+teleport is still sim-specific, so the AirSim side must start from the
+same pose used by the YAML before comparing trajectories.
 
 
 ## RL comparison baseline: gym.Env scaffold + initial training
@@ -821,4 +841,3 @@ loop must drive the full sim/sensor/planner pipeline. The gym.Env
 wrapper simplifies this to just sim/sensor (no planner), but the
 training throughput bottleneck remains SB3's SAC implementation,
 not the framework.
->>>>>>> f09ffa8 (RL comparison baseline: gym.Env wrapper + SAC training scaffold)

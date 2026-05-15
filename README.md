@@ -351,19 +351,17 @@ External backends:
 
 ## 🗺️ Roadmap
 
-- **AirSim transferability — second arc**: reproduce the core dummy_3d
-  research findings (perception-latency cliff, wind miscalibration,
-  multi-drone peer-prediction Δ) on AirSim SimpleFlight physics. First
-  target: sensor-latency cliff with `delayed` sensor → AirSim ablation
-  (`examples/exp_airsim_latency.yaml`).
-- **AirSim multi-drone passive-first ordering**: eliminate the 1-tick
-  command lag in the multi-drone runner by reordering the bridge loop
-  so passive sims send `moveByVelocityAsync` before the master calls
-  `simContinueForTime` (currently worked around with staggered
-  altitudes — see `examples/exp_airsim_multi_demo.yaml`).
-- **GPU MPC / MPPI**: offload sampling rollouts to GPU (`n_samples`
-  128–256) and re-draw the Pareto curve to see how far the knee shifts
-  right (see `examples/exp_predictive.yaml` for baseline).
+- **ROS 2 ↔ AirSim validation**: run
+  `examples/exp_airsim_ros2_direct.yaml` and `examples/exp_airsim_ros2.yaml`
+  against the same AirSim scene, then check spatial agreement with
+  `scripts/compare_spatial_runs.py`.
+- **AirSim cliff limit case**: push `examples/exp_airsim_latency.yaml`
+  toward higher speed and obstacle density to find whether the dummy_3d
+  latency cliff reappears beyond SimpleFlight's smoothing regime
+  (`examples/exp_airsim_latency_limit.yaml`).
+- **AirSim ROS2 wrapper reset/teleport**: once the direct-vs-ROS2
+  parity run is measured, add a wrapper-specific reset path so repeated
+  ROS2 episodes can start from the same pose without manual scene setup.
 
 ## 📄 License
 

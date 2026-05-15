@@ -19,6 +19,11 @@ from uav_nav_lab.runner import expand_sweep, run_experiment
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 
 
+def _require_mplot3d() -> None:
+    pytest.importorskip("matplotlib")
+    pytest.importorskip("mpl_toolkits.mplot3d.axes3d")
+
+
 def _basic_cfg(overrides: dict | None = None) -> ExperimentConfig:
     cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_basic.yaml")
     cfg.num_episodes = 2
@@ -144,7 +149,7 @@ def test_cli_list_runs() -> None:
 
 
 def test_3d_viz(tmp_path: Path) -> None:
-    pytest.importorskip("matplotlib")
+    _require_mplot3d()
     from uav_nav_lab.viz import viz_run
 
     cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_3d.yaml")
@@ -2889,7 +2894,7 @@ def test_multi_drone_voxel_scenario_constructs_3d() -> None:
 def test_multi_drone_voxel_anim_groups_drones_per_episode(tmp_path: Path) -> None:
     """3D multi-drone anim path: one GIF per episode (not per drone), and
     the new 3D animator is dispatched for ndim==3 multi scenarios."""
-    pytest.importorskip("matplotlib")
+    _require_mplot3d()
     pytest.importorskip("PIL")
     from uav_nav_lab.anim import viz_anim
     cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone_3d_2.yaml")

@@ -6,7 +6,7 @@
 > 思いつきや却下案も「やらない理由」と一緒に残しておく — 後から
 > 「なぜこの方向に行かなかったか」を辿れるようにするため。
 >
-> 最終更新: 2026-05-05 (PR #48 準備中: short-term B/D/A/C すべて実装済み)
+> 最終更新: 2026-05-12 (AirSim 実測系は pending に整理)
 
 ---
 
@@ -55,9 +55,11 @@
 
 ### 1.4 残タスク (細かいやつ)
 
-- `tests/test_smoke.py::test_multi_drone_voxel_anim_groups_drones_per_episode` が
-  matplotlib `Axes3D` の import 衝突で local fail (CI は通っている)。
-  影響軽微なので放置中。
+- ~~`tests/test_smoke.py::test_multi_drone_voxel_anim_groups_drones_per_episode` が
+  matplotlib `Axes3D` の import 衝突で local fail (CI は通っている)。~~
+  → 2026-05-12 対応済み。`mpl_toolkits.mplot3d.axes3d` が import できる
+  環境だけ 3D viz/anim smoke を実行し、このローカルの壊れた matplotlib
+  では skip する。
 - `roadmap` 節 (README) の「3D perception-latency 再検証」は #46 で
   片付いた → 次の README 触るときに削る。
 - `roadmap` 節の「ROS 2 sim-time 対応」は #30 で済んでいる → 同様に削る。
@@ -265,15 +267,29 @@ PR #43 で示した「CV peer prediction が密度より効く」を出発点に
    MPC の wind belief と競合し、no-awareness が最速という逆転結果。
    AirSim wind 対応のために bridge に `simSetWind` 追加。
 
-**次の優先順:**
+**次の優先順 / 状態:**
 
-1. **中期 1: ROS 2 ↔ AirSim 統合検証** — `airsim_bridge` (直結) と
+1. **[PENDING] 中期 1: ROS 2 ↔ AirSim 統合検証** — `airsim_bridge` (直結) と
    `ros2_bridge` (ROS2 越し) を同じ `voxel_world` で走らせ数値一致確認。
-2. **中期 2: GPU MPC / MPPI** — n_samples=128/256 で Pareto 再描画。
-3. **B の延長: 限界条件 cliff** — max_speed=15, 密度 >10% で AirSim での
+   2026-05-12 時点で `frame: ned` / `cmd_msg_type: airsim_vel_cmd` と
+   direct-vs-ROS2 比較 harness は追加済み。次は実 AirSim + ROS2 wrapper
+   セッションで `scripts/compare_spatial_runs.py` を回す。
+   ただし他作業が多いため、現時点では **pending**。AirSim server と
+   AirSim ROS2 message package (`airsim_interfaces` / `airsim_ros_pkgs`) を
+   source できるタイミングまで保留。
+2. ~~**中期 2: GPU MPC / MPPI**~~ → **完了。**
+   `results/gpu_mppi_pareto_sweep` で n_samples=32/64/128/256 ×
+   horizon=20/40/60 を n=10 実測済み。`docs/findings.md` に記録。
+   `uav-nav viz results/gpu_mppi_pareto_sweep` で sweep_summary.png 生成済み。
+3. **[PENDING] B の延長: 限界条件 cliff** — max_speed=15, 密度 >10% で AirSim での
    cliff 出現可否を検証（SimpleFlight の速度限界が課題）。
+   2026-05-12 時点で `voxel_world` に `random_layer` 障害物を追加し、
+   `examples/exp_airsim_latency_limit.yaml` を用意済み。次は実 AirSim
+   セッションで sweep を回す。
+   こちらも **pending**。実測に入る前に AirSim 実行環境と時間を確保する。
 
-→ 次に着手するなら **中期 1 (ROS 2 ↔ AirSim)** が筋。
+→ しばらくは AirSim 実測系を追わず、他作業を優先する。再開時は
+**中期 1 (ROS 2 ↔ AirSim)** から戻るのが筋。
 
 ---
 
