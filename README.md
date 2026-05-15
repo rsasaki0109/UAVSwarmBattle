@@ -22,50 +22,58 @@ every example YAML carries its own validated finding.**
 <td align="center"><i>3D — same planner family on a 40×40×12 voxel world.</i></td>
 </tr>
 <tr>
-<td><img src="docs/images/demo_multi_drone.gif" alt="4-drone 2D cross-crossing scenario: east/west/north/south pairs all reach opposite goals via constant-velocity peer prediction" width="280"></td>
-<td><img src="docs/images/demo_multi_drone_3d.gif" alt="4-drone 3D cross-crossing scenario in a 40×40×12 voxel world: every drone reaches its opposite goal under CV peer prediction" width="280"></td>
+<td colspan="2"><img src="docs/images/demo_gpu_mppi.gif" alt="GPU MPPI 3D episode: 64 sampled rollouts as a translucent cyan cloud, softmax-best rollout highlighted in orange" width="560"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i>GPU MPPI (3D, n=64) — translucent cyan: sampled rollouts, orange: softmax-best, red: bouncing obstacles. <code>uav-nav run examples/exp_gpu_mppi_demo.yaml && uav-nav anim results/gpu_mppi_demo</code>.</i></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" alt="Side-by-side 4-drone 3D cross pattern: CPU MPC (left) and GPU MPPI (right) on the same scenario/seed" width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i><b>Headline (multi-drone, N=4, n=100 paired)</b> — same crossing, planner swap MPC → GPU MPPI. Joint success is tied (78.0 vs 77.0 %); coordination Δ over indep⁴ separates: MPC +0.8 pp vs GPU MPPI <b>+11.4 pp</b> (GPU MPPI's failures cluster on hard seeds). Same joint rate, different failure shape — <a href="docs/findings.md#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ">findings.md</a>.</i></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left) vs GPU MPPI (right) on the same Blocks scene" width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i><b>AirSim transferability</b> — same 4-drone cross in Microsoft AirSim's Blocks. n=30 paired across three altitude-stagger cells (±2-4 m, ±1 m, 0 m): bimodal response — non-zero z-spread keeps both at 100 %, uniform z=30 drops MPC to 46.7 % joint and GPU MPPI to <b>0/30</b> (McNemar p ≈ 0.00012). Trajectory-spread mechanism preserved across cells (GPU/MPC 4-27 ×) — <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>.</i></td>
+</tr>
+</table>
+
+<details>
+<summary><b>More demos</b> — 2D/3D multi-drone, single-drone AirSim, GPU MPPI vs MPC single-drone</summary>
+
+<table>
+<tr>
+<td><img src="docs/images/demo_multi_drone.gif" alt="4-drone 2D cross-crossing scenario" width="280"></td>
+<td><img src="docs/images/demo_multi_drone_3d.gif" alt="4-drone 3D cross-crossing scenario in a 40×40×12 voxel world" width="280"></td>
 </tr>
 <tr>
 <td align="center"><i>Multi-drone 2D — 4 drones cross-crossing via CV peer prediction.</i></td>
 <td align="center"><i>Multi-drone 3D — same coordination, 40×40×12 voxel world.</i></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/images/demo_gpu_mppi.gif" alt="GPU MPPI 3D episode: 64 sampled rollouts as a translucent cyan cloud, softmax-best rollout highlighted in orange, weaving through three bouncing dynamic obstacles in a 40×40×12 voxel world" width="560"></td>
+<td colspan="2"><img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" alt="Single-drone 3D side-by-side: GPU MPPI rollout cloud (left) vs CPU MPC single trajectory (right)" width="720"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i>GPU MPPI (3D, n=64 rollouts) — translucent cyan: sampled rollouts; orange: softmax-best rollout; red spheres: bouncing dynamic obstacles. Reproduce: <code>uav-nav run examples/exp_gpu_mppi_demo.yaml &amp;&amp; uav-nav anim results/gpu_mppi_demo</code>.</i></td>
+<td colspan="2" align="center"><i>Single-drone GPU MPPI vs CPU MPC head-to-head — same scenario/seed; left visualizes the 64-rollout sample cloud, right shows MPC's single trajectory.</i></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" alt="Side-by-side 3D demo: GPU MPPI (left) shows its rollout sample cloud and softmax-best line; CPU MPC (right) takes a single deterministic minimum-cost trajectory through the same scenario. Both reach the goal on the same 40×40×12 voxel world with three bouncing dynamic obstacles." width="720"></td>
+<td colspan="2"><img src="docs/images/demo_airsim.gif" alt="Pareto-MPC + airsim_bridge + 16-channel LiDAR weaving through Blocks cube clusters" width="560"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i>GPU MPPI vs CPU MPC head-to-head, same scenario / same seed — left pane visualizes the population the GPU planner is averaging over, right pane shows the single-trajectory MPC baseline. Reproduce: <code>uav-nav run examples/exp_gpu_mppi_demo.yaml &amp;&amp; uav-nav run examples/exp_mpc_demo_3d.yaml &amp;&amp; uav-nav anim results/gpu_mppi_demo &amp;&amp; uav-nav anim results/mpc_demo_3d &amp;&amp; python scripts/render_compare_gif.py results/gpu_mppi_demo/episode_000.gif results/mpc_demo_3d/episode_000.gif --out docs/images/compare_gpu_mppi_vs_mpc_3d.gif --left-label "GPU MPPI" --right-label "CPU MPC" --fps 10 --frame-stride 2 --max-total-width 960</code>.</i></td>
+<td colspan="2" align="center"><i>AirSim single-drone — Pareto-MPC + <code>airsim_bridge</code> with a 16-channel LiDAR + <code>pointcloud_occupancy</code> sensor, weaving through Blocks cube clusters from an empty static map.</i></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" alt="Side-by-side 4-drone 3D cross pattern: CPU MPC (left) and GPU MPPI (right) on the same scenario/seed. Both planners thread the same crossing geometry; the right pane shows GPU MPPI's rollout cloud producing more correlated outcomes across the four drones — they tend to succeed together or fail together on the same seed." width="720"></td>
+<td colspan="2"><img src="docs/images/demo_airsim_multi.gif" alt="4 SimpleFlight multirotors crossing through Blocks" width="560"></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><i>Multi-drone (3D, N=4, n=100 paired seeds) — same crossing pattern, planner swapped from CPU MPC (n=8, h=40) to GPU MPPI (n=64, h=20). Per-drone success: MPC 93.8 %, GPU MPPI 90.0 % (1.7 pp CI gap). Joint success is tied (78.0 vs 77.0 %) but the coordination Δ over indep⁴ separates: MPC +0.8 pp (failures nearly independent across drones) vs GPU MPPI <strong>+11.4 pp</strong> (failures cluster within seeds). Same joint rate, very different failure shape — see <a href="docs/findings.md#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ">findings.md</a>. Reproduce: <code>uav-nav sweep examples/exp_multi_drone_3d_4_gpu_mppi.yaml --param num_episodes=100</code>.</i></td>
-</tr>
-<tr>
-<td colspan="2"><img src="docs/images/demo_airsim.gif" alt="Pareto-MPC + airsim_bridge + a 16-channel AirSim LiDAR feeding the pointcloud_occupancy sensor, driving a SimpleFlight multirotor through Microsoft AirSim's Blocks Unreal Engine env. The drone sees no obstacles in the planner's static map — it builds the occupancy grid online from LiDAR returns and weaves between cube clusters." width="560"></td>
-</tr>
-<tr>
-<td colspan="2" align="center"><i>AirSim — same Pareto-MPC + <code>airsim_bridge</code>, but the planner's map is empty: a 16-channel AirSim LiDAR (<code>pointcloud_occupancy</code> sensor) builds the occupancy grid online and the drone weaves between Blocks cube clusters.</i></td>
-</tr>
-<tr>
-<td colspan="2"><img src="docs/images/demo_airsim_multi.gif" alt="4 SimpleFlight multirotors crossing through Microsoft AirSim's Blocks Unreal Engine env under the framework's multi_drone_voxel scenario + airsim_bridge: east/west/north/south corridors all reach their opposite goals via CV peer prediction, with staggered altitudes to keep the four flight paths clear." width="560"></td>
-</tr>
-<tr>
-<td colspan="2" align="center"><i>AirSim multi-drone — 4 SimpleFlight quadrotors cross under <code>multi_drone_voxel</code> + the same MPC + CV peer prediction stack, driven via 4 <code>airsim_bridge</code> instances bound to <code>Drone1..Drone4</code>.</i></td>
-</tr>
-<tr>
-<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left, n=16, h=30) finishes the crossing at 12.85 s with all four drones lockstep within 0.05 s. GPU MPPI (right, n=64, h=20, T=1.0) finishes at 17.65 s with per-drone final_t spreading 0.55 s — the per-drone timing spread that the dummy_3d n=100 study traces back to GPU MPPI's higher seed-sensitivity, now visible on AirSim physics." width="720"></td>
-</tr>
-<tr>
-<td colspan="2" align="center"><i>AirSim multi-drone planner head-to-head — same staggered-altitude crossing, MPC (left) vs GPU MPPI (right). Both reach 4/4 success on this seed; GPU MPPI's softmax across 64 rollouts is ~26 % slower (avg_v 2.76 vs 3.72 m/s) and produces per-drone arrival times 0.05 s → 0.55 s — same shape as the dummy_3d coordination signal (GPU MPPI's failures cluster on hard seeds, successes line up on easy ones), now visible on Unreal physics. <strong>n=30 paired AirSim run</strong> on this same staggered geometry: both planners hit 100 % joint success across 30 seeds — the demo scenario is ceiling-limited (no obstacles, ±2-4 m altitude stagger). Per-drone arrival spread is preserved at n=30 though: 0.02 s for MPC vs <strong>0.55 s</strong> for GPU MPPI, same ratio as n=1. Failure-level Δ-flip retry on a harder AirSim geometry (uniform-altitude crossing) is in progress — see <a href="docs/findings.md#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved">findings.md</a>. Reproduce: <code>python scripts/record_airsim_multi_compare.py</code> (drives both <code>exp_airsim_multi_demo.yaml</code> + <code>exp_airsim_multi_demo_gpu_mppi.yaml</code> on the same running Blocks server, ffmpegs Drone1's FPV from each run into per-pane GIFs, then side-by-sides via <code>render_compare_gif.py</code>).</i></td>
+<td colspan="2" align="center"><i>AirSim multi-drone — 4 quadrotors cross under <code>multi_drone_voxel</code> + MPC + CV peer prediction, 4 <code>airsim_bridge</code> instances bound to <code>Drone1..Drone4</code>.</i></td>
 </tr>
 </table>
+
+</details>
 
 </div>
 
@@ -279,69 +287,66 @@ saga uncovered, just on the search side.
 
 ### More studies — see [docs/findings.md](docs/findings.md)
 
-The full long-form write-ups (tables, ablation reasoning, methodological
-takeaways) live in [`docs/findings.md`](docs/findings.md):
+Each finding lives in the comment header of the YAML that produces it,
+plus a long-form write-up in [`docs/findings.md`](docs/findings.md).
+Grouped by theme:
 
-- **MPC compute Pareto** — n_samples × horizon; sole optimal cell n=16/h=20.
-- **3D Pareto** — n_samples preference flips vs 2D; the 3D plan_dt blow-up
-  was a missing static-cost-to-go cache, not a CPU cliff.
-- **3D perception-latency cliff** — same corner as 2D, softened by escape
-  volume; velocity_window optimum *inverts* (3D peaks at window=1, not 5).
-- **Pareto config rewrites prior conclusions** — methodological lesson on
-  always re-validating ablations at the planner's Pareto-optimal cell.
-- **Multi-drone N-scaling** — peer-prediction *correlates* failures the
-  right way (joint succ at N=4 beats independence model by +14.7 pp);
-  in 3D the Δ vanishes with escape volume but returns at obstacle
-  density 4-8× higher; **ablating the prediction itself costs as much
-  per-drone success as 8× obstacle density** (49 pp), confirming it
-  causally drives the Δ rather than just correlating with it.
-- **Wind miscalibration** — diagonal-wins; +73 pp swing from awareness at
-  one cell, but no belief beats `sim_wind > max_speed` physics.
-- **Perception-latency cliff: a four-step research saga** — including
-  honest negative result on Kalman ego (moving-average wins).
-- **GPU MPPI Pareto (2D + 3D)** — `gpu_mppi` planner on CUDA; a goal-mask
-  bug fix turned a 0 %-at-long-horizons "speed collapse" into a clean
-  Pareto frontier, and the 3D Pareto cell (n=64-256, h=20 → 100 %)
-  Pareto-dominates the CPU MPC 3D baseline (88 % / 70 ms) at 3.5 ms
-  steady-state.
-- **Multi-drone GPU MPPI** (n=100 paired) — same 4-drone 3D cross
-  pattern (`exp_multi_drone_3d_4`) with `gpu_mppi` swapped for MPC.
-  Per-drone success: MPC 93.8 % vs GPU MPPI 90.0 % (1.7 pp CI gap).
-  Joint success is tied at 77–78 %, but the coordination Δ over
-  indep⁴ separates sharply: MPC **+0.8 pp** (failures nearly
-  independent across drones) vs GPU MPPI **+11.4 pp** (failures
-  cluster — bad seeds tend to take down 2–4 drones together; good
-  seeds let all 4 through). Same joint rate, very different failure
-  shape — the n=30 pilot's "+5.2 pp" estimate was biased; the
-  n=100 paired re-run more than doubles it.
-- **AirSim multi-drone n=30 paired** (three crossing geometries:
-  `exp_airsim_multi_n30*.yaml`, `..._mid_n30*.yaml`,
-  `..._uniform_n30*.yaml`) — Δ-flip portability check on Blocks:
-  - **±2-4 m staggered** (z range 6 m): both planners 100 % joint.
-  - **±1 m mid-stagger** (z range 2 m): both planners 100 % joint.
-  - **0 m uniform** (all z=30, 4-way conflict at the centre):
-    MPC holds **46.7 %** [30.2, 63.9] joint; GPU MPPI **collapses
-    to 0/30 = 0.0 %** joint (28.3 % per-drone vs 65.0 % MPC).
-    McNemar paired exact p ≈ 0.00012.
-  - AirSim altitude-stagger response is **essentially bimodal**:
-    every non-zero z-spread we have measured stays at the 4/4
-    ceiling; z-coincidence drops both planners (GPU MPPI
-    catastrophically). The dummy_3d Δ-flip's discriminating regime
-    (per-drone 60-90 %) doesn't exist on the no-obstacle scenario.
-    GPU MPPI's per-drone arrival spread is still 4-27× wider than
-    MPC's across all measurable cells — softmax mechanism preserved
-    even where the failure-level Δ can't register. **GPU MPPI is not
-    a drop-in replacement for MPC in tight-coupling deployments**,
-    even when it ties on dummy_3d obstacle-rich scenarios.
-- **AirSim bridge: pause-after-reset stale-collision fix** — the
-  multi-drone reset path used to leave AirSim's cumulative
-  `simGetCollisionInfo().has_collided` flag set to True at t=0 for
-  every drone (drones sat on the ground during `settle_after_reset`
-  with engine unpaused, registering ground-contact collisions that
-  `simSetVehiclePose(ignore_collision=True)` did NOT clear). Fix:
-  `simPause(True)` immediately after `client.reset()`. The single-
-  drone n=1 demo was masking the bug via per-step `simGetImages`
-  RPC delays; uncovered during the n=30 paired study.
+**Pareto cells & methodology**
+- **MPC Pareto** (2D + 3D) — `n_samples × horizon` sweep; the 3D
+  `plan_dt` blow-up was a missing cost-to-go cache, not a CPU cliff.
+- **3D perception-latency cliff** — same corner shape as 2D, softened
+  by escape volume; velocity_window optimum *inverts* (window=1, not 5).
+- **Pareto config rewrites prior conclusions** — methodological
+  lesson on always re-validating ablations at the planner's Pareto cell.
+
+**GPU MPPI vs CPU MPC**
+- **GPU MPPI Pareto** (2D + 3D, `gpu_mppi` on CUDA) — a goal-mask
+  bug fix unlocked long horizons; the 3D Pareto cell (n=64-256,
+  h=20 → 100 %) dominates the CPU MPC baseline (88 % / 70 ms) at
+  3.5 ms steady-state.
+- **Multi-drone Δ-flip** (n=100 paired, dummy_3d) — joint success
+  tied (78.0 vs 77.0 %), coordination Δ over indep⁴ separates:
+  MPC **+0.8 pp** vs GPU MPPI **+11.4 pp** (failures cluster
+  within seeds). Same joint rate, very different failure shape.
+- **Temperature ablation** (3D Pareto cell) — softmax T sweep;
+  the CPU-MPPI temperature rules of thumb don't transfer to GPU.
+
+**Multi-drone coordination**
+- **Multi-drone N-scaling** — peer prediction correlates failures
+  the right way (+14.7 pp Δ over indep at N=4); ablating prediction
+  costs as much per-drone success as 8× obstacle density (49 pp).
+- **AirSim multi-drone Δ-flip portability** (n=30 paired × 3 cells:
+  `exp_airsim_multi_{n30,mid_n30,uniform_n30}*.yaml`) — bimodal
+  response. ±2-4 m and ±1 m staggered: both planners 100 % joint.
+  Uniform z=30: MPC holds **46.7 %** joint; GPU MPPI **collapses to
+  0/30** (McNemar paired exact p ≈ 0.00012). Trajectory-spread
+  signal preserved across all cells (GPU/MPC 4-27 × ratio) — the
+  softmax mechanism is universal, but the failure-level Δ can't
+  register on no-obstacle scenarios. **GPU MPPI is not a drop-in
+  MPC replacement at tight-coupling geometries.**
+
+**Sim transferability & ROS 2**
+- **AirSim vs dummy_3d** — same plan, different physics: latency
+  cliff transfers but is softened by SimpleFlight's velocity controller.
+- **AirSim + GPU MPPI parity** (single-drone) — planner portable to
+  Blocks, but dummy_3d's 20× plan-time edge collapses to <5 % on
+  AirSim because sim-side overhead dominates.
+- **ROS 2 bridge** — Twist + Odometry round-trip, sim-time anchoring,
+  AirSim-over-ROS-2 parity harness via `compare_spatial_runs.py`.
+
+**Other**
+- **Planner head-to-head** (table above) — RRT beats grid A* by
+  +53 pp at similar compute; CHOMP+RRT-init beats RRT by +17 pp at
+  *cheaper* compute; RRT\* loses to plain RRT because it runs
+  2.3× the replan budget.
+- **Wind miscalibration** — +73 pp swing from awareness at one
+  cell, no belief beats `sim_wind > max_speed` physics.
+- **Perception-latency saga** — four steps including an honest
+  negative result on Kalman ego.
+- **Bridge fix: pause-after-reset** — the multi-drone reset path
+  used to leave AirSim's collision flag set at t=0; fixed by
+  pausing immediately after `client.reset()`. Uncovered during the
+  n=30 paired study.
 
 ## ✅ Status
 
@@ -357,78 +362,72 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
 
 External backends:
 
-- **AirSim** (`uav_nav_lab/sim/airsim_bridge.py`) is wired end-to-end —
-  ENU ↔ NED conversion, `simPause` + `simContinueForTime` for
-  deterministic fast-forward, async-command join, ENU→NED velocity
-  setpoints and NED→ENU kinematics readback. Run via
-  `examples/exp_airsim.yaml` after `pip install airsim` and starting
-  any AirSim binary; mock-injectable client makes the conversion logic
-  CI-testable without an AirSim install. Optional `lidars: [name, …]`
-  in the simulator config polls `getLidarData(name)` per step and
-  exposes the (N, 3) ENU point cloud at
+**AirSim** (`uav_nav_lab/sim/airsim_bridge.py`, install via
+`pip install airsim`) — end-to-end ENU ↔ NED bridge with
+`simPause` + `simContinueForTime` for deterministic stepping. The
+bridge is sensor-agnostic — sensors and perception sit in their
+own backends and consume what the bridge surfaces:
+
+- **LiDAR**: `lidars: [name, …]` → `getLidarData()` →
   `state.extra["lidar_points"][name]`. Pair with the
-  `pointcloud_occupancy` sensor (`type: pointcloud_occupancy` in the
-  sensor block) to rasterize those returns into the planner's
-  occupancy grid; the bridge itself stays perception-agnostic.
-  Optional `cameras: [{name, image_type}, …]` polls `simGetImages()`
-  and stashes compressed PNG bytes at `state.extra["camera_images"][name]`;
-  set `output.save_camera_frames: true` and run `uav-nav video <run_dir>`
-  to ffmpeg them into per-episode / per-camera MP4 demo reels (see
-  `examples/exp_airsim_demo.yaml` + `scripts/record_airsim_demo.py`
-  for the README hero GIF pipeline). Optional
-  `depths: [{name, fov_deg, width, height}, …]` polls the same call
-  with `pixels_as_float=True` and surfaces a `{depth, intrinsics}`
-  payload at `state.extra["depth_images"][name]` — pair with
-  `depth_image_occupancy` to project pixels into the planner's
-  occupancy grid (the depth-camera analogue of the
-  `pointcloud_occupancy` LiDAR path). Multi-drone is supported via
-  `simulator.vehicles: [Drone1, Drone2, …]` paired with the
-  `multi_drone_voxel` scenario; each drone gets its own
-  `airsim_bridge`, but only one bridge per global tick advances
-  AirSim's shared physics clock (the others queue
-  `moveByVelocityAsync` while paused), with mastership handed off when
-  the lead drone finishes — see `examples/exp_airsim_multi_demo.yaml`
-  + `scripts/record_airsim_multi_demo.py` for the 4-drone crossing
-  demo.
-- **ROS 2** (`uav_nav_lab/sim/ros2_bridge.py`) is wired end-to-end —
-  publishes `geometry_msgs/Twist` on `/cmd_vel`, subscribes to
-  `nav_msgs/Odometry` on `/odom` (and optional `std_msgs/Bool` on
-  `/collision`), spins once per `dt` so the latest message is
-  consumed each step. Run via `examples/exp_ros2.yaml` after sourcing
-  ROS 2 and bringing up a sim (Gazebo / Ignition / PX4-SITL via
-  MAVROS). Frames default to ENU per REP-103; set `frame: ned` for
-  NED-speaking wrappers. `cmd_msg_type: airsim_vel_cmd` publishes
-  AirSim's ROS wrapper velocity message instead of a plain Twist, so
-  `examples/exp_airsim_ros2.yaml` can exercise AirSim through ROS 2
-  and be compared with the direct bridge via
-  `scripts/compare_spatial_runs.py`. Mock-injectable adapter makes the
-  plumbing CI-testable without rclpy. Optional `lidars: [topic, …]` subscribes to
-  `sensor_msgs/PointCloud2` and decodes each step's latest cloud to
-  (N, 3) ENU points at `state.extra["lidar_points"][topic]` — same key
-  as the AirSim bridge, so `pointcloud_occupancy` consumes both
-  backends without a code change. Optional `cameras: [topic, …]`
-  subscribes to `sensor_msgs/Image` and PNG-encodes each frame to
-  `state.extra["camera_images"][topic]`, feeding the same
-  `output.save_camera_frames` + `uav-nav video` pipeline. Set
-  `use_sim_time: true` (with optional `clock_topic` / `sim_time_wall_timeout`)
-  to anchor `state.t` on `/clock` instead of wall-clock — PX4-SITL
-  fast-forward and Gazebo `--lockstep` then speed up the experiment by
-  the same factor as the sim, with the wall-clock timeout protecting
-  the runner from a paused or crashed sim.
+  `pointcloud_occupancy` sensor to rasterize into an occupancy grid.
+- **Cameras**: `cameras: [{name, image_type}, …]` → `simGetImages()` →
+  `state.extra["camera_images"][name]`. With
+  `output.save_camera_frames: true`, `uav-nav video <run_dir>`
+  ffmpegs them into per-camera MP4s.
+- **Depth**: `depths: [{name, fov_deg, width, height}, …]` →
+  same call with `pixels_as_float=True` →
+  `state.extra["depth_images"][name]`. Pair with `depth_image_occupancy`.
+- **Multi-drone**: `simulator.vehicles: [Drone1, …]` paired with
+  `multi_drone_voxel`. One bridge per drone; only the master
+  advances AirSim's shared clock, peers queue `moveByVelocityAsync`
+  while paused. See `examples/exp_airsim_multi_demo.yaml`.
+- A mock-injectable client makes the ENU/NED math CI-testable
+  without an AirSim install.
+
+**ROS 2** (`uav_nav_lab/sim/ros2_bridge.py`, requires `rclpy`) —
+publishes `geometry_msgs/Twist` on `/cmd_vel`, subscribes to
+`nav_msgs/Odometry` on `/odom` (and optional `std_msgs/Bool` on
+`/collision`), spins once per `dt`. Frames default to ENU per
+REP-103; set `frame: ned` for NED-speaking wrappers.
+
+- **AirSim over ROS 2**: `cmd_msg_type: airsim_vel_cmd` publishes
+  AirSim's ROS wrapper velocity message. `exp_airsim_ros2.yaml`
+  exercises AirSim through ROS 2 against the direct bridge —
+  spatial agreement checked via
+  `scripts/compare_spatial_runs.py`.
+- **LiDAR + cameras**: `sensor_msgs/PointCloud2` / `sensor_msgs/Image`
+  subscriptions populate the same `state.extra` keys as the AirSim
+  bridge, so the perception sensors (`pointcloud_occupancy` etc.)
+  consume both backends with no code change.
+- **Sim-time anchoring**: `use_sim_time: true` (+ optional
+  `clock_topic` and `sim_time_wall_timeout`) anchors `state.t` on
+  `/clock`, so PX4-SITL fast-forward and Gazebo `--lockstep` speed
+  the experiment by the same factor as the sim. The wall-clock
+  timeout protects the runner from a paused or crashed sim.
+- Mock-injectable adapter is CI-testable without `rclpy`.
 
 ## 🗺️ Roadmap
 
-- **ROS 2 ↔ AirSim validation**: run
-  `examples/exp_airsim_ros2_direct.yaml` and `examples/exp_airsim_ros2.yaml`
-  against the same AirSim scene, then check spatial agreement with
-  `scripts/compare_spatial_runs.py`.
-- **AirSim cliff limit case**: push `examples/exp_airsim_latency.yaml`
-  toward higher speed and obstacle density to find whether the dummy_3d
-  latency cliff reappears beyond SimpleFlight's smoothing regime
-  (`examples/exp_airsim_latency_limit.yaml`).
-- **AirSim ROS2 wrapper reset/teleport**: once the direct-vs-ROS2
-  parity run is measured, add a wrapper-specific reset path so repeated
-  ROS2 episodes can start from the same pose without manual scene setup.
+- **AirSim Δ-flip discriminating cell** — the dummy_3d multi-drone
+  Δ-flip (+11.4 pp) is bracketed but not directly measured on AirSim
+  across three altitude-stagger cells: ±2-4 m / ±1 m at ceiling,
+  uniform z=30 below the floor. Landing in the per-drone 60-90 %
+  band needs added Blocks static obstacles — either a lower-altitude
+  variant (z ≈ 8 where Blocks cubes are dense) or a perception path
+  with `LidarFront` on all drones + `pointcloud_occupancy`.
+- **AirSim multi-drone reset hang** — Blocks' RPC handler wedges
+  after 1-2 sequential multi-drone `client.reset()` calls. Worked
+  around with `scripts/run_airsim_multi_chunked.sh` (per-episode
+  Blocks bounce); root cause appears to be inside AirSim itself,
+  worth filing upstream.
+- **AirSim cliff limit case** — push `exp_airsim_latency_limit.yaml`
+  toward higher speed and obstacle density to find whether the
+  dummy_3d latency cliff reappears beyond SimpleFlight's smoothing
+  regime.
+- **AirSim-over-ROS-2 wrapper reset/teleport** — add a wrapper-
+  specific reset path so repeated ROS 2 episodes can start from the
+  same pose without manual scene setup.
 
 ## 📄 License
 
