@@ -59,6 +59,12 @@ every example YAML carries its own validated finding.**
 <tr>
 <td colspan="2" align="center"><i>AirSim multi-drone — 4 SimpleFlight quadrotors cross under <code>multi_drone_voxel</code> + the same MPC + CV peer prediction stack, driven via 4 <code>airsim_bridge</code> instances bound to <code>Drone1..Drone4</code>.</i></td>
 </tr>
+<tr>
+<td colspan="2"><img src="docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif" alt="Side-by-side AirSim 4-drone cross: MPC (left, n=16, h=30) finishes the crossing at 12.85 s with all four drones lockstep within 0.05 s. GPU MPPI (right, n=64, h=20, T=1.0) finishes at 17.65 s with per-drone final_t spreading 0.55 s — the same sample-cloud decorrelation visible in dummy_3d, now on AirSim physics." width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i>AirSim multi-drone planner head-to-head — same staggered-altitude crossing, MPC (left) vs GPU MPPI (right). Both reach 4/4 success; GPU MPPI's softmax across 64 rollouts is ~26 % slower (avg_v 2.76 vs 3.72 m/s) but decorrelates per-drone arrival times 0.05 s → 0.55 s — the same sample-cloud mechanism that flipped the dummy_3d coordination Δ from −1 pp to +5.2 pp, now visible on real Unreal physics. The n ≥ 30 paired AirSim re-run to confirm Δ-flip survival is the open follow-up — see <a href="docs/findings.md#airsim-multi-drone-parity-stack-runs-end-to-end-decorrelation-still-visible-at-44">findings.md</a>. Reproduce: <code>python scripts/record_airsim_multi_compare.py</code> (drives both <code>exp_airsim_multi_demo.yaml</code> + <code>exp_airsim_multi_demo_gpu_mppi.yaml</code> on the same running Blocks server, ffmpegs Drone1's FPV from each run into per-pane GIFs, then side-by-sides via <code>render_compare_gif.py</code>).</i></td>
+</tr>
 </table>
 
 </div>
