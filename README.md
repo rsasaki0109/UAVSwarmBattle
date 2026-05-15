@@ -314,16 +314,22 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   seeds let all 4 through). Same joint rate, very different failure
   shape — the n=30 pilot's "+5.2 pp" estimate was biased; the
   n=100 paired re-run more than doubles it.
-- **AirSim multi-drone n=30 paired** (`exp_airsim_multi_n30*.yaml`) —
-  Δ-flip portability check on Blocks. Both planners hit 100 % joint
-  success at the demo's staggered geometry (no obstacles, ±2-4 m
-  altitude), so the dummy_3d failure-level Δ-flip is unobservable
-  here — the scenario is too easy. The **trajectory-level** signal
-  IS preserved though: mean per-drone arrival spread per episode is
-  0.02 s (MPC) vs 0.55 s (GPU MPPI) across 30 paired episodes.
-  Settling the failure-level Δ-flip transferability requires a harder
-  Blocks geometry (uniform-altitude in progress; obstacles, more
-  drones future).
+- **AirSim multi-drone n=30 paired** (`exp_airsim_multi_n30*.yaml`,
+  `exp_airsim_multi_uniform_n30*.yaml`) — Δ-flip portability check
+  on Blocks at two crossing geometries:
+  - **Staggered altitude** (±2-4 m): both planners hit 100 % joint
+    success — scenario ceiling-limited, failure-level Δ-flip
+    unobservable. Trajectory-level signal preserved (mean per-drone
+    arrival spread 0.02 s MPC vs 0.55 s GPU MPPI).
+  - **Uniform altitude** (all z=30, 4-way conflict at the centre):
+    MPC holds **46.7 %** [30.2, 63.9] joint; GPU MPPI **collapses
+    to 0/30 = 0.0 %** joint (28.3 % per-drone vs 65.0 % MPC). McNemar
+    paired exact p ≈ 0.00012 — only AirSim cell where planners
+    statistically separate. GPU MPPI's softmax-conservative ~30 %-
+    slower commands leave drones at the (30,30,30) conflict centre
+    long enough for most to collide. **GPU MPPI is not a drop-in
+    replacement for MPC in tight-coupling deployments**, even when
+    it ties on dummy_3d obstacle-rich scenarios.
 - **AirSim bridge: pause-after-reset stale-collision fix** — the
   multi-drone reset path used to leave AirSim's cumulative
   `simGetCollisionInfo().has_collided` flag set to True at t=0 for

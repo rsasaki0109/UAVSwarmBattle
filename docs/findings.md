@@ -32,6 +32,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
+- [AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %](#airsim-multi-drone-uniform-altitude-n30-gpu-mppi-collapses-to-0--joint-while-mpc-holds-467-)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
@@ -1181,6 +1182,109 @@ Reproduce:
 ./run_airsim_multi_chunked.sh gpu_mppi 30 42 results/airsim_multi_n30_gpu_mppi
 python3 scripts/paired_analysis_airsim_multi.py \
     results/airsim_multi_n30_mpc results/airsim_multi_n30_gpu_mppi
+```
+
+
+### AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %
+
+`examples/exp_airsim_multi_uniform_n30.yaml` + `..._gpu_mppi.yaml` —
+same 4-way Blocks crossing as the staggered n=30 study above, but
+all four drones fly at the **same altitude z=30 m** so the crossing
+centre at (30,30,30) is a real 4-way conflict point rather than four
+parallel corridors at ±2-4 m of vertical separation. The n=1 demo
+YAML's own header warned this geometry is fragile; the n=30 paired
+result quantifies *how* fragile, and how differently the two
+planners cope.
+
+| planner               | per-drone (CI)       | joint (CI)          | indep⁴ | Δ over indep | mean final_t (succ only) |
+|---|---|---|---|---|---|
+| MPC      (n=16, h=30) | 78/120 = 65.0% [56.1, 72.9] | 14/30 = 46.7% [30.2, 63.9] | 17.9% | **+28.8 pp** | 13.29 s over 14/30 |
+| GPU MPPI (n=64, h=20) | 34/120 = 28.3% [21.0, 37.0] | **0/30 = 0.0%** [0.0, 11.4] | 0.6% | -0.6 pp | n/a (0 successes) |
+
+McNemar same-seed paired-joint: both-succ 0, MPC-only-succ **14**,
+GPU-only-succ **0**, neither-succ 16 — exact two-sided binomial
+p ≈ **0.00012** ($1/2^{13}$). The two planners are not
+statistically tied here; they are catastrophically different.
+
+Four readings, ordered by inferential strength:
+
+1. **Joint-success separates by 46.7 pp, McNemar p ≈ 0.00012.** This
+   is the only AirSim configuration we've measured where a paired
+   comparison rejects the null. At the easier staggered-altitude
+   geometry both planners ceiling at 100 %; on dummy_3d both ran at
+   ~77 % joint with the same indep⁴ structure flipped. At
+   uniform-altitude AirSim, GPU MPPI loses every paired episode it
+   doesn't tie on a both-fail seed.
+
+2. **Per-drone separates by 36.7 pp.** MPC commands 2.40 m/s through
+   the crossing and gets the bulk of its drones through cleanly;
+   GPU MPPI's softmax-averaged 1.87 m/s (the same 30 % speed gap as
+   the single-drone parity study) leaves drones at the conflict
+   point ~30 % longer, and the per-drone collision rate climbs from
+   35.0 % (MPC) to **71.7 %** (GPU MPPI).
+
+3. **GPU MPPI's collapse is per-drone-rate-driven, not coordination-
+   Δ-driven.** GPU MPPI's measured joint (0.0 %) sits **at** its
+   indep⁴ prediction (0.6 %, Δ = -0.6 pp); the dummy_3d-style
+   "failures cluster within seeds" signal isn't measurable here
+   because there are no episodes with per-drone successes to compare
+   to. The geometric coupling at (30,30,30) is dominating: GPU
+   MPPI's slow commanded speed simply puts drones in front of each
+   other long enough that *most* of them collide most of the time.
+   The Δ-flip mechanism from dummy_3d (softmax amplifying seed
+   sensitivity through a shared peer-prediction world model) needs a
+   regime where the per-drone rate is high enough to leave indep⁴
+   measurable headroom — dummy_3d's 90.0 % gives 9.0 pp of headroom
+   for clustering; uniform-altitude AirSim's 28.3 % puts the indep⁴
+   prediction below the joint success-rate floor.
+
+4. **MPC's Δ over indep⁴ is +28.8 pp — but this Δ is geometric, not
+   behavioural.** All 16 MPC failed episodes have ≥2 drones colliding
+   (10× 2-fail, 2× 3-fail, 4× 4-fail; no 1-fail episodes). The
+   crossing centre forces any drone that doesn't clear by time T to
+   share its tile with at least one peer that also didn't clear,
+   *regardless of planner behaviour*. The dummy_3d MPC's +0.8 pp Δ
+   came from a scenario where single-drone failures (one drone hits
+   a static obstacle the others avoid) were geometrically possible;
+   uniform-altitude AirSim's bottleneck has no equivalent "single-
+   drone failure" mode. So this number says "MPC's failures are
+   strongly clustered" — but the clustering is mostly the geometry
+   doing it, not the planner. We cannot attribute the +28.8 pp Δ
+   to MPC the way the +11.4 pp on dummy_3d was attributable to GPU
+   MPPI's softmax.
+
+Combined reading: the dummy_3d Δ-flip transferability question
+("does GPU MPPI's coordination-Δ advantage survive AirSim?") cannot
+be answered cleanly on this scenario either, but for the *opposite*
+reason from the staggered n=30: the staggered geometry was too easy
+(both at 100 %, Δ measurement degenerate); uniform geometry is too
+*hard for GPU MPPI* (its per-drone rate collapses 90 → 28 %, indep⁴
+falls below the floor). The right discriminating AirSim setup for
+the Δ-flip mechanism is somewhere between: tight enough to put both
+planners somewhere in the 60-90 % per-drone band, where indep⁴ has
+real headroom and the softmax-amplification signal can register.
+Adding Blocks static obstacles to the staggered scenario is the
+next obvious cell to try — separate future-work TODO.
+
+What the result **does** answer cleanly: GPU MPPI is not a drop-in
+replacement for MPC in tight-coupling deployments. The same softmax
+conservatism that smooths typical-case behaviour and gives the
+attractive 100 %-at-3.5-ms 3D Pareto cell (see §"3D Pareto (post-
+fix)") destroys joint success at any geometry where speed-through-
+bottleneck dominates inter-agent coordination. Plan accordingly when
+choosing between planner families for a multi-agent mission.
+
+Reproduce:
+```
+scripts/run_airsim_multi_chunked.sh mpc      30 42 \
+    results/airsim_multi_uniform_n30_mpc \
+    examples/exp_airsim_multi_uniform_n30.yaml
+scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
+    results/airsim_multi_uniform_n30_gpu_mppi \
+    examples/exp_airsim_multi_uniform_n30_gpu_mppi.yaml
+python3 scripts/paired_analysis_airsim_multi.py \
+    results/airsim_multi_uniform_n30_mpc \
+    results/airsim_multi_uniform_n30_gpu_mppi
 ```
 
 
