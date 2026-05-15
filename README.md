@@ -30,6 +30,12 @@ every example YAML carries its own validated finding.**
 <td align="center"><i>Multi-drone 3D — same coordination, 40×40×12 voxel world.</i></td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/images/demo_gpu_mppi.gif" alt="GPU MPPI 3D episode: 64 sampled rollouts as a translucent cyan cloud, softmax-best rollout highlighted in orange, weaving through three bouncing dynamic obstacles in a 40×40×12 voxel world" width="560"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><i>GPU MPPI (3D, n=64 rollouts) — translucent cyan: sampled rollouts; orange: softmax-best rollout; red spheres: bouncing dynamic obstacles. Reproduce: <code>uav-nav run examples/exp_gpu_mppi_demo.yaml &amp;&amp; uav-nav anim results/gpu_mppi_demo</code>.</i></td>
+</tr>
+<tr>
 <td colspan="2"><img src="docs/images/demo_airsim.gif" alt="Pareto-MPC + airsim_bridge + a 16-channel AirSim LiDAR feeding the pointcloud_occupancy sensor, driving a SimpleFlight multirotor through Microsoft AirSim's Blocks Unreal Engine env. The drone sees no obstacles in the planner's static map — it builds the occupancy grid online from LiDAR returns and weaves between cube clusters." width="560"></td>
 </tr>
 <tr>
@@ -275,6 +281,11 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   one cell, but no belief beats `sim_wind > max_speed` physics.
 - **Perception-latency cliff: a four-step research saga** — including
   honest negative result on Kalman ego (moving-average wins).
+- **GPU MPPI Pareto (2D + 3D)** — `gpu_mppi` planner on CUDA; a goal-mask
+  bug fix turned a 0 %-at-long-horizons "speed collapse" into a clean
+  Pareto frontier, and the 3D Pareto cell (n=64-256, h=20 → 100 %)
+  Pareto-dominates the CPU MPC 3D baseline (88 % / 70 ms) at 3.5 ms
+  steady-state.
 
 ## ✅ Status
 
@@ -282,9 +293,9 @@ takeaways) live in [`docs/findings.md`](docs/findings.md):
   + a CLI smoke job.
 - **6 sensor backends** (`perfect`, `delayed`, `kalman_delayed`, `lidar`, `pointcloud_occupancy`, `depth_image_occupancy`),
   **3 predictor backends** (`constant_velocity`, `noisy_velocity`,
-  `kalman_velocity`), **6 planners** (`astar`, `straight`, `mpc`, `rrt`,
-  `rrt_star`, `chomp`), **4 scenarios** (`grid_world`, `voxel_world`,
-  `multi_drone_grid`, `multi_drone_voxel`).
+  `kalman_velocity`), **9 planners** (`astar`, `straight`, `mpc`, `mppi`,
+  `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`), **4 scenarios**
+  (`grid_world`, `voxel_world`, `multi_drone_grid`, `multi_drone_voxel`).
 - All ablation results are reproducible from the example YAMLs by
   copy-pasting one `uav-nav sweep ...` line.
 

@@ -1,0 +1,70 @@
+# GPU MPPI 3D Pareto sweep — n_samples × horizon on the same 3D voxel
+# world as `exp_3d_predictive.yaml` / `exp_compare_mppi_3d.yaml`.
+# Counterpart to the 2D `exp_gpu_mppi_pareto.yaml` so we can read off
+# whether the GPU MPPI Pareto knee shifts the same way the CPU MPC one
+# did when moving from 2D to 3D (n_samples preference flipped down).
+#
+# Sweep:
+#   uav-nav sweep examples/exp_gpu_mppi_pareto_3d.yaml \
+#     --param planner.n_samples=32,64,128,256 \
+#     --param planner.horizon=20,40,60 \
+#     --param num_episodes=10
+
+name: gpu_mppi_pareto_3d
+seed: 42
+num_episodes: 10
+
+scenario:
+  type: voxel_world
+  size: [40, 40, 12]
+  start: [2.0, 2.0, 6.0]
+  goal: [37.0, 37.0, 6.0]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 60
+    seed: 7
+  dynamic_obstacles:
+    - start: [20.0, 8.0, 6.0]
+      velocity: [0.0, 5.0, 0.5]
+      reflect: true
+      radius: 0.8
+    - start: [8.0, 25.0, 5.0]
+      velocity: [4.0, 0.0, -0.4]
+      reflect: true
+      radius: 0.8
+    - start: [28.0, 20.0, 7.0]
+      velocity: [-3.0, 2.0, 0.3]
+      reflect: true
+      radius: 0.8
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 60
+  dt_plan: 0.05
+  n_samples: 128
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/gpu_mppi_pareto_3d

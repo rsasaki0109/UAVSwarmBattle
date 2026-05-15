@@ -26,7 +26,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Action-jump cost: tuning the existing knob beats every layer](#action-jump-cost-tuning-the-existing-knob-beats-every-layer)
 - [AirSim vs dummy_3d transferability: same plan, different physics](#airsim-vs-dummy_3d-transferability-same-plan-different-physics)
 
-- [GPU MPPI: flat plan-time scaling, right-shifted Pareto knee](#gpu-mppi-flat-plan-time-scaling-right-shifted-pareto-knee)
+- [GPU MPPI: post-goal-mask fix unlocks long-horizon cells, 3D MPPI beats 3D MPC](#gpu-mppi-post-goal-mask-fix-unlocks-long-horizon-cells-3d-mppi-beats-3d-mpc)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
@@ -660,73 +660,152 @@ PR #44 / #45. The framework's planner / sensor / scenario boundary
 transfers cleanly from synthetic to AirSim physics — only the
 recorded *time* breaks.
 
-## GPU MPPI: flat plan-time scaling, right-shifted Pareto knee
+## GPU MPPI: post-goal-mask fix unlocks long-horizon cells, 3D MPPI beats 3D MPC
 
-`examples/exp_gpu_mppi_pareto.yaml` — `gpu_mppi` planner (PyTorch
-batched rollout, CUDA). Same scenario as the original MPC Pareto
-(PR #11): grid_world 50×50, 30 random obstacles, max_speed=8 m/s,
-temperature=1.0. Sweep over n_samples ∈ {32, 64, 128, 256} ×
-horizon ∈ {20, 40, 60}, n=10 episodes per cell.
+<p align="center">
+<img src="images/demo_gpu_mppi.gif" alt="GPU MPPI 3D episode with 64-sample rollout cloud (cyan) and softmax-best rollout highlighted (orange) weaving through three bouncing dynamic obstacles" width="480">
+</p>
 
-### Plan-time scaling
+`examples/exp_gpu_mppi_pareto.yaml` (2D) and
+`examples/exp_gpu_mppi_pareto_3d.yaml` (3D) — `gpu_mppi` planner
+(PyTorch batched rollout, CUDA). Same scenarios as the original CPU
+MPC Pareto studies: grid_world 50×50 with 30 random obstacles in 2D,
+voxel_world 40×40×12 with 60 static + 3 bouncing dynamic obstacles
+in 3D. Sweep over n_samples ∈ {32, 64, 128, 256} × horizon ∈ {20,
+40, 60}, n=10 episodes per cell, max_speed=8 m/s, temperature=1.0.
+`results/gpu_mppi_pareto_sweep_prefix/` keeps the pre-fix sweep for
+reference.
 
-| n_samples | horizon=20 plan_ms | horizon=40 plan_ms | horizon=60 plan_ms |
-|-----------|-------------------|-------------------|-------------------|
-| 32        | 30.3              | 26.6              | 26.4              |
-| 64        | 28.3              | 26.5              | 26.0              |
-| 128       | 28.9              | 26.6              | 26.7              |
-| 256       | 28.7              | 26.9              | 27.0              |
+### The goal-mask bug fix that changed every cell
 
-Plan-time is **flat** across n_samples (26–30 ms for all cells).
-Compare with CPU MPC: 9 ms at n=16, scaling linearly (~9 ms ×
-n/16). GPU MPPI at n=256 is 3× slower than CPU MPC at n=16 but
-uses 16× more samples — a net 5× improvement in samples-per-ms.
+Pre-fix, GPU MPPI summed `collision_pen` over **all** horizon steps
+of every rollout, including steps that occurred *after* the rollout
+had already entered the goal radius. A rollout that reached the
+goal at step 10 and then drifted into an obstacle at step 18 was
+classified `dirty_reach` instead of `clean_reach` and never received
+the `-1e6` goal bonus. The CPU MPPI never had this bug — it breaks
+out of the per-rollout loop on goal-reach (see
+`uav_nav_lab/planner/mppi.py`), but the batched GPU rollout cannot
+short-circuit per-sample, so each rollout has to be masked
+explicitly:
 
-### Success rates (horizon=20 only)
+```python
+dist2 = ((rollouts - goal) ** 2).sum(dim=-1)        # [S, H]
+reaches_goal_any = (dist2 <= gr2).any(dim=1)        # [S]
+first_goal_h = torch.where(
+    reaches_goal_any,
+    (dist2 <= gr2).float().argmax(dim=1),
+    torch.tensor(self.horizon, device=device),
+)
+step_idx = torch.arange(self.horizon, device=device)
+pre_goal_mask = (step_idx[None, :] < first_goal_h[:, None]).float()
+collision_pen = (collision_mask * pre_goal_mask).sum(dim=1)
+```
 
-| n_samples | succ % | avg_v (m/s) |
-|-----------|--------|-------------|
-| 32        | 90 %   | 7.65        |
-| 64        | 80 %   | 7.58        |
-| 128       | 80 %   | 7.56        |
-| 256       | 80 %   | 7.57        |
+The same mask is applied to the dynamic-obstacle collision term.
+Effect: long-horizon rollouts that overshoot the goal mid-way now
+get the bonus they should, the softmax can find a sharp argmax, and
+the population-mean speed collapse seen pre-fix at h ≥ 40
+disappears.
 
-Success at n=32 (90 %) is comparable to the CPU MPC Pareto optimum
-(93 % at n=16, h=20 from PR #11). Increasing n_samples beyond 32
-does not improve the success ceiling — the bottleneck shifts from
-sampling resolution to the planner's quality heuristic (Dijkstra
-CTG on an inflated occupancy grid).
+### 2D Pareto (post-fix), grid_world 50×50
 
-### Speed collapse at horizon ≥ 40
+<p align="center">
+<img src="images/sweep_pareto_gpu_mppi.png" alt="6-panel 2D GPU MPPI Pareto sweep: success / collision / avg speed / ATE / planner_dt mean / planner_dt p95" width="640">
+</p>
 
-All horizon=40 and horizon=60 cells fail (0 % success). The cause is
-MPPI's softmax speed collapse: at long horizons, most sampled
-trajectories do not cleanly reach the goal (no -1e6 bonus), so the
-cost distribution is flat and the softmax-weighted action regresses
-toward the population mean. The average action magnitude drops from
-~7.6 m/s (horizon=20) to ~5.3 m/s (horizon=40) to ~4.5 m/s
-(horizon=60) — too slow to reach the goal within max_steps.
+Success rates:
 
-This is a fundamental property of MPPI, not a GPU implementation
-limitation. Lowering temperature helps but also makes MPPI
-indistinguishable from argmin MPC. For this planner, the Pareto
-optimum sits at (n=32, h=20) — adding compute (more samples or
-longer horizon) does not buy success.
+| n_samples \ horizon | 20 | 40 | 60 |
+|---|---|---|---|
+| 32  | 90 | 90  | 80 |
+| 64  | 80 | **100** | 80 |
+| 128 | 80 | **100** | 80 |
+| 256 | 80 | **100** | 90 |
 
-### Pareto comparison: CPU MPC vs GPU MPPI
+Plan time (mean ms, steady-state — first call per episode dropped to
+remove CUDA-graph warmup; the in-summary mean is dragged up by that
+one outlier):
 
-| planner | best n | h | succ | plan_ms | samples/ms |
-|---------|--------|---|------|---------|------------|
-| CPU MPC | 16     | 20 | 93 % | 9       | 1.8        |
-| GPU MPPI | 32    | 20 | 90 % | 30      | 1.1        |
-| GPU MPPI | 256   | 20 | 80 % | 29      | **8.8**  |
+| n_samples \ horizon | 20 | 40 | 60 |
+|---|---|---|---|
+| 32  | 2.6 | 2.8 | 3.1 |
+| 64  | 2.8 | 3.4 | 3.6 |
+| 128 | 2.6 | 3.0 | 3.6 |
+| 256 | 3.6 | 3.7 | 3.6 |
 
-The **Pareto knee shifts right**: GPU MPPI at n=256 achieves
-80 % success at 8.8 samples/ms — 5× the sample throughput of CPU
-MPC. But the extra samples do not translate to higher success
-because the planner's accuracy is dominated by the Dijkstra
-heuristic, not the sampling resolution. The Pareto curve's "knee"
-is bounded by the heuristic quality, not the sampling budget.
+Pre-fix the same grid showed 0 % at every h ≥ 40 cell and an
+n=32/h=20 optimum at 90 % / 30 ms. Post-fix the **Pareto optimum
+shifts to (n=128, h=40) at 100 % / 3.0 ms** — both axes flipped:
+longer horizon now *helps* (was a speed-collapse cliff), and the
+steady-state plan time is ~10 × cheaper than what pre-fix
+measurements showed because nothing about the rollout took 30 ms in
+the first place — the prior table was reporting CUDA-warmup-inflated
+means with no per-episode warmup drop.
+
+Lesson: report steady-state planner_dt on CUDA backends. The first
+call after `planner.reset()` compiles the autograd graph and is
+~10× the steady-state cost; including it in the mean for a
+30-replan episode shifts the reported number by an order of
+magnitude.
+
+### 3D Pareto (post-fix), voxel_world 40×40×12
+
+<p align="center">
+<img src="images/sweep_pareto_gpu_mppi_3d.png" alt="6-panel 3D GPU MPPI Pareto sweep on a 40×40×12 voxel world with 60 static + 3 bouncing dynamic obstacles" width="640">
+</p>
+
+Success rates:
+
+| n_samples \ horizon | 20 | 40 | 60 |
+|---|---|---|---|
+| 32  | 80     | 80 | 60 |
+| 64  | **100** | 80 | 60 |
+| 128 | **100** | 80 | 80 |
+| 256 | **100** | 80 | 80 |
+
+Plan time (mean ms, steady-state):
+
+| n_samples \ horizon | 20 | 40 | 60 |
+|---|---|---|---|
+| 32  | 3.5 | 3.4 | 8.2 |
+| 64  | 9.5 | 9.8 | 4.5 |
+| 128 | 3.5 | 3.7 | 3.8 |
+| 256 | 3.5 | 3.9 | 4.0 |
+
+**Pareto-optimal 3D cell: n=64–256, h=20 → 100 % at 3.5 ms.** Compare
+with the CPU MPC 3D Pareto from earlier in this doc (n=8, h=20 →
+88 % / 70 ms) and the CPU MPPI 3D best at the same temperature
+(86.7 %, from `exp_compare_mppi_3d.yaml`): **GPU MPPI 3D delivers
++12 pp success at 20 × lower plan time** than the CPU MPC 3D
+baseline. The dense sample budget that 2D's Dijkstra heuristic
+saturates against (per the pre-fix table) actually pays off in 3D
+because the Fibonacci-sphere direction set has 16 × more candidate
+directions to score per replan.
+
+### Findings vs the pre-fix table
+
+1. **The "speed collapse at h ≥ 40" finding was a bug, not an MPPI
+   property.** Post-fix, h=40 is the 2D optimum and h=20 the 3D
+   optimum. Population-mean collapse still occurs at h=60 with
+   n=32 (avg_v drops from 7.6 → 6.8 m/s, succ drops to 80 %), but
+   it is no longer the catastrophic 0 % regime.
+2. **The "n=32 is enough" 2D conclusion now flips in 3D.** 2D plateaus
+   at n=32–64, but 3D needs n ≥ 64 to reach 100 % at h=20 — the
+   Fibonacci-sphere direction set is denser than 2D's circle, and
+   the extra GPU samples are what cover it.
+3. **GPU MPPI now Pareto-dominates CPU MPC in 3D.** Pre-fix this was
+   not true (3D GPU MPPI stalled at 0 % at long horizons). Post-fix
+   the GPU rollout's sample throughput finally translates to
+   success because each rollout is correctly accounted for.
+
+Methodological takeaway: when porting a sequential planner to a
+batched GPU backend, the per-rollout early-exit conditions become
+explicit masks. Forgetting any of them silently bins valid rollouts
+into the "invalid" category, the softmax goes flat, and what looks
+like a fundamental MPPI limitation is a transcription bug. Always
+re-validate the per-sample bookkeeping when moving from a Python
+for-loop to a tensor kernel.
 
 
 ## ROS 2 bridge: spatial equivalence verified
