@@ -86,6 +86,9 @@ validated finding — so the file is the artifact, not a Notion page.
 git clone https://github.com/rsasaki0109/uav-nav-lab
 cd uav-nav-lab
 pip install -e '.[dev,viz]'        # numpy + pyyaml + matplotlib + pytest
+# Optional heavier stacks:
+#   pip install -e '.[gpu]'         # PyTorch for planner.type=gpu_mppi
+#   pip install -e '.[rl]'          # gymnasium + stable-baselines3
 pytest -q                          # full suite runs in seconds
 
 uav-nav run     examples/exp_basic.yaml

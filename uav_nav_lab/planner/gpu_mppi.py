@@ -11,11 +11,27 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError as e:  # pragma: no cover - exercised in subprocess smoke test
+    torch = None  # type: ignore[assignment]
+    _TORCH_IMPORT_ERROR: ImportError | None = e
+else:
+    _TORCH_IMPORT_ERROR = None
 
 from ..predictor import Predictor, build_predictor
 from ._grid import dijkstra_cost_to_go, inflate_obstacles, sample_unit_directions
 from .base import PLANNER_REGISTRY, Plan, Planner
+
+
+def _require_torch() -> Any:
+    if torch is None:
+        raise SystemExit(
+            "gpu_mppi requires PyTorch. Install it with `pip install -e '.[gpu]'` "
+            "or choose a non-GPU planner such as `mpc` / `mppi`."
+        ) from _TORCH_IMPORT_ERROR
+    return torch
 
 
 def _to_tensor(x: np.ndarray, device: torch.device) -> torch.Tensor:
@@ -66,7 +82,8 @@ class GPUMPPIPlanner(Planner):
         self._static_occ_inflated: np.ndarray | None = None
         self._ctg_cache: np.ndarray | None = None
         self._ctg_cache_goal: tuple[int, ...] | None = None
-        self._device = torch.device(device if torch.cuda.is_available() else "cpu")
+        torch_mod = _require_torch()
+        self._device = torch_mod.device(device if torch_mod.cuda.is_available() else "cpu")
 
     @classmethod
     def from_config(cls, cfg: Mapping[str, Any]) -> "GPUMPPIPlanner":
@@ -226,6 +243,13 @@ class GPUMPPIPlanner(Planner):
         collision_mask = occ_collision + oob.float()  # OOB = collision
 
         collision_pen = collision_mask.sum(dim=1)  # [S]
+        if pred_traj is not None and r2_arr is not None:
+            pred_t = _to_tensor(pred_traj, device)  # [O, H, D]
+            r2_t = _to_tensor(r2_arr, device)  # [O]
+            diffs = rollouts[:, None, :, :] - pred_t[None, :, :, :]  # [S, O, H, D]
+            sep2 = (diffs * diffs).sum(dim=-1)  # [S, O, H]
+            dyn_collision = (sep2 <= r2_t[None, :, None]).any(dim=1).float()  # [S, H]
+            collision_pen = collision_pen + dyn_collision.sum(dim=1)
 
         # CTG: gather cost-to-go values at each rollout position
         if ndim == 2:
