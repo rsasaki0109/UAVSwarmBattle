@@ -213,6 +213,9 @@ planner:
   w_obs: 200.0
   w_smooth: 0.05
   temperature: 1.0
+  viz_rollouts: 8       # subsample per drone for anim overlay —
+                        # 4 drones × 8 = 32 cyan lines / frame keeps
+                        # the multi-drone rollout cloud readable
 
 sensor:
   type: perfect

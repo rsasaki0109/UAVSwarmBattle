@@ -56,6 +56,7 @@ class GPUMPPIPlanner(Planner):
         w_obs: float = 100.0,
         w_smooth: float = 0.05,
         temperature: float = 1.0,
+        viz_rollouts: int = 24,
         predictor: Predictor | None = None,
         device: str = "cuda",
     ) -> None:
@@ -75,6 +76,7 @@ class GPUMPPIPlanner(Planner):
         if temperature <= 0:
             raise ValueError(f"temperature must be > 0; got {temperature!r}")
         self.temperature = float(temperature)
+        self.viz_rollouts = int(viz_rollouts)
         self._predictor: Predictor = (
             predictor if predictor is not None else build_predictor(None)
         )
@@ -102,6 +104,7 @@ class GPUMPPIPlanner(Planner):
             w_obs=float(cfg.get("w_obs", 100.0)),
             w_smooth=float(cfg.get("w_smooth", 0.05)),
             temperature=float(cfg.get("temperature", 1.0)),
+            viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
             device=str(cfg.get("device", "cuda")),
         )
@@ -322,7 +325,7 @@ class GPUMPPIPlanner(Planner):
         # prepended with `obs` so each polyline starts at the drone. Stored
         # in `meta` for the recorder; cost is ~K * (H+1) * D floats per
         # replan, dominated by JSON overhead.
-        k_vis = min(24, self.n_samples)
+        k_vis = min(self.viz_rollouts, self.n_samples)
         if k_vis > 0:
             stride = max(1, self.n_samples // k_vis)
             rollouts_vis_t = rollouts[::stride][:k_vis]
