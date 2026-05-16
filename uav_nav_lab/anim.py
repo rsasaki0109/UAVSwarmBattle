@@ -446,6 +446,8 @@ def _animate_episode_multi_3d(
                "tab:brown", "tab:pink", "tab:olive"]
     traj_lines: list[Any] = []
     drone_pts: list[Any] = []
+    rollout_pools: list[list[Any]] = []  # per-drone list of rollout artist lines
+    best_rollout_lines: list[Any] = []   # per-drone best-rollout artist
     for ep in drones_eps:
         i = int(ep["meta"].get("drone_id", 0))
         color = palette[i % len(palette)]
@@ -463,6 +465,24 @@ def _animate_episode_multi_3d(
                        edgecolors="black", linewidths=0.5)
             ax.scatter(*d.goal, c=color, s=140, marker="*",
                        edgecolors="black", linewidths=0.5)
+        # Pre-allocate rollout-overlay artists per-drone, sized by this
+        # drone's largest replan. Per-drone cyan tint = washed palette
+        # colour blended toward cyan for the sample cloud; best rollout
+        # gets a slightly thicker, brighter line in the drone's palette.
+        replans = ep.get("replans", []) or []
+        rollouts_max = max(
+            (len(r.get("rollouts") or []) for r in replans),
+            default=0,
+        )
+        pool = [
+            ax.plot([], [], [], "-", color=color, lw=0.5, alpha=0.18, zorder=2)[0]
+            for _ in range(rollouts_max)
+        ]
+        rollout_pools.append(pool)
+        (best_line,) = ax.plot(
+            [], [], [], "-", color=color, lw=1.1, alpha=0.85, zorder=3,
+        )
+        best_rollout_lines.append(best_line)
 
     title = ax.set_title("")
     ax.set_xlabel("x")
@@ -470,11 +490,52 @@ def _animate_episode_multi_3d(
     ax.set_zlabel("z")
     ax.legend(loc="upper left", fontsize=7)
 
+    # Dynamic-obstacle replay (same approach as the single-drone 3D anim).
+    dyn_specs = list(cfg.scenario.get("dynamic_obstacles", []) or [])
+    bounds = (nx * res, ny * res, nz * res)
+    dyn_scatter = ax.scatter([], [], [], c="red", s=80, alpha=0.6, edgecolors="black", linewidths=0.5)
+
+    def _dyn_at_step_index(j: int) -> tuple[list[float], list[float], list[float]]:
+        if not dyn_specs:
+            return [], [], []
+        xs: list[float] = []
+        ys: list[float] = []
+        zs: list[float] = []
+        for spec in dyn_specs:
+            pos = list(map(float, spec["start"]))
+            vel = list(map(float, spec.get("velocity", [0, 0, 0])))
+            reflect = bool(spec.get("reflect", True))
+            for _ in range(j):
+                for k in range(3):
+                    pos[k] += vel[k] * dt
+                    if reflect:
+                        if pos[k] < 0:
+                            pos[k] = -pos[k]
+                            vel[k] = -vel[k]
+                        elif pos[k] > bounds[k]:
+                            pos[k] = 2 * bounds[k] - pos[k]
+                            vel[k] = -vel[k]
+            xs.append(pos[0])
+            ys.append(pos[1])
+            zs.append(pos[2])
+        return xs, ys, zs
+
+    def _replan_at_or_before(replans: list[dict], cur_t: float) -> dict | None:
+        chosen: dict | None = None
+        for r in replans:
+            if r["t"] > cur_t + 1e-9:
+                break
+            if r.get("rollouts") is not None:
+                chosen = r
+        return chosen
+
     n_frames = len(frame_indices)
 
     def update(idx_in_frames: int):
         i = frame_indices[idx_in_frames]
-        for ep, line, pt in zip(drones_eps, traj_lines, drone_pts):
+        for ep, line, pt, pool, best_line in zip(
+            drones_eps, traj_lines, drone_pts, rollout_pools, best_rollout_lines
+        ):
             steps = ep["steps"]
             j = min(i, len(steps) - 1)
             tx = [steps[k]["true_pos"][0] for k in range(j + 1)]
@@ -484,6 +545,34 @@ def _animate_episode_multi_3d(
             line.set_3d_properties(tz)
             pt._offsets3d = ([tx[-1]], [ty[-1]], [tz[-1]])
 
+            # Rollout overlay for this drone (if it logged rollouts).
+            replans = ep.get("replans", []) or []
+            cur_replan = (
+                _replan_at_or_before(replans, steps[j]["t"]) if pool else None
+            )
+            rolls = (cur_replan.get("rollouts") if cur_replan else None) or []
+            best_idx = (
+                int(cur_replan.get("best_rollout_idx", -1)) if cur_replan else -1
+            )
+            for k, rl_line in enumerate(pool):
+                if k < len(rolls):
+                    pts = rolls[k]
+                    rl_line.set_data([p[0] for p in pts], [p[1] for p in pts])
+                    rl_line.set_3d_properties([p[2] for p in pts])
+                else:
+                    rl_line.set_data([], [])
+                    rl_line.set_3d_properties([])
+            if 0 <= best_idx < len(rolls):
+                pts = rolls[best_idx]
+                best_line.set_data([p[0] for p in pts], [p[1] for p in pts])
+                best_line.set_3d_properties([p[2] for p in pts])
+            else:
+                best_line.set_data([], [])
+                best_line.set_3d_properties([])
+
+        dx, dy, dz = _dyn_at_step_index(i)
+        dyn_scatter._offsets3d = (dx, dy, dz)
+
         ax.view_init(elev=22.0, azim=-60.0 + (idx_in_frames / max(1, n_frames - 1)) * 120.0)
         outcomes = [e.get("outcome", "?") for e in drones_eps]
         joint = "all_success" if all(o == "success" for o in outcomes) else "mixed"
@@ -491,7 +580,11 @@ def _animate_episode_multi_3d(
             f"ep {drones_eps[0]['meta']['episode']:03d}  joint={joint}  "
             f"t={i * dt:.2f}s"
         )
-        return (*traj_lines, *drone_pts, title)
+        all_rollouts: list[Any] = []
+        for pool in rollout_pools:
+            all_rollouts.extend(pool)
+        return (*traj_lines, *drone_pts, *all_rollouts,
+                *best_rollout_lines, dyn_scatter, title)
 
     anim = animation.FuncAnimation(
         fig, update, frames=n_frames, interval=1000 / fps, blit=False
