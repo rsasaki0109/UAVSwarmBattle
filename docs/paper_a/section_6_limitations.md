@@ -13,14 +13,39 @@ removing it. Altitude-only AirSim cells bracket the dummy_3d regime
 but do not reproduce it: non-zero z-spread ceilings both planners at
 100 % joint success, while uniform z collapses GPU MPPI to 0/30 joint
 because its slower softmax commands keep drones at the physical
-bottleneck too long. The new static-cube AirSim cell closes a different
-gap: it demonstrates a significant failure-level planner separation
-under real AirSim collision geometry (GPU MPPI 30/30 joint vs MPC
-22/30, McNemar p ≈ 0.008). However, it still does not reproduce the
-exact §3 signature, because GPU MPPI reaches the 100 % ceiling and
-therefore has Δ = 0 by construction. A static-cube density sweep that
-also drops GPU MPPI into the 60-90 % per-drone band remains necessary
-to test the joint-tie / larger-GPU-Δ mechanism on AirSim directly.
+bottleneck too long. The static-cube AirSim cell (§4.4.3) closes a
+different gap: it demonstrates a significant failure-level planner
+separation under real AirSim collision geometry (GPU MPPI 30/30 joint
+vs MPC 22/30, McNemar p ≈ 0.008). The density-swept extension
+(§4.4.4, `base_ew06`) drops GPU MPPI off ceiling at last and
+re-measures $\Delta$ at tied per-drone rates. The qualitative finding
+is that the $\Delta$-flip mechanism transfers but its sign reverses:
+on AirSim it is MPC, not GPU MPPI, that exhibits a multi-drone
+cluster failure mode. The shared structural claim (tied per-drone,
+$\Delta$ differentiates) survives the sim-backend change; the
+deployment-relevant claim ("GPU MPPI's softmax is a joint-coordination
+liability") does not.
+
+Tied to that result is a separate measurement-stability limitation we
+surfaced and quantified rather than worked around. The AirSim
+`base_ew06` cell has substantial **run-to-run** failure-rate
+variability that is wider than a single n=50 paired study's Wilson CI
+predicts. Three independent fresh paired batches of n=15 each
+(§4.4.4 table) show the multi-drone cluster mode reproducing at
+0/15-3/15 rate, and the McNemar direction itself reversing across
+batches — batch 2 favors GPU MPPI, batch 3 favors MPC, batch 1 ties.
+The 3-batch combined n=45 study gives joint success tied at 86.7 %
+and McNemar $p \approx 0.77$, contradicting the single n=50 study's
+GPU-favored reading. The robust paper-grade findings are therefore
+the *qualitative* claims: only MPC has the central-crossing
+drone-drone cluster mode (collision-object trace confirms drones 1
+and 2 with empty `object_name` = vehicle-vehicle collision); GPU
+MPPI's softmax avoids it. The *quantitative* "which planner wins
+joint success" answer is environment-sensitive (GPU thermal state,
+host load, AirSim physics tick jitter) and a single n=50 measurement
+is insufficient to fix it. Closing the McNemar with statistical
+certainty would require either $n \geq 200$ paired or a
+controlled-environment harness — both out of scope here.
 
 The AirSim infrastructure itself also imposes constraints. Multi-drone
 `client.reset()` can wedge after one or two sequential resets in
