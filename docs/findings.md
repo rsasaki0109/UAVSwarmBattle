@@ -34,6 +34,8 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
 - [AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %](#airsim-multi-drone-uniform-altitude-n30-gpu-mppi-collapses-to-0--joint-while-mpc-holds-467-)
 - [AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m](#airsim-multi-drone-1-m-mid-stagger-n30-still-ceiling-limited-cliff-between-0-and-1-m)
+- [AirSim multi-drone static-cube discriminating cell n=30: GPU MPPI clears every seed while MPC drops paired seeds](#airsim-multi-drone-static-cube-discriminating-cell-n30-gpu-mppi-clears-every-seed-while-mpc-drops-paired-seeds)
+- [AirSim multi-drone base_ew06 density-sweep n=30: Δ-flip sign reverses — MPC is the clustering planner on AirSim](#airsim-multi-drone-base_ew06-density-sweep-n30-δ-flip-sign-reverses--mpc-is-the-clustering-planner-on-airsim)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
@@ -1371,6 +1373,202 @@ python3 scripts/paired_analysis_airsim_multi.py \
     results/airsim_multi_mid_n30_mpc \
     results/airsim_multi_mid_n30_gpu_mppi
 ```
+
+
+### AirSim multi-drone static-cube discriminating cell n=30: GPU MPPI clears every seed while MPC drops paired seeds
+
+`examples/exp_airsim_multi_discriminating_n30.yaml` +
+`..._gpu_mppi.yaml` — first AirSim cell that puts a planner in the
+60-90 % per-drone band using spawned Blocks cube geometry rather than
+altitude-only tightening. The bridge now accepts
+`simulator.static_obstacles` and spawns `1M_Cube_Chamfer` meshes after
+reset; the scenario carries matching `obstacles.boxes` for planner
+occupancy. Final tuned cell uses four east/west pillars plus one
+north/south pillar, z = 26/28/30/32, south lane x = 26, `inflate: 3`.
+
+| planner               | per-drone (CI)       | joint (CI)          | indep⁴ | Δ over indep | mean final_t |
+|---|---|---|---|---|---|
+| MPC      (n=16, h=30) | 105/120 = 87.5% [80.4, 92.3] | 22/30 = 73.3% [55.6, 85.8] | 58.6% | **+14.7 pp** | 10.03 s over 22/30 |
+| GPU MPPI (n=64, h=20) | 120/120 = 100.0% [96.9, 100.0] | 30/30 = 100.0% [88.6, 100.0] | 100.0% | +0.0 pp | 12.35 s over 30/30 |
+
+McNemar same-seed paired-joint: both-succ 22, MPC-only 0,
+GPU-only **8**, neither 0; exact p ≈ **0.008**. Disagreement seeds:
+43, 47, 48, 51, 53, 60, 62, 65.
+
+Interpretation: this **does close the AirSim discriminating-cell gap**
+from the no-obstacle cells, but it does **not** reproduce the dummy_3d
+Δ-flip mechanism. In dummy_3d, MPC and GPU MPPI tied on joint success
+while GPU MPPI had the larger positive Δ, indicating stronger
+within-seed failure clustering. In this AirSim static-cube cell,
+GPU MPPI simply clears every paired seed; its Δ is degenerate at the
+100 % ceiling. The robust result is planner separation under real
+AirSim collision geometry: GPU MPPI trades slower completion
+(12.35 s vs MPC's 10.03 s) for eliminating the paired MPC collision
+seeds.
+
+The tuning path matters. A symmetric eight-pillar version put the
+south drone into a deterministic collision floor. The final cell keeps
+only one north/south pillar and offsets the south lane to x=26 so the
+failure budget comes from obstacle-induced crossing interactions
+rather than a fixed mesh bottleneck.
+
+Reproduce:
+```
+scripts/run_airsim_multi_chunked.sh mpc 30 42 \
+    results/airsim_multi_discriminating_n30_mpc \
+    examples/exp_airsim_multi_discriminating_n30.yaml
+scripts/run_airsim_multi_chunked.sh gpu_mppi 30 42 \
+    results/airsim_multi_discriminating_n30_gpu_mppi \
+    examples/exp_airsim_multi_discriminating_n30_gpu_mppi.yaml
+python3 scripts/paired_analysis_airsim_multi.py \
+    results/airsim_multi_discriminating_n30_mpc \
+    results/airsim_multi_discriminating_n30_gpu_mppi
+```
+
+
+### AirSim multi-drone base_ew06 density-sweep n=30: Δ-flip sign reverses — MPC is the clustering planner on AirSim
+
+Extension of the static-cube discriminating cell above. The earlier
+cell pinned GPU MPPI at a 100 % ceiling, so its $\Delta$ was
+degenerate and the dummy_3d §"Multi-drone: GPU MPPI's rollout cloud
+flips the coordination Δ" mechanism could not be tested directly.
+Variant `base_ew06` widens the four east/west pillars in the baseline
+5-pillar layout from `scale = 0.5` to `0.6` — the smallest knob found
+in 30+ probes that drops GPU MPPI off ceiling without collapsing both
+planners. n=50 paired episodes (seeds 42-91) measured on the same
+chunked-server harness.
+
+| planner               | per-drone (CI)                | joint (CI)                | indep⁴ | Δ over indep | mean final_t |
+|---|---|---|---|---|---|
+| MPC      (n=16, h=30) | 179/200 = 89.5 % [84.5, 93.0] | 34/50 = 68.0 % [54.2, 79.2] | 64.2 % | **+3.8 pp** | 10.00 s over 34/50 |
+| GPU MPPI (n=64, h=20) | 191/200 = 95.5 % [91.7, 97.6] | 41/50 = 82.0 % [69.2, 90.2] | 83.2 % | −1.2 pp | 12.39 s over 41/50 |
+
+McNemar same-seed paired-joint: both-succ 28, MPC-only-succ 6,
+GPU-only-succ 13, neither-succ 3; exact $p \approx 0.167$. Point
+estimate favours GPU MPPI by 14 pp on joint and by 2.2-to-1 on
+discordant pairs but n=50 is still short of significance at
+$\alpha = 0.05$.
+
+**Headline.** The Δ-flip mechanism from dummy_3d transfers to AirSim,
+**but the sign of the flip reverses**. dummy_3d had GPU MPPI as the
+clustering planner ($\Delta_\text{GPU} = +11.4$ pp vs $\Delta_\text{MPC}
+= +0.8$ pp at tied 94 % per-drone). AirSim `base_ew06` ties the
+planners again (90 % MPC vs 96 % GPU per-drone) and re-differentiates
+through Δ, but now **MPC is the clustering planner**
+($\Delta_\text{MPC} = +3.8$ pp vs $\Delta_\text{GPU} = -1.2$ pp).
+
+| backend / cell           | MPC Δ       | GPU MPPI Δ   | clustering planner |
+|--------------------------|-------------|--------------|--------------------|
+| dummy_3d §3 (n=100)      | +0.8 pp     | **+11.4 pp** | GPU MPPI |
+| AirSim base_ew06 (n=50)  | **+3.8 pp** | −1.2 pp      | MPC |
+
+Per-seed disagreement makes the mechanism concrete:
+
+- **GPU MPPI failures (9 seeds: 43, 45, 46, 50, 52, 73, 75, 90, and
+  concordant 73) are all the same drone** — drone idx 3, the
+  southernmost lane, against the widened EW pillar. Softmax-averaged
+  rollouts handle the geometric pinch uniformly across seeds, so
+  failures are independent (Δ ≈ 0).
+- **MPC failures (16 seeds) split into 13 single-drone (drone 3) and
+  3 multi-drone clusters**: seeds 55 and 67 lose drones 1, 2, and 3
+  simultaneously; seed 66 loses drones 1 and 2. The argmin update
+  commits each MPC drone to the same north-end corridor at the same
+  moment; when the corridor is geometrically infeasible for the
+  seed's start jitter, multiple drones converge into the same
+  collision frame within ~0.5 s. These 3 cluster seeds in 50 (6 %
+  cluster rate) are the entire source of MPC's positive Δ — removing
+  them would put MPC at Δ ≈ -4 pp (indistinguishable from GPU).
+
+Reading: dummy_3d's frictionless point-mass kinematics let GPU MPPI's
+softmax act as the cluster source; AirSim's PID + quadrotor physics +
+meshed environment surfaces MPC's argmin commitment as the cluster
+source. The *structural* claim from dummy_3d (per-drone tied + Δ
+differentiates planners) is robust to the sim-backend change; the
+*deployment* claim ("GPU MPPI's softmax is a joint-coordination
+liability") is not — on AirSim base_ew06 it is MPC that loses three
+drones together.
+
+GPU MPPI also pays 2.4 s more (12.39 s vs 10.00 s mean final_t over
+successes) — same direction as the previous static-cube cell.
+
+Caveats:
+
+- n=50 paired tightens McNemar from p ≈ 0.302 (n=30) to p ≈ 0.167 but
+  still does not clear α = 0.05. Adding ~30 more paired seeds at the
+  current discordant ratio would close the rest of the way; the
+  qualitative sign-reversal claim above is supported by the Δ table
+  and per-seed disagreement structure, not by the paired p-value.
+- The MPC cluster failure mode is real but rare (3/50 = 6 % cluster
+  rate). The absolute magnitude of MPC's $\Delta$ is sample-size
+  sensitive — n=30 measured $+6.9$ pp, n=50 settles at $+3.8$ pp as
+  the single-drone failures pile on without new clusters. The sign
+  and the qualitative cluster mode are stable; the magnitude moves
+  with $n$.
+- All GPU failures concentrate on drone idx 3 — the south drone lane
+  is intentionally offset to $x = 26$, which puts it within the
+  expanded keepout of the EW pillar at $(25, 27)$ when scale = 0.6.
+  The bias is shared by both planners' single-drone failures; only
+  MPC additionally clusters into the multi-drone failure mode.
+- Lane-shift probes (`base_ew06_lane30` at $x=30$, `base_ew06_lane22`
+  at $x=22$, n=10 GPU-only smoke each) both produce 10/10 drone-3
+  collisions at $(30.9, 29.4, 26.6)$ and $(21.2, 23.3, 26.6)$
+  respectively. The $x=26$ baseline collides at $(21.2, 23.2, 26.6)$ —
+  the same detour-terminus position lane22 hits, just reached via a
+  longer route. The single-drone failure mode is therefore a property
+  of the planner+inflate+EW pillar geometry of the cell, not a
+  removable artifact of the lane offset choice.
+- **Stability re-check.** A bridge patch capturing
+  `simGetCollisionInfo().object_name` (see `airsim_bridge.py:525`)
+  was added so collision attribution survives into the per-step JSON.
+  Re-running the 8 GPU MPPI failure seeds and 27 fresh seeds gave
+  35/35 successes vs. expected ~5-6 failures at the n=50 16 % rate.
+  The three MPC cluster seeds (55, 66, 67) re-ran with mixed results:
+  seed 67 reproduced exactly (drones 1/2 with empty `collision_object`
+  = drone-drone at central crossing, drone 3 hitting
+  `uavnav_disc_ew_35`); seed 66 morphed to drone-3 single; seed 55
+  became 4/4 success.
+
+- **Variability characterization** (3 fresh paired batches × n=15,
+  seeds 200-214 / 220-234 / 240-254):
+
+  | batch     | MPC joint  | GPU joint  | MPC Δ    | GPU Δ | (b, c)  | McNemar p | clusters |
+  |-----------|------------|------------|----------|-------|---------|-----------|----------|
+  | 1         | 14/15      | 15/15      | **+6.0** | +0.0  | (1, 0)  | 1.000     | 1        |
+  | 2         | 11/15      | 13/15      | **+12.4**| −0.7  | (2, 4)  | 0.688     | 3        |
+  | 3         | 14/15      | 11/15      | −0.2     | −2.6  | (4, 1)  | 0.375     | 0        |
+  | n=50 orig | 34/50      | 41/50      | +3.8     | −1.2  | (6, 13) | 0.167     | 3        |
+  | combined n=45 | 39/45  | 39/45      | +7.3     | −0.7  | (7, 5)  | 0.774     | 4        |
+
+  Stable across batches: (i) **MPC cluster mode at central crossing
+  is reproducible as a mode** (mean 8.9 % rate, 0-20 % per-batch
+  range, collision-object signature is always drones 1/2 with empty
+  object_name + optional drone 3 colateral); (ii) **GPU MPPI never
+  exhibits the cluster mode**, only drone-3 single failures.
+
+  Not stable: (i) **cluster rate per batch swings 0/15-3/15**, wider
+  than the n=50 Wilson CI implies; (ii) **McNemar direction reverses
+  across batches** — batch 1 tied, batch 2 GPU-favored (b=2 c=4),
+  batch 3 MPC-favored (b=4 c=1, opposite sign from the n=50 +
+  batch 2 reading). 3-batch combined n=45 gives joint 86.7 % vs
+  86.7 % with McNemar p ≈ 0.77 — essentially a tie.
+
+  Implication: the qualitative Δ-flip sign-reversal finding (only MPC
+  has a cluster failure mode) is robust. The quantitative McNemar
+  conclusion from the single n=50 study (GPU joint 82 % > MPC 68 %,
+  p = 0.167) does **not replicate** in independent samples. The
+  cleanest fix is either much larger N (≥200 paired) or a
+  controlled-environment measurement.
+
+Reproduce (uses the param-sweep YAML generator):
+```
+VARIANTS="base_ew06" MODE=paired N=30 BASE_SEED=42 \
+    scripts/run_airsim_discriminating_param_sweep.sh
+```
+
+The script generates `/tmp/uavnav_airsim_disc_base_ew06_{mpc,gpu_mppi}.yaml`
+from the static-cube cell YAMLs, chunked-runs n=30 paired into
+`results/airsim_multi_discriminating_base_ew06_n30_{mpc,gpu_mppi}/`,
+and invokes `paired_analysis_airsim_multi.py` at the end.
 
 
 ### Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag

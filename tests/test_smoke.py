@@ -209,6 +209,113 @@ def test_3d_mpc_runs(tmp_path: Path) -> None:
     assert summary["n_episodes"] == 1
 
 
+def test_voxel_world_accepts_explicit_box_obstacles() -> None:
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+
+    voxel_cls = SCENARIO_REGISTRY.get("voxel_world")
+    sc = voxel_cls.from_config(
+        {
+            "size": [8, 8, 8],
+            "start": [1.0, 1.0, 1.0],
+            "goal": [7.0, 7.0, 7.0],
+            "obstacles": {
+                "type": "none",
+                "boxes": [
+                    {"min": [2, 2, 2], "max": [3, 4, 5]},
+                    {"center": [6.0, 2.0, 2.0], "size": [2.0, 2.0, 2.0]},
+                ],
+            },
+        }
+    )
+
+    assert sc.occupancy[2:4, 2:5, 2:6].all()
+    assert sc.occupancy[5:7, 1:3, 1:3].all()
+    assert not sc.occupancy[0, 0, 0]
+
+
+def test_airsim_discriminating_sweep_configs_are_consistent() -> None:
+    """The AirSim static-cube sweep keeps planner occupancy and meshes paired."""
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+
+    pairs = [
+        ("exp_airsim_multi_discriminating_n30.yaml", "exp_airsim_multi_discriminating_n30_gpu_mppi.yaml", 5),
+        (
+            "exp_airsim_multi_discriminating_central_n30.yaml",
+            "exp_airsim_multi_discriminating_central_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_soft_n30.yaml",
+            "exp_airsim_multi_discriminating_central_soft_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_west_n30.yaml",
+            "exp_airsim_multi_discriminating_central_west_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_west_thick_n30.yaml",
+            "exp_airsim_multi_discriminating_central_west_thick_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_north_n30.yaml",
+            "exp_airsim_multi_discriminating_central_north_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_half_n30.yaml",
+            "exp_airsim_multi_discriminating_central_half_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_29p25_n30.yaml",
+            "exp_airsim_multi_discriminating_central_29p25_n30_gpu_mppi.yaml",
+            6,
+        ),
+        (
+            "exp_airsim_multi_discriminating_central_29p375_n30.yaml",
+            "exp_airsim_multi_discriminating_central_29p375_n30_gpu_mppi.yaml",
+            6,
+        ),
+        ("exp_airsim_multi_discriminating_mid_n30.yaml", "exp_airsim_multi_discriminating_mid_n30_gpu_mppi.yaml", 6),
+        (
+            "exp_airsim_multi_discriminating_dense_n30.yaml",
+            "exp_airsim_multi_discriminating_dense_n30_gpu_mppi.yaml",
+            7,
+        ),
+        (
+            "exp_airsim_multi_discriminating_packed_n30.yaml",
+            "exp_airsim_multi_discriminating_packed_n30_gpu_mppi.yaml",
+            9,
+        ),
+    ]
+
+    scenario_cls = SCENARIO_REGISTRY.get("multi_drone_voxel")
+    for mpc_name, gpu_name, expected_count in pairs:
+        mpc_cfg = ExperimentConfig.from_yaml(EXAMPLES / mpc_name)
+        gpu_cfg = ExperimentConfig.from_yaml(EXAMPLES / gpu_name)
+
+        mpc_boxes = mpc_cfg.scenario["obstacles"]["boxes"]
+        gpu_boxes = gpu_cfg.scenario["obstacles"]["boxes"]
+        mpc_meshes = mpc_cfg.simulator["static_obstacles"]
+        gpu_meshes = gpu_cfg.simulator["static_obstacles"]
+
+        assert mpc_boxes == gpu_boxes
+        assert mpc_meshes == gpu_meshes
+        assert len(mpc_boxes) == expected_count
+        assert len(mpc_meshes) == expected_count
+        assert len({mesh["name"] for mesh in mpc_meshes}) == expected_count
+
+        scenario = scenario_cls.from_config(mpc_cfg.scenario)
+        for drone in mpc_cfg.scenario["drones"]:
+            start = tuple(int(round(v)) for v in drone["start"])
+            goal = tuple(int(round(v)) for v in drone["goal"])
+            assert not scenario.occupancy[start], f"{mpc_name}: start occupied for {drone['name']}"
+            assert not scenario.occupancy[goal], f"{mpc_name}: goal occupied for {drone['name']}"
+
+
 def test_airsim_bridge_step_round_trips_enu_via_mock_client() -> None:
     """Verify the AirSim bridge's ENU/NED conversions and step plumbing
     against an injected mock client — no AirSim install required."""
@@ -293,6 +400,106 @@ def test_airsim_bridge_step_round_trips_enu_via_mock_client() -> None:
     # Returned state in ENU (3, 4) [from FakeKin (4, 3, -1) NED].
     assert np.allclose(out_state.position, np.array([3.0, 4.0]))
     assert info.collision is False
+
+
+def test_airsim_bridge_spawns_static_obstacles_via_mock_client(monkeypatch) -> None:
+    """Static AirSim meshes are spawned once by the master bridge on reset."""
+    from types import SimpleNamespace
+
+    fake_airsim = SimpleNamespace()
+
+    class Vector3r:
+        def __init__(self, x_val, y_val, z_val) -> None:
+            self.x_val = x_val
+            self.y_val = y_val
+            self.z_val = z_val
+
+    class Pose:
+        def __init__(self, position, orientation) -> None:
+            self.position = position
+            self.orientation = orientation
+
+    fake_airsim.Vector3r = Vector3r
+    fake_airsim.Pose = Pose
+    fake_airsim.to_quaternion = lambda *_args: object()
+    monkeypatch.setitem(sys.modules, "airsim", fake_airsim)
+
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+    from uav_nav_lab.sim.airsim_bridge import AirSimBridge
+
+    grid_cls = SCENARIO_REGISTRY.get("grid_world")
+    sc = grid_cls.from_config(
+        {"size": [10, 10], "start": [1.0, 1.0], "goal": [9.0, 9.0], "obstacles": {"type": "none"}}
+    )
+
+    class FakeKin:
+        class _V:
+            x_val = 0.0
+            y_val = 0.0
+            z_val = -1.0
+
+        position = _V()
+        linear_velocity = _V()
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.spawned = []
+            self.destroyed = []
+
+        def confirmConnection(self) -> None:
+            pass
+
+        def enableApiControl(self, *_args) -> None:
+            pass
+
+        def armDisarm(self, *_args) -> None:
+            pass
+
+        def reset(self) -> None:
+            pass
+
+        def simPause(self, *_args) -> None:
+            pass
+
+        def simSetWind(self, *_args) -> None:
+            pass
+
+        def simSetVehiclePose(self, *_args, **_kwargs) -> None:
+            pass
+
+        def simDestroyObject(self, name) -> None:
+            self.destroyed.append(name)
+
+        def simSpawnObject(self, *args) -> None:
+            self.spawned.append(args)
+
+        def getMultirotorState(self, vehicle_name=None):  # noqa: ARG002
+            return SimpleNamespace(kinematics_estimated=FakeKin())
+
+        def simGetCollisionInfo(self, vehicle_name=None):  # noqa: ARG002
+            return SimpleNamespace(has_collided=False)
+
+    fake = FakeClient()
+    bridge = AirSimBridge(
+        dt=0.05,
+        scenario=sc,
+        client=fake,
+        static_obstacles=[
+            {
+                "name": "disc_pillar",
+                "asset": "Cube",
+                "position": [1.0, 2.0, 3.0],
+                "scale": [4.0, 5.0, 6.0],
+            }
+        ],
+    )
+    bridge.reset()
+
+    assert fake.destroyed == ["disc_pillar"]
+    name, asset, pose, scale, physics_enabled, is_blueprint = fake.spawned[0]
+    assert (name, asset, physics_enabled, is_blueprint) == ("disc_pillar", "Cube", False, False)
+    assert (pose.position.x_val, pose.position.y_val, pose.position.z_val) == (2.0, 1.0, -3.0)
+    assert (scale.x_val, scale.y_val, scale.z_val) == (5.0, 4.0, 6.0)
 
 
 def test_airsim_lidar_to_pointcloud_occupancy_to_planner_pipeline_via_mocks() -> None:

@@ -1,9 +1,8 @@
 # Paper A — Outline (draft)
 
-Status: skeleton only. Goal of this file is to lock the spine before we
-expand sections. Source of truth for individual findings remains
-`docs/findings.md`; this file decides *which* findings go in, in what
-order, and under what argument.
+Status: full draft spine. Sections §1-§7 now have standalone prose
+files or appendix material; this file remains the argument map. Source
+of truth for individual findings remains `docs/findings.md`.
 
 ## Working title (pick one)
 
@@ -21,8 +20,8 @@ order, and under what argument.
    benchmarking problem.
 
 Lean: **option 2** if the venue is a planning/robotics conference, **option
-1** for a methods venue, **option 3** for a workshop. Decide before §1 is
-written.
+1** for a methods venue, **option 3** for a workshop. Decide before
+manuscript assembly.
 
 ## 1. Motivation (½ page)
 
@@ -149,6 +148,16 @@ warm up once at startup or amortize over many episodes per drone.
 - AirSim vs dummy_3d: same plan, different physics — quantify what
   carries (success rate, plan structure) and what does not (velocity
   profile, action-jump magnitude).
+- Static-cube discriminating cell (§4.4.3): GPU MPPI removes every
+  paired AirSim seed that MPC loses (McNemar $p \approx 0.008$), but
+  GPU sits at the 100 % ceiling so its $\Delta$ is degenerate.
+- Density-sweep cell `base_ew06` (§4.4.4): widening the EW pillars
+  drops GPU MPPI off ceiling and re-measures $\Delta$ at n=50 paired.
+  The $\Delta$-flip mechanism transfers from dummy_3d, but **the sign
+  reverses** — on AirSim, MPC is the planner that clusters failures
+  ($\Delta_\text{MPC} = +3.8$ pp vs $\Delta_\text{GPU} = -1.2$ pp at
+  tied per-drone rates), driven by 3 multi-drone cluster seeds out of
+  50 (6 % cluster rate).
 - ROS 2 bridge: spatial equivalence verified within 0.2 m on a single
   episode. The bridge hop is invariant; the 2× wall-clock is the
   real-time clock constraint, not loss of fidelity.
@@ -156,29 +165,21 @@ warm up once at startup or amortize over many episodes per drone.
   bridge produces equivalent spatial behaviour to AirSim → direct,
   modulo real-time clock.
 
-These three together justify the §3 result: it was measured on
-`dummy_3d` but the §4.4 evidence is what makes the finding portable.
+These together justify the §3 result: it was measured on
+`dummy_3d` but the §4.4 evidence is what makes the finding portable —
+with the §4.4.4 caveat that the *direction* of the $\Delta$ flip is
+backend-dependent.
 
-## 5. Secondary findings (1 page each, candidates — pick 2)
+## 5. Secondary findings
 
-Candidates, ranked by how much they reinforce the §3 narrative:
+Status: `section_5_secondaries.md` written. It keeps the §3 narrative
+tight by using two companion ablations:
 
-1. **3D escape volume erases coordination Δ** — companion to §3. Same
-   scenario at lower density: Δ vanishes, regardless of planner. Sets
-   the boundary of when §3's claim applies.
-2. **3D peer-prediction ablation** — removing CV prediction is worse
-   than 8× obstacle density. Establishes that *some* peer information
-   is load-bearing even in escape volume; §3 then shows MPPI substitutes
-   sample diversity for it.
-3. **Action-jump cost tuning beats every smoothing layer** — orthogonal
-   methods finding. Strong on its own but not aligned with §3's
-   coordination story.
-4. **Wind miscalibration: planner belief must match sim reality** —
-   sim-side robustness finding. Pairs with §4.4 if we want sim
-   transferability to be a recurring sub-theme.
-
-Recommend: **(1) + (2)** for option-2 framing, **(2) + (3)** for option-1
-framing.
+1. **3D escape volume / density ablation** — coordination Δ disappears
+   in open 3D, then returns at intermediate density.
+2. **3D peer-prediction ablation** — removing CV peer prediction at
+   that intermediate density is as damaging as an 8× static-obstacle
+   increase.
 
 ## 6. Limitations
 
@@ -212,8 +213,8 @@ framing.
   2.40 m/s), plan_dt dominated by sim overhead so the dummy_3d
   speed edge is not portable. Multi-drone parity at n=1: same shape +
   qualitative signal that per-drone final_t spread (0.55 s GPU vs
-  0.05 s MPC) is preserved on AirSim. **n=30 paired done at two
-  geometries (`exp_airsim_multi_{n30,uniform_n30}*.yaml`):**
+  0.05 s MPC) is preserved on AirSim. **n=30 paired done across
+  altitude-only and static-cube geometries:**
   - Staggered altitude (±2-4 m): both planners hit 100 % joint
     success across 30 paired seeds — scenario ceiling-limited, the
     failure-level Δ-flip mechanism cannot register. Trajectory-level
@@ -236,59 +237,60 @@ framing.
     *trajectory-level* mechanism is robust across cells; only
     the *failure-level* Δ-flip cannot be exercised on the
     no-obstacle scenario.
-  - **Combined reading**: the dummy_3d Δ-flip mechanism is
-    bracketed but not directly measured on AirSim — easier
-    scenarios ceiling out, uniform geometry drops GPU MPPI's
-    per-drone rate below indep⁴'s measurement floor. The right
-    discriminating AirSim cell (per-drone in 60-90 % band) is
-    **the** remaining future-work TODO — staggered-altitude +
-    Blocks static obstacles (lower altitude or LiDAR perception)
-    is the next obvious config.
+  - Static-cube discriminating cell
+    (`exp_airsim_multi_discriminating_n30*.yaml`): bridge-spawned
+    Blocks cubes plus matching planner occupancy put MPC in the
+    target band: per-drone **87.5 %** [80.4, 92.3], joint
+    **22/30 = 73.3 %** [55.6, 85.8], Δ +14.7 pp. GPU MPPI clears
+    **30/30 = 100 %** joint; McNemar paired exact p ≈ 0.008
+    (GPU-only success 8, MPC-only 0).
+  - **Combined reading**: the AirSim failure-level gap is no longer
+    open — static cubes produce a significant paired planner
+    separation. What remains open is narrower: the exact dummy_3d
+    joint-tie / larger-GPU-Δ signature is still not directly measured
+    on AirSim because the static-cube cell sends GPU MPPI to the
+    100 % ceiling. Future-work TODO: static-cube density / placement
+    sweep that also drops GPU MPPI into the 60-90 % per-drone band.
 
 ## 7. Reproducibility map (appendix)
 
-| paper section | YAML(s) | findings.md anchor |
-|---|---|---|
-| §3 multi-drone Δ flip | `exp_multi_drone_3d_4.yaml`, `exp_multi_drone_3d_4_gpu_mppi.yaml` | "Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ" |
-| §4.1 2D MPC Pareto | `exp_predictive.yaml` | "MPC compute Pareto" |
-| §4.1 3D MPC Pareto | `exp_predictive_3d.yaml` | "3D Pareto: the n_samples preference flips" |
-| §4.1 2D GPU MPPI Pareto | `exp_gpu_mppi_pareto.yaml` | "2D Pareto (post-fix)" |
-| §4.1 3D GPU MPPI Pareto | `exp_gpu_mppi_pareto_3d.yaml` | "3D Pareto (post-fix)" |
-| §4.1 3D GPU MPPI T-ablation | `exp_gpu_mppi_temp_ablation_3d.yaml` | "Temperature ablation at the 3D Pareto cell" |
-| §4.2 goal-mask fix | commit `2a9d196` + `uav_nav_lab/planner/gpu_mppi.py` | "The goal-mask bug fix that changed every cell" |
-| §4.4 AirSim vs dummy_3d | `exp_airsim_transfer.yaml` (TBD) | "AirSim vs dummy_3d transferability" |
-| §4.4 AirSim + GPU MPPI parity (single) | `exp_airsim_demo_gpu_mppi.yaml` | "AirSim + GPU MPPI parity" |
-| §4.4 AirSim + GPU MPPI parity (multi) | `exp_airsim_multi_demo_gpu_mppi.yaml` | "AirSim multi-drone parity" |
-| §4.4 AirSim multi-drone n=30 paired (staggered) | `exp_airsim_multi_n30*.yaml`, `scripts/run_airsim_multi_chunked.sh` | "AirSim multi-drone n=30 paired" |
-| §4.4 AirSim multi-drone n=30 paired (uniform-z) | `exp_airsim_multi_uniform_n30*.yaml`, same runner | "AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %" |
-| §4.4 AirSim multi-drone n=30 paired (±1 m mid-stagger) | `exp_airsim_multi_mid_n30*.yaml`, same runner | "AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m" |
-| §6 bridge fix (AirSim pause-after-reset) | `uav_nav_lab/sim/airsim_bridge.py` reset() | "Bridge fix: pause-after-reset" |
-| §4.4 ROS 2 bridge | `scripts/ros2_dummy_sim.py` + `exp_basic.yaml` | "ROS 2 bridge: spatial equivalence verified" |
-| §4.4 AirSim + ROS 2 | `exp_airsim_ros2.yaml`, `exp_airsim_ros2_direct.yaml` | "AirSim over ROS 2 parity harness" |
-| §5 escape volume | `exp_multi_drone_3d_4.yaml` (sparse), `_density_8x` variant | "3D density ablation" |
-| §5 peer-prediction | `exp_multi_drone_3d_4_no_peer.yaml` | "3D peer-prediction ablation" |
+Status: `section_7_repro_map.md` written.
 
-## 8. Open decisions to resolve before §1 is written
+The appendix maps each paper section to its exact `examples/exp_*.yaml`
+artifact, any required runner script, and the matching `docs/findings.md`
+anchor. It also corrects the stale outline placeholders:
+
+- 3D MPC Pareto uses `examples/exp_3d_predictive.yaml`.
+- dummy_3d ↔ AirSim transfer uses `examples/exp_transfer_dummy.yaml`
+  and `examples/exp_transfer_airsim.yaml`.
+- §5 density ablation uses `examples/exp_multi_drone_3d_4_dense.yaml`
+  and `examples/exp_multi_drone_3d_4_packed.yaml`.
+- §5 peer-prediction ablation uses
+  `examples/exp_multi_drone_3d_4_dense_indep.yaml` and
+  `examples/exp_multi_drone_3d_4_packed_indep.yaml`.
+
+## 8. Open decisions before submission
 
 1. **Title framing** (option 1 / 2 / 3 above).
 2. **Venue target** — methods workshop vs robotics conference. Drives
    page budget and how much of §4 stays in main text vs appendix.
-3. **Which §5 pair** — (1)+(2) coordination-focused vs (2)+(3) methods-
-   focused.
-4. **§6 follow-ups** — which TODOs to land before submission vs leave
-   for future work. n=100 paired multi-drone re-run is the most
-   defensible to add; T-sweep and AirSim-multi-drone are nice-to-haves.
+3. **Main-text budget** — whether §5 stays in the main paper or moves
+   partly to appendix once the target venue page limit is known.
+4. **AirSim caveat strength** — current text reports a significant
+   static-cube planner separation but leaves the exact dummy_3d
+   joint-tie / larger-GPU-Δ transfer as future work. A density sweep
+   could either strengthen or simplify that caveat.
 
 ## 9. Next concrete steps
 
 In approximate dependency order:
 
-1. Decide §8.1–§8.3 (15 min, user call).
-2. Run n=100 paired multi-drone MPC vs GPU MPPI (overnight; new seeds
-   42–141). Decide if Δ flip survives at narrower CI.
-3. Run 3D GPU MPPI T-ablation at the Pareto cell (`temperature ∈
-   {0.1, 0.3, 1.0, 3.0}` × seeds). Decide T choice for §3.
-4. Run AirSim multi-drone GPU MPPI (the missing portability check for
-   §4.4 / §3).
-5. Draft §1 (motivation) + §3 (headline) in full prose. The rest can
-   stay outline-form until those two are agreed.
+1. Run the AirSim static-cube density / placement sweep from
+   `plan.md` §2.1 if the paper needs a direct AirSim test of the
+   dummy_3d Δ mechanism.
+2. Pick title and venue target; then trim §4-§5 into main text vs
+   appendix according to page budget.
+3. Convert the section drafts into a single manuscript file and add
+   figure/table references.
+4. Decide whether the SAC scaffold remains a limitation note or gets
+   promoted to a short baseline appendix after a longer training run.

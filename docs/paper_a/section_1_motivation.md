@@ -60,13 +60,11 @@ same scenario / sensor / planner objects, the bridge is the only
 swap. Two findings emerge that the dummy_3d-only literature could not
 have produced: GPU MPPI's 20× plan-time edge over CPU MPC on dummy_3d
 collapses to <5 % on AirSim because sim-side overhead dominates
-(§4.4); and the dummy_3d multi-drone Δ-flip is **bracketed** across
-three AirSim altitude-stagger cells — non-zero z-spread leaves both
-planners at the 4/4 ceiling, uniform-altitude crossing drops GPU
-MPPI to 0/30 joint while MPC holds 46.7 % (McNemar exact p ≈ 0.00012)
-— so the mechanism transfers to physics but the discriminating
-operating point requires harder geometry than the no-obstacle staggered
-demo provides (§4.4).
+(§4.4); altitude-only AirSim cells bracket the dummy_3d multi-drone
+Δ-flip but degenerate at ceiling or floor; and a static-cube AirSim
+cell produces a real paired planner separation (GPU MPPI 30/30 joint
+vs MPC 22/30, McNemar p ≈ 0.008), while still not reproducing the
+exact dummy_3d joint-tie / larger-Δ signature (§4.4).
 
 **The four causes interlock.** None is a research question on its own:
 "Pareto cells matter" is methodology, not science. "Coordination Δ is

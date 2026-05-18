@@ -24,6 +24,7 @@ class _ObstacleSpec:
     seed: int = 0
     z: int | None = None
     cells: list[tuple[int, int, int]] | None = None
+    boxes: list[Any] | None = None
 
 
 @dataclass
@@ -91,6 +92,7 @@ class VoxelWorldScenario(Scenario):
             seed=int(obs_cfg.get("seed", 0)),
             z=int(obs_cfg["z"]) if "z" in obs_cfg else None,
             cells=obs_cfg.get("cells"),
+            boxes=obs_cfg.get("boxes"),
         )
         dynamic_specs = cfg.get("dynamic_obstacles", []) or []
         dynamic = [
@@ -161,10 +163,26 @@ class VoxelWorldScenario(Scenario):
         )  # type: ignore[return-value]
 
     def _populate(self) -> None:
+        explicit = False
         if self._obs_spec.cells is not None:
             for ix, iy, iz in self._obs_spec.cells:
                 if all(0 <= c < s for c, s in zip((ix, iy, iz), self.size)):
                     self._static_occ[ix, iy, iz] = True
+            explicit = True
+        if self._obs_spec.boxes is not None:
+            for raw in self._obs_spec.boxes:
+                lo, hi = self._box_to_cell_bounds(raw)
+                lo = np.maximum(lo, 0)
+                hi = np.minimum(hi, np.asarray(self.size, dtype=int) - 1)
+                if np.any(hi < lo):
+                    continue
+                self._static_occ[
+                    lo[0] : hi[0] + 1,
+                    lo[1] : hi[1] + 1,
+                    lo[2] : hi[2] + 1,
+                ] = True
+            explicit = True
+        if explicit:
             return
         if self._obs_spec.type == "none":
             return
@@ -199,6 +217,30 @@ class VoxelWorldScenario(Scenario):
             self._static_occ[ix, iy, iz] = True
             placed += 1
             tries += 1
+
+    def _box_to_cell_bounds(self, raw: Any) -> tuple[np.ndarray, np.ndarray]:
+        """Return inclusive voxel bounds for an explicit cuboid obstacle."""
+        if isinstance(raw, Mapping):
+            if "min" in raw and "max" in raw:
+                lo = np.asarray(raw["min"], dtype=float)
+                hi = np.asarray(raw["max"], dtype=float)
+                return np.floor(lo).astype(int), np.floor(hi).astype(int)
+            center_key = "center" if "center" in raw else "position"
+            size_key = "size" if "size" in raw else "scale"
+            if center_key in raw and size_key in raw:
+                center = np.asarray(raw[center_key], dtype=float)
+                size = np.asarray(raw[size_key], dtype=float)
+                lo = (center - 0.5 * size) / self.resolution
+                hi = (center + 0.5 * size) / self.resolution
+                return np.floor(lo).astype(int), (np.ceil(hi).astype(int) - 1)
+        if isinstance(raw, (list, tuple)) and len(raw) == 2:
+            lo = np.asarray(raw[0], dtype=float)
+            hi = np.asarray(raw[1], dtype=float)
+            return np.floor(lo).astype(int), np.floor(hi).astype(int)
+        raise ValueError(
+            "voxel obstacle boxes must use {min, max}, {center/position, size/scale}, "
+            "or [[min], [max]]"
+        )
 
     def is_collision(self, position: np.ndarray, radius: float) -> bool:
         x, y, z = float(position[0]), float(position[1]), float(position[2])

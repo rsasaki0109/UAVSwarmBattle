@@ -1,0 +1,68 @@
+# AirSim multi-drone static-cube density sweep — dense GPU MPPI counterpart.
+
+name: airsim_multi_discriminating_dense_n30_gpu_mppi
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+    boxes:
+      - {min: [15, 33, 22], max: [15, 33, 38]}
+      - {min: [25, 27, 22], max: [25, 27, 38]}
+      - {min: [35, 33, 22], max: [35, 33, 38]}
+      - {min: [45, 27, 22], max: [45, 27, 38]}
+      - {min: [27, 15, 22], max: [27, 15, 38]}
+      - {min: [29, 33, 22], max: [29, 33, 38]}
+      - {min: [33, 45, 22], max: [33, 45, 38]}
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [26.0, 55.0, 26.0], goal: [26.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 900
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 3.0
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+  static_obstacles:
+    - {name: uavnav_disc_ew_15, asset: 1M_Cube_Chamfer, position: [15.5, 33.5, 30.5], scale: [0.3, 0.3, 17.0]}
+    - {name: uavnav_disc_ew_25, asset: 1M_Cube_Chamfer, position: [25.5, 27.5, 30.5], scale: [0.3, 0.3, 17.0]}
+    - {name: uavnav_disc_ew_35, asset: 1M_Cube_Chamfer, position: [35.5, 33.5, 30.5], scale: [0.3, 0.3, 17.0]}
+    - {name: uavnav_disc_ew_45, asset: 1M_Cube_Chamfer, position: [45.5, 27.5, 30.5], scale: [0.3, 0.3, 17.0]}
+    - {name: uavnav_disc_ns_27_15, asset: 1M_Cube_Chamfer, position: [27.5, 15.5, 30.5], scale: [0.15, 0.15, 17.0]}
+    - {name: uavnav_disc_ns_29_33, asset: 1M_Cube_Chamfer, position: [29.5, 33.5, 30.5], scale: [0.15, 0.15, 17.0]}
+    - {name: uavnav_disc_ns_33_45, asset: 1M_Cube_Chamfer, position: [33.5, 45.5, 30.5], scale: [0.15, 0.15, 17.0]}
+
+planner:
+  type: gpu_mppi
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 3
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_discriminating_dense_n30_gpu_mppi
+  save_camera_frames: false

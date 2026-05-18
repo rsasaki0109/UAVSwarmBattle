@@ -67,6 +67,7 @@ class MultiDroneVoxelScenario(VoxelWorldScenario):
             count=int(obs_cfg.get("count", 0)),
             seed=int(obs_cfg.get("seed", 0)),
             cells=obs_cfg.get("cells"),
+            boxes=obs_cfg.get("boxes"),
         )
         drone_specs = cfg.get("drones") or []
         if not drone_specs:

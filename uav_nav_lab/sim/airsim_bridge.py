@@ -67,6 +67,14 @@ def _enu_to_ned(p: np.ndarray) -> np.ndarray:
     return np.array([out[1], out[0], -out[2]])
 
 
+def _enu_extent_to_ned(extent: np.ndarray) -> np.ndarray:
+    """Axis-aligned ENU box extent → AirSim NED axis order."""
+    e = np.asarray(extent, dtype=float)
+    out = np.ones(3)
+    out[: e.size] = e[:3]
+    return np.array([out[1], out[0], out[2]])
+
+
 def _ned_to_enu(p: np.ndarray) -> np.ndarray:
     """(y, x, -z)_NED → (x, y, z)_ENU."""
     p = np.asarray(p, dtype=float)
@@ -105,6 +113,7 @@ class AirSimBridge(SimInterface):
         lidars: list[str] | None = None,
         cameras: list[Mapping[str, Any]] | None = None,
         depths: list[Mapping[str, Any]] | None = None,
+        static_obstacles: list[Mapping[str, Any]] | None = None,
         settle_after_reset: float = 0.0,
         settle_after_teleport: float = 0.0,
         client: Any = None,
@@ -147,6 +156,14 @@ class AirSimBridge(SimInterface):
             }
             for d in (depths or [])
         ]
+        # Optional AirSim-side static meshes. These are separate from the
+        # scenario occupancy grid: the YAML should usually define both
+        # `scenario.obstacles.boxes` for the planner and matching
+        # `simulator.static_obstacles` for Unreal collision geometry.
+        self.static_obstacles = [
+            self._normalise_static_obstacle(i, dict(spec))
+            for i, spec in enumerate(static_obstacles or [])
+        ]
         # Sleep windows after `client.reset()` and after the teleport
         # to the scenario start, in seconds. Without these, real
         # AirSim sometimes carries a transient collision flag from
@@ -174,6 +191,7 @@ class AirSimBridge(SimInterface):
         lidars_cfg = cfg.get("lidars", []) or []
         cameras_cfg = cfg.get("cameras", []) or []
         depths_cfg = cfg.get("depths", []) or []
+        static_obstacles_cfg = cfg.get("static_obstacles", []) or []
         # Wind vector in ENU (m/s). Converted to NED and pushed to AirSim
         # via simSetWind on reset so the physical wind matches the planner's
         # wind_belief sweep target.  Default (0,0,0) = no wind.
@@ -190,10 +208,30 @@ class AirSimBridge(SimInterface):
             lidars=[str(name) for name in lidars_cfg],
             cameras=list(cameras_cfg),
             depths=list(depths_cfg),
+            static_obstacles=list(static_obstacles_cfg),
             settle_after_reset=float(cfg.get("settle_after_reset", 0.0)),
             settle_after_teleport=float(cfg.get("settle_after_teleport", 0.0)),
             wind=wind_tuple,
         )
+
+    @staticmethod
+    def _normalise_static_obstacle(idx: int, spec: dict[str, Any]) -> dict[str, Any]:
+        if "position" not in spec and "center" in spec:
+            spec["position"] = spec["center"]
+        if "scale" not in spec and "size" in spec:
+            spec["scale"] = spec["size"]
+        if "position" not in spec or "scale" not in spec:
+            raise ValueError(
+                "AirSim static_obstacles entries require position/center and scale/size"
+            )
+        return {
+            "name": str(spec.get("name", f"uav_nav_static_{idx:03d}")),
+            "asset": str(spec.get("asset", spec.get("asset_name", "1M_Cube_Chamfer"))),
+            "position": np.asarray(spec["position"], dtype=float),
+            "scale": np.asarray(spec["scale"], dtype=float),
+            "physics_enabled": bool(spec.get("physics_enabled", False)),
+            "is_blueprint": bool(spec.get("is_blueprint", False)),
+        }
 
     def _ensure_client(self) -> Any:
         if self._client is not None:
@@ -210,6 +248,53 @@ class AirSimBridge(SimInterface):
         self._client.enableApiControl(True, self.vehicle)
         self._client.armDisarm(True, self.vehicle)
         return self._client
+
+    def _sync_static_obstacles(self, client: Any) -> None:
+        """Spawn configured static meshes into the shared AirSim scene."""
+        if not self.static_obstacles or not hasattr(client, "simSpawnObject"):
+            return
+        try:
+            import airsim  # type: ignore[import-not-found]
+        except ImportError:  # pragma: no cover
+            return
+        for spec in self.static_obstacles:
+            name = spec["name"]
+            if hasattr(client, "simDestroyObject"):
+                try:
+                    client.simDestroyObject(name)
+                except Exception:
+                    pass
+            pos_ned = _enu_to_ned(spec["position"])
+            scale_ned = _enu_extent_to_ned(spec["scale"])
+            pose = airsim.Pose(
+                airsim.Vector3r(float(pos_ned[0]), float(pos_ned[1]), float(pos_ned[2])),
+                airsim.to_quaternion(0.0, 0.0, 0.0),
+            )
+            scale = airsim.Vector3r(
+                float(scale_ned[0]), float(scale_ned[1]), float(scale_ned[2])
+            )
+            try:
+                spawned = client.simSpawnObject(
+                    name,
+                    spec["asset"],
+                    pose,
+                    scale,
+                    spec["physics_enabled"],
+                    spec["is_blueprint"],
+                )
+            except TypeError:
+                spawned = client.simSpawnObject(
+                    name,
+                    spec["asset"],
+                    pose,
+                    scale,
+                    spec["physics_enabled"],
+                )
+            if spawned is False:
+                raise RuntimeError(
+                    f"AirSim failed to spawn static obstacle {name!r} "
+                    f"with asset {spec['asset']!r}"
+                )
 
     def _build_image_requests(self) -> list[Any]:
         """Translate the bridge's camera spec list to airsim.ImageRequest
@@ -309,6 +394,7 @@ class AirSimBridge(SimInterface):
                 client.simSetWind(wind_ned)
             except Exception:
                 pass
+            self._sync_static_obstacles(client)
             # Brief settle (against a paused engine) to absorb residual
             # post-reset RPC latency before issuing API calls. The flag
             # ordering above means this no longer ticks physics, but
@@ -436,7 +522,12 @@ class AirSimBridge(SimInterface):
                 }
             if depth_bag:
                 self._state.extra["depth_images"] = depth_bag
-        collision = bool(client.simGetCollisionInfo(vehicle_name=self.vehicle).has_collided)
+        ci = client.simGetCollisionInfo(vehicle_name=self.vehicle)
+        collision = bool(ci.has_collided)
+        if collision:
+            self._state.extra["collision_object"] = str(getattr(ci, "object_name", "") or "")
+        else:
+            self._state.extra.pop("collision_object", None)
         goal = (
             self.scenario.goal
             if not hasattr(self, "_goal_override") or self._goal_override is None

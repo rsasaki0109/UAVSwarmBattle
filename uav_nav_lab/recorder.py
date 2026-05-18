@@ -53,6 +53,9 @@ class EpisodeRecorder:
                     str(name): int(np.asarray(pc).shape[0])
                     for name, pc in lidar_pts.items()
                 }
+            collision_object = sim_extra.get("collision_object")
+            if collision_object:
+                row["collision_object"] = str(collision_object)
         self.steps.append(row)
 
     def log_replan(

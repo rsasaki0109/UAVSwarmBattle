@@ -1,305 +1,576 @@
 # uav-nav-lab — Plan & Roadmap
 
 > **位置付け**: `docs/findings.md` は *終わった研究の記録*、`README.md` は
-> *入口とハイライト*、この `plan.md` は *これから何をやるか / なぜやるか*
-> をまとめる作戦ノート。短期 (次の 1-3 PR)・中期・長期に分けて書く。
-> 思いつきや却下案も「やらない理由」と一緒に残しておく — 後から
-> 「なぜこの方向に行かなかったか」を辿れるようにするため。
+> *入口とハイライト*、`CHANGELOG.md` は *バージョン毎の差分*、この
+> `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
+> をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-12 (AirSim 実測系は pending に整理)
+> 最終更新: 2026-05-18 (AirSim static-cube density sweep の途中経過を詳述)
 
 ---
 
-## 1. これまでの到達点 (2026-05-03 時点)
+## 0. Codex への引き継ぎ要点 (まずここを読む)
 
-83 commit / 47 PR まで来た。骨子は以下の通り完成している。
+このドキュメントを引き継いだ codex への TL;DR。
 
-### 1.1 フレームワーク本体
+### 0.1 リポジトリの今の状態
 
-- **YAML 駆動の実験ランナー** (`uav-nav run` / `uav-nav sweep` /
-  `uav-nav eval` / `uav-nav viz` / `uav-nav video`)。Cartesian product
-  sweep + Wilson 95 % CI が標準装備。
-- **5 軸プラガブル**: `sim` / `scenario` / `planner` / `sensor` /
-  `predictor` を `@REGISTRY.register("name")` + `from_config(cfg)`
-  だけで足せる。
-- **マルチドローン runner** (`runner/multi.py`) — 1 シナリオ N ドローン、
-  各機独立の sim/sensor/planner、ピア obs 経由で相互回避。
-  PR #47 で AirSim の共有クロックにも対応 (master-handoff)。
+- **v0.2.0 タグ済み** (2026-05-17)。`CHANGELOG.md` に差分要約あり。
+- v0.1.0 → v0.2.0 で **88 commit**。中身は §1 を参照。
+- 論文ドラフト (`docs/paper_a/`) は §1〜§7 まで本文/appendix map あり。
+- GitHub の About / README ヒーロー GIF / Roadmap 節は v0.2.0 公開時点で
+  最新化済み。**README には触れずに研究を進める方が摩擦が少ない**。
 
-### 1.2 バックエンド一覧
+### 0.2 直近で閉じた open question
 
-| 軸          | 実装                                                                    |
-|-------------|-------------------------------------------------------------------------|
-| `sim`       | `dummy_2d` / `dummy_3d` (point-mass) / `airsim` / `ros2`                |
-| `scenario`  | `grid_world` / `voxel_world` / `multi_drone_grid` / `multi_drone_voxel` |
-| `planner`   | `straight` / `astar` / `rrt` / `rrt_star` / `chomp` / `mpc` / `mpc_chomp` / `mppi` |
-| `sensor`    | `perfect` / `delayed` / `kalman_delayed` / `lidar` / `pointcloud_occupancy` / `depth_image_occupancy` |
-| `predictor` | constant velocity (planner 内蔵 `use_prediction` で ON/OFF)              |
+**「AirSim 上で failure-level の planner 差を測れる discriminating cell
+を作る」**は、`examples/exp_airsim_multi_discriminating_n30*.yaml`
+で一旦閉じた。
 
-### 1.3 主要研究結果 (`docs/findings.md` に詳細)
+dummy_3d n=100 の §3 ヘッドライン (`docs/findings.md` §"Multi-drone:
+GPU MPPI's rollout cloud flips the coordination Δ") は、3 つの AirSim
+セル (±2-4 m / ±1 m / 0 m altitude stagger, 各 n=30) に運んだところ:
 
-| トピック                    | 結論                                            | PR     |
-|-----------------------------|-------------------------------------------------|--------|
-| MPC compute Pareto (2D)     | `n_samples=16, h=20` 単独 Pareto                 | #11    |
-| 3D Pareto                   | `n_samples` 選好が 2D と逆転                    | #15    |
-| 知覚遅延クリフ (2D/3D)      | 同じコーナーで崩れる、3D は escape volume で軟化 | #19/#46|
-| 多機 N スケール             | N 増で peer prediction Δ が拡大                 | #28    |
-| 3D escape volume            | 体積でかいと Δ が消える                         | #39    |
-| 3D 密度                     | 密度上げると Δ 復活                             | #41    |
-| 3D peer-prediction 削除     | 「予測無し」は密度 8x より悪い                   | #43    |
-| 風 miscalibration           | planner の風モデル = sim 真値が最強              | #29    |
-| MPC + CHOMP 重ね掛け        | 飽和済み MPC 上では wash (誠実な null)           | #21    |
-| action-jump cost            | 既存 `w_smooth` チューニングが層追加に勝つ      | #38    |
-| RRT* (asymptotic optimal)   | フレッシュネス勝負ではプレーン RRT に負ける     | #40    |
-| AirSim 統合                 | E2E 動作 (LiDAR / depth / camera / multi)        | #44/#45/#46/#47 |
+- **±2-4 m / ±1 m**: 両 planner とも 4/4 joint で天井 (per-drone 100 %)
+  → Δ の差は trajectory spread でしか観測できない (4-27× 比は出る、
+  失敗レベルの Δ は出ない)。
+- **0 m (uniform z=30)**: GPU MPPI 0/30 joint、MPC 14/30 joint
+  (McNemar p ≈ 0.00012)。ただし GPU MPPI の per-drone が 28.3 % に
+  落ちて indep⁴ が joint floor を割るため、ここでの Δ は §3 と同じ
+  メカニズム (softmax 増幅) ではなく **mesh-mesh ボトルネックでの
+  幾何的崩壊**。
 
-### 1.4 残タスク (細かいやつ)
+2026-05-17 に Blocks 静的 cube を `simulator.static_obstacles` で
+spawn する経路を追加し、n=30 paired を実走:
 
-- ~~`tests/test_smoke.py::test_multi_drone_voxel_anim_groups_drones_per_episode` が
-  matplotlib `Axes3D` の import 衝突で local fail (CI は通っている)。~~
-  → 2026-05-12 対応済み。`mpl_toolkits.mplot3d.axes3d` が import できる
-  環境だけ 3D viz/anim smoke を実行し、このローカルの壊れた matplotlib
-  では skip する。
-- `roadmap` 節 (README) の「3D perception-latency 再検証」は #46 で
-  片付いた → 次の README 触るときに削る。
-- `roadmap` 節の「ROS 2 sim-time 対応」は #30 で済んでいる → 同様に削る。
-  → **次の PR ついでに README roadmap を整理する**。
+- MPC: per-drone 105/120 = 87.5 %, joint 22/30 = 73.3 %, Δ +14.7 pp
+- GPU MPPI: per-drone 120/120 = 100 %, joint 30/30 = 100 %, Δ +0.0 pp
+- McNemar: GPU-only success 8, MPC-only 0, p ≈ 0.008
+
+→ AirSim に failure-level の差は作れた。ただし dummy_3d の
+「joint tie で GPU MPPI の Δ が大きい」メカニズム再現ではなく、
+この cell では **GPU MPPI が ceiling に逃げ切る**。次の open question は
+「GPU MPPI も 60〜90 % per-drone 帯に落ちる static-cube density sweep を
+作れるか」。
+
+### 0.3 やる前に踏むトラップ集
+
+1. **AirSim multi-drone reset の stale collision flag** —
+   `client.reset()` 後に engine をすぐ pause しないと、`settle_after_reset`
+   の間に 4 機が地面コリジョンを `simGetCollisionInfo().has_collided` に
+   蓄積し、t=0 で 100 % joint collision に見える。
+   `uav_nav_lab/sim/airsim_bridge.py` の `reset()` 内で
+   `client.reset()` 直後に `client.simPause(True)` を呼んでいる
+   (commit 382d207) — **絶対に消さないこと**。詳細は
+   `docs/findings.md` §"AirSim bridge: pause-after-reset prevents
+   stale t=0 collisions"。
+
+2. **n=1 デモは bug を隠す** — `front_center` カメラを付けた demo は
+   毎ステップ `simGetImages` RPC で readback を直列化し、上記の bug を
+   masking する。n=30 study で camera を切ると surface する。**新規 YAML
+   を書くときは camera 無しで動くことを先に確認**。
+
+3. **AirSim multi-drone reset hang** — `client.reset()` を sequential
+   に呼ぶと 1〜2 回で wedge する。AirSim サーバ側のディスパッチループの
+   問題。`scripts/run_airsim_multi_chunked.sh` で **エピソード毎に
+   Blocks server を再起動**して逃げている。upstream issue 化が
+   open task (§3.2)。
+
+4. **`pkill -f "Blocks"` は自殺する** — bash プロセスの command literal
+   に "Blocks" が入るため自分も殺される。`/proc/<pid>/comm` を見て
+   exact name で照合すること。chunked runner は対応済み。
+
+5. **system python の matplotlib は壊れている** — `mpl_toolkits.mplot3d`
+   が import 不能。**`uav-nav anim` 系は必ず `.venv/bin/python` で
+   実行**。AirSim 実行 (msgpackrpc 必要) は system python。
+
+6. **GPU MPPI の first-call cost ~14 s** — episode 毎に autograd graph を
+   作り直すので、`plan_dt` の素朴な mean は steady-state の 10〜30×
+   になる。`scripts/paired_analysis_*.py` 系は **first replan を捨てて
+   steady-state mean / p95 を出す** convention になっている (`docs/paper_a/
+   section_4_prerequisites.md` §4.3 参照)。
+
+### 0.4 引き継ぎ用の最短再現手順
+
+AirSim 4 機 n=30 paired を新しいセルで回す最短コマンド:
+
+```bash
+# 1. Blocks を一度立ち上げて settings.json (Drone1..Drone4) を確認
+~/AirSim/Blocks/LinuxNoEditor/Blocks.sh &
+
+# 2. chunked runner で MPC / GPU MPPI それぞれ n=30
+scripts/run_airsim_multi_chunked.sh mpc      30 0 results/airsim_xxx_mpc      examples/exp_airsim_xxx.yaml
+scripts/run_airsim_multi_chunked.sh gpu_mppi 30 0 results/airsim_xxx_gpu_mppi examples/exp_airsim_xxx_gpu_mppi.yaml
+
+# 3. Wilson + McNemar 集計
+python scripts/paired_analysis_airsim_multi.py results/airsim_xxx_mpc results/airsim_xxx_gpu_mppi
+```
+
+`docs/findings.md` の各 AirSim 節の「Reproduce」行に同じパターンの
+コマンドが残っている。新しい paired study はそれを真似て YAML を
+コピー + 改変するのが最短。
+
+### 0.5 引き継ぎの心構え
+
+- 数値クレームを書くときは **必ず Pareto cell を併記**
+  (`(n=N, h=H)` の形)。Pareto セル外の数値は研究結果として書かない。
+  paper §4.1 参照。
+- GPU MPPI のコスト計算をいじるときは **goal-mask の再導入バグ
+  (`docs/paper_a/section_4_prerequisites.md` §4.2 の 12-cell 反転)
+  を踏まないこと**。`uav_nav_lab/planner/gpu_mppi.py` の goal-mask 処理
+  (commit 2a9d196) を消したり書き換えたりするときは、その瞬間に
+  全 Pareto sweep を回し直す覚悟が要る。
+- Δ の符号の解釈に毎回引っかかるので明文化: **Δ > 0 は failure が
+  seed 内でクラスタする (= ある seed では全機落ち、別 seed では全機通る)**。
+  Δ < 0 は failure が seed 間に分散する。§3 ヘッドラインは「GPU MPPI の
+  方が Δ が大きい = failure をクラスタさせる」。
 
 ---
 
-## 2. 短期 (次の 1-3 PR で片付けたい)
+## 1. v0.2.0 到達点 (2026-05-17 時点)
 
-### 2.1 候補 A: AirSim multi-drone を「一段詰める」 — passive-first 順序
+v0.1.0 (2025-11-XX) からの差分は `CHANGELOG.md` を一次資料とする。
+ここでは plan.md として **「次に何ができるか」の判断材料** になる
+部分だけ抜き出す。
 
-**動機**: PR #47 では「同一高度 4-way 中央交差」が AirSim の 1-tick
-command lag のせいで脆く、altitude を ±2 m staggered にして逃げた。
-本質的には runner のループ順序を `[1, 2, 3, ..., 0]` (passive 先 →
-master 最後) に並び替えるだけで lag は消えるはず。
+### 1.1 フレームワーク本体 (差分なし)
 
-**やること**:
-1. `runner/multi.py` の step 2 ループ順序を「passive bridge を先に
-   `moveByVelocityAsync` させてから、master が `simContinueForTime`
-   する」順に並び替える。
-2. ただし passive sim の `getMultirotorState` (ステート読み戻し) は
-   master の continue の *後* で読む必要があるので、step を
-   「コマンド発行フェーズ」と「ステート読み戻しフェーズ」の 2 段に
-   分割する必要があるかもしれない。
-3. `examples/exp_airsim_multi_demo.yaml` の altitude を全部 30 m に
-   戻して、同一高度 4-way 中央交差が成功するか検証。
-4. dummy_3d の multi runner には影響しないことを smoke test で確認。
+- YAML 駆動 + 5 軸プラガブル + マルチドローン runner は v0.1.0 の
+  形のまま継続。`runner/multi.py` の passive-first dispatch (v0.2.0)
+  と AirSim two-phase step (v0.2.0) が地味だが load-bearing。
 
-**やらない理由 / リスク**:
-- ループ順序の入れ替えだけでなく step 分割も要るかもしれず、思った
-  以上に runner の見通しが悪くなる可能性。
-- staggered altitude は「AirSim の物理を逃げてる」というより
-  「demo の見せ方として 4 機が画面内で違うレイヤーに居た方が見やすい」
-  という副次効果もあった。
-- **判定**: lag 解消は技術的に正しいが demo 体験は今で十分。
-  優先度: 中。
+### 1.2 v0.2.0 で増えたバックエンド
 
-### 2.2 候補 B: AirSim で sensor-latency cliff を再現 (PR #43/#46 の AirSim 版)
+| 軸          | v0.2.0 で追加                                                                   |
+|-------------|-------------------------------------------------------------------------------|
+| `sim`       | (差分なし — `airsim` / `ros2` は v0.1.0 末で入っていた。挙動修正多数)               |
+| `scenario`  | `cells:` 明示配置 + `dynamic_obstacles` (linear+reflect 球) + `inflate: N`        |
+| `planner`   | **`gpu_mppi`** (CUDA batched + Fibonacci-sphere + softmax) / `mppi` / `chomp` / `mpc_chomp` / `rrt` / `rrt_star` |
+| `sensor`    | `lidar` / `pointcloud_occupancy` / `depth_image_occupancy` (v0.1.0 末)             |
+| `predictor` | 既存 CV predictor のまま、planner 側 `use_prediction` で ON/OFF                  |
 
-**動機**: PR #46 で「同じ MPC plan を dummy_3d と AirSim で走らせて
-物理差を可視化」する transferability ablation が完成した。次の自然な
-段階は「dummy_3d で発見した *研究結果* (cliff / wind miscal / peer
-prediction Δ) が AirSim 上でも同じ形で出るか」を検証すること。
-シミュレータ間転移性の研究の第二弾。
+### 1.3 v0.2.0 で積み上がった研究結果
 
-**ターゲット**:
-1. **Perception-latency cliff** (PR #19/#46): `delayed` センサーの
-   `latency_steps` を 0..6 振る ablation を AirSim で走らせて、
-   dummy_3d で見えた「3-4 step で崖、ego_extrapolation で +50 pp 戻る」
-   が AirSim でも見えるか。
-2. もし見えれば → 「研究結果が転移する」ポジティブ result。
-3. もし見えなければ → AirSim 物理の何が崖を埋めている / 動かしている
-   かを切り分け (motor lag? air drag? pitch coupling?)。これも
-   transferability 研究としては面白い。
+`docs/findings.md` に詳細。「これは押さえる」セット:
 
-**コスト見積**:
-- AirSim を起動して 7 セル × n=10 episode = 70 episode。
-  1 episode ~10 s として ~12 min/全条件。許容範囲。
-- 既存の `delayed` sensor + `voxel_world` がそのまま AirSim で
-  動くはずなので、新規コードはほぼ YAML だけ。
+| トピック                                    | 結論                                                            |
+|--------------------------------------------|----------------------------------------------------------------|
+| MPC compute Pareto (2D + 3D)               | 2D `(16, 20)` / 3D `(8, 40)` の単独 Pareto                       |
+| GPU MPPI Pareto (2D + 3D)                  | 2D `(128, 40)` 100 %/3.0 ms / 3D `(64-256, 20)` 100 %/3.5 ms。3D で CPU MPC を全軸で支配 |
+| GPU MPPI goal-mask bug → Pareto 全反転      | `commit 2a9d196`。`docs/paper_a/section_4_prerequisites.md` §4.2 |
+| **Multi-drone Δ-flip (dummy_3d n=100)**    | MPC +0.8 pp / GPU MPPI **+11.4 pp** at joint 78/77 % tie。 softmax がクラスタを増幅 |
+| AirSim multi-drone n=30 × 3 cell           | 高度 stagger が **bimodal**。non-zero 100 % ceiling / uniform GPU MPPI 0/30 |
+| Bridge fix: pause-after-reset              | `simPause(True)` 即発行で t=0 collision 蓄積を防ぐ (`commit 382d207`) |
+| ROS 2 + AirSim-over-ROS-2 spatial parity   | 直結 vs ROS2 wrapper で ATE < 0.2 m (dummy)                       |
+| 3D escape volume / 知覚遅延 / 風 miscal     | v0.1.0 の結果は v0.2.0 でも維持 (Pareto cell 更新後に再検証済み)    |
 
-**判定**: 優先度 **高**。AirSim 統合の研究的 value を最大化する筋。
+### 1.4 v0.2.0 で積み上がった可視化
 
-### 2.3 候補 C: AirSim で wind miscalibration ablation を再現
+- 単機 / 多機 3D anim に **per-drone rollout overlay** (cyan-tinted
+  cloud + thick best-line) — `viz_rollouts: 8` で多機でも可読。
+- `dynamic_obstacles` の replay scatter (赤球) を多機 3D anim に追加。
+- README ヒーロー: AirSim 多機 obstacles GIF + rollout viz GIF の 2 枚。
+- `record_airsim_*_compare.py` / `render_compare_gif.py` 系 — side-by-side
+  GIF コンポジット。
 
-**動機**: PR #29 の「planner の風モデル = sim 真値が最強、awareness
-だけでは physics に勝てない」という結論を AirSim の `Wind` 設定で
-再現できるか。
+### 1.5 v0.2.0 で書いた論文ドラフト (`docs/paper_a/`)
 
-**やること**:
-1. AirSim の `settings.json` に `Wind: {"X": Vx, "Y": Vy, "Z": Vz}` を
-   入れて風を吹かせる。
-2. planner 側の `wind_belief` を sim 真値とずらした 3x3 grid
-   (under/exact/over) で sweep。
-3. dummy_3d で見えた「belief = reality でしか success が立たない」が
-   AirSim でも成立するか。
+| ファイル                                  | 状態            |
+|-----------------------------------------|----------------|
+| `outline.md`                            | §1〜§7 骨子完成 |
+| `section_1_motivation.md`               | 本文確定 (½p)   |
+| `section_2_setup.md`                    | 本文確定 (1p)   |
+| `section_3_headline.md`                 | 本文確定 (1.5p) |
+| `section_4_prerequisites.md`            | 本文確定 (§4.1-4.3, 1.5p) |
+| `section_4_4_sim_transferability.md`    | 本文確定 (§4.4, 1.5p) |
+| `section_5_secondaries.md`              | 本文追加済       |
+| `section_6_limitations.md`              | 本文追加済       |
+| `section_7_repro_map.md`                | appendix map 追加済 |
 
-**コスト**: 中。AirSim の Wind は静的設定 (動的に変えるには Plugin
-書く必要あり) なので、9 セル × n=10 episode = 90 episode、設定毎に
-AirSim 再起動が要る → ~1 時間ぐらい。
+合計 ~8 ページ。§7 まで本文/appendix の初稿は揃った。
 
-**判定**: 優先度 中。B と同じ「研究の AirSim 転移」筋だが B より重い。
+---
 
-### 2.4 候補 D: README roadmap の整理 + findings.md に PR #47 の節追加
+## 2. 短期 (次の 1-3 PR で潰したい)
 
-**動機**: 既に解決済みの roadmap 項目 (3D perception latency 再検証 /
-ROS 2 sim-time) が README に残っている。地味だが残すと混乱の元。
-ついでに PR #47 を `docs/findings.md` の章として書き起こしておく
-(AirSim 共有クロックの罠と master-handoff 話)。
+### 2.1 候補 A: **AirSim discriminating cell density sweep**
+
+**動機**: §0.2 の static-cube cell で AirSim failure-level の planner
+差は作れたが、GPU MPPI が 100 % ceiling に張り付いたため dummy_3d の
+Δ-flip mechanism そのものは未再現。次は GPU MPPI も 60〜90 % per-drone
+帯に落ちる density / placement sweep。
 
 **やること**:
-1. README の `## 🗺️ Roadmap` 節を更新 — 既済 2 件削除、新項目を追加
-   (AirSim transferability 第二弾, とか)。
-2. `docs/findings.md` に "AirSim multi-drone: shared physics clock and
-   master handoff" 節を追加。実験というより *エンジニアリング知見*
-   の記録。
+1. `examples/exp_airsim_multi_discriminating_n30*.yaml` をベースに、
+   NS pillar の本数・位置と EW pillar の scale / `inflate` を sweep。
+2. GPU MPPI per-drone が 60〜90 % に落ちる最小 cell を探す。
+3. n=30 paired (MPC vs GPU MPPI) を `run_airsim_multi_chunked.sh` で回す。
+4. dummy_3d と同じ「joint tie 付近で GPU MPPI の Δ が大きい」形が
+   出るか確認。
 
-**判定**: 優先度 低だが、B/C を始める前にここを片付けるのが綺麗。
-B/C どちらかと一緒のコミットでもよい。
+**コスト**: 中〜高。1 cell あたり AirSim 起動 + 60 episode。
+**判定**: 進行中。§0.2 の結果だけでも planner separation は書けるが、
+Δ-flip transferability を caveat 無しにするにはこの sweep が必要。
+
+#### 2.1.1 ここまでの読み (2026-05-18)
+
+最初の static-cube discriminating cell は、AirSim 上で failure-level の
+planner 差を作るという意味では成功した。ただし GPU MPPI が 30/30 joint
+success の ceiling に張り付いたため、dummy_3d §3 の
+「joint tie 付近で GPU MPPI の Δ が大きい」形にはまだ届いていない。
+
+その後の sweep で分かったことはかなり明確:
+
+1. **central occupancy は強すぎる。**
+   `[29,33]` に central pillar を planner occupancy として入れると、
+   GPU は per-drone 9/12 まで落ちるが joint は 0/3 になりやすい。
+   これは target band ではなく floor。
+2. **physical mesh x だけでは GPU を落とせない。**
+   central mesh の physical x を 29.0, 29.25, 29.375, 29.45, 29.47,
+   29.49, 29.50 と詰めても、planner occupancy が `[28,33]` 側なら
+   GPU は 12/12, 3/3 の ceiling に戻る。
+3. **inflate は二値化しやすい。**
+   central occupancy `[29,33]` で `inflate=2` は ceiling、
+   `inflate=3` は floor。`safety_margin` や `w_obs` を下げても
+   floor は解けない。
+4. **central 2 本化も hard すぎる。**
+   `[29,33]` + `[31,33]`、`[32,33]`、`[31,34]` は全部 GPU 9/12,
+   0/3 joint。2 本目を少し逃がしても同じ north collision floor に落ちる。
+5. **baseline 5-pillar の physical EW 幅が初めて良い手触り。**
+   central を足さず、baseline の 4 本 EW pillars を太くするだけで、
+   GPU が ceiling から少し落ちた:
+   - `base_ew05`: GPU 11/12 per-drone, 2/3 joint
+   - `base_ew06`: GPU 10/12 per-drone, 1/3 joint
+   - `base_ew07`: GPU 11/12 per-drone, 2/3 joint
+
+つまり次に n=30 へ進めるべき候補は、central 系ではなく
+**baseline 5-pillar + EW physical scale sweep**。ここなら GPU が
+60-90 % per-drone 帯に入りそうで、joint も 0 ではない。MPC 側も
+baseline n=30 で既に 87.5 % per-drone / 22/30 joint なので、EW width を
+少し太くしても完全 floor には落ちにくい可能性がある。
+
+#### 2.1.2 Pilot log
+
+| candidate | YAML pair | 3-seed result (seeds 42-44) | read |
+|-----------|-----------|-----------------------------|------|
+| baseline | `exp_airsim_multi_discriminating_n30*.yaml` | n=30 済み: MPC 87.5 % per-drone / 22/30 joint、GPU 100 % / 30/30 | planner separation は出るが GPU ceiling |
+| mid | `exp_airsim_multi_discriminating_mid_n30*.yaml` | MPC 5/12 per-drone, 0/3 joint; GPU 12/12, 3/3 joint | late `[33,45]` は MPC だけ悪化、GPU ceiling のまま |
+| central | `exp_airsim_multi_discriminating_central_n30*.yaml` | MPC 7/12, 0/3; GPU 9/12, 0/3 | central `[29,33]` は GPU を target 帯に落とすが joint floor |
+| central_soft | `exp_airsim_multi_discriminating_central_soft_n30*.yaml` | MPC 7/12, 0/3; GPU 9/12, 0/3 | mesh を細くしても central collision は残る |
+| central_north | `exp_airsim_multi_discriminating_central_north_n30*.yaml` | GPU-only: 9/12, 0/3 | y=33→34 でも x=29 系は GPU floor 側 |
+| central_west | `exp_airsim_multi_discriminating_central_west_n30*.yaml` | MPC 8/12, 0/3; GPU 12/12, 3/3 | x=28 に逃がすと GPU ceiling に戻る |
+| central_west_thick | `exp_airsim_multi_discriminating_central_west_thick_n30*.yaml` | MPC 9/12, 1/3; GPU 12/12, 3/3 | MPC は少し戻るが GPU は ceiling |
+| central_half | `exp_airsim_multi_discriminating_central_half_n30*.yaml` | GPU-only: 12/12, 3/3 | physical x=29.0 は GPU ceiling |
+| central_29p25 | `exp_airsim_multi_discriminating_central_29p25_n30*.yaml` | GPU-only: 12/12, 3/3 | physical x=29.25 も GPU ceiling |
+| central_29p375 | `exp_airsim_multi_discriminating_central_29p375_n30*.yaml` | GPU-only: 12/12, 3/3 | physical x=29.375 も GPU ceiling |
+| x-sweep 29.45 | `/tmp` generated by `run_airsim_discriminating_x_sweep.sh` | GPU-only: 12/12, 3/3 | physical x=29.45 も GPU ceiling。seed 42 final_t=21.15s で境界感はある |
+| x-sweep 29.47 | same | GPU-only: 12/12, 3/3 | physical x=29.47 も GPU ceiling |
+| x-sweep 29.49 | same | GPU-only: 12/12, 3/3 | physical x=29.49 も GPU ceiling |
+| x-sweep 29.50 | same | GPU-only: 12/12, 3/3 | physical x=29.50 でも GPU ceiling。central floor は mesh x ではなく planner occupancy `[29,33]` が主因 |
+| occ29_inflate1 | `/tmp` generated by `run_airsim_discriminating_param_sweep.sh` | GPU-only: 12/12, 3/3 | central occupancy でも inflate=1 は GPU ceiling |
+| occ29_inflate2 | same | GPU-only: 12/12, 3/3; paired pilot MPC 8/12, 0/3 vs GPU 12/12, 3/3 | inflate=2 も GPU ceiling。MPC だけ hard |
+| occ29_margin04 | same | GPU-only: 9/12, 0/3 | safety_margin を下げても inflate=3 の floor は解けない |
+| occ29_margin05 | same | GPU-only: 9/12, 0/3 | 同上 |
+| occ28_x29p45_ew035 | same | GPU-only: 12/12, 3/3 | EW 0.35 は ceiling、ただし seed44 final_t=18.45s |
+| occ28_x29p45_ew04 | same | GPU-only: 12/12, 3/3 | EW 0.4 も ceiling |
+| occ28_x29p45_ew05 | same | GPU-only: 12/12, 3/3 | EW 0.5 も ceiling、seed42/43 は 16-20s まで遅延 |
+| occ28_x29p45_ew06 | same | GPU-only: 12/12, 3/3 | EW 0.6 も ceiling |
+| occ29_inflate2_ew05/06 | same | GPU-only: 12/12, 3/3 | central occupancy + inflate2 に EW 幅を足しても GPU ceiling |
+| occ29y34_inflate2 | same | GPU-only: 12/12, 3/3 | central y+1 + inflate2 も ceiling |
+| occ30y33_inflate2 | same | GPU-only: 12/12, 3/3 | central x+1 + inflate2 も ceiling |
+| occ29_inflate2_second31 | same | GPU-only: 9/12, 0/3 | central 2 本化は floor |
+| occ29_inflate2_second32 | same | GPU-only: 9/12, 0/3 | 2 本目を x=32 に逃がしても floor |
+| occ29_inflate2_second31y34 | same | GPU-only: 9/12, 0/3 | 2 本目を y+1 に逃がしても floor |
+| occ29_wobs100 | same | GPU-only: 9/12, 0/3 | inflate3 floor は w_obs 半減でも解けない |
+| occ29_wobs50 | same | GPU-only: 9/12, 0/3 | w_obs 1/4 でも floor |
+| base_ew05 | same, generated from baseline 5-pillar | GPU-only n=10: per-drone 39/40 (97.5 %), joint 9/10。failure は seed 43 のみ (drone idx 3) | ほぼ ceiling。1 seed の偶発 collision のみで target 帯下端ですらない |
+| base_ew06 | same, generated from baseline 5-pillar | GPU-only n=10: per-drone 35/40 (87.5 %), joint 5/10。failure seeds 43,44,45,46,50 (全て drone idx 3) | target 帯上端、joint も tie 寄り。MPC baseline (87.5 %) と並ぶため Δ-flip 機会最大 |
+| base_ew07 | same, generated from baseline 5-pillar | GPU-only n=10: per-drone 34/40 (85.0 %), joint 4/10。failure seeds 42,46,47,49,50,51 (全て drone idx 3) | ew06 とほぼ同じ hard さ。failure 数 ew06 と僅差 |
+| dense | `exp_airsim_multi_discriminating_dense_n30*.yaml` | MPC 8/12, 0/3; GPU 9/12, 0/3 | 7 本柱は hard すぎ。n=30 に行く前に中間 knob が必要 |
+
+#### 2.1.3 追加した runner
+
+```bash
+# cheap smoke: GPU only, default N=5, ordered from newest boundary probes
+scripts/run_airsim_discriminating_sweep.sh
+
+# physical x-position generator for the central AirSim mesh
+X_VALUES="29.42 29.45 29.47" scripts/run_airsim_discriminating_x_sweep.sh
+
+# planner/mesh parameter probes generated from committed bases
+VARIANTS="occ29_inflate1 occ29_inflate2" scripts/run_airsim_discriminating_param_sweep.sh
+VARIANTS="base_ew05 base_ew06 base_ew07" scripts/run_airsim_discriminating_param_sweep.sh
+
+# paired pilot / full n=30
+MODE=paired N=3 CANDIDATES=central_soft scripts/run_airsim_discriminating_sweep.sh
+MODE=paired N=30 CANDIDATES=<winning-cell> scripts/run_airsim_discriminating_sweep.sh
+```
+
+#### 2.1.4 次にやること
+
+**`base_ew06` n=30 paired まで完走 (2026-05-18)。Δ-flip の符号反転を発見。**
+
+base_ew06 n=30 paired 結果 (seeds 42-71):
+
+| planner  | per-drone (Wilson)            | joint (Wilson)              | indep⁴ | Δ        |
+|----------|-------------------------------|-----------------------------|--------|----------|
+| MPC      | 104/120 = 86.7 % [79.4, 91.6] | 19/30 = 63.3 % [45.5, 78.1] | 56.4 % | **+6.9 pp** |
+| GPU MPPI | 114/120 = 95.0 % [89.5, 97.7] | 24/30 = 80.0 % [62.7, 90.5] | 81.5 % | -1.5 pp  |
+
+McNemar paired-seed: both=14, MPC-only=5, GPU-only=10, neither=1 → p ≈ 0.302。
+Sign は **GPU 優位** (joint 80 vs 63, McNemar 10 vs 5)。
+
+**重要発見: Δ-flip の符号が dummy_3d と逆**。
+
+| backend / cell           | MPC Δ    | GPU MPPI Δ |
+|--------------------------|----------|-----------|
+| dummy_3d §3 (n=100)      | +0.8 pp  | **+11.4 pp** ← GPU cluster |
+| AirSim base_ew06 (n=30)  | **+6.9 pp** ← MPC cluster | -1.5 pp |
+
+per-drone は両 backend で tied (94-95 %)、Δ で差を生む構造は transferable。
+ただし **どちらの planner が cluster するかは backend/cell で反転**。
+
+メカニズム読み (per-seed disagreement から):
+
+- MPC failure 11 seeds: drone 3 単独 = 8 / 多機 cluster (drones 1-2-3) = 3
+  (seeds 55, 67 で 3 機同時崩壊、seed 66 で drones 1-2 崩壊)。
+- GPU MPPI failure 5 seeds: **全部 drone 3 単独** (seeds 43, 45, 46, 50, 52)。
+- AirSim cell では MPC が north end の 5-pillar layout で多機を同方向に
+  詰め込み、cluster failure を生む。GPU MPPI の rollout cloud は
+  drone 3 (一番南/外側) の hard avoidance では geometric に落ちるが
+  cluster は作らない。
+
+---
+
+#### 2.1.5 次の判断ポイント
+
+A, B, C, D 全て完了 (2026-05-18)。完了した内容:
+
+- **A**: `docs/paper_a/section_4_4_sim_transferability.md` に新 §4.4.4
+  (Δ-flip 符号反転) を挿入、後続 renumber。outline.md と repro_map も
+  同期。後に n=50 数値で全面リライト。
+- **B**: `docs/findings.md` に "AirSim multi-drone base_ew06
+  density-sweep n=50" セクション追加。
+- **C**: n=50 paired 完走 (seeds 42-91)。McNemar p 0.302 → 0.167
+  (まだ未有意)。**MPC Δ は +6.9 → +3.8 pp に縮小** — 新 20 seed で
+  MPC cluster failure (seeds 55/66/67 タイプ) は再現せず、Δ の主源が
+  rare events (3/50 = 6 % cluster rate) であることが判明。
+- **D**: lane30 / lane22 GPU-only smoke で drone-3 bias の origin を probe。
+  結論: **drone-3 単独 failure は lane shift で removable ではない**。
+  両 variant とも 10/10 drone 3 fail。collision 位置は lane22 で
+  (21.2, 23.3, 26.6) @ t=6.90s、base_ew06 (x=26) で同じ (21.2, 23.2, 26.6)
+  @ t=7.35s — どちらも planner が inflate=3 で膨らんだ (25,27) pillar を
+  detour した先で collide。lane30 は central (30, 29, 26.6) で別ハザード。
+  drone-3 bias は (planner + inflate + EW pillar) の幾何的 root であり、
+  MPC cluster failures (seeds 55/66/67) は独立の planner-specific failure
+  mode で、これが Δ 符号反転の源。
+
+**残された open work** (優先度の高い順):
+
+~~1. (21.2, 23.2, 26.6) で何に collide しているか確認~~ **完了
+   (2026-05-18)**。`airsim_bridge.py:525` パッチで `collision_object` を
+   per-step JSON に記録。MPC seed 67 cluster 再走で drones 1, 2 が
+   `collision_object` 空 = **drone-drone collision @ central crossing**、
+   drone 3 は `uavnav_disc_ew_35` を hit と確定。
+
+~~4. AirSim variability の原因解明 → 3 batch × n=15 で characterize~~
+   **完了 (2026-05-18)**。fresh seeds 200-254 で 3 独立 batch 実行:
+   - cluster rate: 1/15, 3/15, 0/15 (mean 8.9 %, n=50 の 6 % と consistent)
+   - McNemar 方向は batch 1 tie / batch 2 GPU 寄り / batch 3 **MPC 寄り**
+     と逆転、n=50 (GPU 寄り) は独立 sample で再現せず
+   - 3 batch 累積 n=45: MPC joint = GPU joint = 39/45 = 86.7 %、
+     McNemar p ≈ 0.77 (tie)
+   - 結論: **「GPU > MPC」の数値主張は環境依存**。Δ-flip の cluster mode
+     は両 backend で robust (MPC clusters, GPU 平坦) → §4.4.4 / findings.md
+     に variability table 追加済
+
+2. **n=80 まで延長して McNemar p<0.05 を狙う** — variability 解析で
+   ナンセンスと判明 (batch ごとに p の方向が反転)。**取下げ**。
+   代わりに n ≥ 200 paired or controlled environment が必要だが
+   どちらも §4.4 scope 外。
+
+3. **§3.1 (静的障害物密度 sweep)** に移る。dummy_3d n=100 の §3 headline は
+   既存、AirSim では base_ew06 1 セルしか測ってない。N=2/3/4/6 や
+   pillar density sweep は別軸の研究。優先度 中 (新規の研究軸)。
+
+5. **論文 §6 limitations を更新** — variability 発見を limitations 節に
+   反映 (AirSim multi-drone measurement は single n=N study では sample
+   size を超えた variance を持つ; controlled environment が要る claim
+   向き)。優先度 中。
+
+---
+
+**以下は完了済みの履歴。**
+
+選定: **`base_ew06`** を n=10 paired (MPC + GPU) に進めた。
+
+- per-drone 87.5 % は target 帯 60-90 % の中で MPC baseline (87.5 %) と
+  並ぶ tie 付近の sweet spot。Δ-flip の seed-cluster 機構が観測しやすい。
+- ew07 (85.0 %) はほぼ等価、ew05 (97.5 %) は ceiling 寄りで除外。
+- **注意**: n=10 GPU-only の failure は全 seed で **drone idx 3 固定**。
+  seed では散ってもいるが drone は不変。これは dummy_3d §3 の seed-cluster
+  Δ-flip とはメカニズムが異なる可能性 (geometric drone-position effect)。
+  原因候補は Drone4 spawn 位置 (settings.json) と 5-pillar layout の
+  相互作用。n=10 paired で MPC 側に同じ drone-bias が出るかが診断材料。
+
+次の command:
+
+```bash
+VARIANTS="base_ew06" \
+  MODE=paired N=10 BASE_SEED=42 \
+  scripts/run_airsim_discriminating_param_sweep.sh
+```
+
+ここで見るべきもの:
+
+- MPC が完全 floor にならないか。
+- GPU と MPC の per-drone が同じ 60-90 % 帯に乗るか。
+- joint が tie 付近か、少なくとも McNemar の一方的勝ちだけで終わらないか。
+- MPC でも drone idx 3 に failure が偏るか (偏れば geometric、
+  偏らなければ planner-specific)。
+
+n=10 paired が良ければ n=30 paired に進む:
+
+```bash
+VARIANTS="base_ew06" \
+  MODE=paired N=30 BASE_SEED=42 \
+  scripts/run_airsim_discriminating_param_sweep.sh
+```
+
+#### 2.1.5 今は後回しにする候補
+
+- `central*` 系: GPU を落とせるが joint floor が強すぎる。
+- `inflate` 系: `inflate=2` ceiling / `inflate=3` floor で中間がない。
+- `w_obs` / `safety_margin`: floor/ceiling の境界を動かせなかった。
+- `occ28_x29p45_ew05`: seed time は伸びるが 3/3 success。baseline EW
+  scale の方が直接 failure を出したので優先度を下げる。
+- NS `[27,15]` scale 0.1/0.2/0.3: まだ未実施。EW scale n=10 が
+  ダメなら戻る。
+
+手書き YAML はこれ以上増やさない。param generator に variant を足して
+GPU-only short run で見る。
+
+### 2.2 候補 B: **AirSim limit-case cliff** (`exp_airsim_latency_limit.yaml`)
+
+**動機**: v0.1.0 末で「AirSim だと motor ramp が 3-4 step cliff を
+平滑化する」結果。max_speed=15 + 高密度 (`random_layer`) なら cliff が
+返ってくるはず、という仮説。YAML は用意済 (`examples/exp_airsim_latency_limit.yaml`)。
+
+**やること**:
+- `latency_steps ∈ {0,1,2,3,4,5,6}` × n=10 を AirSim で sweep。
+- dummy_3d で見えた崖が AirSim 高速・高密度で復活するか確認。
+
+**判定**: 優先度 中。A の方が論文ヘッドラインへの貢献が大きい。
+
+### 2.3 候補 C: **ROS 2 ↔ AirSim wrapper の動作確認**
+
+**動機**: v0.2.0 で `cmd_msg_type: airsim_vel_cmd` と
+`scripts/compare_spatial_runs.py` まで整備済 (`docs/findings.md` §"AirSim
+over ROS 2 parity harness")。残るのは **AirSim ROS2 wrapper の reset /
+teleport** 経路の挙動確認 — wrapper 経由で multi-drone reset が
+hang しないか、staggered スポーン姿勢が引き継がれるか。
+
+**判定**: 優先度 低。論文 §4.4.6 (ROS 2 invariance) は dummy ROS2 sim で
+既に成立しており、AirSim wrapper まで深掘りするのは scope 外気味。
+
+### 2.4 候補 D: **論文 §7 を埋める** — 完了
+
+**動機**: §1〜§6 は本文あり。残りは §7 reproducibility map
+(各 result → YAML へのフルマップ)。
+
+**やること**:
+- `docs/paper_a/section_5_secondaries.md` — 追加済。
+- `docs/paper_a/section_6_limitations.md` — 追加済。必要なら短縮・整形。
+- `docs/paper_a/section_7_repro_map.md` — 追加済。
+  `examples/exp_*.yaml` / runner / findings anchor の対応表を持つ。
+
+**判定**: 完了。次は候補 A の AirSim discriminating cell density sweep。
 
 ---
 
 ## 3. 中期 (次の 5-10 PR)
 
-### 3.1 「研究結果の AirSim 転移」シリーズ (上記 B/C の発展)
+### 3.1 AirSim Δ-flip シリーズの完結
 
-PR #43〜#46 で「フレームワークが AirSim 上で動く」「同じ plan を両方で
-走らせる」までは終わっている。次の章は **「dummy_3d で得た定性的結論が
-AirSim でも保たれるか」を一個ずつ潰していく** こと。候補:
+候補 A が片付いたら、次の自然な層は:
 
-- [ ] perception-latency cliff (B)
-- [ ] wind miscalibration (C)
-- [ ] peer-prediction の Δ (4 機 N=4 で AirSim multi-drone)
-- [ ] sensor FOV ablation (omni-LiDAR vs forward depth) — AirSim 版
-- [ ] CHOMP+RRT-init の +17 pp が AirSim でも出るか (sim-transfer 第二弾)
+- [ ] 静的障害物密度 sweep (3〜15 個) で Δ の per-drone-rate 依存を曲線で
+- [ ] dynamic obstacle 速度 sweep (1〜5 m/s) で multi-drone interaction の
+      severity 依存
+- [ ] N=2, 3, 4, 6 で AirSim multi-drone N-scaling (現状 dummy_3d のみ)
 
-これらが全部「転移する」なら **dummy_3d は AirSim の良い proxy**
-という強いメッセージが出せる。逆に「転移しない」項目があるなら、
-それ自体が「dummy_3d のどこを直せば AirSim と等価になるか」という
-別の研究テーマになる。
+### 3.2 AirSim multi-drone reset hang を upstream に報告
 
-### 3.2 ROS 2 ↔ AirSim 統合
+`docs/findings.md` §"AirSim multi-drone reset path: stale collision
+flag and intermittent hang" に再現手順がまとまっている。Microsoft の
+AirSim repo もしくは Colosseum fork に issue を切って、minimum
+reproducer (`scripts/run_airsim_multi_chunked.sh` の Python 化 + 4 機
+settings.json) を添付する。
 
-現状 `ros2_bridge` は完成済み (PR #30)。次のステップは:
+**判定**: 優先度 低。我々の側は chunked runner で逃げている。upstream
+報告は科学的礼節としてやる、レベル。
 
-- AirSim の `ros2/AirsimROSWrapper` を立てて、
-  `airsim_bridge` (直結) と `ros2_bridge` (ROS2 越し) を同じ
-  `voxel_world` で走らせ、E2E 数値が一致することを確認。
-- これができると「ROS2 越しでも数値が変わらない = bridge 越しの
-  オーバーヘッドが研究結果を歪めない」ことが言える。
+### 3.3 RL 比較ベースライン
 
-**コスト**: 大。AirSim ROS2 wrapper のセットアップが必要。
+v0.2.0 で `gym.Env` ラッパー + `stable_baselines3` SAC scaffolding は
+入っている (commit 4e062ed)。次は:
 
-### 3.3 GPU MPC / MPPI
+- [ ] SAC を `voxel_world` 3D で学習させて成功率を測る
+- [ ] CPU MPC / GPU MPPI / SAC を同じ scenario の paired comparison に乗せる
+- [ ] 学習側の計算予算 (GPU hours) と planner の per-replan 予算で
+      cost-aware Pareto を描く
 
-現状 MPC/MPPI は CPU n=16 サンプル前提。GPU を使うと n=128/256 が
-sub-ms に乗るはずで、これによって「Pareto コーナー」が右にずれる。
+**判定**: 優先度 中。論文 v2 (もしくは別論文) の素材。v0.2 paper は
+学習ベースを引き合いに出さないで閉じる予定なので、急がない。
 
-候補ライブラリ:
-- `pytorch` ベースの自前 MPPI
-- `mppi-isaac` (NVIDIA)
-- 既存の `examples/exp_predictive.yaml` の Pareto を GPU 版で再描画
+### 3.4 実機転移 (sim-to-real)
 
-**判定**: 興味はあるが、本フレームワークの売りは「シンプル + プラガブル」
-なので、GPU 依存を持ち込むのは慎重に。`gpu_mppi` という別 planner
-として分離するのが筋。
+ROS2 bridge → MAVROS → PX4 SITL → 実機の最後の 1 段。屋内
+OptiTrack で position feedback を入れる方が前段検証として固い。
+論文 §6 limitations に明示する **「現状未検証」セクション** にも
+対応する。
 
-### 3.4 RL 比較ベースライン
-
-「古典 plan-based」 vs 「学習ベース」を同じ scenario で走らせる比較が
-無い。`stable-baselines3` で SAC/PPO エージェントを `voxel_world` で
-学習させて、Pareto-MPC vs RL の Pareto curve を出す。
-
-**判定**: 学習側のセットアップ (state/action space, reward shaping,
-ロールアウト時間) でフレームワークが歪む可能性が高い。やるなら
-別 repo か submodule で。優先度低。
+**判定**: 優先度 低 (本研究の scope 外)。
 
 ---
 
 ## 4. 長期 (構想だけ)
 
-### 4.1 実機転移 (sim-to-real)
+### 4.1 マルチエージェント学習との接続
 
-ROS2 bridge は MAVROS 経由で PX4 SITL → 実機まで一応繋がる。
-ただし「研究の」実機転移は scope を絞らないと sink になる:
+§3.3 を発展させて、ピア予測器 (CV / LSTM / Transformer) を MPC/MPPI と
+学習エージェント両方に共通インターフェースで差し込めるようにし、
+「予測器の質が coordination Δ に与える影響」を planner 横断で測る。
 
-- 屋内 OptiTrack で position feedback を入れた perception clean
-  setup での Pareto-MPC 動作確認 → 中期
-- 屋外 GPS で sensor-latency cliff の実機再現 → 長期 (実機要件が重い)
+### 4.2 公開化
 
-### 4.2 マルチエージェント学習
+論文 v1 (この plan の §1.5 / 候補 D で閉じる draft) を arXiv +
+ワークショップ (RA-L / ICRA workshop / IROS workshop) に投げる。
+タイトル候補 (CHANGELOG / `outline.md` 参照):
 
-PR #43 で示した「CV peer prediction が密度より効く」を出発点に、
-学習ベースの peer predictor (LSTM / Transformer) と CV を比較する。
+- "Compute-aware planner Pareto and coordination Δ on a unified
+  2D/3D dynamic-obstacle benchmark"
+- "GPU MPPI's softmax flips the multi-drone coordination Δ — a
+  paired study on dummy_3d, AirSim, and AirSim-over-ROS-2"
 
-### 4.3 公開化
+### 4.3 ベンチマーク化
 
-論文 / preprint / OSS としての宣伝。現状の研究結果はそれだけで
-*短いワークショップ論文* 1 本にできる量がある:
-- "Compute-aware planner Pareto on a unified 2D/3D dynamic-obstacle
-  benchmark"
-- "Constant-velocity peer prediction is the dominant axis in
-  multi-drone coordination — density and prediction model studies
-  on `multi_drone_voxel`"
-
----
-
-## 5. 次の打ち手 (2026-05-05 時点)
-
-短期 B/D/A/C はすべて実装済み。結果:
-
-1. ~~**候補 B (AirSim sensor-latency cliff)**~~ → **完了。cliff は転移せず。**
-   AirSim の motor ramp が機械的ローパスフィルタとして働き、stale position
-   による velocity コマンド振動を平滑化するため。dummy 側の検証で cliff 自体
-   は実在確認済み。→ `docs/findings.md` に記録。
-2. ~~**候補 D (README roadmap 整理 + findings.md 更新)**~~ → **完了。**
-   README 既済 2 件削除、新規 3 件追加。findings.md に PR #47 章追加。
-3. ~~**候補 A (AirSim multi-drone passive-first 順序)**~~ → **完了。**
-   Bridge を `step_command` / `step_readback` に分割、runner で two-phase
-   passive-first dispatch。1-tick lag は解消したが、uniform-altitude 4-way
-   中央交差は AirSim の mesh collision で破綻。staggered altitude は引き続き
-   必要。2-drone uniform では 100% success 確認。
-4. ~~**候補 C (AirSim wind miscalibration)**~~ → **完了。転移せず。**
-   SimpleFlight の velocity controller が 5 m/s 風を完全に打ち消す。
-   MPC の wind belief と競合し、no-awareness が最速という逆転結果。
-   AirSim wind 対応のために bridge に `simSetWind` 追加。
-
-**次の優先順 / 状態:**
-
-1. **[PENDING] 中期 1: ROS 2 ↔ AirSim 統合検証** — `airsim_bridge` (直結) と
-   `ros2_bridge` (ROS2 越し) を同じ `voxel_world` で走らせ数値一致確認。
-   2026-05-12 時点で `frame: ned` / `cmd_msg_type: airsim_vel_cmd` と
-   direct-vs-ROS2 比較 harness は追加済み。次は実 AirSim + ROS2 wrapper
-   セッションで `scripts/compare_spatial_runs.py` を回す。
-   ただし他作業が多いため、現時点では **pending**。AirSim server と
-   AirSim ROS2 message package (`airsim_interfaces` / `airsim_ros_pkgs`) を
-   source できるタイミングまで保留。
-2. ~~**中期 2: GPU MPC / MPPI**~~ → **完了。**
-   `results/gpu_mppi_pareto_sweep` で n_samples=32/64/128/256 ×
-   horizon=20/40/60 を n=10 実測済み。`docs/findings.md` に記録。
-   `uav-nav viz results/gpu_mppi_pareto_sweep` で sweep_summary.png 生成済み。
-3. **[PENDING] B の延長: 限界条件 cliff** — max_speed=15, 密度 >10% で AirSim での
-   cliff 出現可否を検証（SimpleFlight の速度限界が課題）。
-   2026-05-12 時点で `voxel_world` に `random_layer` 障害物を追加し、
-   `examples/exp_airsim_latency_limit.yaml` を用意済み。次は実 AirSim
-   セッションで sweep を回す。
-   こちらも **pending**。実測に入る前に AirSim 実行環境と時間を確保する。
-
-→ しばらくは AirSim 実測系を追わず、他作業を優先する。再開時は
-**中期 1 (ROS 2 ↔ AirSim)** から戻るのが筋。
+`uav-nav-lab` を benchmark suite として整える (HuggingFace datasets
+的にエピソード log を公開、leaderboard 的な YAML 集合を提供)。
+論文 v1 公開後、コミュニティの反応次第。
 
 ---
 
-## 6. やらないと決めたもの (供養コーナー)
+## 5. やらないと決めたもの (供養コーナー)
 
-| 案                                       | 却下理由                                      |
-|------------------------------------------|-----------------------------------------------|
-| MPC を CasADi/IPOPT に置き換え            | フレームワークの「シンプル」を壊す。学術的価値も既存 sampling MPC で十分出ている。 |
-| 全 planner に GPU 必須化                  | フレームワークのポータビリティを壊す。`gpu_mppi` を別 planner として足すなら可。 |
-| `gym.Env` ラッパー                        | RL 比較を本気でやる時に検討。今は不要。      |
-| Web UI / dashboard                        | scope 外。CLI + matplotlib + GIF で十分。     |
-| `omegaconf` への移行                      | 現 `ExperimentConfig` で困ってない。         |
-| collision 以外の per-step reward 設計     | フレームワークが planner 比較ツールとしての性格を失う。 |
+| 案                                                  | 却下理由                                                  |
+|----------------------------------------------------|---------------------------------------------------------|
+| MPC を CasADi/IPOPT に置き換え                       | フレームワークの「シンプル」を壊す。研究的価値も既存 sampling MPC で出ている。 |
+| 全 planner に GPU 必須化                            | `gpu_mppi` を別 planner として並列に置く現方針で十分。       |
+| Web UI / dashboard                                  | scope 外。CLI + matplotlib + GIF で足りている。           |
+| `omegaconf` への移行                                 | 現 `ExperimentConfig` で困っていない。                    |
+| collision 以外の per-step reward 設計                 | フレームワークが planner 比較ツールとしての性格を失う。     |
+| Δ-flip を AirSim no-obstacle で測る                  | §0.2 の通り、3 セルとも天井 or floor 割れで mechanism を直接観測不可。**障害物を入れる方向 (候補 A) でしか測れない**ことを 2026-05 に確認済み。 |
+| GPU MPPI の goal-mask を再リファクタ                  | `commit 2a9d196` の修正で 12-cell sweep が反転した経緯あり (`docs/paper_a/section_4_prerequisites.md` §4.2)。論文公開までは触らない。 |
+| AirSim multi-drone reset の **C++ 側修正**            | upstream の dispatch loop の問題。chunked runner で workaround 済。我々の repo で fork する価値は無い。 |
+| 単機 demo を更に派手にする                            | v0.2.0 で multi-drone obstacles GIF が hero になり、単機は脇役で良い。 |
