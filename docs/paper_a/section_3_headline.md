@@ -98,6 +98,78 @@ clustering signature**, not a planner-dependent winner. §6 documents
 the full grid; the N=4 baseline cell described here is the cleanest
 demonstration of the mechanism but not a universal one.
 
+## Dynamic-obstacle extension: the softmax-averaging operator under moving obstacles
+
+Adding a *moving* obstacle to the N=4 baseline cell makes the
+softmax-averaging mechanism visible in a second failure mode that
+does not require the $\Delta$ statistic to see. We add one sphere
+obstacle at $(20, 5, 6)$, radius 0.8, moving north along $x=20$ at
+$v \in \{2, 4, 8\}$ m/s — directly along the north drone's corridor
+$(20, 3, 6) \to (20, 37, 6)$. Same paired-seed protocol (n=30 per
+cell, seeds 42-71), same static obstacles, same planner Pareto cells.
+
+**Table 2.** N=4 baseline + one moving obstacle on the north corridor.
+$v=0$ row is the §3 static baseline; $v \in \{2, 4, 8\}$ rows are
+the dynamic-obstacle cells.
+
+| $v$ (m/s) | MPC joint | GPU MPPI joint | McNemar | GPU MPPI failure attribution |
+|---|---|---|---|---|
+| 0 (static) | 78.0 % | 77.0 % | $p = 1.00$ | clustered across seeds (§3 mechanism) |
+| 2 | 73.3 % | **3.3 %** (1/30) | $p \approx 0$ | north drone, $t \approx 5.0$ s, every failed seed |
+| 4 | 80.0 % | **3.3 %** (1/30) | $p \approx 0$ | north drone, $t \approx 5.0$ s, every failed seed |
+| 8 | 3.3 % (1/30) | 3.3 % (1/30) | $p = 1.00$ | both planners floor under fast obstacle |
+
+At $v=2$ m/s GPU MPPI's joint success collapses by 74 pp against
+the §3 static baseline; at $v=4$ the collapse persists with the same
+$\sim 3.3$ % joint floor. MPC holds at 73-80 % joint over this
+range. Reading the failure attribution per-seed makes the mechanism
+transparent: in every GPU MPPI failed episode at $v \in \{2, 4\}$,
+**only the north drone collides**, and the collision time clusters
+within $\pm 0.2$ s of $t \approx 5.0$ across all seeds. The other
+three drones (east, west, south, all on perpendicular corridors)
+succeed in every failed episode.
+
+The mechanism is the *same* softmax-averaging operator that produced
+the §3 static $\Delta$-flip, now expressed as **bidirectional
+avoidance cancellation**: when the dynamic obstacle is dead ahead
+on the north drone's corridor, half of GPU MPPI's 64 rollouts find
+escape volumes by detouring east-of-obstacle and half by detouring
+west-of-obstacle, with comparable cost. The softmax-weighted mean
+lateral command averages the two sides to near zero, the north drone
+slows in the central corridor, and the slow-moving obstacle catches
+up from behind. MPC's argmin selects the single lowest-cost rollout
+each replan, commits to one side, and clears.
+
+This is the cleanest single-drone demonstration of the §3 mechanism
+in the paper. The §3 static case manifests as a +11.4 pp $\Delta$
+over indep$^4$ — an aggregate effect across 100 paired episodes that
+requires the indep$^4$ baseline to read. The dynamic case manifests
+as **a 74-pp joint-success cliff against a single nominal change to
+the scenario** (adding one obstacle that moves at 25 % of drone
+max-speed), with a deterministic failed-drone identity tied to the
+obstacle's spatial alignment with the drone's corridor. The
+deployment consequence inverts: under static peers GPU MPPI's
+softmax conservatism is a coordination liability ($\Delta$ flip);
+under dynamic obstacles it is a single-drone catastrophic failure
+mode that MPC's argmin avoids.
+
+At $v=8$ m/s (parity with drone `max_speed`), both planners drop to
+the joint floor (3.3 %, 1/30). MPC's per-drone collapses to 50.8 %
+and the failures distribute across all four drones, with three
+seeds timing out at $t = 75$ s — the obstacle is fast enough that
+the 1-2 s lookahead in both planner cells no longer supports a
+stable detour. This $v=8$ floor establishes the dynamic regime's
+upper bound but does not change the qualitative claim: at $v=2$ m/s
+already, the $\Delta$-flip mechanism's softmax-averaging root cause
+produces a deployment-relevant failure mode.
+
+Full table and per-seed attribution in findings.md "dummy_3d N=4 +
+moving obstacle speed sweep". Repro configs:
+`examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`,
+analysis script `scripts/paired_analysis_dummy_3d_multi.py`.
+
+## Sim transferability
+
 The same comparison transferred to AirSim physics produced four
 complementary regimes. At the easier *staggered-altitude* crossing,
 both planners hit 100 % joint success across n=30 paired seeds; the
@@ -119,29 +191,44 @@ collision geometry — **but with the sign reversed**, consistent with
 the N=4 dense corner of the dummy_3d grid. MPC, not GPU MPPI,
 exhibits the multi-drone cluster failure mode (collision-object trace
 confirms drone-drone collisions at the central crossing in MPC
-episodes). Combined reading: **GPU MPPI's softmax conservatism is a
-smoothing operator on the action space, and it can both help (remove
-paired AirSim collision seeds, suppress the dense-corner cluster
-mode) and hurt (catastrophic failure at speed-through-bottleneck
-geometries) depending on whether the dominant coupling is behavioural
-or geometric.** The robust paper-grade claim is the *qualitative*
-mechanism: per-drone tie, $\Delta$ separates by planner, direction
-set by $(N, \text{density}, \text{geometry})$. A dynamic-obstacle
-extension (§6, findings.md "dummy_3d N=4 + moving obstacle speed
-sweep") shows the same softmax-averaging operator also produces a
-*bidirectional avoidance cancellation* under moving obstacles —
-collapsing GPU MPPI's joint success from 86.7 % (§3 N=4 baseline) to
-3.3 % at $v=2$ m/s, with the failed drone always the one whose
-corridor the obstacle traverses. Under that regime, MPC's argmin
-commit-to-one-side is the more robust policy.
+episodes).
+
+**Combined reading.** GPU MPPI's softmax conservatism is a single
+**smoothing operator on the action space** with three distinct
+failure modes across the regimes of this paper:
+
+1. **Static-obstacle multi-drone clustering** (§3 N=4 baseline,
+   Table 1): the operator amplifies seed-correlated peer-prediction
+   noise into +11.4 pp $\Delta$ over indep$^4$, while MPC's argmin
+   stays near zero.
+2. **Dynamic-obstacle bidirectional cancellation** (Table 2): the
+   operator averages out left/right avoidance commits when a moving
+   obstacle is dead ahead, collapsing the affected single drone's
+   success from ~95 % to ~3 % at $v=2$ m/s.
+3. **Sim-physics density-corner sign-reversal** (§4.4.4): at the
+   N=4-dense corner of the (N, density) grid the planner roles swap
+   — MPC's argmin lock-step concentrates failures across drones and
+   GPU MPPI's averaging now suppresses the cluster mode.
+
+The shared structural mechanism — softmax averaging vs argmin
+commit, against a shared world model — is one operator with three
+sign expressions. The deployment story is therefore not "GPU MPPI
+is better" or "MPC is better" but a regime-dependent question:
+which planner's averaging behaviour matches the dominant coupling
+in the scenario (static peers / dynamic obstacles / static-obstacle
+density saturation)? The robust paper-grade claim is this **shared
+mechanism, regime-specific direction**.
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (dummy_3d study), `docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif`
 (AirSim n=1 demo). Full configs and analysis scripts:
 `examples/exp_multi_drone_3d_4{,_gpu_mppi}.yaml`,
+`examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`
+(dynamic-obstacle Table 2),
 `examples/exp_airsim_multi_{n30,uniform_n30}{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_discriminating_n30{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_discriminating_central_n30{,_gpu_mppi}.yaml`
 (base_ew06, §4.4.4),
 `scripts/paired_analysis_airsim_multi.py`,
+`scripts/paired_analysis_dummy_3d_multi.py`,
 `scripts/run_airsim_multi_chunked.sh`.

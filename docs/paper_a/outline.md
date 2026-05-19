@@ -99,6 +99,23 @@ behaviour for harsher tail outcomes**. In deployments where partial
 success counts (3 of 4 packages delivered), MPC's distributed-failure
 shape wins; where the goal is "all or none", they're equivalent.
 
+The §3 prose now structures the section in three subsections:
+1. **Static baseline** (Table 1 above): the original Δ-flip.
+2. **Dynamic-obstacle extension** (Table 2 in
+   `section_3_headline.md`): adding one moving sphere to the same
+   N=4 cell collapses GPU MPPI joint to 3.3 % at $v=2$ m/s while MPC
+   holds at 73 %. Single-drone deterministic failure — the
+   softmax-averaging operator now expresses as bidirectional
+   avoidance cancellation rather than coordination clustering.
+3. **Sim transferability** (forward to §4.4): four AirSim regimes
+   with the AirSim base_ew06 cell adding sign-reversed corner.
+
+The "combined reading" reframes GPU MPPI's softmax as **one
+smoothing operator with three regime-specific failure modes**:
+static-peers clustering, dynamic-obstacle cancellation, sim-physics
+sign-reversal. Deployment story is regime-dependent, not "GPU MPPI
+is better".
+
 Side-by-side: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`.
 
 ## 4. Prerequisites that made the comparison fair (3 pages)
