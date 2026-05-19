@@ -68,18 +68,37 @@ agents. **Sample diversity is not a substitute for peer prediction —
 it is a knob that trades smoother typical-case behaviour for harsher
 tail-case outcomes**, when peers share a noisy world model.
 
-This has a concrete deployment consequence. In missions where partial
-success counts independently — three of four deliveries completed, the
-fleet returns safely with two functional drones — MPC's distributed-
-failure shape is the right tool: same nominal joint rate, but
-catastrophic days are rare. In missions where the joint outcome is
-the only outcome of interest — all-or-nothing formations, or
-synchronised arrival constraints — the two planners are equivalent
-and GPU MPPI's smoother typical behaviour (mean per-drone arrival
-spread is 4× tighter at the 4/4-success geometry, see §4.4) becomes
-the deciding factor.
+This has a concrete deployment consequence at the N=4 baseline cell.
+In missions where partial success counts independently — three of
+four deliveries completed, the fleet returns safely with two
+functional drones — MPC's distributed-failure shape is the right
+tool: same nominal joint rate, but catastrophic days are rare. In
+missions where the joint outcome is the only outcome of interest —
+all-or-nothing formations, or synchronised arrival constraints — the
+two planners are equivalent and GPU MPPI's smoother typical behaviour
+(mean per-drone arrival spread is 4× tighter at the 4/4-success
+geometry, see §4.4) becomes the deciding factor.
 
-The same comparison transferred to AirSim physics produced three
+**Scope of the headline claim.** Table 1 is one cell of an
+$(N, \text{density})$ grid we map in §6. Across
+$N \in \{2, 3, 4, 6, 8, 10, 12\}$ and obstacle counts
+$\{30, 120, 240\}$ on the same circular crossing geometry, the
+structural claim — per-drone rates can stay tied while the
+coordination $\Delta$ separates between planners — survives, but the
+*sign* of the separation does not. At $N=4$ baseline (above) GPU MPPI
+is the cluster source ($\Delta$ +11.4 vs +0.8 pp). At $N=4$ dense
+(240 obstacles) MPC becomes the cluster source ($\Delta$ +6.7 vs
+−1.2 pp). At $N=6$ no flip occurs across the density sweep; at $N=8$
+baseline GPU MPPI's per-drone uniquely collapses under the
+8-fold-symmetric crossing (per-drone 69 % vs MPC 92 %, McNemar
+$p \approx 0.0001$); at $N=12$ GPU's $\Delta$ falls back below MPC's.
+The mechanism — softmax-vs-argmin against a shared peer-prediction
+world model — therefore predicts a **planner-dependent failure-
+clustering signature**, not a planner-dependent winner. §6 documents
+the full grid; the N=4 baseline cell described here is the cleanest
+demonstration of the mechanism but not a universal one.
+
+The same comparison transferred to AirSim physics produced four
 complementary regimes. At the easier *staggered-altitude* crossing,
 both planners hit 100 % joint success across n=30 paired seeds; the
 failure-level Δ-flip cannot register, though the trajectory-level
@@ -88,18 +107,26 @@ signal is preserved (mean per-drone arrival spread 0.02 s for MPC vs
 GPU MPPI's softmax-conservative ~30 %-slower commands keep drones at
 the conflict centre long enough that per-drone success collapses to
 28.3 % and joint success to 0/30, while MPC holds 46.7 % joint
-(McNemar p ≈ 0.00012). Finally, a *static-cube staggered* cell with
-spawned Blocks meshes lands MPC in the target band: MPC reaches
-87.5 % per-drone and 22/30 joint, while GPU MPPI reaches 120/120
-per-drone and 30/30 joint (GPU-only success 8, MPC-only 0,
-McNemar p ≈ 0.008). Combined reading: **GPU MPPI's softmax
-conservatism is a smoothing operator on the action space, and it can
-both help (remove paired AirSim collision seeds) and hurt
-(catastrophic failure at speed-through-bottleneck geometries)
-depending on whether the dominant coupling is behavioural or
-geometric.** The exact dummy_3d joint-tie / larger-Δ signature still
-requires a harder static-cube density cell that drops GPU MPPI below
-the 100 % ceiling.
+(McNemar p ≈ 0.00012). A *static-cube staggered* cell with spawned
+Blocks meshes lands MPC in the target band: MPC reaches 87.5 %
+per-drone and 22/30 joint, while GPU MPPI reaches 120/120 per-drone
+and 30/30 joint (GPU-only success 8, MPC-only 0, McNemar p ≈ 0.008).
+Finally, a *static-cube density-swept* cell (§4.4.4, `base_ew06`)
+closes the dummy_3d analogue: five widened pillars concentrate four
+drones into one central crossing, GPU MPPI drops off the success
+ceiling, and the $\Delta$-flip mechanism reproduces under AirSim
+collision geometry — **but with the sign reversed**, consistent with
+the N=4 dense corner of the dummy_3d grid. MPC, not GPU MPPI,
+exhibits the multi-drone cluster failure mode (collision-object trace
+confirms drone-drone collisions at the central crossing in MPC
+episodes). Combined reading: **GPU MPPI's softmax conservatism is a
+smoothing operator on the action space, and it can both help (remove
+paired AirSim collision seeds, suppress the dense-corner cluster
+mode) and hurt (catastrophic failure at speed-through-bottleneck
+geometries) depending on whether the dominant coupling is behavioural
+or geometric.** The robust paper-grade claim is the *qualitative*
+mechanism: per-drone tie, $\Delta$ separates by planner, direction
+set by $(N, \text{density}, \text{geometry})$.
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (dummy_3d study), `docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif`
@@ -107,5 +134,7 @@ Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 `examples/exp_multi_drone_3d_4{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_{n30,uniform_n30}{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_discriminating_n30{,_gpu_mppi}.yaml`,
+`examples/exp_airsim_multi_discriminating_central_n30{,_gpu_mppi}.yaml`
+(base_ew06, §4.4.4),
 `scripts/paired_analysis_airsim_multi.py`,
 `scripts/run_airsim_multi_chunked.sh`.
