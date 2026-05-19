@@ -203,6 +203,13 @@ tight by using two companion ablations:
   at N=8 (GPU per-drone uniquely collapses, p ≈ 0.0001), and at N=12
   (GPU $\Delta$ drops to +7.8). The §3 N=4 result is one point on a
   multi-regime curve, not a clean monotonic law.
+- **N=4 density sweep** (`exp_multi_drone_3d_4{,_dense,_packed}{,_gpu_mppi}.yaml`):
+  at fixed N=4, the $\Delta$ sign flips with obstacle count.
+  Baseline (30): $\Delta_\text{GPU} = +5.2$ vs $\Delta_\text{MPC} = -1.0$.
+  Dense (120): $\Delta_\text{MPC} = +5.9$ vs $\Delta_\text{GPU} = +0.3$.
+  Packed (240): $\Delta_\text{MPC} = +6.7$ vs $\Delta_\text{GPU} = -1.2$.
+  This re-frames the AirSim base_ew06 sign-reversal (§4.4.4) as a
+  **density-regime** finding, not a sim-backend finding.
 - ~~Temperature ablation: 3D GPU MPPI T=0.1 vs T=1.0 has overlapping
   CIs. The §3 result uses T=1.0 only.~~ **Done — see
   `exp_gpu_mppi_temp_ablation_3d.yaml` and findings.md §"Temperature

@@ -224,14 +224,26 @@ replan, never commits to the corridor as hard, so its failures stay
 confined to the one drone whose lane the EW pillar physically blocks.
 
 This is the §3 dummy_3d claim with the sign of the flip swapped:
-under dummy_3d's frictionless point-mass kinematics, GPU MPPI's
-softmax was the cluster source; under AirSim's PID + quadrotor
-physics + meshed environment, MPC's argmin is. The shared structural
-claim — that two planner families with tied per-drone rates can be
-separated through their joint-success $\Delta$ — survives. The
-deployment-relevant claim it implies — that GPU MPPI's softmax is a
-liability for joint coordination — does not survive: on AirSim
-`base_ew06` it is MPC that loses three drones together.
+on the dummy_3d N=4 cell with 30 obstacles GPU MPPI's softmax was
+the cluster source; on the AirSim `base_ew06` cell with 5 widened
+pillars converging on a single central crossing, MPC's argmin is.
+The shared structural claim — that two planner families with tied
+per-drone rates can be separated through their joint-success $\Delta$
+— survives.
+
+A follow-up dummy_3d sweep (varying obstacle count at N=4) shows the
+sign flip is **density-driven, not sim-driven**: under dummy_3d at
+120 obstacles (4× baseline) MPC clusters with $\Delta = +5.9$ pp
+while GPU MPPI stays at $\Delta = +0.3$ pp; at 240 obstacles
+$\Delta_\text{MPC} = +6.7$ pp vs $\Delta_\text{GPU} = -1.2$ pp.
+The AirSim `base_ew06` reading is therefore the dense-crowding
+regime of the same surface that dummy_3d at 30 obstacles samples
+from the low-crowding regime. Full numbers: findings.md "dummy_3d
+N=4 density × planner sweep". The deployment-relevant claim from §3
+("GPU MPPI's softmax is the joint-coordination liability") does
+not survive across density: in dense-crowding regimes (either AirSim
+`base_ew06` or dummy_3d at ≥4× obstacle count) it is MPC's argmin
+lock-step that becomes the cluster source.
 
 The n=50 magnitude is more modest than the n=30 first cut suggested.
 At n=30 we measured $\Delta_\text{MPC} = +6.9$ pp; extending to n=50

@@ -1,0 +1,66 @@
+# GPU MPPI counterpart of exp_multi_drone_3d_4_dense.yaml — same 4-drone
+# cross on the same 40×40×12 world with 120 obstacles (4× baseline).
+# Used by the N=4 obstacle-density × planner sweep to test whether the
+# §3 GPU-MPPI-Δ > MPC-Δ mechanism strengthens, weakens, or reverses
+# as obstacle density rises.
+
+name: multi_drone_3d_4_dense_gpu_mppi
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 120
+    seed: 7
+  drones:
+    - name: east
+      start: [3.0, 20.0, 6.0]
+      goal:  [37.0, 20.0, 6.0]
+      radius: 0.4
+    - name: west
+      start: [37.0, 20.0, 6.0]
+      goal:  [3.0, 20.0, 6.0]
+      radius: 0.4
+    - name: north
+      start: [20.0, 3.0, 6.0]
+      goal:  [20.0, 37.0, 6.0]
+      radius: 0.4
+    - name: south
+      start: [20.0, 37.0, 6.0]
+      goal:  [20.0, 3.0, 6.0]
+      radius: 0.4
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/multi_drone_3d_4_dense_gpu_mppi

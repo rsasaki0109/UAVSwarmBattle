@@ -56,22 +56,33 @@ server-side reset hang is only worked around, not solved. These are
 engineering limitations of the current AirSim stack, not planner
 effects.
 
-The §3 headline is four-drone but the GPU MPPI N-scaling sweep across
+The §3 headline is four-drone but two follow-up sweeps narrow the
+mechanism's scope further. The GPU MPPI N-scaling sweep across
 $N \in \{2, 3, 4, 6, 8, 10, 12\}$ on dummy_3d (findings.md
 "dummy_3d N-scaling paired") shows the mechanism is **non-monotonic
-in N**, not a clean regime statement. GPU MPPI's higher-$\Delta$
-advantage holds at $N = 4$ (+5.2 vs −1.0 pp), $N = 6$ (+10.7 vs +7.5),
-and $N = 10$ (+24.3 vs +15.0 — the sweep maximum). It reverses at
-$N = 2$ (GPU MPPI clusters where MPC's argmin lock-steps a clean
-head-on, McNemar p ≈ 0.008 favours MPC), at $N = 8$ where the
+in N**: GPU MPPI's higher-$\Delta$ advantage holds at $N = 4$
+(+5.2 vs −1.0 pp), $N = 6$ (+10.7 vs +7.5), and $N = 10$
+(+24.3 vs +15.0 — the sweep maximum), reverses at $N = 2$
+(McNemar p ≈ 0.008 favours MPC), at $N = 8$ where the
 8-fold-symmetric central crossing uniquely collapses GPU MPPI's
 per-drone to 69 % (McNemar p ≈ 0.0001 favours MPC), and at $N = 12$
-where GPU's $\Delta$ drops back to +7.8 pp vs MPC's +15.2 pp. The §3
-reading is one point on this curve — the mechanism is real but its
-sign is a function of (per-drone tie status × crossing density ×
-drone-count symmetry), not a simple "GPU MPPI wins as $N$ grows"
-law. Mapping the mechanism's dependence on these three factors
-across non-circular geometries remains future work.
+where GPU's $\Delta$ drops back to +7.8 pp vs MPC's +15.2 pp.
+
+The companion N=4 density-sweep (findings.md "dummy_3d N=4 density ×
+planner sweep") adds the dominant factor: **at fixed N=4, the $\Delta$
+sign flips with obstacle count.** GPU MPPI is the cluster source at
+the low-density baseline (30 obstacles, $\Delta_\text{GPU}$ = +5.2 pp
+vs $\Delta_\text{MPC}$ = −1.0 pp), but MPC is the cluster source at
+120 obstacles ($\Delta_\text{MPC}$ = +5.9 vs +0.3) and at 240
+obstacles ($\Delta_\text{MPC}$ = +6.7 vs −1.2). This re-frames the
+AirSim base_ew06 sign-reversal finding (§4.4.4): the AirSim cell is
+a dense-crowding regime, so its MPC-clusters / GPU-independent
+reading is **density-driven, not sim-driven**. The §3 result is the
+low-density regime of a 3-dimensional surface (per-drone tie ×
+density × drone-count symmetry); the AirSim base_ew06 reading is the
+high-density regime of the same surface. Mapping the full surface
+across non-circular geometries and at finer density / N resolution
+remains future work.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,

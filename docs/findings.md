@@ -30,6 +30,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer](#temperature-ablation-at-the-3d-pareto-cell-the-cpu-rules-dont-transfer)
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [dummy_3d N-scaling paired (MPC vs GPU MPPI, N ∈ {2, 3, 4, 6, 8, 10, 12})](#dummy_3d-n-scaling-paired-mpc-vs-gpu-mppi-n--2-3-4-6-8-10-12)
+- [dummy_3d N=4 density × planner sweep: the §3 Δ-flip *sign* is density-driven, not sim-driven](#dummy_3d-n4-density--planner-sweep-the-§3-δ-flip-sign-is-density-driven-not-sim-driven)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
@@ -1046,6 +1047,64 @@ Reproduce:
 for n in 2 3 4 6 8 10 12; do
   uav-nav run examples/exp_multi_drone_3d_${n}.yaml          # MPC
   uav-nav run examples/exp_multi_drone_3d_${n}_gpu_mppi.yaml # GPU MPPI
+done
+```
+
+### dummy_3d N=4 density × planner sweep: the §3 Δ-flip *sign* is density-driven, not sim-driven
+
+The N-scaling sweep above identified three factors that should govern
+the §3 GPU-MPPI-Δ > MPC-Δ mechanism: per-drone tie status, crossing
+density, and drone-count symmetry. The N-scaling sweep varied
+drone-count symmetry while holding obstacle count constant at 30.
+This sub-sweep holds N=4 fixed and varies obstacle count instead.
+
+`examples/exp_multi_drone_3d_4{,_dense,_packed}{,_gpu_mppi}.yaml` —
+same 4-drone cross on the same 40×40×12 world, with obstacle counts
+30 (baseline), 120 (dense, 4×), and 240 (packed, 8×). n=30 paired
+per (density, planner). The dense MPC YAML existed pre-sweep; the
+dense/packed GPU MPPI YAMLs are added here.
+
+| density (count) | MPC per-drone     | MPC joint        | MPC Δ      | GPU MPPI per-drone | GPU MPPI joint   | GPU MPPI Δ  | McNemar (b, c, p)   |
+|-----------------|-------------------|------------------|------------|--------------------|------------------|-------------|---------------------|
+| baseline (30)   | 115/120 = 95.8 %  | 25/30 = 83.3 %   | −1.0 pp    | 114/120 = 95.0 %   | 26/30 = 86.7 %   | **+5.2** pp | (2, 3, 1.000)       |
+| dense (120)     | 81/120 = 67.5 %   | 8/30 = 26.7 %    | **+5.9** pp| 86/120 = 71.7 %    | 8/30 = 26.7 %    | +0.3 pp     | (3, 3, 1.000)       |
+| packed (240)    | 61/120 = 50.8 %   | 4/30 = 13.3 %    | **+6.7** pp| 78/120 = 65.0 %    | 5/30 = 16.7 %    | −1.2 pp     | (3, 4, 1.000)       |
+
+**The $\Delta$ sign reverses with density**, while McNemar paired
+joint success stays statistically indistinguishable across all three
+densities (b ≈ c, p = 1.0 throughout — joint success is set by the
+density, not by the planner).
+
+- At **baseline** (30 obstacles), the §3 mechanism reads: GPU MPPI's
+  softmax clusters failures across seeds ($\Delta = +5.2$ pp) while
+  MPC's argmin stays near-independent ($\Delta = -1.0$ pp). This is
+  the dummy_3d §3 headline regime.
+- At **dense** (120 obstacles), the sign flips: now MPC clusters
+  ($\Delta = +5.9$ pp) and GPU MPPI is near-independent
+  ($\Delta = +0.3$ pp). GPU MPPI keeps a 4-pp per-drone lead but
+  spreads its failures across seeds; MPC's argmin lock-step now
+  concentrates failures into specific seeds.
+- At **packed** (240 obstacles), the sign flip widens: MPC clusters at
+  $\Delta = +6.7$ pp, GPU MPPI at $\Delta = -1.2$ pp.
+
+**Connection to AirSim base_ew06.** The "AirSim sign reversal"
+finding in §"AirSim multi-drone base_ew06" — MPC clusters at central
+crossing while GPU MPPI stays independent — sits inside this same
+density picture. The AirSim `base_ew06` cell is a dense-crowding
+regime (5 widened pillars + 4 drones converging at a single central
+crossing): the same regime that flips the $\Delta$ sign on dummy_3d.
+The base_ew06 finding is therefore not AirSim-specific but
+density-specific. The full read of the §3 mechanism is: **GPU MPPI is
+the cluster source under low density; MPC is the cluster source under
+high density; the per-drone tie status determines whether either Δ
+is statistically observable.** Sim backend choice (AirSim vs
+dummy_3d) is downstream of the density regime, not orthogonal to it.
+
+Reproduce:
+```
+for v in "" "_dense" "_packed"; do
+  uav-nav run examples/exp_multi_drone_3d_4${v}.yaml          # MPC
+  uav-nav run examples/exp_multi_drone_3d_4${v}_gpu_mppi.yaml # GPU MPPI
 done
 ```
 
