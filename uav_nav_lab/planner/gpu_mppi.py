@@ -63,6 +63,7 @@ class GPUMPPIPlanner(Planner):
         asymmetric_bias: float = 0.0,
         mode_aware_sampling: bool = False,
         mode_aware_min_size: int = 8,
+        mode_aware_cost_ratio: float = 1.0,
         ctg_cache_tolerance: int = 0,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
@@ -111,6 +112,17 @@ class GPUMPPIPlanner(Planner):
         # while keeping MPPI's smoothing within that side.
         self.mode_aware_sampling = bool(mode_aware_sampling)
         self.mode_aware_min_size = max(1, int(mode_aware_min_size))
+        # `mode_aware_cost_ratio` gates the mode-aware cluster commit on
+        # cluster-cost asymmetry. Default 1.0 = always commit when the
+        # L/R cluster sizes are above `mode_aware_min_size` (Smart v4
+        # behaviour). Setting > 1.0 turns v4 into a *switcher*: commit
+        # only when one cluster's softmax cost is at least this factor
+        # higher than the other's, i.e. when bimodality is driven by a
+        # *real* cost asymmetry (dynamic-obstacle hit penalty on one
+        # side, the §3 mode 2 cancellation signature) — and fall through
+        # to vanilla softmax otherwise (which keeps mode 1 static-peer
+        # clustering and mode 4 aerobatic smoothing intact).
+        self.mode_aware_cost_ratio = max(1.0, float(mode_aware_cost_ratio))
         # `ctg_cache_tolerance`: integer cells of slack for the Dijkstra
         # cost-to-go cache. Default 0 → recompute every time the integer
         # goal cell changes (per-replan, exact). For scenarios with a
@@ -156,6 +168,7 @@ class GPUMPPIPlanner(Planner):
             asymmetric_bias=float(cfg.get("asymmetric_bias", 0.0)),
             mode_aware_sampling=bool(cfg.get("mode_aware_sampling", False)),
             mode_aware_min_size=int(cfg.get("mode_aware_min_size", 8)),
+            mode_aware_cost_ratio=float(cfg.get("mode_aware_cost_ratio", 1.0)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
@@ -447,15 +460,25 @@ class GPUMPPIPlanner(Planner):
 
                     pos_action, pos_cost, pos_idx = _cluster(pos_mask)
                     neg_action, neg_cost, neg_idx = _cluster(neg_mask)
-                    if pos_cost <= neg_cost:
-                        mode_aware_action_t = pos_action
-                        mode_aware_best_k = pos_idx
-                        mode_aware_cluster_sign = 1
-                    else:
-                        mode_aware_action_t = neg_action
-                        mode_aware_best_k = neg_idx
-                        mode_aware_cluster_sign = -1
-                    mode_aware_triggered = True
+                    lo, hi = sorted((pos_cost, neg_cost))
+                    # When cost_ratio gate > 1, require one cluster to be
+                    # meaningfully worse before committing (mode-aware
+                    # switcher behaviour). At the default 1.0 the gate
+                    # is always satisfied (Smart v4 unconditional commit).
+                    ratio_ok = (
+                        self.mode_aware_cost_ratio <= 1.0
+                        or (hi >= self.mode_aware_cost_ratio * max(lo, 1e-6))
+                    )
+                    if ratio_ok:
+                        if pos_cost <= neg_cost:
+                            mode_aware_action_t = pos_action
+                            mode_aware_best_k = pos_idx
+                            mode_aware_cluster_sign = 1
+                        else:
+                            mode_aware_action_t = neg_action
+                            mode_aware_best_k = neg_idx
+                            mode_aware_cluster_sign = -1
+                        mode_aware_triggered = True
 
         # Hybrid argmin-fallback: detect bidirectional cancellation by
         # checking whether the softmax averaged action's lateral component
