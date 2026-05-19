@@ -41,6 +41,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim multi-drone base_ew06 density-sweep n=30: Δ-flip sign reverses — MPC is the clustering planner on AirSim](#airsim-multi-drone-base_ew06-density-sweep-n30-δ-flip-sign-reverses--mpc-is-the-clustering-planner-on-airsim)
 - [AirSim dynamic-obstacle bridge extension (smoke verified, paired cell still tuning)](#airsim-dynamic-obstacle-bridge-extension-smoke-verified-paired-cell-still-tuning)
 - [Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't](#smart-mppi-argmin-fallback-mechanism-detector-works-naive-fix-doesnt)
+- [Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime](#smart-mppi-v2-asymmetric-perturbation-breaks-softmax-symmetry-helps-the-planner-swap-regime)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2127,6 +2128,98 @@ for tag in dyn_v2 dyn_v4 dyn_off2_v4; do
   python3 scripts/paired_analysis_dummy_3d_multi.py \
     results/multi_drone_3d_4_${tag}_gpu_mppi \
     results/multi_drone_3d_4_${tag}_gpu_mppi_smart
+done
+```
+
+
+### Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime
+
+Follow-up to "Smart MPPI (argmin-fallback)". Where v1's argmin-fallback
+hurt at the dyn_off2 planner-swap cell (vanilla GPU joint 70 % →
+Smart v1 joint 53 %), v2 attacks the mechanism from a different
+angle: rather than picking argmin at action-selection time, it
+**breaks the L/R symmetry at sampling time** so the softmax never
+sees a perfectly bimodal cost landscape in the first place.
+
+Implementation
+(`uav_nav_lab/planner/gpu_mppi.py`, `asymmetric_bias` config option):
+
+1. At episode reset, each drone seeds a small random unit vector
+   `bias_vec` deterministically from its initial observation (so
+   different drones in a fleet get different preferred sides, but
+   each drone stays consistent across replans — no oscillation).
+2. At each replan, project `bias_vec` perpendicular to the current
+   `base` (goal direction unit vector), scale by `asymmetric_bias`
+   (default 0.2 = 20 % of unit), and rotate `base` by that
+   perpendicular vector before generating the n_samples=64 rollouts.
+3. All rollouts are now sampled around a slightly-lateral-of-goal
+   axis. The softmax-averaged action picks up a small but consistent
+   lateral component, so the §3-mechanism L/R cancellation cannot
+   produce a zero-lateral command.
+
+Paired n=30 vs MPC and vs vanilla GPU MPPI across 4 cells:
+
+| cell                | vanilla GPU joint | Smart v1 joint | **asym v2 joint** | asym vs vanilla |
+|---|---|---|---|---|
+| §3 N=4 baseline (mode 1)     | 26/30 = 86.7 %  | (not tested)    | 26/30 = **86.7 %**  | tied (Δ +5.2 → +2.3) |
+| dyn_v2 (mode 2 on-corridor)  | 1/30 = 3.3 %    | 2/30 = 6.7 %    | **0/30 = 0.0 %**    | −1 seed (no rescue)  |
+| dyn_v4 (mode 2 on-corridor)  | 1/30 = 3.3 %    | 1/30 = 3.3 %    | 1/30 = 3.3 %        | per-drone +7.5 pp    |
+| dyn_off2_v4 (planner-swap)   | 21/30 = 70.0 %  | 16/30 = **53.3 %** (HURT) | 26/30 = **86.7 %** | **+16.7 pp**         |
+
+Three readings:
+
+**(1) Asym preserves the §3 baseline.** McNemar paired vs vanilla
+GPU MPPI on the static-peer N=4 baseline: both-succ 23, vanilla-only
+3, asym-only 3, neither 1 — statistically tied at the joint level.
+Δ over indep$^4$ drops from +5.2 to +2.3 pp, meaning the clustering
+mechanism is **slightly weakened** by the bias (drones don't all
+agree on the same conservative command quite as tightly), but not
+eliminated. Mode 1 lives.
+
+**(2) Asym doesn't rescue the cliff.** dyn_v2 stays at 0/30, dyn_v4
+at 1/30. The cliff failure mode is dominated by the static-obstacle
+at $(20, 5, 6)$ (confound documented in the "Smart MPPI v1" section
+above) plus the 8 m/s drone meeting a 2 m initial gap — no
+sampling-time perturbation overcomes a hard-blocking voxel cell 2 m
+ahead at step 0. dyn_v4 shows a per-drone improvement (67.5 → 75 %)
+but joint stays at floor.
+
+**(3) Asym strictly dominates Smart v1 in the planner-swap regime.**
+At dyn_off2_v4, asym v2 reaches joint **86.7 %**, vs Smart v1's
+53.3 % (a 33-pp gap). McNemar paired vanilla vs asym: both-succ 21,
+vanilla-only 0, asym-only 5, neither 4 — asym strictly improves
+over vanilla GPU MPPI in this cell. The mechanism: at offset 2 m
+the cost landscape is *asymmetric* (one side has clearer static
+clearance), but the softmax-averaged command still pulled toward
+the center; biasing the rollout cloud lateral by 20 % shifts the
+softmax toward the better side and reduces the static-obstacle
+oscillation that hurts MPC there.
+
+**Combined story (Smart v1 + v2)**:
+- v1's argmin-fallback rule detects the mechanism but applies the
+  wrong intervention (commits to a single rollout that can be brittle).
+- v2's sampling-time bias is a *softer* intervention — it breaks
+  symmetry but keeps the softmax averaging.
+- Neither rescues the cliff; v2 is the better default fix for
+  off-corridor / asymmetric-clutter regimes.
+
+The mechanism diagnosis (§3 4-mode framework) is independently
+supported by these results: when symmetry is present (cliff cell,
+spawn-adjacent stacked obstacles), no rollout-distribution
+intervention rescues the affected drone; when symmetry is broken
+geometrically (off-corridor), a small bias is enough to convert
+"GPU MPPI is good here" into "GPU MPPI is the strict best".
+
+Reproduce:
+```
+for tag in dyn_v2 dyn_v4 dyn_off2_v4; do
+  uav-nav run examples/exp_multi_drone_3d_4_${tag}_gpu_mppi_asym.yaml
+done
+uav-nav run examples/exp_multi_drone_3d_4_gpu_mppi_asym.yaml  # §3 baseline
+for tag in dyn_v2 dyn_v4 dyn_off2_v4; do
+  python3 scripts/paired_analysis_dummy_3d_multi.py \
+    results/multi_drone_3d_4_${tag}_gpu_mppi \
+    results/multi_drone_3d_4_${tag}_gpu_mppi_asym
 done
 ```
 

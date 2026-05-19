@@ -59,6 +59,7 @@ class GPUMPPIPlanner(Planner):
         fallback_to_argmin: bool = False,
         fallback_lateral_threshold: float = 0.5,
         fallback_lateral_ratio: float = 0.5,
+        asymmetric_bias: float = 0.0,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
         device: str = "cuda",
@@ -82,6 +83,15 @@ class GPUMPPIPlanner(Planner):
         self.fallback_to_argmin = bool(fallback_to_argmin)
         self.fallback_lateral_threshold = float(fallback_lateral_threshold)
         self.fallback_lateral_ratio = float(fallback_lateral_ratio)
+        # Asymmetric perturbation: a per-episode, perpendicular-to-goal
+        # bias added to the rollout base direction. The goal is to break
+        # the L/R symmetry that produces softmax cancellation under
+        # symmetric dynamic obstacles (§3 Table 2 mechanism). The bias
+        # vector is derived deterministically from the drone's initial
+        # observation, so each drone gets a different (but consistent)
+        # preferred avoidance direction.
+        self.asymmetric_bias = float(asymmetric_bias)
+        self._bias_vec: np.ndarray | None = None
         self.viz_rollouts = int(viz_rollouts)
         self._predictor: Predictor = (
             predictor if predictor is not None else build_predictor(None)
@@ -113,6 +123,7 @@ class GPUMPPIPlanner(Planner):
             fallback_to_argmin=bool(cfg.get("fallback_to_argmin", False)),
             fallback_lateral_threshold=float(cfg.get("fallback_lateral_threshold", 0.5)),
             fallback_lateral_ratio=float(cfg.get("fallback_lateral_ratio", 0.5)),
+            asymmetric_bias=float(cfg.get("asymmetric_bias", 0.0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
             device=str(cfg.get("device", "cuda")),
@@ -124,6 +135,7 @@ class GPUMPPIPlanner(Planner):
         self._static_occ_inflated = None
         self._ctg_cache = None
         self._ctg_cache_goal = None
+        self._bias_vec = None  # lazily set on first plan() call
 
     def _cell(self, p: np.ndarray, shape: tuple[int, ...]) -> tuple[int, ...]:
         return tuple(
@@ -205,6 +217,31 @@ class GPUMPPIPlanner(Planner):
         ctg_np = self._ctg_cache
 
         base = to_goal / dist_goal
+        # Asymmetric perturbation: rotate `base` by a small angle toward a
+        # deterministic per-drone perpendicular axis to break L/R rollout
+        # symmetry. The bias direction is seeded once from the drone's
+        # initial observation so each drone in a multi-drone fleet gets
+        # a different preferred avoidance side.
+        if self.asymmetric_bias > 0.0:
+            if self._bias_vec is None:
+                seed_int = int(
+                    abs(hash(tuple(np.round(obs, 1).tolist()))) & 0xFFFFFFFF
+                )
+                rng = np.random.default_rng(seed_int)
+                v = rng.standard_normal(ndim)
+                vn = float(np.linalg.norm(v))
+                if vn > 1e-9:
+                    self._bias_vec = (v / vn).astype(float)
+                else:
+                    self._bias_vec = np.zeros(ndim, dtype=float)
+            # Project bias_vec perpendicular to current `base`
+            bias_perp = self._bias_vec - float(self._bias_vec @ base) * base
+            bn = float(np.linalg.norm(bias_perp))
+            if bn > 1e-9:
+                bias_perp = bias_perp / bn
+                biased_base = base + self.asymmetric_bias * bias_perp
+                biased_base = biased_base / float(np.linalg.norm(biased_base))
+                base = biased_base
         directions = sample_unit_directions(ndim, self.n_samples, base)
         actions_np = directions * self.max_speed
 
