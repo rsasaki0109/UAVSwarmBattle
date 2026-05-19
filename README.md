@@ -12,23 +12,27 @@ every example YAML carries its own validated finding.**
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, MPC vs vanilla GPU MPPI vs Smart MPPI v4" width="960">
+<img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, four planners side-by-side" width="1080">
 
-<i><b>One scenario, three planners, three failure modes</b> (paired n=30,
-seed-stable to 3 decimal places).
+<i><b>One scenario, four planners, the full §3 4-mode story</b>
+(paired n=30, seed-stable to 3 decimal places).
 4 drones lap a horizontal oval (12 × 8 m, 12 s period, 2 laps) while a
 bouncing red intruder crosses the track every ~4 s. Same hyperparameters
-on all three panes — only the rollout aggregation differs.
-Left: <b>CPU MPC</b> — argmin commits each replan, 60/120 drone-eps lost (50 %).
-Middle: <b>vanilla GPU MPPI</b> — softmax averaging cancels L/R escape
-modes when the intruder enters a drone's corridor, 90/120 lost (75 %).
-Right: <b>Smart MPPI v4 (mode-aware sampling)</b> — clusters rollouts
-by lateral PC sign and takes the softmax of the lower-cost cluster
-only; recovers MPC-level safety (60/120, 50 %) while keeping GPU MPPI's
-2.5 % tighter tracking on every drone-episode. Live demonstration of
-the §3 4-mode framework: softmax helps choreography precision and hurts
-dynamic-obstacle avoidance, and you need cluster-aware aggregation to
-get both.
+across all four panes — only the rollout aggregation differs.
+<b>MPC</b> (argmin) — safety baseline, 60/120 drone-eps lost (50 %).
+<b>vanilla GPU MPPI</b> (softmax) — tighter tracking (RMSE 1.658 m on
+every drone-episode) but the same softmax operator cancels L/R escape
+modes when the intruder enters a corridor: 90/120 lost (75 %).
+<b>Smart MPPI v4</b> (unconditional cluster softmax) — recovers
+MPC-level safety (60/120) and keeps a 2.5 % tracking edge over MPC.
+<b>Smart MPPI v5</b> (mode-aware switcher with lateral-cancellation
+gate) — the same safety as v4, slightly looser race tracking, but
+<b>dominates v4 on the dyn-cell sweep</b>: dyn_v2 cancellation rises
+from v4's 50 % to <b>66.7 %</b> (+47 pp over vanilla, +17 pp over v4)
+and the mode 1 / planner-swap regressions v4 cost (-23 pp each) are
+mostly recovered (+13 pp / +23 pp).
+Live demonstration of the §3 4-mode framework — and the working
+mode-aware switcher it predicted should exist.
 See <a href="docs/findings.md#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision">findings.md</a>
 and the <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a>.</i>
 

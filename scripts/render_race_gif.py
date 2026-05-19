@@ -228,7 +228,11 @@ def main() -> int:
                 if arr.shape[0] > max_k:
                     max_k = arr.shape[0]
 
-    fig = plt.figure(figsize=(6 * n_panes + 1, 6))
+    # Auto-shrink per-pane width so the 4-pane variant fits under the
+    # 2000px image API limit while keeping the 2-pane / 3-pane variants
+    # at their original 6-inch-per-pane proportions.
+    pane_w = 6.0 if n_panes <= 3 else 4.5
+    fig = plt.figure(figsize=(pane_w * n_panes + 1, 5.5))
     axes: list = []
     trail_lines: list[list] = []
     drone_pts: list[list] = []
