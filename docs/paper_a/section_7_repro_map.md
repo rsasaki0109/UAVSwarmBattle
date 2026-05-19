@@ -29,13 +29,15 @@ between episodes.
 | §4.4 AirSim uniform-altitude n=30 | `examples/exp_airsim_multi_uniform_n30.yaml`, `examples/exp_airsim_multi_uniform_n30_gpu_mppi.yaml`, `scripts/run_airsim_multi_chunked.sh` | "AirSim multi-drone uniform-altitude n=30: GPU MPPI collapses to 0 % joint while MPC holds 46.7 %" |
 | §4.4 AirSim ±1 m mid-stagger n=30 | `examples/exp_airsim_multi_mid_n30.yaml`, `examples/exp_airsim_multi_mid_n30_gpu_mppi.yaml`, `scripts/run_airsim_multi_chunked.sh` | "AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m" |
 | §4.4 AirSim static-cube discriminating cell | `examples/exp_airsim_multi_discriminating_n30.yaml`, `examples/exp_airsim_multi_discriminating_n30_gpu_mppi.yaml`, `scripts/run_airsim_multi_chunked.sh` | "AirSim multi-drone static-cube discriminating cell n=30" |
-| §4.4.4 AirSim density-sweep cell `base_ew06` (Δ-flip sign reversal) | `examples/exp_airsim_multi_discriminating_n30{,_gpu_mppi}.yaml` (EW pillar scale 0.5→0.6 via param sweep), `scripts/run_airsim_discriminating_param_sweep.sh` | "AirSim multi-drone base_ew06 n=30: MPC Δ +6.9 pp clusters, GPU MPPI Δ -1.5 pp independent — Δ-flip sign reverses from dummy_3d" |
+| §4.4.4 AirSim density-sweep cell `base_ew06` (Δ-flip sign reversal) | `examples/exp_airsim_multi_discriminating_central_n30{,_gpu_mppi}.yaml`, `scripts/run_airsim_discriminating_param_sweep.sh` | "AirSim multi-drone base_ew06 density-sweep n=50: MPC Δ +3.8 pp (cluster mode at central crossing), GPU MPPI Δ -1.2 pp (independent failures) — Δ-flip sign reverses from §3 dummy_3d N=4 baseline" + "AirSim base_ew06 variability re-check: 3 fresh n=15 paired batches show McNemar direction is not robust; the cluster *mode* is" |
 | §4.4 reset/collision bridge fix | `uav_nav_lab/sim/airsim_bridge.py`, `scripts/run_airsim_multi_chunked.sh` | "Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag" |
 | §4.4 ROS 2 spatial equivalence | `scripts/ros2_dummy_sim.py`, `examples/exp_basic.yaml`, `examples/exp_ros2.yaml` | "ROS 2 bridge: spatial equivalence verified" |
 | §4.4 AirSim-over-ROS-2 harness | `examples/exp_airsim_ros2.yaml`, `examples/exp_airsim_ros2_direct.yaml` | "AirSim over ROS 2 parity harness" |
 | §5.1 3D escape volume | `examples/exp_multi_drone_3d_4.yaml` | "3D escape volume erases the coordination Δ" |
 | §5.1 3D density ablation | `examples/exp_multi_drone_3d_4.yaml`, `examples/exp_multi_drone_3d_4_dense.yaml`, `examples/exp_multi_drone_3d_4_packed.yaml` | "3D density ablation: bring escape volume back to non-trivial — Δ comes back too" |
 | §5.2 peer-prediction ablation | `examples/exp_multi_drone_3d_4_dense_indep.yaml`, `examples/exp_multi_drone_3d_4_packed_indep.yaml` | "3D peer-prediction ablation: removing CV prediction is worse than 8× obstacle density" |
+| §6 dummy_3d N-scaling paired sweep | `examples/exp_multi_drone_3d_{2,3,4,6,8,10,12}{,_gpu_mppi}.yaml` | "dummy_3d N-scaling paired (MPC vs GPU MPPI, N ∈ {2, 3, 4, 6, 8, 10, 12})" |
+| §6 dummy_3d (N, density) 3×3 grid | `examples/exp_multi_drone_3d_{4,6,8}{,_dense,_packed}{,_gpu_mppi}.yaml` | "dummy_3d density × planner sweep at N ∈ {4, 6, 8}: §3 mechanism is conditional on per-drone tie" |
 | §6 limitations / future work | no new run; summarizes the sections above plus SAC scaffold status | "RL comparison baseline: gym.Env scaffold + initial training" |
 
 The AirSim static-cube discriminating pair is the newest reproducible
@@ -71,8 +73,17 @@ VARIANTS="base_ew06" MODE=paired N=30 BASE_SEED=42 \
 The script generates `/tmp/uavnav_airsim_disc_base_ew06_{mpc,gpu_mppi}.yaml`
 from the §4.4.3 YAMLs (scaling the four EW pillars from 0.5 to 0.6),
 chunked-runs n=30 paired (seeds 42..71), and invokes
-`paired_analysis_airsim_multi.py` automatically. Expected summary:
-MPC per-drone 104/120 = 86.7 %, joint 19/30 = 63.3 %, Δ over indep⁴
-= +6.9 pp; GPU MPPI per-drone 114/120 = 95.0 %, joint 24/30 = 80.0 %,
-Δ over indep⁴ = -1.5 pp; McNemar paired both 14 / MPC-only 5 /
-GPU-only 10 / neither 1, exact $p \approx 0.302$.
+`paired_analysis_airsim_multi.py` automatically. Expected n=30
+summary (first cut): MPC per-drone 104/120 = 86.7 %, joint 19/30 =
+63.3 %, Δ +6.9 pp; GPU MPPI per-drone 114/120 = 95.0 %, joint 24/30
+= 80.0 %, Δ -1.5 pp; McNemar both 14 / MPC-only 5 / GPU-only 10 /
+neither 1, exact $p \approx 0.302$.
+
+The §4.4.4 paper-grade study extends this to n=50 (seeds 42-91, same
+command with `N=50`): MPC joint 34/50 = 68 %, Δ +3.8 pp; GPU MPPI
+joint 41/50 = 82 %, Δ -1.2 pp; McNemar $p \approx 0.167$. The 3-batch
+variability re-check (seeds 200-214, 220-234, 240-254) gives combined
+n=45 joint tied at 86.7 % and McNemar $p \approx 0.77$ — the qualitative
+sign-reversal mechanism (MPC cluster mode at central crossing,
+empty `collision_object` confirming drone-drone collisions) reproduces
+in every batch; the absolute McNemar direction does not.

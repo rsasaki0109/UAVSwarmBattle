@@ -250,15 +250,20 @@ baseline, §6 N=6 baseline); or per-drone divergent in GPU's favour
 its argmin lock-step concentrates failures (N=4 dense / packed), and
 that mode produces a higher $\Delta_\text{MPC}$ — but it only gives
 MPC an *absolute* joint advantage when per-drone rates stay close.
+The N=8 row adds a third mechanism that is neither route: GPU MPPI's
+per-drone uniquely collapses to 69 % under the 8-fold-symmetric
+central crossing (vs MPC's 92 %, McNemar $p \approx 0.0001$ favours
+MPC) and density actually *unwinds* the collapse rather than
+deepening it. The full three-row picture lives in §6.
 
 The AirSim `base_ew06` reading sits squarely in the N=4-dense regime
 of this grid (4 drones, ≈90 % MPC vs ≈96 % GPU per-drone, 5 widened
 pillars concentrating crossings) and is consistent with the dummy_3d
 N=4 dense/packed reading. It is **not** a generic "AirSim flips the
-mechanism" statement — at N=6 on dummy_3d the flip does not reproduce,
-and base_ew06 is a single AirSim point, not an AirSim-wide claim.
-Full numbers: findings.md "dummy_3d density × planner sweep at
-N ∈ {4, 6}".
+mechanism" statement — at N=6 the flip does not reproduce, at N=8
+baseline a different mechanism takes over, and base_ew06 is a single
+AirSim point, not an AirSim-wide claim. Full numbers: findings.md
+"dummy_3d density × planner sweep at $N \in \{4, 6, 8\}$".
 
 The n=50 magnitude is more modest than the n=30 first cut suggested.
 At n=30 we measured $\Delta_\text{MPC} = +6.9$ pp; extending to n=50
