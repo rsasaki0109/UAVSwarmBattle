@@ -2433,11 +2433,12 @@ same intruder positions in every episode — the seed varies internal
 RNG (planner sample noise for GPU MPPI) but the failure pattern is
 mostly seed-stable. With $n = 5$ episodes:
 
-| planner             | tracking RMSE | max error | phase RMSE | collisions (drone-eps) |
+| planner                   | tracking RMSE | max error | phase RMSE | collisions (drone-eps) |
 |---|---|---|---|---|
-| MPC                 | 1.764 m       | 2.701 m   | 16.80°     | 10/20 (50 %)           |
-| vanilla GPU MPPI    | **1.658 m**   | 1.976 m   | **16.14°** | 15/20 (75 %)           |
-| **Smart MPPI v4**   | 1.719 m       | **2.177 m** | 16.22°   | **10/20 (50 %)**       |
+| MPC                       | 1.764 m       | 2.701 m   | 16.80°     | 10/20 (50 %)           |
+| vanilla GPU MPPI          | **1.658 m**   | 1.976 m   | **16.14°** | 15/20 (75 %)           |
+| Smart MPPI v2 (asym 0.2)  | 1.657 m       | 1.985 m   | 16.19°     | 15/20 (75 %)           |
+| **Smart MPPI v4** (mode-aware) | 1.719 m  | **2.177 m** | 16.22° | **10/20 (50 %)**       |
 
 Three readings, one scenario:
 
@@ -2461,7 +2462,13 @@ the rollout aggregation step. Collision rate collapses back to
 MPC on every drone-episode. The catastrophic-bottom-drone failure
 that vanilla GPU MPPI suffers (drone 3, the one closest to the
 intruder spawn, loses every episode) disappears: v4 saves drone 3
-in all 5 episodes.
+in all 5 episodes. Smart v2 (asymmetric perturbation 0.2), in
+contrast, lands at the *same* 75 % collision rate as vanilla GPU
+MPPI — the perpendicular sampling bias is too weak (or too random
+across drones) to break the cancellation symmetry that the intruder
+imposes on each drone individually. v4's intervention is at the
+right level (per-replan cluster split) and right strength
+(softmax-within-cluster, not random bias-rotation).
 
 **(3) The "drone-1 / drone-2 cliff" is geometric, not
 planner-failure.** All three planners lose drones 1 and 2 (the
@@ -2484,19 +2491,19 @@ to the cliff at $t \approx 10$ s.
 
 Reproduce:
 ```bash
-for plan in mpc gpu_mppi gpu_mppi_smart_v4; do
+for plan in mpc gpu_mppi gpu_mppi_smart_v4 gpu_mppi_asym; do
   uav-nav run "examples/exp_race_oval4_${plan}.yaml"
 done
-python3 scripts/paired_analysis_aerobatic.py \
-  results/race_oval4_mpc results/race_oval4_gpu_mppi 4 5
-python3 scripts/paired_analysis_aerobatic.py \
-  results/race_oval4_mpc results/race_oval4_gpu_mppi_smart_v4 4 5
+for cmp in gpu_mppi gpu_mppi_smart_v4 gpu_mppi_asym; do
+  python3 scripts/paired_analysis_aerobatic.py \
+    results/race_oval4_mpc "results/race_oval4_${cmp}" 4 5
+done
 python3 scripts/render_race_gif.py \
   --runs results/race_oval4_mpc:MPC \
          results/race_oval4_gpu_mppi:"GPU MPPI (vanilla)" \
          results/race_oval4_gpu_mppi_smart_v4:"Smart MPPI v4" \
   --out docs/images/compare_race_oval4.gif \
-  --ep 0 --stride 3 --trail 60
+  --ep 0 --fps 10 --stride 8 --trail 30
 ```
 
 
