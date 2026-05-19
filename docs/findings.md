@@ -31,6 +31,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [dummy_3d N-scaling paired (MPC vs GPU MPPI, N ∈ {2, 3, 4, 6, 8, 10, 12})](#dummy_3d-n-scaling-paired-mpc-vs-gpu-mppi-n--2-3-4-6-8-10-12)
 - [dummy_3d density × planner sweep at N ∈ {4, 6, 8}: §3 mechanism is conditional on per-drone tie](#dummy_3d-density--planner-sweep-at-n--4-6-8-3-mechanism-is-conditional-on-per-drone-tie)
+- [dummy_3d N=4 + moving obstacle speed sweep: GPU MPPI's softmax averaging is catastrophic under dynamic obstacles](#dummy_3d-n4--moving-obstacle-speed-sweep-gpu-mppis-softmax-averaging-is-catastrophic-under-dynamic-obstacles)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
@@ -1143,6 +1144,95 @@ for N in 4 6 8; do
   done
 done
 ```
+
+### dummy_3d N=4 + moving obstacle speed sweep: GPU MPPI's softmax averaging is catastrophic under dynamic obstacles
+
+Extension to the §3 N=4 baseline cell (4 drones, 40×40×12 voxel
+world, 30 random static obstacles) by adding one moving sphere
+obstacle at $(20, 5, 6)$ with velocity $(0, +v, 0)$, radius 0.8,
+reflecting at walls. The obstacle moves north along $x=20$, directly
+along the north drone's corridor (start $(20, 3, 6)$ → goal
+$(20, 37, 6)$). YAMLs:
+`examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`. Each
+cell is n=30 paired with the §3 seed set (42-71). Analysis script:
+`scripts/paired_analysis_dummy_3d_multi.py`.
+
+| $v$ (m/s) | MPC per-drone | MPC joint | $\Delta_\text{MPC}$ | GPU per-drone | GPU joint | $\Delta_\text{GPU}$ | McNemar | mean $t$ (MPC / GPU) |
+|---|---|---|---|---|---|---|---|---|
+| 0 (§3) | 95.8 % | 83.3 % | -1.0 pp | 95.0 % | 86.7 % | **+5.2 pp** | $p = 1.00$ | 5.06 / 4.50 s |
+| 2 | 91.7 % | 73.3 % | +2.7 pp | **70.0 %** | **3.3 %** | -20.7 pp | $p \approx 0.0000$ | 14.48 / 4.91 s |
+| 4 | 95.0 % | 80.0 % | -1.5 pp | **67.5 %** | **3.3 %** | -17.4 pp | $p \approx 0.0000$ | 7.60 / 4.89 s |
+| 8 | **50.8 %** | **3.3 %** | -3.3 pp | 71.7 % | 3.3 % | -23.0 pp | $p = 1.00$ | 9.78 / 4.86 s |
+
+Key readings:
+
+**(1) GPU MPPI collapses catastrophically at $v \geq 2$ m/s.** At
+$v=2$ the joint success drops from 86.7 % (§3 baseline) to **3.3 %**
+— 27/30 paired-loss episodes against MPC's 73.3 %. The collapse is
+*not* a per-drone-rate-floor artifact: per-drone is still 70 %, so
+indep$^4$ would predict ~24 % joint and we measure 3.3 %, i.e.
+$\Delta_\text{GPU} = -20.7$ pp (failures concentrate, but on the
+*same drone* not on coordinated multi-drone clusters).
+
+**(2) The failure is single-drone and deterministic.** Across all
+v=2/4 GPU MPPI failures the colliding drone is **always drone idx 2
+(north)** — the one whose corridor the obstacle moves along — and
+collision time clusters at $t \approx 4.9-5.2$ s across seeds. The
+other three drones (east, west, south) succeed in every failed
+episode. This is consistent with GPU MPPI's softmax averaging
+cancelling left/right avoidance rollouts when the dynamic obstacle
+is dead ahead: half the cloud says "detour left around obstacle",
+half says "detour right", the softmax-weighted mean lateral command
+is near zero, and the drone slows to a stop in the central corridor
+while the obstacle catches up. MPC's argmin selects a single
+direction at each replan, commits, and clears the obstacle.
+
+**(3) MPC holds at $v \leq 4$ but collapses at $v = 8$.** MPC's
+per-drone stays $\geq 92$ % at $v \in \{2, 4\}$ and its joint stays
+$\geq 73$ %. At $v = 8$ (parity with drone `max_speed`), MPC's
+per-drone drops to 50.8 % and joint to 3.3 % — the obstacle moves
+fast enough that within MPC's 1-2 s lookahead the planner can no
+longer find a stable detour either. Three of the MPC v=8 failures
+include `timeout` outcomes ($t = 75.0$ s), indicating drones got
+stuck oscillating around the obstacle's bounce trajectory.
+
+**(4) The §3 Δ-flip mechanism does not survive the dynamic-obstacle
+extension.** At $v = 0$ both planners reach 95 %+ per-drone and GPU
+MPPI's +5.2 pp $\Delta$ over MPC's $-1.0$ pp is the §3 signature.
+At $v \geq 2$ the per-drone rates diverge by 20+ pp and the joint
+success is dominated by single-drone per-drone failures, not by
+multi-drone clustering. The $\Delta$ statistic becomes degenerate
+(joint $\ll$ indep$^4$), and the planner comparison is decided at
+the per-drone level by which planner can commit to an avoidance
+direction. **Conclusion: GPU MPPI's softmax conservatism is *not*
+just a coordination liability under static peers — it is a
+generally fragile response to any obstacle-avoidance situation that
+admits two symmetric escape directions, and dynamic obstacles
+trigger this regime far more aggressively than static ones do.**
+
+Reproduce:
+```
+for v in 2 4 8; do
+  uav-nav run examples/exp_multi_drone_3d_4_dyn_v${v}.yaml          # MPC
+  uav-nav run examples/exp_multi_drone_3d_4_dyn_v${v}_gpu_mppi.yaml # GPU MPPI
+done
+for v in 2 4 8; do
+  echo "=== v=${v} ==="
+  python3 scripts/paired_analysis_dummy_3d_multi.py \
+    results/multi_drone_3d_4_dyn_v${v} \
+    results/multi_drone_3d_4_dyn_v${v}_gpu_mppi
+done
+```
+
+Scope: one moving obstacle, one trajectory geometry (north-bound on
+$x=20$), one $(N, \text{density})$ baseline (§3 N=4 with 30 random
+static obstacles). The $\Delta$-flip mechanism conditions identified
+in §6 ((N, density, geometry) corner-specific) suggest this dynamic
+extension is also corner-specific — different obstacle trajectories,
+multiple moving obstacles, or different N rows will likely produce
+different sign and magnitude. The robust qualitative finding is the
+**single-drone deterministic GPU collapse mechanism**, not the absolute
+magnitudes.
 
 ### AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost
 

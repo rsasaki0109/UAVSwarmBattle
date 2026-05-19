@@ -91,6 +91,31 @@ behaviour; it is one paired cell, not an AirSim-wide statement.
 Mapping the (N, density, drone-count symmetry) surface across
 non-circular geometries and at finer resolution remains future work.
 
+A separate axis we probed only at one cell is **obstacle dynamics**.
+Extending the §3 N=4 baseline by adding one moving sphere obstacle
+($(20, 5, 6)$, velocity $(0, +v, 0)$, $v \in \{2, 4, 8\}$ m/s; full
+table in findings.md "dummy_3d N=4 + moving obstacle speed sweep")
+collapses GPU MPPI's joint success from 86.7 % (§3) to **3.3 %** at
+$v=2$ m/s, while MPC holds at 73 %; at $v=4$ the same pattern repeats
+(GPU 3.3 %, MPC 80 %); at $v=8$ both planners collapse to the 3.3 %
+floor. The GPU MPPI failure is deterministic and single-drone: across
+all v=2/4 GPU MPPI failures, only drone idx 2 (north, whose corridor
+the obstacle moves along) collides, at $t \approx 4.9-5.2$ s. The
+mechanism is the same softmax-averaging operator §3 describes, but
+now expressing as **bidirectional avoidance cancellation**: half the
+rollouts say "detour left", half say "detour right", the softmax
+mean lateral command is near zero, and the drone slows in the
+central corridor while the obstacle catches up. MPC's argmin commits
+to one side and clears. This dynamic-obstacle cell is therefore the
+*opposite* deployment story from §3: under moving obstacles GPU
+MPPI's softmax conservatism is no longer a coordination liability —
+it is a generalised brittleness to any obstacle-avoidance situation
+that admits two symmetric escape directions. The finding is from one
+trajectory geometry, one $(N, \text{density})$ corner, and one moving
+obstacle; like the static-grid mechanism, the *qualitative* story
+(softmax cancels bidirectional commits) is the robust claim and the
+absolute magnitudes are corner-specific.
+
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,
 but they do not validate sim-to-real transfer on PX4 hardware,

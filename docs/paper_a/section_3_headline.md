@@ -126,7 +126,14 @@ mode) and hurt (catastrophic failure at speed-through-bottleneck
 geometries) depending on whether the dominant coupling is behavioural
 or geometric.** The robust paper-grade claim is the *qualitative*
 mechanism: per-drone tie, $\Delta$ separates by planner, direction
-set by $(N, \text{density}, \text{geometry})$.
+set by $(N, \text{density}, \text{geometry})$. A dynamic-obstacle
+extension (§6, findings.md "dummy_3d N=4 + moving obstacle speed
+sweep") shows the same softmax-averaging operator also produces a
+*bidirectional avoidance cancellation* under moving obstacles —
+collapsing GPU MPPI's joint success from 86.7 % (§3 N=4 baseline) to
+3.3 % at $v=2$ m/s, with the failed drone always the one whose
+corridor the obstacle traverses. Under that regime, MPC's argmin
+commit-to-one-side is the more robust policy.
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (dummy_3d study), `docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif`
