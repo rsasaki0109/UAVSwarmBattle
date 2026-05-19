@@ -56,6 +56,9 @@ class GPUMPPIPlanner(Planner):
         w_obs: float = 100.0,
         w_smooth: float = 0.05,
         temperature: float = 1.0,
+        fallback_to_argmin: bool = False,
+        fallback_lateral_threshold: float = 0.5,
+        fallback_lateral_ratio: float = 0.5,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
         device: str = "cuda",
@@ -76,6 +79,9 @@ class GPUMPPIPlanner(Planner):
         if temperature <= 0:
             raise ValueError(f"temperature must be > 0; got {temperature!r}")
         self.temperature = float(temperature)
+        self.fallback_to_argmin = bool(fallback_to_argmin)
+        self.fallback_lateral_threshold = float(fallback_lateral_threshold)
+        self.fallback_lateral_ratio = float(fallback_lateral_ratio)
         self.viz_rollouts = int(viz_rollouts)
         self._predictor: Predictor = (
             predictor if predictor is not None else build_predictor(None)
@@ -104,6 +110,9 @@ class GPUMPPIPlanner(Planner):
             w_obs=float(cfg.get("w_obs", 100.0)),
             w_smooth=float(cfg.get("w_smooth", 0.05)),
             temperature=float(cfg.get("temperature", 1.0)),
+            fallback_to_argmin=bool(cfg.get("fallback_to_argmin", False)),
+            fallback_lateral_threshold=float(cfg.get("fallback_lateral_threshold", 0.5)),
+            fallback_lateral_ratio=float(cfg.get("fallback_lateral_ratio", 0.5)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
             device=str(cfg.get("device", "cuda")),
@@ -309,11 +318,39 @@ class GPUMPPIPlanner(Planner):
         cost_min = costs.min()
         weights = torch.exp(-(costs - cost_min) / self.temperature)
         weights = weights / weights.sum()
-        chosen_action_t = (weights[:, None] * actions_t).sum(dim=0)
+        softmax_action_t = (weights[:, None] * actions_t).sum(dim=0)
+        argmin_idx = int(costs.argmin().item())
+        argmin_action_t = actions_t[argmin_idx]
+
+        # Hybrid argmin-fallback: detect bidirectional cancellation by
+        # checking whether the softmax averaged action's lateral component
+        # (perpendicular to the goal direction) is much smaller than the
+        # argmin rollout's lateral component. When that holds, the rollout
+        # cloud has bimodal left/right escapes with similar costs and the
+        # softmax mean averages them toward zero — exactly the §3
+        # dynamic-obstacle cancellation mechanism. Falling back to argmin
+        # commits to one side instead.
+        fallback_triggered = False
+        if self.fallback_to_argmin:
+            base_t = _to_tensor(base, device)
+            softmax_along = (softmax_action_t * base_t).sum()
+            argmin_along = (argmin_action_t * base_t).sum()
+            softmax_lat = softmax_action_t - softmax_along * base_t
+            argmin_lat = argmin_action_t - argmin_along * base_t
+            softmax_lat_mag = float(torch.norm(softmax_lat).item())
+            argmin_lat_mag = float(torch.norm(argmin_lat).item())
+            if (
+                argmin_lat_mag > self.fallback_lateral_threshold
+                and softmax_lat_mag
+                < self.fallback_lateral_ratio * argmin_lat_mag
+            ):
+                fallback_triggered = True
+        chosen_action_t = argmin_action_t if fallback_triggered else softmax_action_t
+
         speed = torch.norm(chosen_action_t)
         if speed > self.max_speed:
             chosen_action_t = chosen_action_t * (self.max_speed / speed)
-        best_k = int(weights.argmax().item())
+        best_k = argmin_idx if fallback_triggered else int(weights.argmax().item())
 
         # Build best rollout for visualisation (on CPU)
         best_rollout = rollouts[best_k].cpu().numpy()
@@ -352,5 +389,6 @@ class GPUMPPIPlanner(Planner):
                 "device": str(device),
                 "rollouts": rollouts_meta,
                 "best_rollout_idx": int(best_vis_idx),
+                "fallback_to_argmin": bool(fallback_triggered),
             },
         )

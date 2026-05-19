@@ -124,10 +124,25 @@ the §3 static baseline; at $v=4$ the collapse persists with the same
 $\sim 3.3$ % joint floor. MPC holds at 73-80 % joint over this
 range. Reading the failure attribution per-seed makes the mechanism
 transparent: in every GPU MPPI failed episode at $v \in \{2, 4\}$,
-**only the north drone collides**, and the collision time clusters
-within $\pm 0.2$ s of $t \approx 5.0$ across all seeds. The other
+**only the north drone collides**, and the collision time is
+$t = 0.15$ s (step 4) across all 29 of 30 failed seeds. The other
 three drones (east, west, south, all on perpendicular corridors)
-succeed in every failed episode.
+succeed in every failed episode. Episode-level `final_t` in the
+analysis tables reads as $\sim 5$ s only because the other three
+drones complete normally while drone 2 has already crashed; the
+*drone-2* failure is immediate, not late-episode.
+
+The dyn_v2 cell's immediacy is partly fortuitous: the static
+obstacle seed (`seed: 7`, count=30) happens to place a voxel
+obstacle at $(20, 5, 6)$ — the *exact* initial position of the
+moving sphere. North drone at $(20, 3, 6)$ therefore faces a
+stacked static + dynamic obstacle just 2 m ahead at $t = 0$, and
+the §3-mechanism near-zero lateral command lets it crash into the
+voxel cell within 4 steps. The off-corridor probe at $x = 18$
+(below) is the cleaner manifestation of the same mechanism without
+this incidental confound — there the cliff persists with no
+static-obstacle overlap and the role swap (MPC failing instead)
+emerges.
 
 The mechanism is the *same* softmax-averaging operator that produced
 the §3 static $\Delta$-flip, now expressed as **bidirectional

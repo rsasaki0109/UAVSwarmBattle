@@ -41,6 +41,7 @@ between episodes.
 | §6 dummy_3d N=4 + moving obstacle speed sweep | `examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`, `scripts/paired_analysis_dummy_3d_multi.py` | "dummy_3d N=4 + moving obstacle speed sweep: GPU MPPI's softmax averaging is catastrophic under dynamic obstacles" |
 | §6 dyn off-corridor probe + 2-obstacle compound probe | `examples/exp_multi_drone_3d_4_dyn_{off_v4,2x_v4}{,_gpu_mppi}.yaml` | same finding section, sub-probes "off-corridor obstacle restores the §3 mechanism" and "two obstacles compound but do not symmetrically halve" |
 | §6 dyn off-corridor gradient (1, 2, 3 m offsets) | `examples/exp_multi_drone_3d_4_dyn_off{1,2,3}_v4{,_gpu_mppi}.yaml` | same finding section, sub-probe "off-corridor gradient — planner role swap is non-monotonic in offset" (MPC collapses at offset 2 m while GPU MPPI holds) |
+| Smart MPPI: argmin-fallback option + 3 paired tests | `uav_nav_lab/planner/gpu_mppi.py` (`fallback_to_argmin` option), `examples/exp_multi_drone_3d_4_dyn_{v2,v4,off2_v4}_gpu_mppi_smart.yaml` | "Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't" |
 | §6 limitations / future work | no new run; summarizes the sections above plus SAC scaffold status | "RL comparison baseline: gym.Env scaffold + initial training" |
 
 The AirSim static-cube discriminating pair is the newest reproducible

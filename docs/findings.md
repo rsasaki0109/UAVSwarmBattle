@@ -40,6 +40,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim multi-drone static-cube discriminating cell n=30: GPU MPPI clears every seed while MPC drops paired seeds](#airsim-multi-drone-static-cube-discriminating-cell-n30-gpu-mppi-clears-every-seed-while-mpc-drops-paired-seeds)
 - [AirSim multi-drone base_ew06 density-sweep n=30: Δ-flip sign reverses — MPC is the clustering planner on AirSim](#airsim-multi-drone-base_ew06-density-sweep-n30-δ-flip-sign-reverses--mpc-is-the-clustering-planner-on-airsim)
 - [AirSim dynamic-obstacle bridge extension (smoke verified, paired cell still tuning)](#airsim-dynamic-obstacle-bridge-extension-smoke-verified-paired-cell-still-tuning)
+- [Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't](#smart-mppi-argmin-fallback-mechanism-detector-works-naive-fix-doesnt)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
@@ -2022,6 +2023,110 @@ scripts/run_airsim_multi_chunked.sh mpc      2 42 \
 scripts/run_airsim_multi_chunked.sh gpu_mppi 2 42 \
   results/_airsim_dyn_smoke_gpu \
   examples/exp_airsim_multi_dyn_n5_smoke.yaml  # swap planner type to gpu_mppi
+```
+
+
+### Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't
+
+Tests the §3 dynamic-obstacle mechanism diagnosis by **fixing it**.
+Adds a `fallback_to_argmin` option to `gpu_mppi` (commit
+`uav_nav_lab/planner/gpu_mppi.py`). Each replan computes both the
+softmax-averaged action and the lowest-cost (argmin) rollout's
+action. If the softmax action's *lateral* component (perpendicular
+to the goal direction) is much smaller than the argmin action's
+lateral component, treat that as a left/right cancellation
+signature and fall back to argmin:
+
+```
+argmin_lat_mag    = |argmin_action - (argmin_action · goal_dir) * goal_dir|
+softmax_lat_mag   = |softmax_action - (softmax_action · goal_dir) * goal_dir|
+if argmin_lat_mag > 0.5  m/s
+    and softmax_lat_mag < 0.5 * argmin_lat_mag:
+    fall back to argmin
+```
+
+**Detector verification (synthetic single-step)**: with a moving
+obstacle dead ahead at $(20, 10, 6)$ and drone at $(20, 5, 6)$,
+vanilla GPU MPPI outputs target_velocity $[0.11, 6.98, 0.36]$ —
+near-zero lateral, the §3 mechanism. Smart MPPI's fallback fires
+and outputs $[-1.49, 7.74, 1.36]$ — substantial lateral + up, an
+escape direction. The mechanism is detectable.
+
+**Paired n=30 results** on the dummy_3d §3 dynamic cells (planner
+type swapped from `gpu_mppi` to `gpu_mppi` with
+`fallback_to_argmin: true`, same Pareto cell, same seeds 42-71):
+
+| cell                | vanilla GPU joint | smart GPU joint | vs vanilla McNemar | rescue / hurt |
+|---|---|---|---|---|
+| `dyn_v2` (on-corridor, v=2)    | 1/30 = 3.3 %  | 2/30 = 6.7 %  | (b=0, c=1), p=1.00 | +1 seed (no rescue) |
+| `dyn_v4` (on-corridor, v=4)    | 1/30 = 3.3 %  | 1/30 = 3.3 %  | (b=0, c=0), p=1.00 | no change |
+| `dyn_off2_v4` (off 2 m, v=4)   | 21/30 = 70.0 % | 16/30 = 53.3 % | (b=9, c=4), p=0.27 | **hurt -16.7 pp** |
+
+The cliff at `dyn_v2` is *not* rescued — the bimodal-cancellation
+fallback triggers, but the rescue rate is 1/30. At `dyn_off2_v4`,
+where vanilla GPU MPPI was already the better planner (70 % vs
+MPC's 7 %), Smart MPPI is **worse** — the fallback fires when the
+softmax was finding a usable asymmetric direction, and the argmin
+choice is more brittle. So the naive "fall back to argmin when
+bimodal" intervention does not deliver a planner that strictly
+dominates vanilla GPU MPPI.
+
+**Per-step trace** ($v=2$ ep 1, drone 2 north): both vanilla and
+smart collide at $t=0.15$ s (step 4), not at $t \approx 5$ s as
+the earlier dyn_v2 writeup implied. The earlier reading interpreted
+the *joint* episode final_t (max across all 4 drones, ~5 s when the
+other 3 drones finish) as the drone-2 collision time. Inspecting
+the scenario directly reveals a confound at the v=2 cell: the
+static-obstacle seed (`seed: 7`, count=30) happens to place a
+voxel obstacle at $(20, 5, 6)$ — the *exact* initial position of
+the moving sphere. So drone 2 at $(20, 3, 6)$ faces a stacked
+static + dynamic obstacle just 2 m ahead at $t=0$, and the
+cancellation-induced near-zero lateral lets it crash into the
+static cell at step 4. MPC's argmin commits to one side and clears.
+
+So the §3 Table 2 reading is more nuanced than originally
+stated:
+- The mechanism (softmax cancellation under symmetric escape) is
+  *real* and *detectable* — confirmed by the smart-MPPI synthetic
+  diagnostic.
+- The dyn_v2/v4 cells expose the mechanism by forcing a near-zero
+  initial detour against a (partially fortuitous) static-obstacle
+  configuration at the spawn-adjacent cell. The collision happens
+  at $t = 0.15$ s, not late-episode.
+- The off-corridor probe at $x = 18$ (offset 2 m) is the *cleaner*
+  manifestation: drone 2 has time to develop its trajectory and
+  the static-obstacle stacking is absent. Smart-MPPI's misfire here
+  (70 % → 53 %) is genuine evidence that the argmin-fallback rule
+  is too coarse for the wider class of bimodal cost landscapes.
+
+**Implications for the paper**: the §3 mechanism story stands, but
+the headline-grade rescue claim ("argmin-fallback fixes the cliff")
+does not. A more nuanced fix is needed — candidates include:
+
+1. **Asymmetric perturbation**: add a small per-step lateral bias
+   to the rollout distribution so the L/R modes have unequal cost
+   even at symmetric geometries.
+2. **Temporally-coherent argmin commit**: once a side is chosen,
+   stay committed across several replans rather than re-deciding
+   each tick.
+3. **Bimodal-mode-aware sampling**: cluster rollouts by lateral
+   direction, then within the lower-cost cluster pick by softmax.
+
+Future work. The smart-MPPI option is committed (off by default)
+so the §3 mechanism is reproducible as a *diagnostic* (`meta.fallback_to_argmin`
+flag per replan) even if the *rescue* path needs more research.
+Repro:
+
+```
+for tag in dyn_v2 dyn_v4 dyn_off2_v4; do
+  uav-nav run examples/exp_multi_drone_3d_4_${tag}_gpu_mppi_smart.yaml
+done
+for tag in dyn_v2 dyn_v4 dyn_off2_v4; do
+  echo "=== ${tag} smart vs vanilla ==="
+  python3 scripts/paired_analysis_dummy_3d_multi.py \
+    results/multi_drone_3d_4_${tag}_gpu_mppi \
+    results/multi_drone_3d_4_${tag}_gpu_mppi_smart
+done
 ```
 
 
