@@ -39,6 +39,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim multi-drone ±1 m mid-stagger n=30: still ceiling-limited, cliff between 0 and 1 m](#airsim-multi-drone-1-m-mid-stagger-n30-still-ceiling-limited-cliff-between-0-and-1-m)
 - [AirSim multi-drone static-cube discriminating cell n=30: GPU MPPI clears every seed while MPC drops paired seeds](#airsim-multi-drone-static-cube-discriminating-cell-n30-gpu-mppi-clears-every-seed-while-mpc-drops-paired-seeds)
 - [AirSim multi-drone base_ew06 density-sweep n=30: Δ-flip sign reverses — MPC is the clustering planner on AirSim](#airsim-multi-drone-base_ew06-density-sweep-n30-δ-flip-sign-reverses--mpc-is-the-clustering-planner-on-airsim)
+- [AirSim dynamic-obstacle bridge extension (smoke verified, paired cell still tuning)](#airsim-dynamic-obstacle-bridge-extension-smoke-verified-paired-cell-still-tuning)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
@@ -1949,6 +1950,79 @@ The script generates `/tmp/uavnav_airsim_disc_base_ew06_{mpc,gpu_mppi}.yaml`
 from the static-cube cell YAMLs, chunked-runs n=30 paired into
 `results/airsim_multi_discriminating_base_ew06_n30_{mpc,gpu_mppi}/`,
 and invokes `paired_analysis_airsim_multi.py` at the end.
+
+
+### AirSim dynamic-obstacle bridge extension (smoke verified, paired cell still tuning)
+
+Adds dynamic-obstacle support to `airsim_bridge.py`. Each
+`_DynamicObstacle3D` in the scenario gets a corresponding kinematic
+`1M_Cube_Chamfer` mesh in Blocks (scale = 2 × radius), spawned at
+reset via `simSpawnObject` and re-posed each step via
+`simSetObjectPose(name, pose, True)` to match the scenario's
+post-`advance(dt)` position. The scenario remains the authoritative
+state — the bridge mirrors the scenario's clock to Unreal so the
+Unreal collision detector sees drone-vs-cube hits naturally.
+
+Implementation:
+- `airsim_bridge._sync_dynamic_obstacles_initial(client)` — called
+  once per reset by the master bridge after `_sync_static_obstacles`.
+- `airsim_bridge._update_dynamic_obstacle_poses(client)` — called
+  each step inside `step_command` after `scenario.advance(self.dt)`
+  but before `simContinueForTime(self.dt)`, so the cubes are at their
+  post-tick position when the physics tick runs.
+- `step_command` now calls `scenario.advance(self.dt)` (mirroring the
+  dummy_3d bridge's behaviour); without this the AirSim bridge never
+  stepped scenario clock, so static-only AirSim cells worked but
+  dynamic-only cells were no-ops.
+
+Smoke verification (`exp_airsim_multi_dyn_n5_smoke.yaml`, one moving
+sphere on the north drone's corridor at $(30, 8, 30)$, velocity
+$(0, v, 0)$, n=2 paired episodes via `run_airsim_multi_chunked.sh`):
+
+| obstacle radius / $v$ | MPC outcome | GPU MPPI outcome | observation |
+|---|---|---|---|
+| r=1.0, v=1 | 2/2 success     | 2/2 success      | drone detours west+up (x 30→28, z 30→32), §3 mechanism does not register |
+| r=1.0, v=2 | (not run paired) | 2/2 success     | same — escape volume sufficient |
+| r=2.0, v=2 | **2/2 north collision @ t=7.6 s** | **2/2 north collision @ t=10.2 s** | both planners fail — cell too hard, not discriminating |
+
+North drone trajectory under MPC at r=1.0 v=1, episode 0 seed 42:
+$(30, 5, 30)$ → $(29.0, 7.2, 32.0)$ at $t=0.75$ s → $(28.2, 11.6, 32.0)$
+at $t=1.5$ — drone commits to a west+up detour immediately, hugs
+$(x \approx 28, z \approx 32)$ until past the obstacle, returns to
+$(29.4, 52.0, 30.3)$ at goal. The bridge's cube placement is
+load-bearing here: without the kinematic cube the planner would see
+the obstacle (via `scenario.dynamic_obstacles`) but Unreal would let
+the drone fly through it. Equally, without `scenario.advance(self.dt)`
+the cube would be frozen at its initial pose and the drone would
+detour for an obstacle that never moves.
+
+What this **does not yet show** is the dummy_3d §3 Table 2 cliff
+($v=2$ m/s, GPU joint 86.7 % → 3.3 % vs MPC 73 %) reproduced in
+AirSim. The default AirSim multi-drone cell ($60 \times 60 \times 40$
+ENU volume, $\text{max\_speed}=4$ m/s, $z$-axis 4-12 m above ground
+with no ceiling obstacles, $\text{inflate}=0$) has substantially
+more escape volume than the dummy_3d cell ($40 \times 40 \times 12$,
+$\text{max\_speed}=8$, $\text{inflate}=1$). GPU MPPI finds a
+non-cancellable detour (the up-axis breaks the left-right symmetry)
+and clears at r=1.0. At r=2.0 the obstacle is large enough to be
+unavoidable for both planners — not discriminating.
+
+Reproducing the dummy_3d cliff in AirSim therefore requires further
+cell tuning, likely some combination of: a ceiling obstacle layer at
+$z = 32-34$ to remove the up-detour, faster drone (`max_speed=8`),
+smaller scenario volume (40×40×12 to match dummy), or a wall of
+static cubes flanking the corridor. Each constraint reduces the
+escape volume's effective dimensionality; the §3 mechanism needs the
+2D (left/right) symmetric case to register. The implementation is
+ready; the parameter sweep is future work. Reproduce smoke:
+
+```
+scripts/run_airsim_multi_chunked.sh mpc      2 42 \
+  results/_airsim_dyn_smoke examples/exp_airsim_multi_dyn_n5_smoke.yaml
+scripts/run_airsim_multi_chunked.sh gpu_mppi 2 42 \
+  results/_airsim_dyn_smoke_gpu \
+  examples/exp_airsim_multi_dyn_n5_smoke.yaml  # swap planner type to gpu_mppi
+```
 
 
 ### Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag

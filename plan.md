@@ -546,21 +546,34 @@ hang しないか、staggered スポーン姿勢が引き継がれるか。
 
 **残された open work** (優先度の高い順):
 
-1. **§3 dynamic-obstacle: off-corridor gradient probe** — 走行中
-   (2026-05-19)。x ∈ {17, 18, 19} で off-corridor cliff の鋭さを測定。
-   GPU MPPI の bidirectional-cancellation がどの corridor 距離で switch on
-   するか。
+1. ~~**§3 dynamic-obstacle: off-corridor gradient probe**~~ — 完了
+   (2026-05-19, commit `2a2b8bf`)。x ∈ {17, 18, 19} を走った結果、
+   planner ロールが **非単調反転**: offset 0 (GPU 崩壊)、offset 1
+   (tied)、offset 2 (**MPC 崩壊**)、offset 3+ (§3 baseline 復元)。
+   Mechanism statement: softmax は argmin が wrong side に commit する
+   場面で救う / 正しい側がない場面で崩壊する。
 
-2. **§1 / §2 / §5 を §3 の 3-mode 整理に整合させる**。動機文と setup が
-   まだ "GPU MPPI flips coordination Δ" の 1-mode framing。3-mode 整理に
-   合わせて motivation を書き直し。
+2. ~~**§1 / §2 / §5 を §3 の 3-mode 整理に整合させる**~~ — §1 / §2 完了
+   (2026-05-19, commit `49eec56`)。§5 secondaries は §3 と独立した
+   ablation (escape volume / peer prediction) なので未更新で OK。
+   要件が出たら更新。
 
-3. **AirSim 上で dynamic obstacle を再現できるか?** §3 Table 2 は
-   dummy_3d のみ。Blocks に moving cube を spawn して同じ cliff が出るか
-   確認できれば、§3 dynamic-obstacle finding が cross-sim 化する。
+3. **AirSim dynamic obstacle 再現** — bridge 実装完了
+   (2026-05-19)、smoke 動作確認済 (`exp_airsim_multi_dyn_n5_smoke.yaml`)。
+   `airsim_bridge.py` に `_sync_dynamic_obstacles_initial` /
+   `_update_dynamic_obstacle_poses` 追加、`scenario.advance(dt)` 呼び出し
+   も追加。Bridge は cube spawn + 移動 + drone-vs-cube collision を
+   正しく扱う (MPC の detour 軌跡で確認: x 30→28, z 30→32)。
+   ただし **§3 Table 2 cliff (GPU joint 86.7 → 3.3) の再現は未達**。
+   AirSim default cell (60×60×40, max_speed=4) は escape volume が
+   dummy_3d (40×40×12, max_speed=8) より大きく、GPU MPPI が up-detour で
+   bidirectional symmetry を破る。再現には以下のいずれか必要:
+   ceiling obstacle 層、max_speed=8 化、40×40×12 化、または corridor
+   側面の static cube wall。Future work — 当面は dummy_3d Table 2 が
+   §3 dynamic claim の主証拠。
 
-4. **Figure 整備** — §3 Table 2 の cliff、(N, density) heatmap、
-   §4.4.4 cluster trace を可視化。submit-ready にするなら必須。
+4. **Figure 整備** — §3 Table 2 cliff、(N, density) heatmap、off-corridor
+   gradient、§4.4.4 cluster trace を可視化。submit-ready にするなら必須。
 
 5. **SAC RL ベースライン**との比較 — §3 mechanism は planner-specific
    action selection rule の話だが、learned policy も同じ mode に陥るか

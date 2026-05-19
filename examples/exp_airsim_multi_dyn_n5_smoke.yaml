@@ -1,0 +1,68 @@
+# AirSim smoke test of the dynamic-obstacle bridge extension.
+#
+# Adds one moving cube on the north drone's corridor (x=30, z=30) to
+# the staggered-altitude N=4 crossing (`exp_airsim_multi_n30.yaml`
+# layout). Speed is v=1 m/s (25 % of drone max_speed=4 m/s), mirroring
+# the dummy_3d Table 2 v=2 m/s cell (25 % of dummy max_speed=8).
+#
+# n=5 episodes for smoke verification (bridge can spawn + update cubes,
+# collision detection sees them). Full paired study uses a separate YAML.
+#
+# Run:
+#   scripts/run_airsim_multi_chunked.sh mpc 5 42 \
+#     results/airsim_multi_dyn_n5_smoke
+
+name: airsim_multi_dyn_n5_smoke
+seed: 42
+num_episodes: 5
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - start: [30.0, 8.0, 30.0]
+      velocity: [0.0, 1.0, 0.0]
+      reflect: true
+      radius: 1.0
+  drones:
+    - {name: east,  start: [5.0,  30.0, 28.0], goal: [55.0, 30.0, 28.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 32.0], goal: [5.0,  30.0, 32.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 26.0], goal: [30.0, 5.0,  26.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 400
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+
+planner:
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_multi_dyn_n5_smoke
+  save_camera_frames: false

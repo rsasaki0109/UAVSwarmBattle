@@ -296,6 +296,87 @@ class AirSimBridge(SimInterface):
                     f"with asset {spec['asset']!r}"
                 )
 
+    def _sync_dynamic_obstacles_initial(self, client: Any) -> None:
+        """Spawn AirSim visual cubes for each scenario dynamic obstacle.
+
+        The scenario object owns the obstacle's physical state (position,
+        velocity, reflection). This method registers a corresponding
+        kinematic cube in AirSim at the obstacle's initial position so
+        Unreal's collision detector can see drone-vs-cube hits. Subsequent
+        per-step pose updates are handled by
+        :meth:`_update_dynamic_obstacle_poses`.
+        """
+        self._dyn_obstacle_names: list[str] = []
+        if not hasattr(self.scenario, "_dynamic"):
+            return
+        dynamics = getattr(self.scenario, "_dynamic", [])
+        if not dynamics or not hasattr(client, "simSpawnObject"):
+            return
+        try:
+            import airsim  # type: ignore[import-not-found]
+        except ImportError:  # pragma: no cover
+            return
+        for i, d in enumerate(dynamics):
+            name = f"uavnav_dyn_{i:03d}"
+            if hasattr(client, "simDestroyObject"):
+                try:
+                    client.simDestroyObject(name)
+                except Exception:
+                    pass
+            pos_ned = _enu_to_ned(np.asarray(d.pos, dtype=float))
+            radius = float(d.radius)
+            scale = airsim.Vector3r(
+                2.0 * radius, 2.0 * radius, 2.0 * radius,
+            )
+            pose = airsim.Pose(
+                airsim.Vector3r(
+                    float(pos_ned[0]), float(pos_ned[1]), float(pos_ned[2])
+                ),
+                airsim.to_quaternion(0.0, 0.0, 0.0),
+            )
+            try:
+                spawned = client.simSpawnObject(
+                    name, "1M_Cube_Chamfer", pose, scale, False, False,
+                )
+            except TypeError:
+                spawned = client.simSpawnObject(
+                    name, "1M_Cube_Chamfer", pose, scale, False,
+                )
+            if spawned is False:
+                raise RuntimeError(
+                    f"AirSim failed to spawn dynamic obstacle {name!r}"
+                )
+            self._dyn_obstacle_names.append(name)
+
+    def _update_dynamic_obstacle_poses(self, client: Any) -> None:
+        """Move AirSim cubes to match scenario.dynamic_obstacles current pos.
+
+        Called each step after :meth:`scenario.advance` so the cubes track
+        the scenario's authoritative dynamic-obstacle state.
+        """
+        names = getattr(self, "_dyn_obstacle_names", None)
+        if not names:
+            return
+        dynamics = getattr(self.scenario, "_dynamic", [])
+        if not dynamics:
+            return
+        try:
+            import airsim  # type: ignore[import-not-found]
+        except ImportError:  # pragma: no cover
+            return
+        for name, d in zip(names, dynamics):
+            pos_ned = _enu_to_ned(np.asarray(d.pos, dtype=float))
+            pose = airsim.Pose(
+                airsim.Vector3r(
+                    float(pos_ned[0]), float(pos_ned[1]), float(pos_ned[2])
+                ),
+                airsim.to_quaternion(0.0, 0.0, 0.0),
+            )
+            try:
+                client.simSetObjectPose(name, pose, True)
+            except Exception:
+                pass
+
     def _build_image_requests(self) -> list[Any]:
         """Translate the bridge's camera spec list to airsim.ImageRequest
         objects. Lazy-imports airsim so the bridge module imports cleanly
@@ -395,6 +476,7 @@ class AirSimBridge(SimInterface):
             except Exception:
                 pass
             self._sync_static_obstacles(client)
+            self._sync_dynamic_obstacles_initial(client)
             # Brief settle (against a paused engine) to absorb residual
             # post-reset RPC latency before issuing API calls. The flag
             # ordering above means this no longer ticks physics, but
@@ -467,6 +549,12 @@ class AirSimBridge(SimInterface):
             vehicle_name=self.vehicle,
         )
         if self._advance_scenario:
+            # Advance the scenario's authoritative clock (dynamic obstacle
+            # positions, etc.) and mirror to AirSim so collision detection
+            # sees the cubes at their post-tick positions.
+            if hasattr(self.scenario, "advance"):
+                self.scenario.advance(self.dt)
+            self._update_dynamic_obstacle_poses(client)
             if hasattr(client, "simContinueForTime"):
                 client.simContinueForTime(self.dt)
             elif hasattr(client, "simPause"):  # pragma: no cover
