@@ -45,6 +45,7 @@ class SamplingMPCPlanner(Planner):
         w_goal: float = 1.0,
         w_obs: float = 100.0,
         w_smooth: float = 0.05,
+        ctg_cache_tolerance: int = 0,
         predictor: Predictor | None = None,
     ) -> None:
         self.max_speed = float(max_speed)
@@ -60,6 +61,9 @@ class SamplingMPCPlanner(Planner):
         self.w_goal = float(w_goal)
         self.w_obs = float(w_obs)
         self.w_smooth = float(w_smooth)
+        # See `gpu_mppi.GPUMPPIPlanner.__init__` for the rationale; this is
+        # the same speed/accuracy knob for the Dijkstra cost-to-go cache.
+        self.ctg_cache_tolerance = max(0, int(ctg_cache_tolerance))
         self._predictor: Predictor = predictor if predictor is not None else build_predictor(None)
         self._prev_action: np.ndarray | None = None
         # Per-episode caches: ctg / static-occ depend only on the static
@@ -86,6 +90,7 @@ class SamplingMPCPlanner(Planner):
             w_goal=float(cfg.get("w_goal", 1.0)),
             w_obs=float(cfg.get("w_obs", 100.0)),
             w_smooth=float(cfg.get("w_smooth", 0.05)),
+            ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             predictor=build_predictor(cfg.get("predictor")),
         )
 
@@ -195,7 +200,16 @@ class SamplingMPCPlanner(Planner):
             self._ctg_cache_goal = None
 
         goal_cell = self._cell(gl, self._static_occ_inflated.shape)
-        if self._ctg_cache is None or self._ctg_cache_goal != goal_cell:
+        if self._ctg_cache is None or self._ctg_cache_goal is None:
+            need_recompute = True
+        elif self.ctg_cache_tolerance <= 0:
+            need_recompute = self._ctg_cache_goal != goal_cell
+        else:
+            need_recompute = any(
+                abs(int(a) - int(b)) > self.ctg_cache_tolerance
+                for a, b in zip(goal_cell, self._ctg_cache_goal)
+            )
+        if need_recompute:
             self._ctg_cache = dijkstra_cost_to_go(self._static_occ_inflated, goal_cell)
             self._ctg_cache_goal = goal_cell
         ctg = self._ctg_cache

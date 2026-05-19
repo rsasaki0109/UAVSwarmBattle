@@ -2,7 +2,7 @@
 # race circuit and bouncing intruder, GPU MPPI planner instead of MPC.
 name: race_oval4_gpu_mppi
 seed: 42
-num_episodes: 5
+num_episodes: 30
 
 scenario:
   type: multi_drone_aerobatic
@@ -50,6 +50,7 @@ planner:
   w_obs: 100.0
   w_smooth: 0.05
   temperature: 1.0
+  ctg_cache_tolerance: 3
 
 sensor:
   type: perfect

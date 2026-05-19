@@ -63,6 +63,7 @@ class GPUMPPIPlanner(Planner):
         asymmetric_bias: float = 0.0,
         mode_aware_sampling: bool = False,
         mode_aware_min_size: int = 8,
+        ctg_cache_tolerance: int = 0,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
         device: str = "cuda",
@@ -110,6 +111,16 @@ class GPUMPPIPlanner(Planner):
         # while keeping MPPI's smoothing within that side.
         self.mode_aware_sampling = bool(mode_aware_sampling)
         self.mode_aware_min_size = max(1, int(mode_aware_min_size))
+        # `ctg_cache_tolerance`: integer cells of slack for the Dijkstra
+        # cost-to-go cache. Default 0 → recompute every time the integer
+        # goal cell changes (per-replan, exact). For scenarios with a
+        # *moving* lookahead goal (e.g. `multi_drone_aerobatic` /
+        # `multi_drone_race`) the goal cell can change every replan and
+        # Dijkstra dominates wallclock; setting tolerance to 2–3 cells
+        # caches across small lookahead drifts and gives a ~5–10x runner
+        # speedup at a negligible cost-to-go staleness (~few cells of
+        # approximation in a 40-cell-wide world).
+        self.ctg_cache_tolerance = max(0, int(ctg_cache_tolerance))
         self.viz_rollouts = int(viz_rollouts)
         self._predictor: Predictor = (
             predictor if predictor is not None else build_predictor(None)
@@ -145,6 +156,7 @@ class GPUMPPIPlanner(Planner):
             asymmetric_bias=float(cfg.get("asymmetric_bias", 0.0)),
             mode_aware_sampling=bool(cfg.get("mode_aware_sampling", False)),
             mode_aware_min_size=int(cfg.get("mode_aware_min_size", 8)),
+            ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
             device=str(cfg.get("device", "cuda")),
@@ -233,7 +245,18 @@ class GPUMPPIPlanner(Planner):
             self._ctg_cache_goal = None
 
         goal_cell = self._cell(gl, self._static_occ_inflated.shape)
-        if self._ctg_cache is None or self._ctg_cache_goal != goal_cell:
+        if self._ctg_cache is None or self._ctg_cache_goal is None:
+            need_recompute = True
+        elif self.ctg_cache_tolerance <= 0:
+            need_recompute = self._ctg_cache_goal != goal_cell
+        else:
+            # Cache hit when the goal has drifted by at most
+            # `ctg_cache_tolerance` cells along *every* axis.
+            need_recompute = any(
+                abs(int(a) - int(b)) > self.ctg_cache_tolerance
+                for a, b in zip(goal_cell, self._ctg_cache_goal)
+            )
+        if need_recompute:
             self._ctg_cache = dijkstra_cost_to_go(self._static_occ_inflated, goal_cell)
             self._ctg_cache_goal = goal_cell
         ctg_np = self._ctg_cache

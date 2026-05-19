@@ -22,7 +22,7 @@
 # softmax fails) to be visible at different moments in the same episode.
 name: race_oval4_mpc
 seed: 42
-num_episodes: 5
+num_episodes: 30
 
 scenario:
   type: multi_drone_aerobatic
@@ -69,6 +69,10 @@ planner:
   w_goal: 1.0
   w_obs: 100.0
   w_smooth: 0.05
+  # Cache the Dijkstra cost-to-go across small lookahead drifts: the
+  # moving reference goal would otherwise force a full recompute every
+  # replan. Tolerance 3 cells ≈ 3 m of staleness in a 12-m oval.
+  ctg_cache_tolerance: 3
 
 sensor:
   type: perfect

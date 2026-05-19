@@ -5,7 +5,7 @@
 # sign and emits the softmax-weighted action of the lower-cost cluster.
 name: race_oval4_gpu_mppi_smart_v4
 seed: 42
-num_episodes: 5
+num_episodes: 30
 
 scenario:
   type: multi_drone_aerobatic
@@ -55,6 +55,7 @@ planner:
   temperature: 1.0
   mode_aware_sampling: true
   mode_aware_min_size: 8
+  ctg_cache_tolerance: 3
 
 sensor:
   type: perfect

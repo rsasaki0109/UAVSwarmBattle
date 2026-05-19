@@ -6,7 +6,7 @@
 # the *output* side (cluster softmax).
 name: race_oval4_gpu_mppi_asym
 seed: 42
-num_episodes: 5
+num_episodes: 30
 
 scenario:
   type: multi_drone_aerobatic
@@ -55,6 +55,7 @@ planner:
   w_smooth: 0.05
   temperature: 1.0
   asymmetric_bias: 0.2
+  ctg_cache_tolerance: 3
 
 sensor:
   type: perfect
