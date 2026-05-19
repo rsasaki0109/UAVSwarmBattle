@@ -30,7 +30,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Temperature ablation at the 3D Pareto cell: the CPU rules don't transfer](#temperature-ablation-at-the-3d-pareto-cell-the-cpu-rules-dont-transfer)
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [dummy_3d N-scaling paired (MPC vs GPU MPPI, N ∈ {2, 3, 4, 6, 8, 10, 12})](#dummy_3d-n-scaling-paired-mpc-vs-gpu-mppi-n--2-3-4-6-8-10-12)
-- [dummy_3d density × planner sweep at N ∈ {4, 6}: §3 mechanism is conditional on per-drone tie](#dummy_3d-density--planner-sweep-at-n--4-6-3-mechanism-is-conditional-on-per-drone-tie)
+- [dummy_3d density × planner sweep at N ∈ {4, 6, 8}: §3 mechanism is conditional on per-drone tie](#dummy_3d-density--planner-sweep-at-n--4-6-8-3-mechanism-is-conditional-on-per-drone-tie)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
@@ -1050,31 +1050,34 @@ for n in 2 3 4 6 8 10 12; do
 done
 ```
 
-### dummy_3d density × planner sweep at N ∈ {4, 6}: §3 mechanism is conditional on per-drone tie
+### dummy_3d density × planner sweep at N ∈ {4, 6, 8}: §3 mechanism is conditional on per-drone tie
 
 The N-scaling sweep above identified three factors that should govern
 the §3 GPU-MPPI-Δ > MPC-Δ mechanism: per-drone tie status, crossing
 density, and drone-count symmetry. The N-scaling sweep varied
 drone-count symmetry while holding obstacle count constant at 30.
-This sub-sweep holds N ∈ {4, 6} fixed and varies obstacle count
-instead.
+This sub-sweep holds N ∈ {4, 6, 8} fixed and varies obstacle count
+instead — a 3×3 (N, density) grid.
 
-`examples/exp_multi_drone_3d_{4,6}{,_dense,_packed}{,_gpu_mppi}.yaml`
+`examples/exp_multi_drone_3d_{4,6,8}{,_dense,_packed}{,_gpu_mppi}.yaml`
 — same crossing geometry on the same 40×40×12 world, with obstacle
 counts 30 (baseline), 120 (dense, 4×), and 240 (packed, 8×). n=30
 paired per (N, density, planner). The N=4 dense MPC and N=4 baseline
 MPC/GPU YAMLs existed pre-sweep; the rest are added here.
 
-| N | density (count) | MPC per-drone     | MPC joint        | MPC Δ      | GPU MPPI per-drone | GPU MPPI joint   | GPU MPPI Δ   | McNemar (b, c, p) |
-|---|-----------------|-------------------|------------------|------------|--------------------|------------------|--------------|-------------------|
-| 4 | baseline (30)   | 115/120 = 95.8 %  | 25/30 = 83.3 %   | −1.0 pp    | 114/120 = 95.0 %   | 26/30 = 86.7 %   | **+5.2** pp  | (2, 3, 1.000)     |
-| 4 | dense (120)     | 81/120 = 67.5 %   | 8/30 = 26.7 %    | **+5.9** pp| 86/120 = 71.7 %    | 8/30 = 26.7 %    | +0.3 pp      | (3, 3, 1.000)     |
-| 4 | packed (240)    | 61/120 = 50.8 %   | 4/30 = 13.3 %    | **+6.7** pp| 78/120 = 65.0 %    | 5/30 = 16.7 %    | −1.2 pp      | (3, 4, 1.000)     |
-| 6 | baseline (30)   | 154/180 = 85.6 %  | 14/30 = 46.7 %   | +7.5 pp    | 165/180 = 91.7 %   | 21/30 = 70.0 %   | **+10.7** pp | (5, 12, 0.144)    |
-| 6 | dense (120)     | 123/180 = 68.3 %  |  3/30 = 10.0 %   | −0.2 pp    | 139/180 = 77.2 %   |  8/30 = 26.7 %   | **+5.5** pp  | (0, 5, **0.063**) |
-| 6 | packed (240)    | 76/180 = 42.2 %   |  0/30 = 0.0 %    | −0.6 pp    | 133/180 = 73.9 %   |  3/30 = 10.0 %   | −6.3 pp      | (0, 3, 0.250)     |
+| N | density (count) | MPC per-drone     | MPC joint        | MPC Δ        | GPU MPPI per-drone | GPU MPPI joint   | GPU MPPI Δ   | McNemar (b, c, p)      |
+|---|-----------------|-------------------|------------------|--------------|--------------------|------------------|--------------|------------------------|
+| 4 | baseline (30)   | 115/120 = 95.8 %  | 25/30 = 83.3 %   | −1.0 pp      | 114/120 = 95.0 %   | 26/30 = 86.7 %   | **+5.2** pp  | (2, 3, 1.000)          |
+| 4 | dense (120)     | 81/120 = 67.5 %   | 8/30 = 26.7 %    | **+5.9** pp  | 86/120 = 71.7 %    | 8/30 = 26.7 %    | +0.3 pp      | (3, 3, 1.000)          |
+| 4 | packed (240)    | 61/120 = 50.8 %   | 4/30 = 13.3 %    | **+6.7** pp  | 78/120 = 65.0 %    | 5/30 = 16.7 %    | −1.2 pp      | (3, 4, 1.000)          |
+| 6 | baseline (30)   | 154/180 = 85.6 %  | 14/30 = 46.7 %   | +7.5 pp      | 165/180 = 91.7 %   | 21/30 = 70.0 %   | **+10.7** pp | (5, 12, 0.144)         |
+| 6 | dense (120)     | 123/180 = 68.3 %  |  3/30 = 10.0 %   | −0.2 pp      | 139/180 = 77.2 %   |  8/30 = 26.7 %   | **+5.5** pp  | (0, 5, **0.063**)      |
+| 6 | packed (240)    | 76/180 = 42.2 %   |  0/30 = 0.0 %    | −0.6 pp      | 133/180 = 73.9 %   |  3/30 = 10.0 %   | −6.3 pp      | (0, 3, 0.250)          |
+| 8 | baseline (30)   | 220/240 = 91.7 %  | 19/30 = 63.3 %   | **+13.5** pp | 166/240 = 69.2 %   |  5/30 = 16.7 %   | +11.4 pp     | (14, 0, **0.0001**)    |
+| 8 | dense (120)     | 154/240 = 64.2 %  |  3/30 = 10.0 %   | +7.1 pp      | 160/240 = 66.7 %   |  2/30 = 6.7 %    | +2.8 pp      | (2, 1, 1.000)          |
+| 8 | packed (240)    | 89/240 = 37.1 %   |  0/30 = 0.0 %    | −0.04 pp     | 153/240 = 63.7 %   |  1/30 = 3.3 %    | +0.6 pp      | (0, 1, 1.000)          |
 
-**Two distinct mechanisms emerge across the density × N grid.**
+**Three distinct mechanisms emerge across the (N, density) grid.**
 
 At **N=4** the sign of $\Delta$ flips with density — MPC's argmin
 goes from near-independent at baseline to a $+6.7$ pp cluster source
@@ -1088,25 +1091,35 @@ is set by the density, not by the planner.
 At **N=6** the picture is different: **GPU MPPI's per-drone advantage
 opens up** as density rises (85/92 at baseline, 68/77 at dense,
 42/74 at packed — a 32 pp gap at packed). The sign of $\Delta$ does
-*not* flip — GPU MPPI stays the cluster source ($\Delta$ = +10.7
-baseline, +5.5 dense, −6.3 packed for GPU vs +7.5, −0.2, −0.6 for
-MPC). McNemar paired now leans GPU at every density (p = 0.063
-at dense is close to significance). The §3 sign-reversal mechanism
-does **not** generalize from N=4 to N=6 — MPC's per-drone collapses
-faster than GPU's at higher density × higher N, so GPU MPPI wins
-both per-drone *and* joint without needing the cluster mechanism.
+*not* flip — GPU MPPI stays the cluster source. McNemar leans GPU at
+every density (p = 0.063 at dense is close to significance). GPU MPPI
+wins both per-drone *and* joint without needing a cluster mechanism.
 
-**The honest read.** GPU MPPI's softmax beats MPC's argmin through
-*one of two routes* depending on regime: either (i) per-drone tied
-and GPU MPPI clusters its failures (§3 N=4 baseline, N=6 baseline);
-or (ii) per-drone divergent in GPU's favour, with the joint advantage
-following from per-drone alone (N=6 dense / packed). MPC has a
-density-driven cluster regime where its argmin lock-step concentrates
-failures into specific seeds (N=4 dense / packed); whether this gives
-MPC an absolute joint advantage depends on whether per-drone rates
-stay close (yes at N=4 packed — both planners struggle similarly,
-MPC clusters help; no at N=6 packed — MPC's per-drone has already
-collapsed too far for the clustering to matter).
+At **N=8** the picture is different *again*: at baseline GPU MPPI
+hits its 8-fold-symmetric central-crossing singularity (per-drone
+69 % vs MPC's 92 %), so MPC wins paired joint with McNemar
+p ≈ 0.0001. At dense the per-drone rates re-tie (MPC 64 % / GPU 67 %)
+and both have positive $\Delta$ — MPC slightly higher (+7.1 vs +2.8),
+mirroring the N=4 dense behaviour. At packed GPU MPPI's per-drone
+advantage returns (37 % MPC vs 64 % GPU) but joint success is
+floor-low (1/30 vs 0/30) so the $\Delta$ separation is statistically
+moot. The N=8 baseline GPU collapse is a property of that specific
+density-and-symmetry corner; raising density tends to *equalise* the
+planners as MPC also struggles.
+
+**The honest read across the grid.** GPU MPPI's softmax beats MPC's
+argmin through *one of two routes* depending on regime: either
+(i) per-drone tied and GPU MPPI clusters its failures (§3 N=4
+baseline, N=6 baseline); or (ii) per-drone divergent in GPU's favour,
+with the joint advantage following from per-drone alone (N=6 dense /
+packed, N=8 packed). MPC has a density-driven cluster regime where
+its argmin lock-step concentrates failures into specific seeds
+(N=4 dense / packed, N=8 dense); whether this gives MPC an absolute
+joint advantage depends on whether per-drone rates stay close
+(yes at N=4 packed, partly at N=8 dense; no at N=6 packed or N=8
+packed where GPU MPPI's per-drone has already opened up). The §3
+N=4 baseline result is one corner of this grid where both routes
+are absent for MPC and only GPU MPPI's cluster route registers.
 
 **Connection to AirSim base_ew06.** The "AirSim sign reversal"
 finding in §"AirSim multi-drone base_ew06" — MPC clusters at central
@@ -1123,7 +1136,7 @@ is also not the sole axis the AirSim observation lives on.
 
 Reproduce:
 ```
-for N in 4 6; do
+for N in 4 6 8; do
   for v in "" "_dense" "_packed"; do
     uav-nav run examples/exp_multi_drone_3d_${N}${v}.yaml          # MPC
     uav-nav run examples/exp_multi_drone_3d_${N}${v}_gpu_mppi.yaml # GPU MPPI

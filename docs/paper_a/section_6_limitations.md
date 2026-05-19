@@ -68,25 +68,28 @@ in N**: GPU MPPI's higher-$\Delta$ advantage holds at $N = 4$
 per-drone to 69 % (McNemar p ≈ 0.0001 favours MPC), and at $N = 12$
 where GPU's $\Delta$ drops back to +7.8 pp vs MPC's +15.2 pp.
 
-The companion density sweep at $N \in \{4, 6\}$ (findings.md
-"dummy_3d density × planner sweep at $N \in \{4, 6\}$") shows the
-sign-reversal effect is **conditional**, not universal. At N=4 the
+The companion density sweep at $N \in \{4, 6, 8\}$ (findings.md
+"dummy_3d density × planner sweep at $N \in \{4, 6, 8\}$") fills in
+the 3×3 (N, density) grid and shows the sign-reversal effect is
+**conditional and corner-specific**, not universal. At N=4 the
 $\Delta$ sign flips with obstacle count — GPU MPPI's $\Delta$ goes
 from $+5.2$ pp at baseline to $-1.2$ pp at 240 obstacles while MPC's
 moves from $-1.0$ to $+6.7$ pp. At N=6 the same density sweep does
 *not* flip — GPU MPPI keeps a 6-32 pp per-drone advantage across
-densities and stays the cluster source ($\Delta_\text{GPU} = +10.7,
-+5.5, -6.3$ vs $\Delta_\text{MPC} = +7.5, -0.2, -0.6$ across
-baseline/dense/packed). The N=4 sign flip is therefore a coincidence
-of "per-drone rates stay close enough that the $\Delta$ statistic
-takes over"; at N=6 the per-drone gap opens too quickly for the flip
-to register. The AirSim `base_ew06` finding sits in the N=4 dense
-regime (5 widened pillars concentrating 4 drones into one central
-crossing, MPC vs GPU per-drone 90 vs 96 %) and reproduces the
-dummy_3d N=4 dense behaviour; it is one paired cell, not an
-AirSim-wide statement. Mapping the (N, density, drone-count
-symmetry) surface across non-circular geometries and at finer
-resolution remains future work.
+densities and stays the cluster source. At N=8 baseline GPU MPPI
+uniquely collapses (per-drone 69 % vs MPC's 92 %, McNemar
+$p \approx 0.0001$), but at N=8 dense the per-drone rates re-tie
+and at N=8 packed GPU MPPI's per-drone advantage returns (64 % vs
+37 %) — with joint success floor-low in both denser cells, no
+McNemar separation. The N=4 sign flip is therefore a coincidence of
+"per-drone rates stay close enough that the $\Delta$ statistic takes
+over"; that condition rarely holds elsewhere in the grid. The AirSim
+`base_ew06` finding sits in the N=4 dense regime (5 widened pillars
+concentrating 4 drones into one central crossing, MPC vs GPU
+per-drone 90 vs 96 %) and reproduces the dummy_3d N=4 dense
+behaviour; it is one paired cell, not an AirSim-wide statement.
+Mapping the (N, density, drone-count symmetry) surface across
+non-circular geometries and at finer resolution remains future work.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,
