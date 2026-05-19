@@ -42,6 +42,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim dynamic-obstacle bridge extension (smoke verified, paired cell still tuning)](#airsim-dynamic-obstacle-bridge-extension-smoke-verified-paired-cell-still-tuning)
 - [Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't](#smart-mppi-argmin-fallback-mechanism-detector-works-naive-fix-doesnt)
 - [Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime](#smart-mppi-v2-asymmetric-perturbation-breaks-softmax-symmetry-helps-the-planner-swap-regime)
+- [Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2220,6 +2221,94 @@ for tag in dyn_v2 dyn_v4 dyn_off2_v4; do
   python3 scripts/paired_analysis_dummy_3d_multi.py \
     results/multi_drone_3d_4_${tag}_gpu_mppi \
     results/multi_drone_3d_4_${tag}_gpu_mppi_asym
+done
+```
+
+
+### Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability
+
+Third Smart MPPI variant. Where v1's argmin-fallback fires per-replan
+(causing oscillation when the detector toggles on/off) and v2's
+asymmetric perturbation breaks symmetry at sampling time but never
+fires per-replan, **v3** holds the v1-style fallback decision for
+$K = 5$ consecutive replans before re-evaluating. This addresses the
+oscillation hypothesis directly: if v1's bad behaviour at dyn_off2
+was caused by per-replan flip-flopping, a temporal commit should
+rescue it.
+
+Implementation: GPU MPPI gains `fallback_commit_steps: int = 1`
+(default = v1 behaviour). v3 cell uses K=5 ≈ 1 s at
+$\text{replan\_period}=0.2$ s. Once the bidirectional-cancellation
+detector triggers, the planner returns the argmin action for K-1
+further replans before checking the detector again.
+
+Paired n=30 across 4 cells. **Full comparison table across all
+three Smart variants**:
+
+| cell                | vanilla GPU | Smart v1 (K=1) | Smart v2 (asym 0.2) | Smart v3 (K=5) |
+|---|---|---|---|---|
+| §3 N=4 baseline (mode 1)     | 86.7 % / Δ +5.2 | (not tested)  | 86.7 % / Δ +2.3 (tied) | **76.7 %** / Δ +11.1 (**HURT −10 pp**) |
+| dyn_v2 (mode 2 on-corridor)  | 3.3 %  | 6.7 %  | 0.0 %  | 6.7 %  |
+| dyn_v4 (mode 2 on-corridor)  | 3.3 %  | 3.3 %  | 3.3 %  | 3.3 % (per-drone +6.7 pp) |
+| dyn_off2_v4 (planner-swap)   | 70.0 % | 53.3 % (HURT)  | **86.7 %** (+16.7 pp)  | 76.7 % (+6.7 pp) |
+
+Three readings:
+
+**(1) Temporal commit *hurts* mode 1 baseline.** Joint drops from
+86.7 → 76.7 % (−10 pp) and per-drone from 95.8 → 90.0 %. The K=5
+commit causes problems on the static-peer N=4 task: once a drone
+commits to argmin, it stays committed for 1 s even when the cost
+landscape would have been better served by re-averaging. The §3
+mode 1 mechanism (softmax clustering driving GPU MPPI to +11.4 pp
+Δ at the n=100 baseline) is structurally what v3's commit *removes*
+— the planner becomes more like MPC's argmin, and we lose the
+clustering advantage that gives GPU MPPI its mode 1 edge.
+
+**(2) Temporal commit doesn't rescue the cliff.** dyn_v2 stays at
+6.7 % (= v1's number), dyn_v4 stays at 3.3 %. The static-obstacle
+confound at $(20, 5, 6)$ is geometric, not action-selection — no
+fallback regime overcomes the spawn-adjacent stacked obstacle in
+4 steps.
+
+**(3) Temporal commit partially rescues the off-corridor swap regime,
+but v2 still dominates.** v3 at dyn_off2 reaches 76.7 % (vs vanilla
+70.0 %, vs Smart v1 53.3 %, vs Smart v2 86.7 %). The temporal commit
+*does* help (no oscillation), but it commits to *one specific argmin
+rollout's direction*, which can be suboptimal vs the smooth softmax
+average that v2's asymmetric sampling preserves.
+
+**Cross-variant conclusion: no simple intervention rescues all four
+modes simultaneously**:
+- v1 (K=1 per-replan fallback) — hurts swap regime via oscillation.
+- v2 (asym 0.2 perturbation) — preserves baseline, dominates swap;
+  doesn't rescue cliff.
+- v3 (K=5 temporal commit) — partially rescues swap, but trades
+  away the mode 1 clustering advantage.
+- All three: cliff (mode 2 on-corridor) remains unsolved at n=30.
+
+The §3 4-mode framework predicts this outcome: a planner cannot
+simultaneously optimise for all four modes if the underlying
+operator (softmax averaging vs argmin commit) carries opposite
+optimal valences in different modes. The Smart MPPI experiments
+confirm this empirically — improving one mode requires sacrificing
+another. The **deployment story** therefore strengthens, not
+weakens: pick the planner *per mission mode*, or build a **mode-
+aware switcher** that selects between Smart v2 / vanilla GPU MPPI /
+MPC based on a per-replan mode diagnostic (Tier 1 idea, future
+work). A single static planner cell that optimises across all four
+modes does not exist — at least not within the
+softmax-vs-argmin family explored here.
+
+Reproduce:
+```
+for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
+  base="examples/exp_multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v3.yaml"
+  uav-nav run "$base"
+done
+for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
+  python3 scripts/paired_analysis_dummy_3d_multi.py \
+    results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi \
+    results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v3
 done
 ```
 

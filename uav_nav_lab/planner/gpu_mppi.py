@@ -59,6 +59,7 @@ class GPUMPPIPlanner(Planner):
         fallback_to_argmin: bool = False,
         fallback_lateral_threshold: float = 0.5,
         fallback_lateral_ratio: float = 0.5,
+        fallback_commit_steps: int = 1,
         asymmetric_bias: float = 0.0,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
@@ -83,6 +84,12 @@ class GPUMPPIPlanner(Planner):
         self.fallback_to_argmin = bool(fallback_to_argmin)
         self.fallback_lateral_threshold = float(fallback_lateral_threshold)
         self.fallback_lateral_ratio = float(fallback_lateral_ratio)
+        # Once the bidirectional-cancellation detector fires, hold the
+        # argmin-fallback choice for `fallback_commit_steps` consecutive
+        # replans before re-evaluating. K=1 = per-replan (Smart v1
+        # behaviour); K=5 ≈ 1 s at replan_period=0.2 s (Smart v3 default).
+        self.fallback_commit_steps = max(1, int(fallback_commit_steps))
+        self._fallback_commit_remaining = 0
         # Asymmetric perturbation: a per-episode, perpendicular-to-goal
         # bias added to the rollout base direction. The goal is to break
         # the L/R symmetry that produces softmax cancellation under
@@ -123,6 +130,7 @@ class GPUMPPIPlanner(Planner):
             fallback_to_argmin=bool(cfg.get("fallback_to_argmin", False)),
             fallback_lateral_threshold=float(cfg.get("fallback_lateral_threshold", 0.5)),
             fallback_lateral_ratio=float(cfg.get("fallback_lateral_ratio", 0.5)),
+            fallback_commit_steps=int(cfg.get("fallback_commit_steps", 1)),
             asymmetric_bias=float(cfg.get("asymmetric_bias", 0.0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
@@ -136,6 +144,7 @@ class GPUMPPIPlanner(Planner):
         self._ctg_cache = None
         self._ctg_cache_goal = None
         self._bias_vec = None  # lazily set on first plan() call
+        self._fallback_commit_remaining = 0
 
     def _cell(self, p: np.ndarray, shape: tuple[int, ...]) -> tuple[int, ...]:
         return tuple(
@@ -369,19 +378,27 @@ class GPUMPPIPlanner(Planner):
         # commits to one side instead.
         fallback_triggered = False
         if self.fallback_to_argmin:
-            base_t = _to_tensor(base, device)
-            softmax_along = (softmax_action_t * base_t).sum()
-            argmin_along = (argmin_action_t * base_t).sum()
-            softmax_lat = softmax_action_t - softmax_along * base_t
-            argmin_lat = argmin_action_t - argmin_along * base_t
-            softmax_lat_mag = float(torch.norm(softmax_lat).item())
-            argmin_lat_mag = float(torch.norm(argmin_lat).item())
-            if (
-                argmin_lat_mag > self.fallback_lateral_threshold
-                and softmax_lat_mag
-                < self.fallback_lateral_ratio * argmin_lat_mag
-            ):
+            # If the previous replan committed to argmin, hold the
+            # commit for `fallback_commit_steps - 1` further replans.
+            if self._fallback_commit_remaining > 0:
                 fallback_triggered = True
+                self._fallback_commit_remaining -= 1
+            else:
+                base_t = _to_tensor(base, device)
+                softmax_along = (softmax_action_t * base_t).sum()
+                argmin_along = (argmin_action_t * base_t).sum()
+                softmax_lat = softmax_action_t - softmax_along * base_t
+                argmin_lat = argmin_action_t - argmin_along * base_t
+                softmax_lat_mag = float(torch.norm(softmax_lat).item())
+                argmin_lat_mag = float(torch.norm(argmin_lat).item())
+                if (
+                    argmin_lat_mag > self.fallback_lateral_threshold
+                    and softmax_lat_mag
+                    < self.fallback_lateral_ratio * argmin_lat_mag
+                ):
+                    fallback_triggered = True
+                    # Hold for the next `K - 1` replans
+                    self._fallback_commit_remaining = self.fallback_commit_steps - 1
         chosen_action_t = argmin_action_t if fallback_triggered else softmax_action_t
 
         speed = torch.norm(chosen_action_t)
