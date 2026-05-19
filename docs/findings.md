@@ -1234,6 +1234,69 @@ different sign and magnitude. The robust qualitative finding is the
 **single-drone deterministic GPU collapse mechanism**, not the absolute
 magnitudes.
 
+#### Probe 1: off-corridor obstacle restores the §3 mechanism
+
+Moving the obstacle from $x=20$ (on the north corridor) to $x=15$
+(5 m offset) at $v=4$ m/s — `exp_multi_drone_3d_4_dyn_off_v4{,_gpu_mppi}.yaml`
+— recovers the §3 static baseline numbers:
+
+| cell                   | MPC per/joint/Δ            | GPU per/joint/Δ            | McNemar  |
+|---|---|---|---|
+| §3 static baseline     | 95.8 / 83.3 / **-1.0**     | 95.0 / 86.7 / **+5.2**     | p=1.00   |
+| dyn_off_v4 (x=15)      | 95.8 / 83.3 / **-1.0**     | 95.0 / 86.7 / **+5.2**     | p=1.00   |
+| dyn_v4 (x=20, on corridor) | 95.0 / 80.0 / -1.5     | **67.5 / 3.3 / -17.4**     | p≈0      |
+
+Per-drone, joint, and $\Delta$ are identical to within sampling
+noise (in fact identical because the seeds resolve the same way at
+both static cells given the off-corridor obstacle's net effect is
+~null on the 4 drones' paths). The off-corridor probe **falsifies**
+a generic "GPU MPPI is bad at dynamic obstacles" framing: GPU MPPI
+handles the moving sphere fine when it does not align with a
+drone's corridor. The dynamic failure mode is **specifically tied to
+obstacle-on-corridor**, consistent with the bidirectional-cancellation
+mechanism above (it requires the obstacle to present a left/right
+symmetric escape choice to a drone whose path it directly blocks).
+
+#### Probe 2: two obstacles compound but do not symmetrically halve
+
+Placing one obstacle on the north corridor and one on the east
+corridor — `exp_multi_drone_3d_4_dyn_2x_v4{,_gpu_mppi}.yaml`, both
+at $v=4$ m/s — gives:
+
+|                    | MPC                   | GPU MPPI            |
+|---|---|---|
+| per-drone          | 86/120 = **71.7 %**   | 59/120 = **49.2 %** |
+| joint              | 4/30 = 13.3 %         | 1/30 = 3.3 %        |
+| $\Delta$ over indep$^4$ | -13.0 pp         | -2.5 pp             |
+| mean final_t       | 56.54 s               | 5.08 s              |
+| McNemar (b, c)     | (3, 0)                | n=3, $p \approx 0.25$ |
+
+Both planners drop. GPU MPPI's per-drone collapses to 49 % (vs
+67.5 % at single obstacle) — the cancellation operator extends to
+the east drone in addition to the north drone. MPC's per-drone
+also drops to 72 % (vs 95 % at single obstacle); its mean final_t
+of 56.5 s indicates many episodes hit the max-step timeout, with
+drones oscillating around the obstacle trajectories rather than
+clearing. The McNemar comparison is no longer decisive (p=0.25,
+b=3 MPC-only out of 30) — at this difficulty level both planners
+are near the joint-floor and the comparison cannot register a clean
+direction. The qualitative reading is **the GPU MPPI cancellation
+mechanism is per-corridor and extends additively, while MPC also
+loses robustness once multiple drones are simultaneously obstacle-
+adjacent** (probably from peer-prediction inflation around the
+oscillating drones).
+
+Together, the two probes refine the mechanism statement: GPU MPPI's
+softmax bidirectional-cancellation failure mode applies *per
+moving-obstacle/corridor alignment*. One alignment → one drone
+fails deterministically. Two alignments → two drones fail and the
+fleet drops to joint-floor. Off-corridor obstacle → §3 static
+mechanism returns. The deployment statement "MPC is safer under
+moving obstacles" holds only at single-corridor obstacle alignments;
+at compound difficulty MPC also fails, just slower (timeout vs
+collision) and via a different mode (path-oscillation vs
+cancellation).
+
 ### AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost
 
 `examples/exp_airsim_demo_gpu_mppi.yaml` — single-drone parity check

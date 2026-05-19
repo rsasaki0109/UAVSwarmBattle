@@ -163,9 +163,25 @@ upper bound but does not change the qualitative claim: at $v=2$ m/s
 already, the $\Delta$-flip mechanism's softmax-averaging root cause
 produces a deployment-relevant failure mode.
 
+Two probes localise the mechanism. An **off-corridor probe** (same
+obstacle at $v=4$ m/s but starting at $x=15$, 5 m offset from the
+north corridor) restores the §3 static baseline numbers exactly
+(per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$ $-1.0$/$+5.2$ pp,
+$p=1.00$). GPU MPPI is not generically bad at moving obstacles — it
+fails specifically when the obstacle aligns with a drone's corridor
+and presents bidirectional escape symmetry. A **2-obstacle compound
+probe** (one obstacle each on the north and east corridors) drops
+both planners to the joint floor (MPC 13.3 %, GPU 3.3 %); GPU MPPI's
+per-drone collapses to 49 % (vs 67.5 % at single obstacle) and MPC's
+to 72 % (vs 95 %). The cancellation mechanism applies *per corridor
+alignment*; MPC's robustness at single-obstacle does not extend to
+two.
+
 Full table and per-seed attribution in findings.md "dummy_3d N=4 +
-moving obstacle speed sweep". Repro configs:
+moving obstacle speed sweep" (including the two probes above).
+Repro configs:
 `examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`,
+`examples/exp_multi_drone_3d_4_dyn_{off_v4,2x_v4}{,_gpu_mppi}.yaml`,
 analysis script `scripts/paired_analysis_dummy_3d_multi.py`.
 
 ## Sim transferability

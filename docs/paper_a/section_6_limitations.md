@@ -116,6 +116,25 @@ obstacle; like the static-grid mechanism, the *qualitative* story
 (softmax cancels bidirectional commits) is the robust claim and the
 absolute magnitudes are corner-specific.
 
+Two probes sharpen the mechanism's scope further. **Off-corridor
+probe**: moving the obstacle from $x=20$ (on the north corridor) to
+$x=15$ (5 m offset) at $v=4$ m/s restores the §3 static baseline
+exactly — per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$
+$-1.0$/$+5.2$ pp, $p=1.00$. The dynamic failure mode is **specific
+to obstacle-on-corridor alignment**, not a generic "GPU MPPI fails
+under any moving obstacle" claim. **Two-obstacle compound probe**:
+placing one moving sphere on the north corridor and one on the east
+corridor at $v=4$ m/s drops both planners to the joint floor (MPC
+13.3 %, GPU 3.3 %). GPU MPPI's per-drone collapses from 67.5 %
+(single obstacle) to 49.2 %; MPC's drops from 95.0 % to 71.7 % with
+mean episode time 56.5 s indicating max-step timeouts dominate. The
+McNemar comparison loses statistical decisiveness ($p \approx 0.25$,
+b=3, c=0) at this difficulty level. The cancellation mechanism
+therefore applies *per corridor alignment* (additive across
+obstacles), and the "MPC is safer under dynamic obstacles" reading
+of the v=2/4 single-obstacle table holds only at low compound
+difficulty.
+
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,
 but they do not validate sim-to-real transfer on PX4 hardware,
