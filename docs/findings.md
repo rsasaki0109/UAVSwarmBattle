@@ -43,6 +43,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't](#smart-mppi-argmin-fallback-mechanism-detector-works-naive-fix-doesnt)
 - [Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime](#smart-mppi-v2-asymmetric-perturbation-breaks-softmax-symmetry-helps-the-planner-swap-regime)
 - [Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
+- [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2309,6 +2310,108 @@ for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
   python3 scripts/paired_analysis_dummy_3d_multi.py \
     results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi \
     results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v3
+done
+```
+
+
+### Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime
+
+Fourth Smart MPPI variant. v1–v3 all attacked the §3 dynamic-obstacle
+**cancellation regime** at the *action-selection* layer (argmin-fallback,
+asymmetric sampling, temporal commit). v4 attacks it at the *rollout-
+aggregation* layer instead: cluster the rollouts by lateral principal-
+component sign (L vs R), and emit the softmax-weighted action of the
+**lower-cost cluster only**. This preserves MPPI smoothing *within* one
+escape direction while breaking the cancellation that drives the §3
+Table 2 mechanism.
+
+Mechanism. The §3 cancellation regime makes the rollout cloud bimodal:
+roughly half the rollouts escape left of a moving obstacle, the other
+half escape right, with similar costs. A global softmax then averages
+L and R back toward zero lateral motion — the planner commits to going
+*straight* into the obstacle. Mode-aware sampling, by contrast, takes
+the lateral component of each sampled action, projects it onto the
+principal direction (SVD), splits rollouts by sign, computes the
+softmax-weighted average and softmax-weighted cost within each cluster,
+and outputs the action of the lower-cost cluster. The result is a
+non-zero lateral commitment — but a *smooth* one, unlike v1/v3's
+hard argmin commit.
+
+Implementation: GPU MPPI gains `mode_aware_sampling: bool = False`
+and `mode_aware_min_size: int = 8`. The min-size guard avoids
+splitting when one cluster has < 8 rollouts (regime is unimodal).
+Meta now exposes `mode_aware_triggered` and `mode_aware_cluster_sign`
+(±1 = which side won; 0 = no split).
+
+Paired n=30 across the same 4 cells as v1/v2/v3. **Full comparison
+across all four Smart variants vs vanilla GPU MPPI**:
+
+| cell                | vanilla GPU | Smart v1 (K=1) | Smart v2 (asym 0.2) | Smart v3 (K=5) | **Smart v4 (mode-aware)** |
+|---|---|---|---|---|---|
+| §3 N=4 baseline (mode 1)     | 86.7 % | (not tested)   | 86.7 % (tied) | 76.7 % (−10 pp) | **63.3 %** (−23 pp, HURT)  |
+| dyn_v2 (mode 2 on-corridor)  | 3.3 %  | 6.7 %  | 0.0 %  | 6.7 %  | **50.0 %** (**+47 pp, $p \approx 0.0005$**) |
+| dyn_v4 (mode 2 faster)       | 3.3 %  | 3.3 %  | 3.3 %  | 3.3 %  | **0.0 %** (tied; scenario still too hard) |
+| dyn_off2_v4 (planner-swap)   | 70.0 % | 53.3 % (HURT) | **86.7 %** (+16.7 pp) | 76.7 % (+6.7 pp) | **46.7 %** (−23 pp, HURT) |
+
+Three readings:
+
+**(1) Mode-aware is the first variant that decisively cracks the
+cancellation regime.** dyn_v2 jumps from 3.3 % (vanilla) / 0–6.7 %
+(v1–v3) to 50.0 %. Paired McNemar vs Smart v3: $p \approx 0.001$;
+vs vanilla GPU MPPI: $p \approx 0.0005$. The mechanism the variant
+was designed to target is the mechanism it fixes. v1–v3 only ever
+moved the dyn_v2 number by 0–3 pp because they intervened *after*
+the rollout cloud had already been averaged toward zero, or they
+broke symmetry too weakly. v4 intervenes *during* the averaging step
+and forbids cross-side averaging entirely.
+
+**(2) The fix is mode-specific, exactly as the §3 4-mode framework
+predicts.** Cracking dyn_v2 costs −23 pp on the static §3 baseline
+(mode 1) and −23 pp on the planner-swap regime (off-corridor). Both
+losses share a root cause: forcing a one-side commit destroys the
+rollout diversity that helps in regimes where *both* sides matter
+(mode 1's static-peer clustering profits from the rollout cloud's
+spread; the planner-swap regime needs to find the rare clear side,
+which can be on either L or R). Mode-aware sampling does precisely
+what v1–v3 do *not*: actively force the cloud into one mode at the
+output. That intervention is the right call iff the cancellation is
+the binding failure.
+
+**(3) Faster dynamics (dyn_v4) remain unsolved.** Even v4 stays at
+0/30 joint success. With $v_{obst} = 4$ m/s and an obstacle radius
+of 0.8 m, the moving cube traverses the corridor faster than the
+0.4 s lookahead horizon can react regardless of action-aggregation
+scheme. This is a *scenario hardness* finding, not a planner
+finding: a longer horizon or a better predictor (constant-velocity
+already; would need acceleration-aware) is what dyn_v4 needs.
+Smart v4 cannot rescue what no per-replan decision can rescue.
+
+**Cross-variant conclusion: each variant targets exactly one mode**:
+- v1 (per-replan argmin-fallback)      → no clear win; oscillation hurts swap.
+- v2 (asymmetric sampling)             → dominates *planner-swap* regime.
+- v3 (temporally-coherent argmin)      → partially rescues swap; loses mode 1.
+- v4 (mode-aware cluster softmax)      → **dominates cancellation regime**; loses mode 1 + swap.
+
+No single Smart variant is uniformly better. The §3 4-mode framework
+predicts this exactly: when the operator (softmax averaging vs argmin
+commit, cross-mode averaging vs single-mode averaging) carries opposite
+optimal valences across modes, a static cell cannot win all four. The
+**deployment story** therefore is *mode-aware switching* — pick
+v2 in the planner-swap regime, v4 in the cancellation regime, vanilla
+GPU MPPI (or MPC) in mode 1 — driven by an online mode diagnostic
+(future work; the meta now exposes both `fallback_to_argmin` and
+`mode_aware_cluster_sign` per replan, which is enough signal for a
+hand-built switcher).
+
+Reproduce:
+```bash
+for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
+  uav-nav run "examples/exp_multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v4.yaml"
+done
+for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
+  python3 scripts/paired_analysis_dummy_3d_multi.py \
+    results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi \
+    results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v4
 done
 ```
 

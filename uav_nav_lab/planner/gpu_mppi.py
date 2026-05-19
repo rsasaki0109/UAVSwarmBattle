@@ -61,6 +61,8 @@ class GPUMPPIPlanner(Planner):
         fallback_lateral_ratio: float = 0.5,
         fallback_commit_steps: int = 1,
         asymmetric_bias: float = 0.0,
+        mode_aware_sampling: bool = False,
+        mode_aware_min_size: int = 8,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
         device: str = "cuda",
@@ -99,6 +101,15 @@ class GPUMPPIPlanner(Planner):
         # preferred avoidance direction.
         self.asymmetric_bias = float(asymmetric_bias)
         self._bias_vec: np.ndarray | None = None
+        # Mode-aware sampling (Smart MPPI v4): instead of taking the softmax
+        # mean over ALL rollouts (which cancels left/right escapes under a
+        # bidirectional cancellation regime, §3 Table 2), project lateral
+        # action components onto their first principal direction, split
+        # rollouts into L/R clusters by sign, and emit the softmax-weighted
+        # action of the lower-cost cluster only. This commits to one side
+        # while keeping MPPI's smoothing within that side.
+        self.mode_aware_sampling = bool(mode_aware_sampling)
+        self.mode_aware_min_size = max(1, int(mode_aware_min_size))
         self.viz_rollouts = int(viz_rollouts)
         self._predictor: Predictor = (
             predictor if predictor is not None else build_predictor(None)
@@ -132,6 +143,8 @@ class GPUMPPIPlanner(Planner):
             fallback_lateral_ratio=float(cfg.get("fallback_lateral_ratio", 0.5)),
             fallback_commit_steps=int(cfg.get("fallback_commit_steps", 1)),
             asymmetric_bias=float(cfg.get("asymmetric_bias", 0.0)),
+            mode_aware_sampling=bool(cfg.get("mode_aware_sampling", False)),
+            mode_aware_min_size=int(cfg.get("mode_aware_min_size", 8)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
             device=str(cfg.get("device", "cuda")),
@@ -368,6 +381,59 @@ class GPUMPPIPlanner(Planner):
         argmin_idx = int(costs.argmin().item())
         argmin_action_t = actions_t[argmin_idx]
 
+        # Mode-aware sampling (Smart MPPI v4): cluster rollouts by lateral
+        # principal-component sign and pick the lower-cost cluster's
+        # softmax-weighted action. This targets the §3 dynamic-obstacle
+        # cancellation mode: when the rollout cloud is bimodal (escape via
+        # left vs right), the global softmax averages the two modes toward
+        # zero. Splitting first preserves MPPI smoothing while breaking the
+        # cancellation.
+        mode_aware_triggered = False
+        mode_aware_action_t = None
+        mode_aware_best_k: int | None = None
+        mode_aware_cluster_sign = 0
+        if self.mode_aware_sampling:
+            base_t_ma = _to_tensor(base, device)
+            actions_along_ma = (actions_t * base_t_ma[None, :]).sum(dim=1)
+            lat_components = actions_t - actions_along_ma[:, None] * base_t_ma[None, :]
+            try:
+                _, _, V = torch.linalg.svd(lat_components, full_matrices=False)
+                pc = V[0]
+                proj = lat_components @ pc  # [S]
+            except Exception:
+                proj = None
+            if proj is not None:
+                pos_mask = proj > 0
+                neg_mask = ~pos_mask
+                n_pos = int(pos_mask.sum().item())
+                n_neg = int(neg_mask.sum().item())
+                if n_pos >= self.mode_aware_min_size and n_neg >= self.mode_aware_min_size:
+                    def _cluster(mask: torch.Tensor) -> tuple[torch.Tensor, float, int]:
+                        c = costs[mask]
+                        acts = actions_t[mask]
+                        cmin = c.min()
+                        w = torch.exp(-(c - cmin) / self.temperature)
+                        w = w / w.sum()
+                        action = (w[:, None] * acts).sum(dim=0)
+                        avg_cost = (w * c).sum()
+                        idx_local = int(c.argmin().item())
+                        global_idx = int(
+                            torch.nonzero(mask, as_tuple=False)[idx_local].item()
+                        )
+                        return action, float(avg_cost.item()), global_idx
+
+                    pos_action, pos_cost, pos_idx = _cluster(pos_mask)
+                    neg_action, neg_cost, neg_idx = _cluster(neg_mask)
+                    if pos_cost <= neg_cost:
+                        mode_aware_action_t = pos_action
+                        mode_aware_best_k = pos_idx
+                        mode_aware_cluster_sign = 1
+                    else:
+                        mode_aware_action_t = neg_action
+                        mode_aware_best_k = neg_idx
+                        mode_aware_cluster_sign = -1
+                    mode_aware_triggered = True
+
         # Hybrid argmin-fallback: detect bidirectional cancellation by
         # checking whether the softmax averaged action's lateral component
         # (perpendicular to the goal direction) is much smaller than the
@@ -399,12 +465,22 @@ class GPUMPPIPlanner(Planner):
                     fallback_triggered = True
                     # Hold for the next `K - 1` replans
                     self._fallback_commit_remaining = self.fallback_commit_steps - 1
-        chosen_action_t = argmin_action_t if fallback_triggered else softmax_action_t
+        if mode_aware_triggered and mode_aware_action_t is not None:
+            chosen_action_t = mode_aware_action_t
+        elif fallback_triggered:
+            chosen_action_t = argmin_action_t
+        else:
+            chosen_action_t = softmax_action_t
 
         speed = torch.norm(chosen_action_t)
         if speed > self.max_speed:
             chosen_action_t = chosen_action_t * (self.max_speed / speed)
-        best_k = argmin_idx if fallback_triggered else int(weights.argmax().item())
+        if mode_aware_triggered and mode_aware_best_k is not None:
+            best_k = mode_aware_best_k
+        elif fallback_triggered:
+            best_k = argmin_idx
+        else:
+            best_k = int(weights.argmax().item())
 
         # Build best rollout for visualisation (on CPU)
         best_rollout = rollouts[best_k].cpu().numpy()
@@ -444,5 +520,7 @@ class GPUMPPIPlanner(Planner):
                 "rollouts": rollouts_meta,
                 "best_rollout_idx": int(best_vis_idx),
                 "fallback_to_argmin": bool(fallback_triggered),
+                "mode_aware_triggered": bool(mode_aware_triggered),
+                "mode_aware_cluster_sign": int(mode_aware_cluster_sign),
             },
         )
