@@ -68,21 +68,25 @@ in N**: GPU MPPI's higher-$\Delta$ advantage holds at $N = 4$
 per-drone to 69 % (McNemar p ≈ 0.0001 favours MPC), and at $N = 12$
 where GPU's $\Delta$ drops back to +7.8 pp vs MPC's +15.2 pp.
 
-The companion N=4 density-sweep (findings.md "dummy_3d N=4 density ×
-planner sweep") adds the dominant factor: **at fixed N=4, the $\Delta$
-sign flips with obstacle count.** GPU MPPI is the cluster source at
-the low-density baseline (30 obstacles, $\Delta_\text{GPU}$ = +5.2 pp
-vs $\Delta_\text{MPC}$ = −1.0 pp), but MPC is the cluster source at
-120 obstacles ($\Delta_\text{MPC}$ = +5.9 vs +0.3) and at 240
-obstacles ($\Delta_\text{MPC}$ = +6.7 vs −1.2). This re-frames the
-AirSim base_ew06 sign-reversal finding (§4.4.4): the AirSim cell is
-a dense-crowding regime, so its MPC-clusters / GPU-independent
-reading is **density-driven, not sim-driven**. The §3 result is the
-low-density regime of a 3-dimensional surface (per-drone tie ×
-density × drone-count symmetry); the AirSim base_ew06 reading is the
-high-density regime of the same surface. Mapping the full surface
-across non-circular geometries and at finer density / N resolution
-remains future work.
+The companion density sweep at $N \in \{4, 6\}$ (findings.md
+"dummy_3d density × planner sweep at $N \in \{4, 6\}$") shows the
+sign-reversal effect is **conditional**, not universal. At N=4 the
+$\Delta$ sign flips with obstacle count — GPU MPPI's $\Delta$ goes
+from $+5.2$ pp at baseline to $-1.2$ pp at 240 obstacles while MPC's
+moves from $-1.0$ to $+6.7$ pp. At N=6 the same density sweep does
+*not* flip — GPU MPPI keeps a 6-32 pp per-drone advantage across
+densities and stays the cluster source ($\Delta_\text{GPU} = +10.7,
++5.5, -6.3$ vs $\Delta_\text{MPC} = +7.5, -0.2, -0.6$ across
+baseline/dense/packed). The N=4 sign flip is therefore a coincidence
+of "per-drone rates stay close enough that the $\Delta$ statistic
+takes over"; at N=6 the per-drone gap opens too quickly for the flip
+to register. The AirSim `base_ew06` finding sits in the N=4 dense
+regime (5 widened pillars concentrating 4 drones into one central
+crossing, MPC vs GPU per-drone 90 vs 96 %) and reproduces the
+dummy_3d N=4 dense behaviour; it is one paired cell, not an
+AirSim-wide statement. Mapping the (N, density, drone-count
+symmetry) surface across non-circular geometries and at finer
+resolution remains future work.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,

@@ -203,13 +203,17 @@ tight by using two companion ablations:
   at N=8 (GPU per-drone uniquely collapses, p ≈ 0.0001), and at N=12
   (GPU $\Delta$ drops to +7.8). The §3 N=4 result is one point on a
   multi-regime curve, not a clean monotonic law.
-- **N=4 density sweep** (`exp_multi_drone_3d_4{,_dense,_packed}{,_gpu_mppi}.yaml`):
-  at fixed N=4, the $\Delta$ sign flips with obstacle count.
-  Baseline (30): $\Delta_\text{GPU} = +5.2$ vs $\Delta_\text{MPC} = -1.0$.
-  Dense (120): $\Delta_\text{MPC} = +5.9$ vs $\Delta_\text{GPU} = +0.3$.
-  Packed (240): $\Delta_\text{MPC} = +6.7$ vs $\Delta_\text{GPU} = -1.2$.
-  This re-frames the AirSim base_ew06 sign-reversal (§4.4.4) as a
-  **density-regime** finding, not a sim-backend finding.
+- **Density sweep at $N \in \{4, 6\}$**
+  (`exp_multi_drone_3d_{4,6}{,_dense,_packed}{,_gpu_mppi}.yaml`): at
+  N=4 the $\Delta$ sign flips with obstacle count (GPU clusters at
+  baseline → MPC clusters at packed), reproducing the AirSim
+  base_ew06 sign-reversal in dummy_3d. At N=6 the same density sweep
+  does *not* flip — GPU MPPI's per-drone advantage opens up across
+  density (74 % vs 42 % at packed) so GPU wins joint through
+  per-drone alone, not through the cluster mechanism. The sign-flip
+  is conditional on per-drone rates staying close as density rises,
+  which holds at N=4 but not at N=6. AirSim base_ew06 ≈ the N=4
+  dense regime; it is one paired cell, not an AirSim-wide claim.
 - ~~Temperature ablation: 3D GPU MPPI T=0.1 vs T=1.0 has overlapping
   CIs. The §3 result uses T=1.0 only.~~ **Done — see
   `exp_gpu_mppi_temp_ablation_3d.yaml` and findings.md §"Temperature

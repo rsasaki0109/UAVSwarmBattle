@@ -231,19 +231,34 @@ The shared structural claim — that two planner families with tied
 per-drone rates can be separated through their joint-success $\Delta$
 — survives.
 
-A follow-up dummy_3d sweep (varying obstacle count at N=4) shows the
-sign flip is **density-driven, not sim-driven**: under dummy_3d at
-120 obstacles (4× baseline) MPC clusters with $\Delta = +5.9$ pp
-while GPU MPPI stays at $\Delta = +0.3$ pp; at 240 obstacles
-$\Delta_\text{MPC} = +6.7$ pp vs $\Delta_\text{GPU} = -1.2$ pp.
-The AirSim `base_ew06` reading is therefore the dense-crowding
-regime of the same surface that dummy_3d at 30 obstacles samples
-from the low-crowding regime. Full numbers: findings.md "dummy_3d
-N=4 density × planner sweep". The deployment-relevant claim from §3
-("GPU MPPI's softmax is the joint-coordination liability") does
-not survive across density: in dense-crowding regimes (either AirSim
-`base_ew06` or dummy_3d at ≥4× obstacle count) it is MPC's argmin
-lock-step that becomes the cluster source.
+A follow-up dummy_3d density sweep at N=4 (varying obstacle count
+30 / 120 / 240) reproduces the sign flip in the controlled simulator:
+MPC moves from $\Delta = -1.0$ pp at baseline to $\Delta = +6.7$ pp
+at packed (240 obstacles), while GPU MPPI moves the other way
+($+5.2 \to -1.2$ pp). At each of those N=4 cells the planners'
+per-drone rates remain within ~14 pp of each other, so the $\Delta$
+statistic is the differentiator.
+
+The same density sweep at N=6 does *not* reproduce the sign flip.
+At higher N the per-drone gap opens up — GPU MPPI's per-drone stays
+74 % at packed while MPC's collapses to 42 %, so GPU MPPI wins the
+joint comparison through per-drone advantage rather than through the
+cluster mechanism. Across the (N, density) grid GPU MPPI beats MPC
+through *one of two routes*: per-drone tied + GPU clusters (§3 N=4
+baseline, §6 N=6 baseline); or per-drone divergent in GPU's favour
+(N=6 dense / packed). MPC has a density-driven cluster regime where
+its argmin lock-step concentrates failures (N=4 dense / packed), and
+that mode produces a higher $\Delta_\text{MPC}$ — but it only gives
+MPC an *absolute* joint advantage when per-drone rates stay close.
+
+The AirSim `base_ew06` reading sits squarely in the N=4-dense regime
+of this grid (4 drones, ≈90 % MPC vs ≈96 % GPU per-drone, 5 widened
+pillars concentrating crossings) and is consistent with the dummy_3d
+N=4 dense/packed reading. It is **not** a generic "AirSim flips the
+mechanism" statement — at N=6 on dummy_3d the flip does not reproduce,
+and base_ew06 is a single AirSim point, not an AirSim-wide claim.
+Full numbers: findings.md "dummy_3d density × planner sweep at
+N ∈ {4, 6}".
 
 The n=50 magnitude is more modest than the n=30 first cut suggested.
 At n=30 we measured $\Delta_\text{MPC} = +6.9$ pp; extending to n=50
