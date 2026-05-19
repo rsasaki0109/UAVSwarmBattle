@@ -64,6 +64,8 @@ class GPUMPPIPlanner(Planner):
         mode_aware_sampling: bool = False,
         mode_aware_min_size: int = 8,
         mode_aware_cost_ratio: float = 1.0,
+        mode_aware_lateral_threshold: float = 0.0,
+        mode_aware_lateral_ratio: float = 0.5,
         ctg_cache_tolerance: int = 0,
         viz_rollouts: int = 24,
         predictor: Predictor | None = None,
@@ -123,6 +125,16 @@ class GPUMPPIPlanner(Planner):
         # to vanilla softmax otherwise (which keeps mode 1 static-peer
         # clustering and mode 4 aerobatic smoothing intact).
         self.mode_aware_cost_ratio = max(1.0, float(mode_aware_cost_ratio))
+        # When `mode_aware_lateral_threshold > 0`, the cluster commit is
+        # *additionally* gated on the v1-style lateral-cancellation signal:
+        # the vanilla softmax-mean's lateral magnitude must be much smaller
+        # than the argmin rollout's lateral magnitude (the actual signature
+        # of bidirectional cancellation, not a guess from cost asymmetry).
+        # `lateral_threshold` is the minimum argmin lateral magnitude to
+        # consider the signal trustworthy; `lateral_ratio` is the
+        # softmax-vs-argmin ratio below which cancellation is declared.
+        self.mode_aware_lateral_threshold = max(0.0, float(mode_aware_lateral_threshold))
+        self.mode_aware_lateral_ratio = max(0.0, float(mode_aware_lateral_ratio))
         # `ctg_cache_tolerance`: integer cells of slack for the Dijkstra
         # cost-to-go cache. Default 0 → recompute every time the integer
         # goal cell changes (per-replan, exact). For scenarios with a
@@ -169,6 +181,8 @@ class GPUMPPIPlanner(Planner):
             mode_aware_sampling=bool(cfg.get("mode_aware_sampling", False)),
             mode_aware_min_size=int(cfg.get("mode_aware_min_size", 8)),
             mode_aware_cost_ratio=float(cfg.get("mode_aware_cost_ratio", 1.0)),
+            mode_aware_lateral_threshold=float(cfg.get("mode_aware_lateral_threshold", 0.0)),
+            mode_aware_lateral_ratio=float(cfg.get("mode_aware_lateral_ratio", 0.5)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             predictor=build_predictor(cfg.get("predictor")),
@@ -461,15 +475,32 @@ class GPUMPPIPlanner(Planner):
                     pos_action, pos_cost, pos_idx = _cluster(pos_mask)
                     neg_action, neg_cost, neg_idx = _cluster(neg_mask)
                     lo, hi = sorted((pos_cost, neg_cost))
-                    # When cost_ratio gate > 1, require one cluster to be
-                    # meaningfully worse before committing (mode-aware
-                    # switcher behaviour). At the default 1.0 the gate
-                    # is always satisfied (Smart v4 unconditional commit).
-                    ratio_ok = (
+                    # Two optional gates control when the cluster commit
+                    # fires. Both default to "always on" (v4 unconditional
+                    # commit when min-size guard passes).
+                    cost_ok = (
                         self.mode_aware_cost_ratio <= 1.0
                         or (hi >= self.mode_aware_cost_ratio * max(lo, 1e-6))
                     )
-                    if ratio_ok:
+                    lateral_ok = True
+                    if self.mode_aware_lateral_threshold > 0.0:
+                        # v1-style lateral-cancellation signal: the vanilla
+                        # softmax mean's lateral magnitude collapses toward
+                        # zero exactly when the rollout cloud is bimodal
+                        # (cancellation regime). Argmin keeps a clear
+                        # lateral commit.
+                        softmax_along = (softmax_action_t * base_t_ma).sum()
+                        argmin_along = (argmin_action_t * base_t_ma).sum()
+                        softmax_lat = softmax_action_t - softmax_along * base_t_ma
+                        argmin_lat = argmin_action_t - argmin_along * base_t_ma
+                        softmax_lat_mag = float(torch.norm(softmax_lat).item())
+                        argmin_lat_mag = float(torch.norm(argmin_lat).item())
+                        lateral_ok = (
+                            argmin_lat_mag > self.mode_aware_lateral_threshold
+                            and softmax_lat_mag
+                            < self.mode_aware_lateral_ratio * argmin_lat_mag
+                        )
+                    if cost_ok and lateral_ok:
                         if pos_cost <= neg_cost:
                             mode_aware_action_t = pos_action
                             mode_aware_best_k = pos_idx

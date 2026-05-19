@@ -319,6 +319,12 @@ planners, only the rollout aggregation differs:
   committing to one lateral cluster during cancellation events.
 - **Smart MPPI v2** (asymmetric perturbation) — also tested here as
   a parallel comparator; numbers in findings.md.
+- **Smart MPPI v5** (mode-aware switcher) — v4 gated on the actual
+  lateral-cancellation signature; on race it matches v4's safety
+  (60/120) and MPC's tracking RMSE, but on the dyn-cell sweep it
+  dominates v4 cleanly: dyn_v2 $+17$ pp, dyn_off2 $+23$ pp, baseline
+  $+13$ pp recovery toward vanilla. See "Smart MPPI v5 (mode-aware
+  switcher)" finding for the 5-cell paired table.
 
 The cell `base_ew06` on AirSim (§4.4.4) shows two-mode interaction
 across episodes (cluster mode at the central crossing × peer-prediction

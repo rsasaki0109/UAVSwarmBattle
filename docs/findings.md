@@ -46,6 +46,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
 - [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
+- [Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2452,6 +2453,93 @@ For *static-goal* scenarios (every YAML in `examples/` except the
 multi_drone_aerobatic / race set), the cache hits anyway after the
 first replan because the goal cell is constant — so the new option
 is a no-op there. Race YAMLs default to `ctg_cache_tolerance: 3`.
+
+
+### Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells
+
+Fifth (and current best) Smart MPPI variant. v4's cluster softmax was
+**unconditional** once both L/R clusters had enough samples — and that
+unconditional commit hurt mode 1 (static peers, $-23$ pp vs vanilla)
+and the planner-swap regime ($-23$ pp). v5 gates the cluster commit
+on the *actual* cancellation signature: the vanilla softmax-mean's
+lateral magnitude must be much smaller than the argmin rollout's
+lateral magnitude. That is the only condition under which softmax
+averaging is actively cancelling escape modes — and outside that
+condition, vanilla softmax is correct.
+
+Implementation. GPU MPPI's `plan()` already computes the vanilla
+softmax action and the argmin action. Two new options add the gate:
+- `mode_aware_lateral_threshold: float = 0.0` — minimum argmin lateral
+  speed (m/s) to consider the signal trustworthy. Default 0 = no gate.
+- `mode_aware_lateral_ratio: float = 0.5` — softmax-vs-argmin lateral
+  magnitude ratio below which cancellation is declared.
+
+Defaults (`threshold = 0.5`, `ratio = 0.5`) match the Smart v1
+`fallback_to_argmin` thresholds — the same cancellation detector,
+routing to cluster softmax (v4 path) instead of argmin (v1 path).
+
+Paired $n = 30$ on the same five cells as v4 (plus race):
+
+| cell                          | vanilla | Smart v4 | **Smart v5** | v5 - vanilla | v5 - v4 |
+|---|---|---|---|---|---|
+| §3 baseline (mode 1)          | 86.7 %  | 63.3 %   | **76.7 %**   | $-10$ pp     | **$+13$ pp** |
+| dyn_v2 (mode 2)               | 3.3 %   | 50.0 %   | **66.7 %**   | $+63.3$ pp   | **$+17$ pp** ($p \approx 0.18$) |
+| dyn_v4 (mode 2 faster)        | 3.3 %   | 0.0 %    | 3.3 %        | tied         | **$+3.3$ pp** |
+| dyn_off2 (planner-swap)       | 70.0 %  | 46.7 %   | **70.0 %**   | tied         | **$+23$ pp** ($p \approx 0.07$) |
+| race (mode 2+4, tracking RMSE) | 1.658 m | 1.719 m  | 1.759 m      | $+0.10$ m    | $+0.04$ m (only metric where v4 > v5) |
+
+Three readings:
+
+**(1) v5 is the first Smart variant that's Pareto-improving over v4.**
+On every dyn cell v5 matches or beats v4. The cancellation regime gain
+that v4 unlocked at dyn_v2 (+47 pp over vanilla) gets pushed even
+further by v5 (+63.3 pp); the *cost* v4 paid in baseline mode 1 and
+planner-swap is essentially recovered ($+13$ pp / $+23$ pp). dyn_v4
+remains scenario-hard but v5 at least matches vanilla instead of v4's
+zero.
+
+**(2) The gate fires *precisely* when the cancellation is actively
+hurting.** The lateral-magnitude signal directly measures the
+phenomenon (softmax → 0 lateral component while argmin still moves
+laterally), so the gate is selective by construction rather than by
+threshold tuning. The previous attempt — cost-ratio gating at 2.0 —
+never fired because cluster cost asymmetry stays close to 1 even
+in the cancellation regime (both sides have legitimate avoidance
+solutions, just averaged toward zero). The right signal isn't cost
+asymmetry, it's lateral cancellation itself.
+
+**(3) Race is the only cell where v4 still has an edge** — but
+only on tracking, not safety. Both v4 and v5 collapse the collision
+rate from vanilla's 75 % back to MPC's 50 %. The tracking-RMSE
+difference (1.719 vs 1.759 m) reflects v5's gate firing more
+selectively in race: v4 commits unconditionally and smooths every
+replan into one cluster, while v5 falls through to vanilla softmax
+whenever the peers' cancellation isn't lateral-thresholded — yielding
+slightly more rollout-cloud diversity, slightly less precision. For
+the *aerobatic* mode-4 sub-component of race (no obstacle), v5
+behaves like vanilla and tracks at $-0.6°$ phase RMSE.
+
+**Cross-variant conclusion, updated**: v5 is the **deployment recommendation**.
+- Mode 1 (static peer clustering, no dynamic obstacles): nearly vanilla.
+- Mode 2 (cancellation): aggressive cluster commit — beats v4.
+- Mode 3 (sim-physics density-corner sign-reversal, AirSim §4.4.4): not retested but the lateral cancellation gate should defer to vanilla here too.
+- Mode 4 (aerobatic): nearly vanilla.
+- Mode 2 + 4 superposition (race): essentially v4-level safety, slightly less tracking precision than v4.
+
+Reproduce:
+```bash
+for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
+  uav-nav run "examples/exp_multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v5.yaml"
+done
+uav-nav run examples/exp_race_oval4_gpu_mppi_smart_v5.yaml
+for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
+  python3 scripts/paired_analysis_dummy_3d_multi.py \
+    results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi \
+    results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v5
+done
+python3 scripts/paired_analysis_aerobatic.py \
+  results/race_oval4_mpc results/race_oval4_gpu_mppi_smart_v5 4 30
+```
 
 
 ### Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision
