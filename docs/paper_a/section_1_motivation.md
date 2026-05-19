@@ -57,14 +57,16 @@ transferability to physics. We bridge to Microsoft AirSim (Blocks
 Unreal env, SimpleFlight multirotor controller) and ROS 2 (`/cmd_vel`
 + `/odom`, optional sim-time anchoring) at the framework boundary —
 same scenario / sensor / planner objects, the bridge is the only
-swap. Two findings emerge that the dummy_3d-only literature could not
-have produced: GPU MPPI's 20× plan-time edge over CPU MPC on dummy_3d
-collapses to <5 % on AirSim because sim-side overhead dominates
-(§4.4); altitude-only AirSim cells bracket the dummy_3d multi-drone
-Δ-flip but degenerate at ceiling or floor; and a static-cube AirSim
-cell produces a real paired planner separation (GPU MPPI 30/30 joint
-vs MPC 22/30, McNemar p ≈ 0.008), while still not reproducing the
-exact dummy_3d joint-tie / larger-Δ signature (§4.4).
+swap. Three findings emerge that the dummy_3d-only literature could
+not have produced: GPU MPPI's 20× plan-time edge over CPU MPC on
+dummy_3d collapses to <5 % on AirSim because sim-side overhead
+dominates (§4.4); altitude-only AirSim cells bracket the dummy_3d
+multi-drone Δ-flip but degenerate at ceiling or floor; a static-cube
+AirSim cell produces a real paired planner separation (GPU MPPI
+30/30 joint vs MPC 22/30, McNemar p ≈ 0.008); and a density-swept
+AirSim cell reproduces the Δ-flip mechanism **with the sign
+reversed** — MPC becomes the multi-drone cluster source while GPU
+MPPI does not (§4.4.4).
 
 **The four causes interlock.** None is a research question on its own:
 "Pareto cells matter" is methodology, not science. "Coordination Δ is
@@ -72,10 +74,30 @@ not joint success" is a definitional clarification. "Goal-mask bug fix"
 is debugging. "AirSim ↔ dummy_3d transferability" is engineering. But
 *together* they explain why the same comparison can be reported with
 opposite winners by two careful teams, and why our headline result
-(§3) — GPU MPPI's softmax-amplified coordination Δ over the
-identically-configured MPC baseline — is presentable at all as a
-finding rather than a measurement artefact. The remainder of the paper
-walks through the four prerequisite checks (§4) before staking the
+(§3) — **GPU MPPI's softmax as a smoothing operator on the action
+space with three regime-specific failure modes** (static-peer
+clustering, dynamic-obstacle bidirectional cancellation, sim-physics
+density-corner sign reversal) — is presentable at all as a finding
+rather than a measurement artefact. The remainder of the paper walks
+through the four prerequisite checks (§4) before staking the
 headline (§3) on them, because without the prerequisites the headline
 would have read as just one more entry in the contradictory-comparisons
 literature.
+
+**Why a single operator with three failure modes is the right framing.**
+A 1-direction headline (e.g. "GPU MPPI clusters multi-drone failures
+more than CPU MPC") is what the §3 N=4 baseline cell measured at
+n=100 paired episodes; that *direction* survives a re-run of the same
+cell but does not survive replacing the static-obstacle field with a
+moving sphere (the dynamic-obstacle extension in §3 collapses GPU
+MPPI's joint success from 86.7 % to 3.3 % at $v=2$ m/s while CPU MPC
+holds at 73 %), and does not survive moving to N=4 *dense* obstacles
+or to the AirSim base_ew06 cell (MPC becomes the cluster source).
+What *does* survive across regimes is the mechanism: GPU MPPI's
+softmax averages over the rollout cost landscape, while CPU MPC's
+argmin commits to one rollout per replan. Whether averaging helps or
+hurts is regime-dependent (averaging cancels bidirectional avoidance
+under symmetric obstacle alignment, but rescues argmin from
+committing to a wrong side under asymmetric clutter). The
+**operator** is the load-bearing claim; the *direction* in any
+single cell is downstream of it.

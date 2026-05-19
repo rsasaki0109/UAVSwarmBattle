@@ -61,10 +61,17 @@ The headline multi-drone study (§3) uses `multi_drone_voxel` at
 N = 4, with the four drones flying a cross-pattern (east/west and
 north/south pairs starting at opposite faces and converging on the
 volume centre). The volume is 40 × 40 × 12 cells with 30 random
-static obstacles; the AirSim transferability checks (§4.4) use
-`multi_drone_voxel` on a 60 × 60 × 40 volume with the four drones
-crossing at altitudes 26-32 m, well above the Blocks env's ground
-geometry. Configurations are committed to `examples/`.
+static obstacles. The §3 dynamic-obstacle extension (Table 2) re-uses
+the same N=4 cell and adds one moving sphere on the north drone's
+corridor at $v \in \{2, 4, 8\}$ m/s via `multi_drone_voxel`'s
+`dynamic_obstacles` field (linear-motion `_DynamicObstacle3D` objects
+with optional wall reflection). The (N, density) grid sweep
+referenced by §6 varies N ∈ {2, 3, 4, 6, 8, 10, 12} and obstacle
+count ∈ {30, 120, 240} on the same crossing geometry. The AirSim
+transferability checks (§4.4) use `multi_drone_voxel` on a
+60 × 60 × 40 volume with the four drones crossing at altitudes
+26-32 m, well above the Blocks env's ground geometry. Configurations
+are committed to `examples/`.
 
 ## 2.3 Metrics
 
@@ -121,7 +128,13 @@ return to this definition in §3 to ground the headline reading
 that two planners with statistically identical joint rates can have
 **dramatically different $\Delta$ values** — i.e. statistically
 indistinguishable joint coordination outcomes with structurally
-distinct failure shapes.
+distinct failure shapes. §3 further shows that the *sign* of the
+$\Delta$ gap between planners is regime-specific: it favours GPU
+MPPI at the N=4 baseline cell, favours MPC at the N=4-dense corner
+and at the AirSim base_ew06 cell, and is dominated by single-drone
+deterministic failures (Δ ≈ 0 useless) under one dynamic-obstacle
+configuration where GPU MPPI catastrophically fails on the obstacle's
+corridor drone.
 
 ## 2.5 Reproducibility map
 
