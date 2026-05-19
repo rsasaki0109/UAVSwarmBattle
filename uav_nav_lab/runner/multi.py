@@ -204,6 +204,8 @@ def run_episode_multi(
                 recorders[i].log_replan(
                     t=t, plan_length=int(plans[i].waypoints.shape[0]),
                     planner_dt_ms=planner_dt_ms,
+                    rollouts=plans[i].meta.get("rollouts"),
+                    best_rollout_idx=plans[i].meta.get("best_rollout_idx"),
                 )
 
         # 2. step each drone's sim.

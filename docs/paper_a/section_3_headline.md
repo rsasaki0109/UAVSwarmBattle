@@ -286,6 +286,49 @@ The robust paper-grade claim is this **shared mechanism, four mode
 expressions** — and the mission's metric (Δ, joint success,
 tracking RMSE, phase sync) is what selects the right planner.
 
+### Mode superposition in a single scenario: drone race + bouncing intruder
+
+The four modes are not mutually exclusive — a single mission can
+straddle two or more simultaneously. The cleanest live demonstration
+is `multi_drone_race` (findings.md "Drone race + bouncing intruder"):
+4 drones tracking a horizontal-oval reference (mode 4 active for all
+24 s) while a single bouncing intruder crosses the track every ~4 s
+(mode 2 active whenever the intruder enters a drone's corridor).
+Paired $n = 5$ at first cut (the scenario is seed-deterministic except
+for planner-internal RNG, so the failure pattern is essentially
+seed-stable; a paper-grade $n = 30$ extension is queued but the
+per-replan Dijkstra recompute on a moving lookahead goal makes each
+episode wallclock-expensive — $\sim 9$ min for MPC). Same
+hyperparameters across planners, only the rollout aggregation differs:
+
+- **MPC** — argmin commit. Survives the intruder ($50\,\%$ collision
+  rate, ceiling-limited by the geometric collision at $t \approx 10$ s
+  that no planner can dodge) but pays a tracking-precision tax
+  (RMSE 1.76 m).
+- **Vanilla GPU MPPI** — global softmax. Tracks tighter than MPC on
+  *every* drone-episode (RMSE 1.66 m, $-6\,\%$, phase RMSE $-0.66°$),
+  but the same softmax operator drives the bidirectional-cancellation
+  regime when the intruder enters a corridor, costing $+5$ collisions
+  ($75\,\%$ vs $50\,\%$). One operator, two opposite valences in the
+  same episode.
+- **Smart MPPI v4** (mode-aware cluster softmax) — keeps the
+  softmax-precision edge (RMSE 1.72 m, $-2.5\,\%$ vs MPC on every
+  drone-episode) and recovers MPC's $50\,\%$ collision rate by
+  committing to one lateral cluster during cancellation events.
+- **Smart MPPI v2** (asymmetric perturbation) — also tested here as
+  a parallel comparator; numbers in findings.md.
+
+The cell `base_ew06` on AirSim (§4.4.4) shows two-mode interaction
+across episodes (cluster mode at the central crossing × peer-prediction
+tail); the race scenario shows two-mode interaction *within a single
+24 s episode* and proves the deployment recommendation cannot be a
+static planner cell.
+
+Live render: `docs/images/compare_race_oval4.gif` (hero, 3-pane
+side-by-side with overlaid rollout cloud).
+
+### Reproduce maps
+
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (dummy_3d study), `docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif`
 (AirSim n=1 demo). Full configs and analysis scripts:
