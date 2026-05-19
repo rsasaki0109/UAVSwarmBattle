@@ -12,22 +12,32 @@ every example YAML carries its own validated finding.**
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_aerobatic_loop4.gif" alt="4-drone synchronized vertical loop, MPC (left) vs GPU MPPI (right)" width="720">
+<img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, MPC vs vanilla GPU MPPI vs Smart MPPI v4" width="960">
 
-<i><b>Same softmax operator, different mission metrics.</b> Left:
-CPU MPC. Right: GPU MPPI. 4 drones share one vertical loop,
-phase-offset 90°. GPU MPPI's softmax-averaged command produces
-84 % tighter phase sync (1.67° vs 10.73° RMSE) and 21 % lower
-tracking error — the operator that <i>clusters failures</i> in
-static-peer crossings (+11.4 pp Δ headline) <i>smooths formation</i>
-when the mission metric shifts to tracking precision.
-See <a href="docs/findings.md#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync">findings.md</a>
+<i><b>One scenario, three planners, three failure modes.</b>
+4 drones lap a horizontal oval (12 × 8 m, 12 s period, 2 laps) while a
+bouncing red intruder crosses the track every ~4 s. Same hyperparameters
+on all three panes — only the rollout aggregation differs.
+Left: <b>CPU MPC</b> — argmin commits each replan, 2/4 drones lost.
+Middle: <b>vanilla GPU MPPI</b> — softmax averaging cancels L/R escape
+modes when the intruder enters a drone's corridor, 3/4 drones lost.
+Right: <b>Smart MPPI v4 (mode-aware sampling)</b> — clusters rollouts
+by lateral PC sign and takes the softmax of the lower-cost cluster
+only; recovers MPC-level safety (2/4 lost) while keeping GPU MPPI's
+2.5 % tighter tracking. Live demonstration of the §3 4-mode framework:
+softmax helps choreography precision and hurts dynamic-obstacle
+avoidance, and you need cluster-aware aggregation to get both.
+See <a href="docs/findings.md#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision">findings.md</a>
 and the <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a>.</i>
 
 <details>
-<summary><b>More demos</b> — single-drone, multi-drone Δ-flip headline, AirSim</summary>
+<summary><b>More demos</b> — aerobatic loop, multi-drone Δ-flip headline, AirSim</summary>
 
 <table>
+<tr>
+<td colspan="2"><img src="docs/images/compare_aerobatic_loop4.gif" width="720"></td>
+</tr>
+<tr><td colspan="2" align="center"><i><b>§3 mode 4</b> — aerobatic synchronized loop: 4 drones, 1 vertical loop, phase-offset 90°. GPU MPPI delivers 84 % tighter phase sync (1.67° vs 10.73° RMSE) and 21 % lower tracking error.</i></td></tr>
 <tr>
 <td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" width="720"></td>
 </tr>

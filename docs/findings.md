@@ -44,6 +44,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime](#smart-mppi-v2-asymmetric-perturbation-breaks-softmax-symmetry-helps-the-planner-swap-regime)
 - [Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
 - [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
+- [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2413,6 +2414,89 @@ for tag in "" dyn_v2 dyn_v4 dyn_off2_v4; do
     results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi \
     results/multi_drone_3d_4${tag:+_$tag}_gpu_mppi_smart_v4
 done
+```
+
+
+### Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision
+
+Single scenario that places **all three** §3 mode interactions on the
+same 24 s episode: 4 drones lap a horizontal oval (12 × 8 m, 12 s
+period, 2 laps = 480 steps) while a single bouncing intruder
+(radius 1.2 m, $v_y = 6$ m/s, reflects in the 40 × 40 × 14 box)
+crosses the track every ~4 s. Each drone tracks the same lookahead
+goal on a phase-offset reference ellipse. YAMLs:
+`examples/exp_race_oval4_{mpc,gpu_mppi,gpu_mppi_smart_v4}.yaml`.
+
+Geometry is fully deterministic given the seed (which controls only
+the unused static-obstacle seed), so the same drone phases meet the
+same intruder positions in every episode — the seed varies internal
+RNG (planner sample noise for GPU MPPI) but the failure pattern is
+mostly seed-stable. With $n = 5$ episodes:
+
+| planner             | tracking RMSE | max error | phase RMSE | collisions (drone-eps) |
+|---|---|---|---|---|
+| MPC                 | 1.764 m       | 2.701 m   | 16.80°     | 10/20 (50 %)           |
+| vanilla GPU MPPI    | **1.658 m**   | 1.976 m   | **16.14°** | 15/20 (75 %)           |
+| **Smart MPPI v4**   | 1.719 m       | **2.177 m** | 16.22°   | **10/20 (50 %)**       |
+
+Three readings, one scenario:
+
+**(1) Vanilla GPU MPPI tracks tighter but crashes more.** Mean
+per-(drone, ep) tracking RMSE is **0.105 m lower** than MPC on
+*every* drone-episode (20/20), and phase-offset RMSE is 0.66°
+tighter. This is the §3 mode 4 mechanism — softmax averaging
+smooths the tracking command around the lookahead point. But the
+same operator turns the intruder into the §3 mode 2 cancellation
+regime: when the bouncing cube enters a drone's corridor, the
+rollout cloud becomes bimodal (L vs R escape) and the softmax
+averages the two modes back toward zero lateral motion. Result:
+**+5 extra collisions over the 20 drone-episodes** (75 % vs 50 %).
+Same scenario, both regimes active at different moments.
+
+**(2) Smart MPPI v4 recovers MPC's safety, keeps most of MPPI's
+tracking edge.** Mode-aware cluster softmax (cf. "Smart MPPI v4
+(mode-aware sampling)") commits to *one* lateral escape side within
+the rollout aggregation step. Collision rate collapses back to
+10/20 — tied with MPC — and tracking RMSE stays 0.044 m better than
+MPC on every drone-episode. The catastrophic-bottom-drone failure
+that vanilla GPU MPPI suffers (drone 3, the one closest to the
+intruder spawn, loses every episode) disappears: v4 saves drone 3
+in all 5 episodes.
+
+**(3) The "drone-1 / drone-2 cliff" is geometric, not
+planner-failure.** All three planners lose drones 1 and 2 (the
+green / blue drones at the top and left of the oval) in every
+episode. That's because the intruder bounces off the world ceiling
+at $y = 40$ at $t \approx 5.3$ s and crashes back through the
+oval interior at the exact moment drones 1 and 2 are passing
+through $y \approx 28$ (the top of the oval). The oval is too tight
+relative to the bounce period for *any* of the three planners to
+detour by enough margin under a $0.4$ s lookahead. This is the
+**scenario-hardness ceiling** — the same effect we saw in
+"dummy_3d N=4 + moving obstacle speed sweep" at $v = 4$ m/s.
+
+The hero GIF (`docs/images/compare_race_oval4.gif`) shows all three
+planners side-by-side on episode 0, with the bouncing intruder
+overlaid. The visual contrast is sharp: vanilla MPPI loses drone 3
+within the first 4 s, then suffers the inevitable 1 / 2 cliff;
+MPC and v4 dodge the early bounce (drone 3 survives) and only fall
+to the cliff at $t \approx 10$ s.
+
+Reproduce:
+```bash
+for plan in mpc gpu_mppi gpu_mppi_smart_v4; do
+  uav-nav run "examples/exp_race_oval4_${plan}.yaml"
+done
+python3 scripts/paired_analysis_aerobatic.py \
+  results/race_oval4_mpc results/race_oval4_gpu_mppi 4 5
+python3 scripts/paired_analysis_aerobatic.py \
+  results/race_oval4_mpc results/race_oval4_gpu_mppi_smart_v4 4 5
+python3 scripts/render_race_gif.py \
+  --runs results/race_oval4_mpc:MPC \
+         results/race_oval4_gpu_mppi:"GPU MPPI (vanilla)" \
+         results/race_oval4_gpu_mppi_smart_v4:"Smart MPPI v4" \
+  --out docs/images/compare_race_oval4.gif \
+  --ep 0 --stride 3 --trail 60
 ```
 
 

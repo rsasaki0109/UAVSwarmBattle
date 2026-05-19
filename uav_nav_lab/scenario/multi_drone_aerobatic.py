@@ -48,6 +48,7 @@ class MultiDroneAerobaticScenario(MultiDroneVoxelScenario):
         pattern: str = "synchronized_loop",
         center: tuple[float, float, float] = (20.0, 20.0, 7.0),
         radius: float = 4.0,
+        radius_y: float | None = None,
         period: float = 8.0,
         n_loops: int = 2,
         normal_axis: str = "y",
@@ -62,7 +63,12 @@ class MultiDroneAerobaticScenario(MultiDroneVoxelScenario):
             raise ValueError("multi_drone_aerobatic needs at least one drone")
         self.pattern = pattern
         self.center = np.asarray(center, dtype=float)
+        # `radius` parametrises the in-plane circle; passing `radius_y`
+        # in addition turns the trajectory into an ellipse with semi-axes
+        # (radius, radius_y) — used by the `multi_drone_race` YAMLs for
+        # an oval racing circuit.
         self.radius = float(radius)
+        self.radius_y = float(radius_y) if radius_y is not None else float(radius)
         self.period = float(period)
         if self.period <= 0:
             raise ValueError(f"period must be > 0; got {self.period!r}")
@@ -101,15 +107,19 @@ class MultiDroneAerobaticScenario(MultiDroneVoxelScenario):
         phi = self.phases[drone_idx]
         cx, cy, cz = float(self.center[0]), float(self.center[1]), float(self.center[2])
         angle = self.omega * t + phi
+        rx = self.radius
+        ry = self.radius_y
         if self.normal_axis == "y":
-            # Vertical loop in xz plane
-            x = cx + self.radius * np.cos(angle)
+            # Loop in xz plane (vertical). `radius_y` repurposed as z-axis
+            # semi-axis when set, so an "egg" loop is possible too.
+            x = cx + rx * np.cos(angle)
             y = cy
-            z = cz + self.radius * np.sin(angle)
+            z = cz + ry * np.sin(angle)
         else:  # "z"
-            # Horizontal loop in xy plane
-            x = cx + self.radius * np.cos(angle)
-            y = cy + self.radius * np.sin(angle)
+            # Horizontal oval in xy plane: rx = x-axis semi-axis,
+            # ry = y-axis semi-axis. Equal rx/ry recovers a circle.
+            x = cx + rx * np.cos(angle)
+            y = cy + ry * np.sin(angle)
             z = cz
         return np.array([x, y, z], dtype=float)
 
@@ -117,10 +127,11 @@ class MultiDroneAerobaticScenario(MultiDroneVoxelScenario):
         """Reference tangent velocity at time *t* (m/s)."""
         phi = self.phases[drone_idx]
         angle = self.omega * t + phi
-        v = self.radius * self.omega
+        vx = self.radius * self.omega
+        vy = self.radius_y * self.omega
         if self.normal_axis == "y":
-            return np.array([-v * np.sin(angle), 0.0, v * np.cos(angle)], dtype=float)
-        return np.array([-v * np.sin(angle), v * np.cos(angle), 0.0], dtype=float)
+            return np.array([-vx * np.sin(angle), 0.0, vy * np.cos(angle)], dtype=float)
+        return np.array([-vx * np.sin(angle), vy * np.cos(angle), 0.0], dtype=float)
 
     def dynamic_goal_at(self, drone_idx: int, t: float) -> np.ndarray:
         """Goal the planner should pursue at time *t*: a lookahead point on
@@ -157,6 +168,9 @@ class MultiDroneAerobaticScenario(MultiDroneVoxelScenario):
             pattern=str(cfg.get("pattern", "synchronized_loop")),
             center=tuple(cfg.get("center", (20.0, 20.0, 7.0))),
             radius=float(cfg.get("radius", 4.0)),
+            radius_y=(
+                float(cfg["radius_y"]) if cfg.get("radius_y") is not None else None
+            ),
             period=float(cfg.get("period", 8.0)),
             n_loops=int(cfg.get("n_loops", 2)),
             normal_axis=str(cfg.get("normal_axis", "y")),

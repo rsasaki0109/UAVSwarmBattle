@@ -28,9 +28,10 @@ def load_episode(run_dir: Path, ep_idx: int, n_drones: int = 4):
     return drones
 
 
-def episode_metrics(drones: list[dict], center: np.ndarray):
+def episode_metrics(drones: list[dict], center: np.ndarray, normal_axis: str = "y"):
     """Return per-drone tracking RMSE/max, per-pair phase RMSE,
-    collision boolean per drone."""
+    collision boolean per drone. `normal_axis` picks the loop plane:
+    'y' = xz (vertical), 'z' = xy (horizontal oval / race)."""
     n = len(drones)
     track_rmse = []
     track_max = []
@@ -46,9 +47,11 @@ def episode_metrics(drones: list[dict], center: np.ndarray):
             true_p = np.asarray(s["true_pos"], dtype=float)
             ref_p = np.asarray(s["reference_pos"], dtype=float)
             errs.append(np.linalg.norm(true_p - ref_p))
-            # angle in xz plane around center
             rel = true_p - center
-            ang.append(math.atan2(rel[2], rel[0]))
+            if normal_axis == "y":
+                ang.append(math.atan2(rel[2], rel[0]))  # xz plane
+            else:  # "z" — horizontal oval
+                ang.append(math.atan2(rel[1], rel[0]))  # xy plane
         errs = np.asarray(errs)
         track_rmse.append(float(np.sqrt((errs * errs).mean())) if errs.size else math.nan)
         track_max.append(float(errs.max()) if errs.size else math.nan)
@@ -77,7 +80,8 @@ def episode_metrics(drones: list[dict], center: np.ndarray):
     }
 
 
-def summarise(name: str, run_dir: Path, n_drones: int, n_eps: int, center: np.ndarray):
+def summarise(name: str, run_dir: Path, n_drones: int, n_eps: int,
+              center: np.ndarray, normal_axis: str = "y"):
     per_drone_rmse = [[] for _ in range(n_drones)]
     per_drone_max = [[] for _ in range(n_drones)]
     per_pair_phase = [[] for _ in range(n_drones)]
@@ -87,7 +91,7 @@ def summarise(name: str, run_dir: Path, n_drones: int, n_eps: int, center: np.nd
         drones = load_episode(run_dir, ep, n_drones)
         if drones is None:
             break
-        m = episode_metrics(drones, center)
+        m = episode_metrics(drones, center, normal_axis=normal_axis)
         for i in range(n_drones):
             per_drone_rmse[i].append(m["track_rmse"][i])
             per_drone_max[i].append(m["track_max"][i])
@@ -115,19 +119,21 @@ def summarise(name: str, run_dir: Path, n_drones: int, n_eps: int, center: np.nd
 
 
 def main(mpc_dir: str, mppi_dir: str, n_drones: int = 4, n_eps: int = 30) -> int:
-    # Try to extract center from config
+    # Try to extract center + normal_axis from config
     center = np.array([20.0, 20.0, 7.0])
+    normal_axis = "y"
     try:
         import yaml as _yaml
         cfg = _yaml.safe_load(Path(mpc_dir, "config.yaml").read_text())
         c = cfg["scenario"].get("center", center)
         center = np.asarray(c, dtype=float)
+        normal_axis = str(cfg["scenario"].get("normal_axis", "y"))
     except Exception:
         pass
-    print(f"center: {center.tolist()}\n")
-    a = summarise("MPC", Path(mpc_dir), n_drones, n_eps, center)
+    print(f"center: {center.tolist()}  normal_axis: {normal_axis}\n")
+    a = summarise("MPC", Path(mpc_dir), n_drones, n_eps, center, normal_axis)
     print()
-    b = summarise("GPU MPPI", Path(mppi_dir), n_drones, n_eps, center)
+    b = summarise("GPU MPPI", Path(mppi_dir), n_drones, n_eps, center, normal_axis)
     print()
     # Paired-mean diff
     if a["rmse_all"].size and b["rmse_all"].size and a["rmse_all"].size == b["rmse_all"].size:
