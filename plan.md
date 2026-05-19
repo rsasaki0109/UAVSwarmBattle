@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-18 (AirSim static-cube density sweep の途中経過を詳述)
+> 最終更新: 2026-05-19 (dummy_3d N-scaling × density grid + dynamic obstacle sweep + §3 restructure)
 
 ---
 
@@ -389,14 +389,25 @@ A, B, C, D 全て完了 (2026-05-18)。完了した内容:
    代わりに n ≥ 200 paired or controlled environment が必要だが
    どちらも §4.4 scope 外。
 
-3. **§3.1 (静的障害物密度 sweep)** に移る。dummy_3d n=100 の §3 headline は
+~~3. **§3.1 (静的障害物密度 sweep)** に移る。dummy_3d n=100 の §3 headline は
    既存、AirSim では base_ew06 1 セルしか測ってない。N=2/3/4/6 や
-   pillar density sweep は別軸の研究。優先度 中 (新規の研究軸)。
+   pillar density sweep は別軸の研究。優先度 中 (新規の研究軸)。~~
+   **完了 (2026-05-19)**。詳細は §2.5 を参照。dummy_3d で
+   N ∈ {2, 3, 4, 6, 8, 10, 12} × density ∈ {30, 120, 240} の
+   3×3 grid (中心 N=4/6/8 行) を全測。**Δ-flip の符号は (N, density)
+   corner-specific** で、N=4 baseline が GPU clusters、N=4 dense で
+   MPC clusters、N=6 で flip なし、N=8 baseline で GPU per-drone が
+   8-fold-symmetric 中央交差で唯一 collapse (McNemar p ≈ 0.0001 が MPC 寄り)、
+   N=10 が sweep max (Δ +24.3 pp)、N=12 で fall-back。
 
-5. **論文 §6 limitations を更新** — variability 発見を limitations 節に
+~~5. **論文 §6 limitations を更新** — variability 発見を limitations 節に
    反映 (AirSim multi-drone measurement は single n=N study では sample
    size を超えた variance を持つ; controlled environment が要る claim
-   向き)。優先度 中。
+   向き)。優先度 中。~~ **完了 (2026-05-19)**。`section_6_limitations.md`
+   に variability 節 + (N, density) grid 全体図 + dynamic obstacle 軸を
+   追記。§3 headline も "Scope of the headline claim" + "Dynamic-obstacle
+   extension" の 2 ブロックを追加して N=4 baseline cell に scope。
+   §4.4.4 / §7 / outline も整合。詳細は §2.5。
 
 ---
 
@@ -486,18 +497,100 @@ hang しないか、staggered スポーン姿勢が引き継がれるか。
 
 **判定**: 完了。次は候補 A の AirSim discriminating cell density sweep。
 
+### 2.5 候補 E: **dummy_3d (N, density, dynamic obstacle) 軸の拡張** (2026-05-19)
+
+**動機**: §3 headline の Δ-flip は N=4 / density=30 の 1 cell の現象。
+論文の主張を一般化するには grid の他 cell + 動的軸での挙動が必要。
+
+**今日 (2026-05-19) 完了したもの**:
+
+1. **N-scaling sweep** `N ∈ {2, 3, 4, 6, 8, 10, 12}` paired (commits
+   `4b82f66`, `97a9577`):
+   - GPU MPPI の Δ 優位は **non-monotonic in N**
+   - N=10 で sweep max (Δ +24.3 pp)、N=2/8/12 で逆転
+   - N=8 で GPU per-drone が 8-fold symmetric 中央交差で唯一 collapse
+     (per-drone 69 % vs MPC 92 %, McNemar p ≈ 0.0001 が MPC 寄り)
+
+2. **(N, density) 3×3 grid** `N ∈ {4, 6, 8} × {30, 120, 240}` paired
+   (commits `c3c0bd7`, `ce35c7f`, `d00e0f2`):
+   - **N=4 行**: density で Δ 符号が flip (GPU baseline → MPC packed)
+   - **N=6 行**: flip なし (GPU per-drone 優位がそのまま density で開く)
+   - **N=8 行**: density が GPU collapse を *unwind* する (re-tie at dense)
+   - retraction commit `ce35c7f` で N=4 で見えた flip は N=6/8 に generalize
+     しないことを明示
+
+3. **Dynamic obstacle 速度 sweep** at §3 N=4 baseline (commits `d9571ab`,
+   `38bc4f0`):
+   - v=2 m/s で GPU MPPI joint が **86.7 % → 3.3 %** 崩壊、MPC は 73 %
+   - 失敗 drone は **常に北 drone** (t ≈ 5 s)、softmax bidirectional
+     cancellation メカニズム
+   - v=8 で両 planner ground
+   - off-corridor probe (x=15): §3 baseline 完全復元 → mechanism は
+     corridor-specific と確定
+   - 2-obstacle compound (north + east): 両 planner ground、MPC mean_t=56 s
+     (timeout dominance)
+
+4. **論文 §3 restructure** (commits `18b80d6`, `0e4592f`, `159410f`,
+   `e760598`):
+   - §3 headline を N=4 baseline に scope し、"Scope of the headline claim"
+     パラグラフで (N, density) grid 全体図を提示
+   - §3 に "Dynamic-obstacle extension" subsection (Table 2) を追加
+   - §3 "Combined reading" を 3-mode taxonomy
+     (clustering / cancellation / sign-reversal) に再構成
+   - §4.4.4 / §6 / §7 / outline.md を整合
+
+5. **AirSim base_ew06 variability** (commits `16cdbcd`, `c87c5e5`):
+   - n=50 paired (seeds 42-91) で Δ-flip 符号反転を確定 (MPC clusters)
+   - 3 fresh batch × n=15 で McNemar 方向が batch ごと逆転、combined p=0.77
+   - 結論: cluster *mode* は robust、絶対 McNemar 方向は env-dependent
+
+**残された open work** (優先度の高い順):
+
+1. **§3 dynamic-obstacle: off-corridor gradient probe** — 走行中
+   (2026-05-19)。x ∈ {17, 18, 19} で off-corridor cliff の鋭さを測定。
+   GPU MPPI の bidirectional-cancellation がどの corridor 距離で switch on
+   するか。
+
+2. **§1 / §2 / §5 を §3 の 3-mode 整理に整合させる**。動機文と setup が
+   まだ "GPU MPPI flips coordination Δ" の 1-mode framing。3-mode 整理に
+   合わせて motivation を書き直し。
+
+3. **AirSim 上で dynamic obstacle を再現できるか?** §3 Table 2 は
+   dummy_3d のみ。Blocks に moving cube を spawn して同じ cliff が出るか
+   確認できれば、§3 dynamic-obstacle finding が cross-sim 化する。
+
+4. **Figure 整備** — §3 Table 2 の cliff、(N, density) heatmap、
+   §4.4.4 cluster trace を可視化。submit-ready にするなら必須。
+
+5. **SAC RL ベースライン**との比較 — §3 mechanism は planner-specific
+   action selection rule の話だが、learned policy も同じ mode に陥るか
+   未測。`train_rl_baseline.py` の scaffold あり。
+
+6. **Plan.md の §3 中期 / §4 長期** を更新 — `3.1 AirSim Δ-flip シリーズ`
+   は今日のコミットで実質 closed、§3.4 sim-to-real は変更なし。
+   §3.3 RL は item 5 で動かす場合更新。
+
 ---
 
 ## 3. 中期 (次の 5-10 PR)
 
 ### 3.1 AirSim Δ-flip シリーズの完結
 
-候補 A が片付いたら、次の自然な層は:
+候補 A は 2026-05-19 に dummy_3d 側で実質完結 (§2.5 参照)。残るのは
+AirSim 側の対応:
 
-- [ ] 静的障害物密度 sweep (3〜15 個) で Δ の per-drone-rate 依存を曲線で
-- [ ] dynamic obstacle 速度 sweep (1〜5 m/s) で multi-drone interaction の
-      severity 依存
-- [ ] N=2, 3, 4, 6 で AirSim multi-drone N-scaling (現状 dummy_3d のみ)
+- [x] **静的障害物密度 sweep** — dummy_3d で完了。AirSim base_ew06 は
+      1 cell のみで N=4 dense regime と一致。AirSim 側の density grid は
+      cost に対し追加情報が薄いので保留。
+- [x] **dynamic obstacle 速度 sweep** — dummy_3d で完了 (§2.5)。
+      AirSim Blocks に moving cube spawn の path は未実装、cross-sim
+      化したい場合のみ実装する。優先度 中。
+- [x] **N=2, 3, 4, 6 で AirSim multi-drone N-scaling** — dummy_3d で
+      N ∈ {2..12} まで完了。AirSim 側は base_ew06 N=4 1 cell のみ。
+      N-scaling の AirSim 移植も cost vs payoff で見て保留。
+- [ ] **AirSim dynamic obstacle 再現** (新規): Blocks に moving cube を
+      spawn する simulator extension + 1 paired cell で dummy_3d Table 2
+      の cliff を再現。優先度 中、§4.4 transferability の補強になる。
 
 ### 3.2 AirSim multi-drone reset hang を upstream に報告
 
