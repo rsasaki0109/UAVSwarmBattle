@@ -1297,6 +1297,61 @@ at compound difficulty MPC also fails, just slower (timeout vs
 collision) and via a different mode (path-oscillation vs
 cancellation).
 
+#### Probe 3: off-corridor gradient — planner role swap is non-monotonic in offset
+
+Sweeping the obstacle's $x$-offset from the north corridor at $v=4$
+m/s — `exp_multi_drone_3d_4_dyn_off{1,2,3}_v4{,_gpu_mppi}.yaml` —
+reveals that the planner roles **do not monotonically restore to the
+§3 baseline as the obstacle moves away from the corridor**. Instead
+there is a regime around offset 1-2 m where MPC is the failing
+planner and GPU MPPI is the safer one:
+
+| offset (m) | $x$ | MPC per / joint / $\Delta$    | GPU MPPI per / joint / $\Delta$  | McNemar (b, c) | regime              |
+|---|---|---|---|---|---|
+| 0          | 20  | 95.0 / 80.0 / -1.5 pp         | **67.5 / 3.3 / -17.4 pp**        | $p \approx 0$ (23, 0)  | GPU collapses     |
+| 1          | 19  | 85.8 / 53.3 / -0.9 pp         | 85.0 / **70.0** / +17.8 pp       | $p \approx 0.27$ (4, 9) | tied, GPU edge   |
+| 2          | 18  | **69.2 / 6.7 / -16.2 pp**     | 87.5 / 70.0 / +11.4 pp           | $p \approx 0$ (1, 20)  | **MPC collapses** |
+| 3          | 17  | 94.2 / 76.7 / -2.0 pp         | 91.7 / 73.3 / +2.7 pp            | $p = 1.00$ (5, 4)      | tied              |
+| 5          | 15  | 95.8 / 83.3 / -1.0 pp         | 95.0 / 86.7 / +5.2 pp            | $p = 1.00$ (2, 3)      | §3 baseline      |
+
+The offset 2 m MPC collapse reproduces the §3 dynamic-obstacle
+mechanism with the *opposite* planner failing. MPC's failed
+episodes (28/30 paired loses) split into:
+- **North drone collision at $t \approx 4-6$ s** (the same drone
+  the obstacle's bouncing trajectory reaches first), and
+- **South drone `timeout` at $t = 75$ s** (the return drone gets
+  stuck oscillating around the obstacle's trajectory through the
+  central crossing).
+
+The "stuck timeout" mode (mean episode time 23.6 s for MPC vs 4.5 s
+for GPU) is the diagnostic: MPC's argmin commits to one detour
+direction (east or west of the obstacle) each replan, but with
+obstacle offset 2 m the two sides have asymmetric clearance against
+static obstacles — and on hard seeds the argmin oscillates between
+sides as the obstacle moves, freezing the drone near the central
+crossing. GPU MPPI's softmax averages the same two sides into a
+smooth lateral command and clears.
+
+This is the **same softmax-vs-argmin mechanism §3 names**, but with
+the *clutter geometry* — not the corridor alignment — selecting
+which planner wins. The relationship between offset and planner
+winner is non-monotonic: GPU loses at offset 0 (obstacle dead ahead,
+symmetric escape, softmax cancels), MPC loses at offset 2 (obstacle
+near corridor, asymmetric static clutter, argmin commits to the
+wrong side), and both planners tie at offset ≥ 3 m where the
+static-obstacle field is the dominant coupling and the §3 static
+mechanism restores.
+
+The combined message is that GPU MPPI's softmax is a **smoothing
+operator on the action space** with three effects:
+- Smoothing helps when the argmin would commit to a *wrong* side
+  (offset 2 here, dense-corner cluster in §4.4.4).
+- Smoothing hurts when there is *no right side to commit to*
+  (offset 0 here, static-coordination clustering in §3 N=4
+  baseline).
+- The two regimes are *adjacent in scenario space*; small geometry
+  changes flip the winner.
+
 ### AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost
 
 `examples/exp_airsim_demo_gpu_mppi.yaml` — single-drone parity check

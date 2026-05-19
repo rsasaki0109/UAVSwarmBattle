@@ -163,25 +163,47 @@ upper bound but does not change the qualitative claim: at $v=2$ m/s
 already, the $\Delta$-flip mechanism's softmax-averaging root cause
 produces a deployment-relevant failure mode.
 
-Two probes localise the mechanism. An **off-corridor probe** (same
-obstacle at $v=4$ m/s but starting at $x=15$, 5 m offset from the
-north corridor) restores the §3 static baseline numbers exactly
-(per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$ $-1.0$/$+5.2$ pp,
-$p=1.00$). GPU MPPI is not generically bad at moving obstacles — it
-fails specifically when the obstacle aligns with a drone's corridor
-and presents bidirectional escape symmetry. A **2-obstacle compound
-probe** (one obstacle each on the north and east corridors) drops
-both planners to the joint floor (MPC 13.3 %, GPU 3.3 %); GPU MPPI's
-per-drone collapses to 49 % (vs 67.5 % at single obstacle) and MPC's
-to 72 % (vs 95 %). The cancellation mechanism applies *per corridor
-alignment*; MPC's robustness at single-obstacle does not extend to
-two.
+Three probes localise the mechanism. An **off-corridor probe**
+($x=15$, 5 m offset, $v=4$) restores the §3 static baseline numbers
+exactly (per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$
+$-1.0$/$+5.2$ pp, $p=1.00$). GPU MPPI is not generically bad at
+moving obstacles — it fails specifically when the obstacle aligns
+with a drone's corridor and presents bidirectional escape symmetry.
+A **2-obstacle compound probe** (one obstacle each on the north and
+east corridors) drops both planners to the joint floor (MPC 13.3 %,
+GPU 3.3 %). The cancellation mechanism applies *per corridor
+alignment*. Finally, an **off-corridor gradient probe** at $x \in
+\{17, 18, 19\}$ (3, 2, 1 m offsets) traverses a regime where the
+planner roles *swap*: at offset 2 m (i.e. $x=18$) **MPC collapses**
+(per-drone 69 %, joint 6.7 %) while GPU MPPI holds (per-drone 87.5 %,
+joint 70 %, McNemar $p \approx 0$, GPU-only successes on 20 seeds).
+The MPC failure mode at offset 2 is the §3 mechanism with the planner
+roles reversed: MPC's argmin commits to one detour side (east or
+west of the obstacle), but with the obstacle offset 2 m the two
+sides have *asymmetric* static-obstacle clearance, and on hard
+seeds the argmin oscillates between sides as the obstacle moves —
+freezing the drone (mean MPC episode time 23.6 s vs GPU 4.5 s).
+GPU MPPI's softmax averages the two sides into a smooth lateral
+command and clears. The regime map is therefore non-monotonic in
+offset:
+
+| offset (m) | who fails             | mechanism                                |
+|---|---|---|
+| 0          | GPU MPPI catastrophic | softmax cancels bidirectional escape     |
+| 1          | tied, GPU slight edge | both planners stressed                   |
+| 2          | MPC catastrophic      | argmin commits to wrong side under asymmetric static clutter |
+| 3-5        | tied, GPU $\Delta$ edge | §3 static mechanism restored             |
+
+**The smoothing operator helps when the argmin would commit to a
+wrong side, and hurts when there is no right side to commit to.**
+The two regimes are adjacent in scenario space; small geometry
+changes (1-2 m corridor offset) flip the winner.
 
 Full table and per-seed attribution in findings.md "dummy_3d N=4 +
-moving obstacle speed sweep" (including the two probes above).
-Repro configs:
+moving obstacle speed sweep" (including all three probes). Repro
+configs:
 `examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`,
-`examples/exp_multi_drone_3d_4_dyn_{off_v4,2x_v4}{,_gpu_mppi}.yaml`,
+`examples/exp_multi_drone_3d_4_dyn_{off_v4,off{1,2,3}_v4,2x_v4}{,_gpu_mppi}.yaml`,
 analysis script `scripts/paired_analysis_dummy_3d_multi.py`.
 
 ## Sim transferability

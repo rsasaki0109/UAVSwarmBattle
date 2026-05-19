@@ -1,0 +1,54 @@
+# §3 N=4 + 1 moving obstacle at x=17 (3 m offset from north corridor).
+# Part of the off-corridor gradient probe (x ∈ {15, 17, 18, 19, 20}).
+name: multi_drone_3d_4_dyn_off2_v4
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  dynamic_obstacles:
+    - start: [18.0, 5.0, 6.0]
+      velocity: [0.0, 4.0, 0.0]
+      reflect: true
+      radius: 0.8
+  drones:
+    - {name: east,  start: [3.0, 20.0, 6.0],  goal: [37.0, 20.0, 6.0], radius: 0.4}
+    - {name: west,  start: [37.0, 20.0, 6.0], goal: [3.0, 20.0, 6.0],  radius: 0.4}
+    - {name: north, start: [20.0, 3.0, 6.0],  goal: [20.0, 37.0, 6.0], radius: 0.4}
+    - {name: south, start: [20.0, 37.0, 6.0], goal: [20.0, 3.0, 6.0],  radius: 0.4}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/multi_drone_3d_4_dyn_off2_v4

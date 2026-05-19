@@ -116,24 +116,32 @@ obstacle; like the static-grid mechanism, the *qualitative* story
 (softmax cancels bidirectional commits) is the robust claim and the
 absolute magnitudes are corner-specific.
 
-Two probes sharpen the mechanism's scope further. **Off-corridor
+Three probes sharpen the mechanism's scope further. **Off-corridor
 probe**: moving the obstacle from $x=20$ (on the north corridor) to
 $x=15$ (5 m offset) at $v=4$ m/s restores the §3 static baseline
 exactly — per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$
 $-1.0$/$+5.2$ pp, $p=1.00$. The dynamic failure mode is **specific
-to obstacle-on-corridor alignment**, not a generic "GPU MPPI fails
-under any moving obstacle" claim. **Two-obstacle compound probe**:
+to obstacle-on-corridor alignment**. **Two-obstacle compound probe**:
 placing one moving sphere on the north corridor and one on the east
 corridor at $v=4$ m/s drops both planners to the joint floor (MPC
-13.3 %, GPU 3.3 %). GPU MPPI's per-drone collapses from 67.5 %
-(single obstacle) to 49.2 %; MPC's drops from 95.0 % to 71.7 % with
-mean episode time 56.5 s indicating max-step timeouts dominate. The
-McNemar comparison loses statistical decisiveness ($p \approx 0.25$,
-b=3, c=0) at this difficulty level. The cancellation mechanism
-therefore applies *per corridor alignment* (additive across
-obstacles), and the "MPC is safer under dynamic obstacles" reading
-of the v=2/4 single-obstacle table holds only at low compound
-difficulty.
+13.3 %, GPU 3.3 %). The cancellation mechanism applies *per corridor
+alignment*. **Off-corridor gradient probe** at $x \in \{17, 18, 19\}$
+(3, 2, 1 m offsets) maps out the transition between the on-corridor
+(GPU collapse) and off-corridor ($\geq$ 3 m, §3 baseline) regimes
+and reveals it is **non-monotonic**: at offset 2 m (i.e. $x=18$),
+MPC collapses to per-drone 69 % / joint 6.7 % while GPU MPPI holds
+at 87.5 % / 70 % (McNemar $p \approx 0$, GPU-only on 20 seeds).
+The MPC failure at offset 2 is the §3 mechanism with planner roles
+reversed: MPC's argmin oscillates between asymmetric east/west
+detour sides as the moving obstacle perturbs the cost landscape,
+freezing the drone (mean MPC final_t 23.6 s vs GPU 4.5 s); GPU
+MPPI's softmax averages the two sides into a smooth lateral command
+and clears. The combined dynamic-obstacle picture is therefore:
+**the smoothing operator helps when the argmin would commit to a
+wrong side (offset 2 m) and hurts when there is no right side to
+commit to (offset 0)**. The two regimes are adjacent in scenario
+space (a 1-2 m corridor offset flips the winner), so any deployment
+recommendation built on a single $x$ value is unsafe.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,
