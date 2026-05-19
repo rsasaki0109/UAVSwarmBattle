@@ -1,0 +1,59 @@
+# GPU MPPI counterpart of exp_multi_drone_3d_10.yaml — same 10-drone
+# circular cross on the same 40×40×12 voxel_world. Validated 3D Pareto
+# cell (n_samples=64, horizon=20). For the N-scaling sweep extension
+# past N=8 paired with MPC.
+
+name: multi_drone_3d_10_gpu_mppi
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  drones:
+    - {name: d00, start: [37.00, 20.00, 6.0], goal: [3.00,  20.00, 6.0], radius: 0.4}
+    - {name: d01, start: [33.75, 29.99, 6.0], goal: [6.25,  10.01, 6.0], radius: 0.4}
+    - {name: d02, start: [25.25, 36.17, 6.0], goal: [14.75, 3.83,  6.0], radius: 0.4}
+    - {name: d03, start: [14.75, 36.17, 6.0], goal: [25.25, 3.83,  6.0], radius: 0.4}
+    - {name: d04, start: [6.25,  29.99, 6.0], goal: [33.75, 10.01, 6.0], radius: 0.4}
+    - {name: d05, start: [3.00,  20.00, 6.0], goal: [37.00, 20.00, 6.0], radius: 0.4}
+    - {name: d06, start: [6.25,  10.01, 6.0], goal: [33.75, 29.99, 6.0], radius: 0.4}
+    - {name: d07, start: [14.75, 3.83,  6.0], goal: [25.25, 36.17, 6.0], radius: 0.4}
+    - {name: d08, start: [25.25, 3.83,  6.0], goal: [14.75, 36.17, 6.0], radius: 0.4}
+    - {name: d09, start: [33.75, 10.01, 6.0], goal: [6.25,  29.99, 6.0], radius: 0.4}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/multi_drone_3d_10_gpu_mppi

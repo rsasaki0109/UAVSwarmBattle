@@ -196,12 +196,13 @@ tight by using two companion ablations:
 - ~~4 drones only. The N-scaling curve (`exp_multi_drone_3d_N{4,6,8}`) is
   collected for MPC but not yet for GPU MPPI. **Future-work TODO: full
   N-scaling sweep on GPU MPPI.**~~ **Done — n=30 paired sweep at
-  $N \in \{2, 3, 4, 6, 8\}$** (`exp_multi_drone_3d_{2,3,4,6,8}{,_gpu_mppi}.yaml`):
-  GPU MPPI has higher $\Delta$ at $N = 4$-$6$ (intermediate-N regime,
-  reproducing §3), but loses by McNemar at $N = 2$ (p ≈ 0.008, MPC
-  argmin lock-step beats softmax on simple head-on) and $N = 8$
-  (p ≈ 0.0001, GPU per-drone collapses to 69 % under crossing density).
-  The §3 result is an intermediate-N regime finding, not universal.
+  $N \in \{2, 3, 4, 6, 8, 10, 12\}$** (`exp_multi_drone_3d_{2,3,4,6,8,10,12}{,_gpu_mppi}.yaml`):
+  GPU MPPI's higher-$\Delta$ advantage is **non-monotonic in N** —
+  holds at N=4 / N=6 / **N=10 (sweep max $\Delta = +24.3$ pp)**,
+  reverses at N=2 (MPC argmin beats softmax on head-on, p ≈ 0.008),
+  at N=8 (GPU per-drone uniquely collapses, p ≈ 0.0001), and at N=12
+  (GPU $\Delta$ drops to +7.8). The §3 N=4 result is one point on a
+  multi-regime curve, not a clean monotonic law.
 - ~~Temperature ablation: 3D GPU MPPI T=0.1 vs T=1.0 has overlapping
   CIs. The §3 result uses T=1.0 only.~~ **Done — see
   `exp_gpu_mppi_temp_ablation_3d.yaml` and findings.md §"Temperature

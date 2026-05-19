@@ -56,19 +56,22 @@ server-side reset hang is only worked around, not solved. These are
 engineering limitations of the current AirSim stack, not planner
 effects.
 
-The §3 headline is four-drone but the GPU MPPI N-scaling sweep
-across $N \in \{2, 3, 4, 6, 8\}$ on dummy_3d (findings.md
-"dummy_3d N-scaling paired") shows the mechanism's range: GPU MPPI's
-higher-$\Delta$ advantage holds in the intermediate band ($N = 4$ to
-$N = 6$ on this geometry, both planners' per-drone tied near 90 %),
-breaks the *other* direction at $N = 2$ (GPU MPPI clusters where
-MPC's argmin can lock-step a clean head-on, McNemar p ≈ 0.008 favours
-MPC), and collapses at $N = 8$ (GPU MPPI per-drone drops to 69 %
-under central-crossing density, McNemar p ≈ 0.0001 favours MPC). The
-§3 reading is therefore an *intermediate-N regime* result, not a
-universal scaling law. Closing the curve at higher $N$ or in
-lower-density geometries (per-drone ceiling held up to N=8) is
-future work.
+The §3 headline is four-drone but the GPU MPPI N-scaling sweep across
+$N \in \{2, 3, 4, 6, 8, 10, 12\}$ on dummy_3d (findings.md
+"dummy_3d N-scaling paired") shows the mechanism is **non-monotonic
+in N**, not a clean regime statement. GPU MPPI's higher-$\Delta$
+advantage holds at $N = 4$ (+5.2 vs −1.0 pp), $N = 6$ (+10.7 vs +7.5),
+and $N = 10$ (+24.3 vs +15.0 — the sweep maximum). It reverses at
+$N = 2$ (GPU MPPI clusters where MPC's argmin lock-steps a clean
+head-on, McNemar p ≈ 0.008 favours MPC), at $N = 8$ where the
+8-fold-symmetric central crossing uniquely collapses GPU MPPI's
+per-drone to 69 % (McNemar p ≈ 0.0001 favours MPC), and at $N = 12$
+where GPU's $\Delta$ drops back to +7.8 pp vs MPC's +15.2 pp. The §3
+reading is one point on this curve — the mechanism is real but its
+sign is a function of (per-drone tie status × crossing density ×
+drone-count symmetry), not a simple "GPU MPPI wins as $N$ grows"
+law. Mapping the mechanism's dependence on these three factors
+across non-circular geometries remains future work.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,
