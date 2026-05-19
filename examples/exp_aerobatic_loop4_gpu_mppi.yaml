@@ -1,0 +1,51 @@
+# GPU MPPI counterpart of exp_aerobatic_loop4_mpc.yaml.
+name: aerobatic_loop4_gpu_mppi
+seed: 42
+num_episodes: 5
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 4.0
+  period: 8.0
+  n_loops: 2
+  normal_axis: y
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 320
+  max_accel: 80.0
+  goal_radius: 0.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 20
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/aerobatic_loop4_gpu_mppi

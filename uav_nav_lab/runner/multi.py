@@ -185,9 +185,17 @@ def run_episode_multi(
                 perceived_dyn = sensors[i].observe_dynamics(
                     t, states[i].position, scenario_dyn + peer_dyn
                 )
+                # Aerobatic / choreography scenarios provide a *time-varying*
+                # goal via `dynamic_goal_at(drone_idx, t)`; non-aerobatic
+                # scenarios use the static sim.goal as before.
+                if hasattr(scenario, "dynamic_goal_at"):
+                    cur_goal = scenario.dynamic_goal_at(i, t)
+                    sims[i].set_goal(cur_goal)
+                else:
+                    cur_goal = sims[i].goal
                 plans[i] = planners[i].plan(
                     obs_i,
-                    sims[i].goal,
+                    cur_goal,
                     perceived_map,
                     dynamic_obstacles=perceived_dyn,
                 )
@@ -237,6 +245,11 @@ def run_episode_multi(
                 ns, info = sims[i].step_readback()
                 new_states[i] = ns
                 infos[i] = info
+                ref_pos = (
+                    scenario.reference_position(i, t)
+                    if hasattr(scenario, "reference_position")
+                    else None
+                )
                 recorders[i].log_step(
                     t=t,
                     true_pos=states[i].position,
@@ -248,6 +261,7 @@ def run_episode_multi(
                     ),
                     info={"collision": info.collision, "goal_reached": info.goal_reached},
                     sim_extra=dict(ns.extra) if ns.extra else None,
+                    reference_pos=ref_pos,
                 )
                 if frame_dirs is not None and frame_dirs[i] is not None and ns.extra:
                     cam_imgs = ns.extra.get("camera_images") or {}
@@ -267,6 +281,11 @@ def run_episode_multi(
                 ns, info = sims[i].step(cmd)
                 new_states[i] = ns
                 infos[i] = info
+                ref_pos = (
+                    scenario.reference_position(i, t)
+                    if hasattr(scenario, "reference_position")
+                    else None
+                )
                 recorders[i].log_step(
                     t=t,
                     true_pos=states[i].position,
@@ -275,6 +294,7 @@ def run_episode_multi(
                     cmd=cmd,
                     info={"collision": info.collision, "goal_reached": info.goal_reached},
                     sim_extra=dict(ns.extra) if ns.extra else None,
+                    reference_pos=ref_pos,
                 )
                 if frame_dirs is not None and frame_dirs[i] is not None and ns.extra:
                     cam_imgs = ns.extra.get("camera_images") or {}
@@ -288,6 +308,12 @@ def run_episode_multi(
         peer_hit = _check_peer_collision(new_states, radii, drone_radius)
 
         # 4. resolve outcomes
+        # Aerobatic scenarios use a moving goal — `goal_reached` ticks
+        # spuriously every time the drone happens to be near the
+        # current lookahead point. Suppress goal-reach termination in
+        # that case and let max_steps end the episode (the eval is
+        # tracking-error based, not binary success).
+        _aerobatic = hasattr(scenario, "dynamic_goal_at")
         for i in range(n):
             if finished[i]:
                 continue
@@ -297,7 +323,7 @@ def run_episode_multi(
                 finished[i] = True
                 final_states[i] = new_states[i]
                 continue
-            if info.goal_reached:
+            if info.goal_reached and not _aerobatic:
                 recorders[i].set_outcome("success", final_t=float(new_states[i].t))
                 finished[i] = True
                 final_states[i] = new_states[i]
@@ -334,10 +360,15 @@ def run_episode_multi(
         if all(finished):
             break
 
-    # any still-running drones at this point are timed out
+    # any still-running drones at this point have reached max_steps;
+    # for aerobatic / choreography scenarios this is the natural
+    # success condition (completed all loops without collision), so
+    # mark "success" rather than "timeout".
+    _aerobatic = hasattr(scenario, "dynamic_goal_at")
     for i in range(n):
         if not finished[i]:
-            recorders[i].set_outcome("timeout", final_t=float(states[i].t))
+            outcome = "success" if _aerobatic else "timeout"
+            recorders[i].set_outcome(outcome, final_t=float(states[i].t))
             final_states[i] = states[i]
 
     return recorders

@@ -1,0 +1,63 @@
+# Aerobatic synchronized loop — 4 drones share a vertical loop in xz plane
+# at y=20, radius 4, center (20, 20, 7). Each drone is phase-offset by 90°
+# from the next. 2 loops at period 8 s = 16 s episode.
+#
+# Tests whether the planner can keep all 4 drones tracking a moving
+# reference and maintain phase offset under peer-prediction interactions.
+# §3 4-mode hypothesis: GPU MPPI's softmax should produce *smoother*
+# trajectories, helping aerobatic precision. MPC's argmin commits may
+# overshoot.
+#
+# Metric (computed offline from episode_NNN_drone_*.json):
+#   - Per-drone tracking error RMSE (||true_pos - reference_pos||)
+#   - Inter-drone phase-offset RMSE
+#   - Collision rate
+name: aerobatic_loop4_mpc
+seed: 42
+num_episodes: 5
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 4.0
+  period: 8.0
+  n_loops: 2
+  normal_axis: y      # vertical loop in xz plane
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 320      # 2 loops * 8 s / 0.05 dt = 320 steps
+  max_accel: 80.0
+  goal_radius: 0.5    # tight tolerance since the lookahead is small
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/aerobatic_loop4_mpc

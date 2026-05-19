@@ -31,6 +31,7 @@ class EpisodeRecorder:
         cmd: np.ndarray,
         info: dict[str, Any],
         sim_extra: dict[str, Any] | None = None,
+        reference_pos: np.ndarray | None = None,
     ) -> None:
         row: dict[str, Any] = {
             "t": float(t),
@@ -41,6 +42,8 @@ class EpisodeRecorder:
             "collision": bool(info.get("collision", False)),
             "goal_reached": bool(info.get("goal_reached", False)),
         }
+        if reference_pos is not None:
+            row["reference_pos"] = [float(v) for v in reference_pos]
         # Surface a small summary of sim-side sensor side-channels so they
         # show up in the episode JSON. Currently: lidar point counts per
         # configured sensor name. Full point clouds stay in memory only —

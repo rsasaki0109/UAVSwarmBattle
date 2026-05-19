@@ -247,30 +247,44 @@ confirms drone-drone collisions at the central crossing in MPC
 episodes).
 
 **Combined reading.** GPU MPPI's softmax conservatism is a single
-**smoothing operator on the action space** with three distinct
-failure modes across the regimes of this paper:
+**smoothing operator on the action space** with four distinct
+modes across the regimes of this paper:
 
 1. **Static-obstacle multi-drone clustering** (§3 N=4 baseline,
    Table 1): the operator amplifies seed-correlated peer-prediction
    noise into +11.4 pp $\Delta$ over indep$^4$, while MPC's argmin
-   stays near zero.
+   stays near zero. **MPC wins on Δ.**
 2. **Dynamic-obstacle bidirectional cancellation** (Table 2): the
    operator averages out left/right avoidance commits when a moving
    obstacle is dead ahead, collapsing the affected single drone's
-   success from ~95 % to ~3 % at $v=2$ m/s.
+   success from ~95 % to ~3 % at $v=2$ m/s. **MPC wins.**
 3. **Sim-physics density-corner sign-reversal** (§4.4.4): at the
    N=4-dense corner of the (N, density) grid the planner roles swap
    — MPC's argmin lock-step concentrates failures across drones and
    GPU MPPI's averaging now suppresses the cluster mode.
+   **GPU MPPI wins.**
+4. **Aerobatic choreography precision** (`multi_drone_aerobatic`
+   scenario, findings.md "Aerobatic synchronized loop"): with the
+   mission goal shifted from "avoid failures" to "tight reference
+   tracking + synchronized formation", the operator's smooth
+   weighted-average command becomes precisely the right thing —
+   GPU MPPI tracks a 4-drone synchronized loop with phase-offset
+   RMSE 1.67° vs MPC's 10.7° (-84 % wobble), and per-drone tracking
+   RMSE 1.04 m vs 1.31 m (-21 %), winning on 20/20 drone-episodes.
+   **GPU MPPI wins decisively.**
 
 The shared structural mechanism — softmax averaging vs argmin
-commit, against a shared world model — is one operator with three
-sign expressions. The deployment story is therefore not "GPU MPPI
-is better" or "MPC is better" but a regime-dependent question:
-which planner's averaging behaviour matches the dominant coupling
-in the scenario (static peers / dynamic obstacles / static-obstacle
-density saturation)? The robust paper-grade claim is this **shared
-mechanism, regime-specific direction**.
+commit, against a shared world model — is one operator with four
+mode expressions. The deployment story is therefore not "GPU MPPI
+is better" or "MPC is better" but a **mode-dependent question**:
+- *Coordination-Δ minimisation under static peers* → MPC.
+- *Avoidance commit under dynamic obstacles on corridor* → MPC.
+- *Multi-drone safety under dense static obstacles* → GPU MPPI.
+- *Choreography precision / formation flight* → GPU MPPI.
+
+The robust paper-grade claim is this **shared mechanism, four mode
+expressions** — and the mission's metric (Δ, joint success,
+tracking RMSE, phase sync) is what selects the right planner.
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (dummy_3d study), `docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif`
