@@ -1,0 +1,83 @@
+# 3D multi-drone — 8 drones evenly distributed around a circular cross
+# pattern (radius 17 from center (20, 20, 6), 45° spacing) in a
+# 40×40×12 voxel_world. Each drone heads through the central crossing
+# to its diametric opposite. Uses the validated 3D Pareto MPC config.
+#
+# Closes §6 limitation: GPU MPPI N-scaling at N=8 (companion file
+# exp_multi_drone_3d_8_gpu_mppi.yaml).
+
+name: multi_drone_3d_8
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  drones:
+    - name: e
+      start: [37.0,  20.0,  6.0]
+      goal:  [3.0,   20.0,  6.0]
+      radius: 0.4
+    - name: ne
+      start: [32.02, 32.02, 6.0]
+      goal:  [7.98,  7.98,  6.0]
+      radius: 0.4
+    - name: n
+      start: [20.0,  37.0,  6.0]
+      goal:  [20.0,  3.0,   6.0]
+      radius: 0.4
+    - name: nw
+      start: [7.98,  32.02, 6.0]
+      goal:  [32.02, 7.98,  6.0]
+      radius: 0.4
+    - name: w
+      start: [3.0,   20.0,  6.0]
+      goal:  [37.0,  20.0,  6.0]
+      radius: 0.4
+    - name: sw
+      start: [7.98,  7.98,  6.0]
+      goal:  [32.02, 32.02, 6.0]
+      radius: 0.4
+    - name: s
+      start: [20.0,  3.0,   6.0]
+      goal:  [20.0,  37.0,  6.0]
+      radius: 0.4
+    - name: se
+      start: [32.02, 7.98,  6.0]
+      goal:  [7.98,  32.02, 6.0]
+      radius: 0.4
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/multi_drone_3d_8

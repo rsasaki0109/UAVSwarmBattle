@@ -56,12 +56,19 @@ server-side reset hang is only worked around, not solved. These are
 engineering limitations of the current AirSim stack, not planner
 effects.
 
-The study is still four-drone only for the GPU MPPI headline. MPC
-N-scaling and density sweeps show that coordination Δ depends on
-free volume per agent, but the full GPU MPPI N-scaling curve remains
-future work. This matters because the §3 mechanism is a statement
-about failure clustering, and clustering can change with N even when
-per-drone success is held fixed.
+The §3 headline is four-drone but the GPU MPPI N-scaling sweep
+across $N \in \{2, 3, 4, 6, 8\}$ on dummy_3d (findings.md
+"dummy_3d N-scaling paired") shows the mechanism's range: GPU MPPI's
+higher-$\Delta$ advantage holds in the intermediate band ($N = 4$ to
+$N = 6$ on this geometry, both planners' per-drone tied near 90 %),
+breaks the *other* direction at $N = 2$ (GPU MPPI clusters where
+MPC's argmin can lock-step a clean head-on, McNemar p ≈ 0.008 favours
+MPC), and collapses at $N = 8$ (GPU MPPI per-drone drops to 69 %
+under central-crossing density, McNemar p ≈ 0.0001 favours MPC). The
+§3 reading is therefore an *intermediate-N regime* result, not a
+universal scaling law. Closing the curve at higher $N$ or in
+lower-density geometries (per-drone ceiling held up to N=8) is
+future work.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,
