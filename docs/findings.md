@@ -45,6 +45,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
 - [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
 - [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
+- [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2417,6 +2418,42 @@ done
 ```
 
 
+### Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios
+
+Both planners (`mpc`, `gpu_mppi`) gained a `ctg_cache_tolerance: int = 0`
+option. When > 0, the planner reuses its cached Dijkstra cost-to-go map
+as long as the new goal cell is within `tolerance` cells along every
+axis from the cached one. Default 0 preserves the exact
+per-replan-recompute behaviour from before.
+
+Motivation. Aerobatic / race scenarios pass a moving lookahead point as
+the planner goal, which crosses an integer cell boundary nearly every
+replan. The Dijkstra recompute on a 40×40×12 grid takes $\sim 1.2$ s,
+which dominated the multi-drone race wallclock ($\sim 9$ min/episode
+for $n_{drones} = 4$ × 120 replans).
+
+Measurement on `examples/exp_race_oval4_*.yaml` (1 episode, 4 drones,
+480 steps):
+
+| planner   | `ctg_cache_tolerance=0` | `ctg_cache_tolerance=3` | speedup |
+|---|---|---|---|
+| MPC       | 540 s                   | 141 s                   | **3.8x** |
+| GPU MPPI  | 720 s                   | 139 s                   | **5.2x** |
+
+Per-episode `per_drone_outcomes` and tracking RMSE numbers are
+bit-identical at tolerance=3 for both planners — the cost-to-go
+staleness ($\leq 3$ m of drift on a 40 m world) is well below the
+$\sim 50$ m horizon length and doesn't change which rollout the
+planner picks. With this in place the race $n = 30$ paper-grade
+extension fit in $\sim 90$ min wallclock with 4 parallel processes,
+instead of the projected $\sim 6$ hours.
+
+For *static-goal* scenarios (every YAML in `examples/` except the
+multi_drone_aerobatic / race set), the cache hits anyway after the
+first replan because the goal cell is constant — so the new option
+is a no-op there. Race YAMLs default to `ctg_cache_tolerance: 3`.
+
+
 ### Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision
 
 Single scenario that places **all three** §3 mode interactions on the
@@ -2431,38 +2468,45 @@ Geometry is fully deterministic given the seed (which controls only
 the unused static-obstacle seed), so the same drone phases meet the
 same intruder positions in every episode — the seed varies internal
 RNG (planner sample noise for GPU MPPI) but the failure pattern is
-mostly seed-stable. With $n = 5$ episodes:
+seed-stable to 3 decimal places. With paper-grade $n = 30$ (each
+metric below was identical to the $n = 5$ first cut, confirming
+seed-stability rather than noise reduction):
 
 | planner                   | tracking RMSE | max error | phase RMSE | collisions (drone-eps) |
 |---|---|---|---|---|
-| MPC                       | 1.764 m       | 2.701 m   | 16.80°     | 10/20 (50 %)           |
-| vanilla GPU MPPI          | **1.658 m**   | 1.976 m   | **16.14°** | 15/20 (75 %)           |
-| Smart MPPI v2 (asym 0.2)  | 1.657 m       | 1.985 m   | 16.19°     | 15/20 (75 %)           |
-| **Smart MPPI v4** (mode-aware) | 1.719 m  | **2.177 m** | 16.22° | **10/20 (50 %)**       |
+| MPC                       | 1.764 m       | 2.701 m   | 16.80°     | 60/120 (50 %)          |
+| vanilla GPU MPPI          | **1.658 m**   | 1.976 m   | **16.14°** | 90/120 (75 %)          |
+| Smart MPPI v2 (asym 0.2)  | 1.657 m       | 1.985 m   | 16.19°     | 90/120 (75 %)          |
+| **Smart MPPI v4** (mode-aware) | 1.719 m  | **2.177 m** | 16.22° | **60/120 (50 %)**      |
+
+(The $n = 30$ extension was unlocked by the Dijkstra cost-to-go cache
+tolerance — see "Cost-to-go cache tolerance" finding — which cut
+per-episode MPC wallclock from $\sim 9$ min to $\sim 2.4$ min, and
+GPU MPPI from $\sim 12$ min to $\sim 2.3$ min.)
 
 Three readings, one scenario:
 
 **(1) Vanilla GPU MPPI tracks tighter but crashes more.** Mean
 per-(drone, ep) tracking RMSE is **0.105 m lower** than MPC on
-*every* drone-episode (20/20), and phase-offset RMSE is 0.66°
+*every* drone-episode (120/120), and phase-offset RMSE is 0.66°
 tighter. This is the §3 mode 4 mechanism — softmax averaging
 smooths the tracking command around the lookahead point. But the
 same operator turns the intruder into the §3 mode 2 cancellation
 regime: when the bouncing cube enters a drone's corridor, the
 rollout cloud becomes bimodal (L vs R escape) and the softmax
 averages the two modes back toward zero lateral motion. Result:
-**+5 extra collisions over the 20 drone-episodes** (75 % vs 50 %).
+**+30 extra collisions over the 120 drone-episodes** (75 % vs 50 %).
 Same scenario, both regimes active at different moments.
 
 **(2) Smart MPPI v4 recovers MPC's safety, keeps most of MPPI's
 tracking edge.** Mode-aware cluster softmax (cf. "Smart MPPI v4
 (mode-aware sampling)") commits to *one* lateral escape side within
 the rollout aggregation step. Collision rate collapses back to
-10/20 — tied with MPC — and tracking RMSE stays 0.044 m better than
+60/120 — tied with MPC — and tracking RMSE stays 0.044 m better than
 MPC on every drone-episode. The catastrophic-bottom-drone failure
 that vanilla GPU MPPI suffers (drone 3, the one closest to the
 intruder spawn, loses every episode) disappears: v4 saves drone 3
-in all 5 episodes. Smart v2 (asymmetric perturbation 0.2), in
+in all 30 episodes. Smart v2 (asymmetric perturbation 0.2), in
 contrast, lands at the *same* 75 % collision rate as vanilla GPU
 MPPI — the perpendicular sampling bias is too weak (or too random
 across drones) to break the cancellation symmetry that the intruder

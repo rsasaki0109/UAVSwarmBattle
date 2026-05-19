@@ -294,12 +294,14 @@ is `multi_drone_race` (findings.md "Drone race + bouncing intruder"):
 4 drones tracking a horizontal-oval reference (mode 4 active for all
 24 s) while a single bouncing intruder crosses the track every ~4 s
 (mode 2 active whenever the intruder enters a drone's corridor).
-Paired $n = 5$ at first cut (the scenario is seed-deterministic except
-for planner-internal RNG, so the failure pattern is essentially
-seed-stable; a paper-grade $n = 30$ extension is queued but the
-per-replan Dijkstra recompute on a moving lookahead goal makes each
-episode wallclock-expensive — $\sim 9$ min for MPC). Same
-hyperparameters across planners, only the rollout aggregation differs:
+Paired $n = 30$ paper-grade (unlocked by the Dijkstra cost-to-go
+cache tolerance — see "Cost-to-go cache tolerance" finding — which
+cut MPC per-episode wallclock from $\sim 9$ min to $\sim 2.4$ min and
+GPU MPPI from $\sim 12$ min to $\sim 2.3$ min). The scenario is
+seed-deterministic except for planner-internal RNG, so the failure
+pattern is seed-stable to 3 decimal places and $n = 30$ numbers
+match the $n = 5$ first cut exactly. Same hyperparameters across
+planners, only the rollout aggregation differs:
 
 - **MPC** — argmin commit. Survives the intruder ($50\,\%$ collision
   rate, ceiling-limited by the geometric collision at $t \approx 10$ s

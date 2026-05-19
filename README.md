@@ -14,19 +14,21 @@ every example YAML carries its own validated finding.**
 
 <img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, MPC vs vanilla GPU MPPI vs Smart MPPI v4" width="960">
 
-<i><b>One scenario, three planners, three failure modes.</b>
+<i><b>One scenario, three planners, three failure modes</b> (paired n=30,
+seed-stable to 3 decimal places).
 4 drones lap a horizontal oval (12 × 8 m, 12 s period, 2 laps) while a
 bouncing red intruder crosses the track every ~4 s. Same hyperparameters
 on all three panes — only the rollout aggregation differs.
-Left: <b>CPU MPC</b> — argmin commits each replan, 2/4 drones lost.
+Left: <b>CPU MPC</b> — argmin commits each replan, 60/120 drone-eps lost (50 %).
 Middle: <b>vanilla GPU MPPI</b> — softmax averaging cancels L/R escape
-modes when the intruder enters a drone's corridor, 3/4 drones lost.
+modes when the intruder enters a drone's corridor, 90/120 lost (75 %).
 Right: <b>Smart MPPI v4 (mode-aware sampling)</b> — clusters rollouts
 by lateral PC sign and takes the softmax of the lower-cost cluster
-only; recovers MPC-level safety (2/4 lost) while keeping GPU MPPI's
-2.5 % tighter tracking. Live demonstration of the §3 4-mode framework:
-softmax helps choreography precision and hurts dynamic-obstacle
-avoidance, and you need cluster-aware aggregation to get both.
+only; recovers MPC-level safety (60/120, 50 %) while keeping GPU MPPI's
+2.5 % tighter tracking on every drone-episode. Live demonstration of
+the §3 4-mode framework: softmax helps choreography precision and hurts
+dynamic-obstacle avoidance, and you need cluster-aware aggregation to
+get both.
 See <a href="docs/findings.md#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision">findings.md</a>
 and the <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a>.</i>
 
