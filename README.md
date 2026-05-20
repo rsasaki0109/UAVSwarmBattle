@@ -15,14 +15,17 @@ every example YAML carries its own validated finding.**
 <img src="docs/images/compare_race_dyn4.gif" alt="4-drone oval race + 4 path-intersecting intruders, four planners side-by-side, all visibly avoiding" width="1080">
 
 <i><b>Dynamic-obstacle avoidance, visualised</b> (paired n=30,
-4-pane side-by-side). 4 drones lap a 12 × 8 m oval (reference shown
-as dashed line) while 4 intruders bounce on lines that <b>directly
-intersect</b> each drone's segment of the oval. There is no
-"background obstacles" cheat here — every intruder is engineered to
-cross a drone's path, so the drones <b>must</b> deviate from the
-dashed reference to survive. The deviation is visible in every pane:
-drones swerve, slow down, and re-acquire the oval after the intruder
-clears.
+4-pane side-by-side). 4 drones lap a 12 × 8 m oval (dashed gray) while
+4 intruders bounce on lines that <b>directly intersect</b> each drone's
+segment of the oval. There is no "background obstacles" cheat — every
+intruder is engineered to cross a drone's path, so the drones
+<b>must</b> deviate from the dashed reference to survive. The colored
+trail behind each drone shows the actual path taken; the open ring
+shows where that drone <b>would</b> be if it were tracking the oval
+exactly, and the dotted line connecting the two shows the
+instantaneous deviation. <b>The trail visibly bends off the oval
+every time a drone encounters its intruder</b>, by up to 2.7 m at the
+extreme, then re-acquires the reference after the intruder clears.
 <b>Every planner clears at 4/120 (3.3 %)</b> — collisions are confined
 to seed-42 ep 0 (initial chase ceiling, all 4 drones face a
 synchronised first-second crossing they cannot dodge). On the

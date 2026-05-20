@@ -278,6 +278,8 @@ def main() -> int:
     rollout_lines: list[list[list]] = []  # [pane][drone][k]
     obs_trail_artists: list = []
     obs_pt_artists: list = []
+    ref_pt_artists: list = []
+    ref_line_artists: list = []
     for pane in range(n_panes):
         ax = fig.add_subplot(1, n_panes, pane + 1, projection="3d")
         setup_axis(ax, world, center)
@@ -287,6 +289,8 @@ def main() -> int:
         pane_trails: list = []
         pane_pts: list = []
         pane_rollouts: list[list] = []
+        pane_ref_pts: list = []
+        pane_ref_lines: list = []
         for i in range(4):
             c = DRONE_COLORS[i]
             # Rollout cloud (drawn under the drone marker for layering).
@@ -300,11 +304,25 @@ def main() -> int:
             ln, = ax.plot([], [], [], color=c, linewidth=1.8, alpha=0.9)
             pt, = ax.plot([], [], [], "o", color=c, markersize=9,
                           markeredgecolor="white", markeredgewidth=0.6)
+            # Reference "ghost" marker — where the drone *would* be if it
+            # were tracking the oval reference exactly. Faded same-colour
+            # ring with no fill; visible deviation = visible avoidance.
+            ref_pt, = ax.plot([], [], [], "o", color=c, markersize=7,
+                              markerfacecolor="none", markeredgewidth=1.2,
+                              alpha=0.55)
+            # Line connecting reference to actual position — makes the
+            # magnitude/direction of deviation visually unambiguous.
+            ref_ln, = ax.plot([], [], [], color=c, linewidth=1.0,
+                              alpha=0.35, linestyle=":")
             pane_trails.append(ln)
             pane_pts.append(pt)
+            pane_ref_pts.append(ref_pt)
+            pane_ref_lines.append(ref_ln)
         trail_lines.append(pane_trails)
         drone_pts.append(pane_pts)
         rollout_lines.append(pane_rollouts)
+        ref_pt_artists.append(pane_ref_pts)
+        ref_line_artists.append(pane_ref_lines)
         pane_obs_trails: list = []
         pane_obs_pts: list = []
         for ob in obstacles:
@@ -332,11 +350,21 @@ def main() -> int:
         for pane, (_, label) in enumerate(runs):
             tp = true_arr[pane]
             coll_step = coll_step_arr[pane]
+            rp = ref_arr[pane]
             for i in range(4):
                 trail_lines[pane][i].set_data(tp[i, k0:k+1, 0], tp[i, k0:k+1, 1])
                 trail_lines[pane][i].set_3d_properties(tp[i, k0:k+1, 2])
                 drone_pts[pane][i].set_data(tp[i, k:k+1, 0], tp[i, k:k+1, 1])
                 drone_pts[pane][i].set_3d_properties(tp[i, k:k+1, 2])
+                # Reference ghost marker + deviation line.
+                ref_pt_artists[pane][i].set_data(
+                    rp[i, k:k+1, 0], rp[i, k:k+1, 1])
+                ref_pt_artists[pane][i].set_3d_properties(rp[i, k:k+1, 2])
+                ref_line_artists[pane][i].set_data(
+                    [rp[i, k, 0], tp[i, k, 0]],
+                    [rp[i, k, 1], tp[i, k, 1]])
+                ref_line_artists[pane][i].set_3d_properties(
+                    [rp[i, k, 2], tp[i, k, 2]])
                 # Collision flash: white-out the marker for `flash_window`
                 # frames after the first collision flag, then revert to a
                 # dimmed grey ghost.
@@ -381,6 +409,8 @@ def main() -> int:
             )
             artists.extend(trail_lines[pane])
             artists.extend(drone_pts[pane])
+            artists.extend(ref_pt_artists[pane])
+            artists.extend(ref_line_artists[pane])
             artists.extend(obs_trail_artists[pane])
             artists.extend(obs_pt_artists[pane])
         title_text.set_text(f"{args.title}   t = {t_s:.2f} s")
