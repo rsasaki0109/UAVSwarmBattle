@@ -11,12 +11,12 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_gates4.gif" alt="4 drones lap an oval through 4 moving gates, MPC argmin vs GPU MPPI softmax" width="1080">
+<img src="docs/images/compare_race_gates4.gif" alt="4 drones thread 4 sliding gates, MPC argmin vs GPU MPPI softmax" width="1080">
 
-<i>4 drones lap an oval while 4 sliding gates close around them.
-<b>MPC's argmin commit goes stale between replans — 51.7 % drone-eps
-lost</b>; GPU MPPI's softmax clears at <b>3.3 %</b>. Same stack, same
-seed, only the rollout aggregator changes.
+<i>4 drones lap an oval while <b>4 sliding gates</b> (8 red blocks)
+close around them. Same stack, same seed, only the rollout aggregator
+changes. <b>MPC's argmin commit goes stale between replans — 51.7 %
+drone-eps lost</b>; GPU MPPI's softmax clears at <b>3.3 %</b>.
 &nbsp;<a href="docs/findings.md">More heroes (loop / dyn4 / chaos)</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
