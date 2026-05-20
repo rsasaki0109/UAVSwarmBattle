@@ -11,15 +11,13 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_aerobatic_loop4.gif" alt="4 drones in a synchronized vertical loop, MPC vs GPU MPPI side-by-side" width="1080">
+<img src="docs/images/compare_race_gates4.gif" alt="4 drones lap an oval through 4 moving gates, MPC argmin vs GPU MPPI softmax" width="1080">
 
-<i>4 drones fly a synchronized vertical loop (90° phase-offset) — same
-reference, same stack, only the rollout aggregator changes.
-<b>GPU MPPI's softmax delivers 84 % tighter phase sync</b> (phase RMSE
-1.67° vs MPC's 10.73°) and 21 % lower tracking error. §3 mode 4
-(precision under aerobatic load) — choreography is exactly the regime
-where averaging across rollouts beats argmin commit.
-&nbsp;<a href="docs/findings.md">More heroes (gates / dyn4 / chaos)</a>
+<i>4 drones lap an oval while 4 sliding gates close around them.
+<b>MPC's argmin commit goes stale between replans — 51.7 % drone-eps
+lost</b>; GPU MPPI's softmax clears at <b>3.3 %</b>. Same stack, same
+seed, only the rollout aggregator changes.
+&nbsp;<a href="docs/findings.md">More heroes (loop / dyn4 / chaos)</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
 </div>
@@ -122,13 +120,14 @@ Headline themes:
   against ablating off-Pareto.
 
 <details>
-<summary><b>Companion hero GIFs</b> — gates / dyn4 / single intruder / chaos</summary>
+<summary><b>Companion hero GIFs</b> — aerobatic loop / dyn4 / single intruder / chaos</summary>
 
-<img src="docs/images/compare_race_gates4.gif" width="1080"><br>
-<i><b>4 moving gates</b> (mode 2-mirror, n=30): MPC 51.7 % drone-eps
-lost (argmin commit goes stale on the moving gap), all three softmax
-variants 3.3 %. Unimodal rollouts — softmax averaging is exactly the
-right operator.</i>
+<img src="docs/images/compare_aerobatic_loop4.gif" width="1080"><br>
+<i><b>Aerobatic synchronized loop</b> (4 drones, 90° phase-offset
+vertical loop, mode 4): GPU MPPI's softmax delivers <b>84 % tighter
+phase sync</b> (1.67° vs 10.73° RMSE) and 21 % lower tracking error.
+Choreography is the regime where averaging across rollouts beats
+argmin commit.</i>
 
 <br><br>
 
