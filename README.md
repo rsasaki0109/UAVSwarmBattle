@@ -2,9 +2,8 @@
 
 # uav-nav-lab
 
-**An OSS Python research framework for high-speed UAV navigation —
-controlled ablations in minutes, statistical CIs on every metric, and
-every example YAML carries its own validated finding.**
+**Python research framework for UAV motion planning.**
+YAML-driven ablations with Wilson 95 % CIs by default.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
