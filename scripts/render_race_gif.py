@@ -56,7 +56,7 @@ def trajectory_arrays(
     logged position — so a planner that fails fast freezes in place
     instead of vanishing from the GIF mid-way."""
     D = len(drones)
-    T_drones = min(len(d["steps"]) for d in drones)
+    T_drones = max(len(d["steps"]) for d in drones)
     T = T_pad if T_pad is not None and T_pad > T_drones else T_drones
     true_pos = np.zeros((D, T, 3))
     ref_pos = np.zeros((D, T, 3))
@@ -208,11 +208,11 @@ def main() -> int:
         all_drones.append(drones)
         rollouts_per_pane.append(load_rollout_replans(drones))
 
-    # Pad shorter panes to the longest pane's timeline by holding final
-    # positions — so planners that fail fast freeze in place instead of
-    # truncating every other pane.
+    # Pad shorter panes/drones to the longest drone's timeline by holding
+    # final positions — so planners (or single drones) that fail fast
+    # freeze in place instead of truncating every other pane.
     T_pad = max(
-        min(len(d["steps"]) for d in pane_drones) for pane_drones in all_drones
+        max(len(d["steps"]) for d in pane_drones) for pane_drones in all_drones
     )
     true_arr: list[np.ndarray] = []
     ref_arr: list[np.ndarray] = []

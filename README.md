@@ -19,14 +19,17 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_aerobatic_loop4.gif" alt="4 drones in a synchronized vertical loop, MPC vs GPU MPPI side-by-side" width="1080">
+<img src="docs/images/compare_race_gates4.gif" alt="4 drones attempt 4 sliding gates, MPC vs GPU MPPI side-by-side, current planners cannot solve" width="1080">
 
-<i>4 drones fly a synchronized vertical loop (90° phase-offset) — same
-reference, same stack, only the rollout aggregator changes.
-<b>GPU MPPI's softmax delivers 84 % tighter phase sync</b> (phase RMSE
-1.67° vs MPC's 10.73°) and 21 % lower tracking error. §3 mode 4
-(precision under aerobatic load).
-&nbsp;<a href="docs/findings.md">All findings</a>
+<i>4 drones attempt to lap an oval through <b>4 sliding gates</b>
+(8 red blocks). Same stack, same seed, only the rollout aggregator
+changes. With the multi-runner bug fix from
+<a href="https://github.com/rsasaki0109/uav-nav-lab/commit/1646e11">1646e11</a>,
+<b>both MPC argmin and GPU MPPI softmax now lose every drone-episode</b>
+on this scenario — the closing rate is too fast for the 0.4 s
+lookahead. Scenario re-tuning is in progress; see
+<a href="PLAN.md">PLAN.md</a> for the handoff plan.
+&nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
 </div>
