@@ -6,10 +6,12 @@
 YAML-driven ablations with Wilson 95 % CIs by default.
 
 > ⚠️ **Heads-up (2026-05-21)**: a critical multi-runner bug was found
-> that froze dynamic obstacles after total-wipeout episodes (see commit
-> `1646e11`). The §3 race / gates / dyn4 / chaos paper-grade numbers
-> are being re-validated; the hero GIF below is from the buggy run and
-> will be re-rendered.
+> that froze dynamic obstacles in any episode following a total-wipeout
+> episode (see commit `1646e11`). Re-runs with the fix show the §3
+> race / gates / dyn4 / chaos scenarios are uniformly **100 % collision
+> for every planner** — the "MPC 51.7 % vs softmax 3.3 %" headline was
+> an artifact of frozen obstacles. The findings are being rewritten;
+> see `docs/findings.md` for the current state of each result.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -17,13 +19,14 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_gates4.gif" alt="4 drones thread 4 sliding gates, MPC argmin vs GPU MPPI softmax" width="1080">
+<img src="docs/images/compare_aerobatic_loop4.gif" alt="4 drones in a synchronized vertical loop, MPC vs GPU MPPI side-by-side" width="1080">
 
-<i>4 drones lap an oval while <b>4 sliding gates</b> (8 red blocks)
-close around them. Same stack, same seed, only the rollout aggregator
-changes. <b>MPC's argmin commit goes stale between replans — 51.7 %
-drone-eps lost</b>; GPU MPPI's softmax clears at <b>3.3 %</b>.
-&nbsp;<a href="docs/findings.md">More heroes (loop / dyn4 / chaos)</a>
+<i>4 drones fly a synchronized vertical loop (90° phase-offset) — same
+reference, same stack, only the rollout aggregator changes.
+<b>GPU MPPI's softmax delivers 84 % tighter phase sync</b> (phase RMSE
+1.67° vs MPC's 10.73°) and 21 % lower tracking error. §3 mode 4
+(precision under aerobatic load).
+&nbsp;<a href="docs/findings.md">All findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
 </div>
@@ -126,36 +129,37 @@ Headline themes:
   against ablating off-Pareto.
 
 <details>
-<summary><b>Companion hero GIFs</b> — aerobatic loop / dyn4 / single intruder / chaos</summary>
+<summary><b>Companion hero GIFs</b> — multi-drone Δ-flip, single-drone 3D MPPI</summary>
 
-<img src="docs/images/compare_aerobatic_loop4.gif" width="1080"><br>
-<i><b>Aerobatic synchronized loop</b> (4 drones, 90° phase-offset
-vertical loop, mode 4): GPU MPPI's softmax delivers <b>84 % tighter
-phase sync</b> (1.67° vs 10.73° RMSE) and 21 % lower tracking error.
-Choreography is the regime where averaging across rollouts beats
-argmin commit.</i>
-
-<br><br>
-
-<img src="docs/images/compare_race_dyn4.gif" width="1080"><br>
-<i><b>dyn4 path-intersecting intruders</b> (controlled avoidance
-harness, n=30). Open-ring overlay shows where each drone <i>would</i>
-be on the oval; the colored trail bends off the dashed line to dodge.
-All planners clear at 3.3 %.</i>
+<img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" width="720"><br>
+<i><b>§3 mode 1 multi-drone Δ-flip</b> (N=4 paired n=100, dummy_3d):
+joint tied at 78 / 77 %, coordination Δ over indep⁴ separates by an
+order of magnitude — MPC <b>+0.8 pp</b> vs GPU MPPI <b>+11.4 pp</b>.
+GPU MPPI's softmax against a shared peer-prediction world model
+clusters failures within seeds rather than spreading them.</i>
 
 <br><br>
 
-<img src="docs/images/compare_race_oval4.gif" width="1080"><br>
-<i><b>Single bouncing intruder</b> (mode 2 cancellation): MPC 50 %,
-vanilla GPU MPPI 75 %, Smart v4 50 %. Softmax averages bimodal L/R
-escapes back toward zero motion; cluster softmax (v4) repairs it.</i>
+<img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" width="720"><br>
+<i><b>3D MPC vs GPU MPPI</b> single-drone navigation: rollout cloud
+visible on the GPU MPPI side (light-blue spaghetti), single committed
+trajectory on the MPC side. Both succeed; the visual shows the
+algorithmic signature of each aggregator.</i>
 
-<br><br>
+</details>
 
-<img src="docs/images/compare_race_chaos.gif" width="1080"><br>
-<i><b>Chaos race</b> (gates + 2 intruders, n=30): MPC 51.7 %,
-softmax variants 3.3 %. Gate topology dominates the cloud structure;
-the bouncing intruders ride along inert.</i>
+<details>
+<summary>⚠️ <b>Dynamic-obstacle hero GIFs (under repair)</b></summary>
+
+The race / gates / dyn4 / chaos GIFs that used to live here were
+rendered against the frozen-obstacle bug (fixed in `1646e11`). Re-runs
+with the fix show that the scenarios as designed are <b>uniformly
+100 % collision for every planner</b> — the moving-gate gap closes
+faster than the planner's 0.4 s lookahead can detour around, and
+likewise for the path-intersecting intruders. The "MPC vs softmax"
+contrast was an artifact of the bug, not a real planner-level finding.
+The scenarios themselves need to be re-tuned (wider gaps, slower
+obstacles, larger oval) before the GIFs go back up.
 
 </details>
 
