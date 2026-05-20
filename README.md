@@ -12,34 +12,50 @@ every example YAML carries its own validated finding.**
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
+<img src="docs/images/compare_race_dyn4.gif" alt="4-drone oval race + 4 path-intersecting intruders, four planners side-by-side, all visibly avoiding" width="1080">
+
+<i><b>Dynamic-obstacle avoidance, visualised</b> (paired n=30,
+4-pane side-by-side). 4 drones lap a 12 × 8 m oval (reference shown
+as dashed line) while 4 intruders bounce on lines that <b>directly
+intersect</b> each drone's segment of the oval. There is no
+"background obstacles" cheat here — every intruder is engineered to
+cross a drone's path, so the drones <b>must</b> deviate from the
+dashed reference to survive. The deviation is visible in every pane:
+drones swerve, slow down, and re-acquire the oval after the intruder
+clears.
+<b>Every planner clears at 4/120 (3.3 %)</b> — collisions are confined
+to seed-42 ep 0 (initial chase ceiling, all 4 drones face a
+synchronised first-second crossing they cannot dodge). On the
+remaining 29 paired episodes <b>every drone survives every intruder
+crossing</b>, and the planners separate on tracking precision:
+mean reference deviation 1.65 - 1.75 m, with <b>vanilla GPU MPPI's
+softmax tracking 0.10 m tighter than MPC on all 120/120 paired
+drone-episodes</b> — §3 mode 4 (precision under aerobatic load)
+firing under dynamic-obstacle stress.
+This is the controlled <a href="docs/findings.md#dyn4-path-intersecting-intruders">dynamic-obstacle avoidance harness</a>
+that the §3 4-mode framework's harder scenarios (race / gates / chaos
+below) are built on. Use it to confirm <b>the planner stack actually
+avoids dynamic obstacles</b> before reading the mode-discriminating
+heroes.</i>
+
+<details>
+<summary><b>The mode-discriminating heroes</b> — single-intruder race (mode 2), gates race (mode 2-mirror), chaos (topology dominance)</summary>
+
 <img src="docs/images/compare_race_chaos.gif" alt="4-drone oval race chaos: 4 moving gates + 2 bouncing intruders + 4 planners side-by-side" width="1080">
 
 <i><b>Drone race chaos — 10 dynamic obstacles, 4 drones, 4 planners</b>
-(paired n=30, seed-stable). Same 12 × 8 m oval as the rest of §3 + the
-full <b>4 sliding gates</b> from <a href="#mirror-image">gates4</a>
-(eight posts that pair-slide vertically) <b>and</b> 2 bouncing
-intruders crossing the oval interior. Each lap a different race —
-gate velocities (1.6 / 1.8 / 2.0 / 2.2 m/s) and intruder velocities
-(±5, ±6 m/s) are desynchronised so the encounter timing drifts.
-<b>MPC</b> (argmin) — <b>62/120 (51.7 %)</b> drone-eps lost: the
-gates' moving-target argmin commit goes stale between replans, and
-the bouncing intruders pile on with no escape side that is
-unambiguously cheaper.
-<b>Vanilla GPU MPPI</b>, <b>Smart v4</b>, <b>Smart v5</b> — all three
-clear at <b>4/120 (3.3 %)</b>. The gate constraints force a unimodal
-rollout cloud (one feasible gap to thread) that the softmax aggregator
-naturally averages onto; the bouncing intruders never get a chance to
-fire the §3 mode-2 cancellation regime because the gate topology
-dominates the cloud structure.
-<b>One scenario, two §3 mode mechanisms in superposition</b> —
-mode 2-mirror (unimodal gate-thread) <b>and</b> mode 2 (potential
-bidirectional cancellation if escapes were free) — and a planner
-ranking that the topology, not the individual planner, decides.
-See <a href="docs/findings.md#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates">findings.md "Drone race chaos"</a>
-and the <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a>.</i>
+(paired n=30). Same oval as above + the full <b>4 sliding gates</b>
+(eight pair-sliding posts at the corners) <b>and</b> 2 bouncing
+intruders crossing the oval interior. MPC 62/120 (51.7 %) — gates'
+moving-target argmin commit goes stale between replans. All three
+softmax variants clear at 4/120 (3.3 %). The gate constraints force
+a unimodal rollout cloud and the bouncing intruders never get a chance
+to fire mode-2 cancellation. <b>Topology dominance</b> — hard
+geometric constraints (gates) decide the cloud structure, soft cost
+gradients (intruders) ride along.
+See <a href="docs/findings.md#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates">findings.md "Drone race chaos"</a>.</i>
 
-<details>
-<summary><b>Companion hero GIFs</b> — single-intruder race (mode 2) + gates race (mode 2-mirror)</summary>
+<br>
 
 <img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, four planners side-by-side" width="1080">
 

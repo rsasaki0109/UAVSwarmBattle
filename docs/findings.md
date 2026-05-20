@@ -47,6 +47,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
 - [Moving-gates race: the mirror image — softmax wins where it lost the single-intruder race](#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race)
 - [Drone race chaos — gates + intruders piled on, gate topology still dominates](#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates)
+- [dyn4 path-intersecting intruders: controlled dynamic-avoidance harness](#dyn4-path-intersecting-intruders-controlled-dynamic-avoidance-harness)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
 - [Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
@@ -2826,6 +2827,104 @@ python3 scripts/render_race_gif.py \
   --title "Drone race chaos: 4 sliding gates + 2 bouncing intruders" \
   --out docs/images/compare_race_chaos.gif \
   --ep 1 --fps 10 --stride 12 --trail 20
+```
+
+
+### dyn4 path-intersecting intruders: controlled dynamic-avoidance harness
+
+The chaos race result raised the question "do the planners actually
+avoid the intruders, or are the intruders inert background?" — and the
+answer was "inert: the gates dominate, intruders never enter the cost
+window." This is unsatisfying as a *demonstration* of dynamic-obstacle
+avoidance. We close that gap with a scenario designed so the intruders
+are unambiguously on each drone's path. YAMLs:
+`examples/exp_race_dyn4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
+
+**Construction.** Same oval as race / gates / chaos (12 × 8 m, 12 s
+period, 2 laps). No gates. **4 intruders**, each constrained to bounce
+on a line that *intersects* one drone's oval segment:
+
+- Intruder 1: bounces on $x = 30$ (drone 0's right-side average, $y$
+  range $[16, 24]$), $v_y = +5$ m/s, radius 1.2 m.
+- Intruder 2: bounces on $y = 26$ (drone 1's top traversal, $x$ range
+  $[12, 28]$), $v_x = +6$ m/s.
+- Intruder 3: bounces on $x = 10$ (drone 2's left side), $v_y = -7$ m/s.
+- Intruder 4: bounces on $y = 14$ (drone 3's bottom), $v_x = -8$ m/s.
+
+Desynchronised velocities (5/6/7/8 m/s) make the encounter timing
+drift per lap so each lap is a different race. Drone radius 0.4 m +
+intruder radius 1.2 m = 1.6 m clearance sum; drone tangential speed
+at oval long-sides is $\sim 6.3$ m/s, intruders 5-8 m/s — head-on
+closing rates of $\sim 10$ m/s, $\sim 0.16$ s to collision at first
+detection.
+
+**Result at paper-grade $n = 30$:**
+
+| planner          | tracking RMSE | max ref-dev | collisions (drone-eps) | GPU-better RMSE |
+|---|---|---|---|---|
+| MPC              | **1.751 m**   | 2.681 m   | 4/120 (3.3 %)          | —               |
+| vanilla GPU MPPI | 1.649 m       | **1.972 m** | 4/120 (3.3 %)        | **120/120**     |
+| Smart MPPI v4    | 1.707 m       | 2.165 m   | 4/120 (3.3 %)          | 118/120         |
+| Smart MPPI v5    | 1.747 m       | 2.133 m   | 4/120 (3.3 %)          | 61/120 (tied)   |
+
+The collision number is identical across planners because they all
+clear the avoidance problem — the only collisions are the seed-42 ep 0
+"initial chase ceiling" where 4 intruders simultaneously hit 4 drone
+corridors in the first second and no planner can recover. The
+remaining 29 of 30 episodes are clean wins.
+
+Two findings:
+
+**(1) The planners do, in fact, avoid the intruders.** Across all 4
+planners and 116 paired-success drone-episodes, the mean reference
+deviation is 1.7 m and the max single-step deviation is 2.7 m — drones
+visibly swerve off the reference oval by up to 2 drone-radii to clear
+the intruders, then re-acquire the oval. This validates the harness:
+the dynamic-obstacle bridge, the planner's predictor of intruder
+motion, the cost gradient, and the replan loop all compose into
+working avoidance behaviour. Use this scenario as a smoke test before
+running the mode-discriminating heroes (race / gates / chaos).
+
+**(2) §3 mode 4 (precision) fires under dynamic-obstacle stress.**
+With collision tied at the ceiling, the planners separate on *how
+well they track the reference while detouring around intruders*.
+Vanilla GPU MPPI's tracking RMSE is **0.102 m lower than MPC's on
+every single one of the 120 paired drone-episodes** — a near-
+deterministic precision win because softmax averaging across 64
+rollouts produces a smoother detour command than MPC's single argmin
+rollout. Smart v4 lands in between (0.045 m better, 118/120 wins),
+Smart v5 ties (lateral-cancellation gate doesn't fire here — there
+is no cancellation regime to detect — so v5's tracking matches MPC's).
+This is the *aerobatic-loop* finding (mode 4) reproduced under
+dynamic obstacles: the precision benefit of softmax averaging persists
+even when active avoidance is in play, as long as the rollout cloud
+isn't pushed into the cancellation regime.
+
+The hero GIF (`docs/images/compare_race_dyn4.gif`) shows all 4
+planners side-by-side with the dashed reference oval overlaid and
+drones visibly swerving to dodge the 4 intruders. This is the
+controlled demo to point at when someone asks "does it avoid dynamic
+obstacles?"; the mode-discriminating story is in race / gates /
+chaos.
+
+Reproduce:
+```bash
+for plan in mpc gpu_mppi gpu_mppi_smart_v4 gpu_mppi_smart_v5; do
+  uav-nav run "examples/exp_race_dyn4_${plan}.yaml"
+done
+for cmp in gpu_mppi gpu_mppi_smart_v4 gpu_mppi_smart_v5; do
+  python3 scripts/paired_analysis_aerobatic.py \
+    results/race_dyn4_mpc "results/race_dyn4_${cmp}" 4 30
+done
+python3 scripts/render_race_gif.py \
+  --runs results/race_dyn4_mpc:MPC \
+         results/race_dyn4_gpu_mppi:"GPU MPPI" \
+         results/race_dyn4_gpu_mppi_smart_v4:"Smart v4" \
+         results/race_dyn4_gpu_mppi_smart_v5:"Smart v5" \
+  --config examples/exp_race_dyn4_mpc.yaml \
+  --title "Drone race + 4 path-intersecting intruders — dynamic-obstacle avoidance" \
+  --out docs/images/compare_race_dyn4.gif \
+  --ep 1 --fps 10 --stride 12 --trail 30
 ```
 
 

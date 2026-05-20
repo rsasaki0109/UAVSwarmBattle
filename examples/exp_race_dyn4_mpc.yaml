@@ -1,0 +1,89 @@
+# Drone race + 4 path-intersecting intruders (dynamic-avoidance demo).
+#
+# Same oval as exp_race_oval4_*.yaml (4 drones, 12 × 8 m oval, 12 s
+# period, 2 laps = 24 s). NO gates. Each intruder is placed so its
+# bounce line **directly intersects** one drone's oval segment, so
+# drones MUST deviate from the reference oval to avoid the intruder
+# — the avoidance is visually obvious in the GIF.
+#
+# Geometry: drones traverse 4 oval segments (right, top, left, bottom)
+# in sequence. Each intruder is placed on the average position of one
+# segment, bouncing perpendicular to drone tangential motion across
+# the world box (y in [0, 40] or x in [0, 40]). With desynchronised
+# velocities (5 / 6 / 7 / 8 m/s) the encounter timing drifts across
+# the 2 laps so each lap is a different race.
+#
+#   Intruder 1: x = 30 (drone 0 right-side, y avg 20). Bounces in y.
+#   Intruder 2: y = 26 (drone 1 top,        x avg 20). Bounces in x.
+#   Intruder 3: x = 10 (drone 2 left,       y avg 20). Bounces in y.
+#   Intruder 4: y = 14 (drone 3 bottom,     x avg 20). Bounces in x.
+#
+# Radius 1.2 m, clearance with drone radius 0.4 m = 1.6 m. Drones
+# tangential speed at the oval long-sides is ~6.3 m/s, intruders
+# 5-8 m/s — within an order of magnitude, so head-on closing rates
+# are ~10 m/s and the planner has ~0.2 s to commit a detour at
+# replan boundary.
+name: race_dyn4_mpc
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 12.0
+  radius_y: 8.0
+  period: 12.0
+  n_loops: 2
+  normal_axis: z
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    # Intruder 1 -> drone 0 (right side, x avg 30, y range [16, 24]).
+    # Bounces in y; at v_y = 5 m/s, period = 16 s, sweeps y=20 every 8 s.
+    - {start: [30.0, 5.0, 7.0], velocity: [0.0, 5.0, 0.0], reflect: true, radius: 1.2}
+    # Intruder 2 -> drone 1 (top, y avg 26, x range [12, 28]).
+    # Bounces in x; at v_x = 6 m/s, period ~13.3 s.
+    - {start: [5.0, 26.0, 7.0], velocity: [6.0, 0.0, 0.0], reflect: true, radius: 1.2}
+    # Intruder 3 -> drone 2 (left side, x avg 10, y range [16, 24]).
+    # Bounces in y; at v_y = 7 m/s, period ~11.4 s.
+    - {start: [10.0, 35.0, 7.0], velocity: [0.0, -7.0, 0.0], reflect: true, radius: 1.2}
+    # Intruder 4 -> drone 3 (bottom, y avg 14, x range [12, 28]).
+    # Bounces in x; at v_x = -8 m/s, period = 10 s.
+    - {start: [35.0, 14.0, 7.0], velocity: [-8.0, 0.0, 0.0], reflect: true, radius: 1.2}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 480
+  max_accel: 80.0
+  goal_radius: 0.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  ctg_cache_tolerance: 3
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/race_dyn4_mpc

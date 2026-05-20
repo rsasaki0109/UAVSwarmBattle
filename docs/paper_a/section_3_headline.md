@@ -429,6 +429,53 @@ Live render: `docs/images/compare_race_chaos.gif` (4-pane top-down
 + 10 dynamic obstacles). Full table and per-seed attribution:
 findings.md "Drone race chaos".
 
+### Controlled avoidance harness: dyn4 path-intersecting intruders
+
+The chaos result raises the question whether the planners are
+*actually* avoiding the dynamic obstacles or merely tolerating them
+as background. We construct a complementary scenario where the
+intruders are unambiguously on every drone's path: 4 intruders
+(radius 1.2 m, $v_y$ or $v_x$ in 5-8 m/s) each bouncing on a line
+that intersects one drone's oval segment. No gates. YAMLs:
+`examples/exp_race_dyn4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
+
+Paper-grade $n = 30$ confirms two things at once:
+
+1. **All planners avoid the intruders.** Collision rate is tied at
+   4/120 (3.3 %) across MPC, vanilla GPU MPPI, Smart v4, and Smart
+   v5 — the only failures are the seed-42 ep 0 simultaneous chase
+   that no planner can dodge. Mean reference deviation across the
+   116 paired-success episodes is 1.7 m and max 2.7 m: drones
+   visibly swerve off the oval to clear each intruder, then
+   re-acquire. This is the validation harness for the
+   dynamic-obstacle bridge / predictor / cost gradient / replan
+   loop — call it before reading the mode-discriminating heroes.
+
+2. **§3 mode 4 fires under dynamic-obstacle stress.** With
+   collision tied at the ceiling, planners separate on tracking
+   precision *while detouring*. Vanilla GPU MPPI's softmax tracks
+   0.102 m better than MPC on **every** one of the 120 paired
+   drone-episodes — a deterministic precision win driven by
+   smoother detour commands when averaging across 64 rollouts.
+   Smart v4 lands at $-0.045$ m / 118-120, Smart v5 ties (the
+   cancellation gate never fires because the rollout cloud doesn't
+   go bimodal — each drone faces exactly one intruder at a time,
+   not the L/R symmetric escape of the single-intruder race). Mode
+   4 (precision under aerobatic-load) reproduced under dynamic
+   obstacles.
+
+This positions dyn4 as the *floor* of the §3 dynamic-obstacle
+study: a scenario where the planners' avoidance is necessary and
+sufficient, and the differentiation is purely about how smoothly
+they accomplish it. The harder scenarios (single-intruder race,
+gates, chaos) layer adversarial cloud topologies on top of this
+baseline.
+
+Live render: `docs/images/compare_race_dyn4.gif` (4-pane top-down,
+dashed reference oval overlay, visible drone swerves). Full table
+and per-seed attribution: findings.md "dyn4 path-intersecting
+intruders".
+
 ### Reproduce maps
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
@@ -447,6 +494,8 @@ Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (moving-gates race, mirror image),
 `examples/exp_race_chaos_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
 (chaos race, mode 2 + 2-mirror superposition with topology dominance),
+`examples/exp_race_dyn4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
+(dyn4 path-intersecting intruders, controlled avoidance harness),
 `scripts/paired_analysis_airsim_multi.py`,
 `scripts/paired_analysis_dummy_3d_multi.py`,
 `scripts/paired_analysis_aerobatic.py`,
