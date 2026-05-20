@@ -143,6 +143,13 @@ def run_episode_multi(
 
     # Reset all drones; only sim 0 reseeds the scenario (so the static layout
     # is reproducible and consistent across all drones in this episode).
+    # Restore the master-advance flag in case the previous episode handed it
+    # away when its current master died — without this, all dynamic obstacles
+    # freeze at their initial positions starting with the first episode that
+    # follows an all-drones-died episode.
+    for i, sim in enumerate(sims):
+        if hasattr(sim, "_advance_scenario"):
+            sim._advance_scenario = (i == 0)
     states = []
     for i, sim in enumerate(sims):
         s = sim.reset(
