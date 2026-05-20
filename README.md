@@ -5,6 +5,12 @@
 **Python research framework for UAV motion planning.**
 YAML-driven ablations with Wilson 95 % CIs by default.
 
+> ⚠️ **Heads-up (2026-05-21)**: a critical multi-runner bug was found
+> that froze dynamic obstacles after total-wipeout episodes (see commit
+> `1646e11`). The §3 race / gates / dyn4 / chaos paper-grade numbers
+> are being re-validated; the hero GIF below is from the buggy run and
+> will be re-rendered.
+
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/rsasaki0109/uav-nav-lab)](https://github.com/rsasaki0109/uav-nav-lab/releases)
