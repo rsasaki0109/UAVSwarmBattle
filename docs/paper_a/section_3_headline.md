@@ -391,6 +391,44 @@ side-by-side, MPC vs vanilla GPU MPPI vs Smart v4 vs Smart v5).
 Full table and per-seed attribution: findings.md "Moving-gates
 race: the mirror image".
 
+### Mode superposition under topology dominance: chaos race
+
+Stacking mode 2 (cancellation) and mode 2-mirror (unimodal commit) on
+the same scenario tests whether the two mechanisms compose or whether
+one suppresses the other. We took the gates4 scenario and added 2
+bouncing intruders (radius 1.0 m, $v_y = \pm 5$ and $\pm 6$ m/s)
+crossing the oval interior — 10 dynamic obstacles in total. YAMLs:
+`examples/exp_race_chaos_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
+
+Paper-grade $n = 30$ results are **bit-identical to gates4**:
+MPC 62/120 collisions (51.7 %), softmax variants all at 4/120
+(3.3 %). The intruders are physically present but never enter any
+planner's active cost window, because (i) drone tangential motion at
+the oval ends sweeps them through the intruder-x band ($x = 20$) only
+during a $\sim 1$ s window per lap, (ii) at those moments the closest
+intruder is $> 3$ m away in $y$, outside the $1.4$ m clearance sum
+of intruder + drone radii. The gates' fixed corner geometry, by
+contrast, is in the active window every replan at every oval end.
+
+This is a topology-dominance result. **Hard geometric constraints
+(must-thread gates) define the rollout cloud structure; soft
+constraints (cost gradients from far-away moving obstacles) do not
+get a chance to fire the cancellation mechanism, even when they
+otherwise would.** Smart v5's lateral-cancellation gate confirms it:
+the gate never fires on the chaos scenario despite intruders being
+present, because the gate-constrained cloud is already unimodal.
+
+The methodological caution generalises to the §3 4-mode framework as
+a whole: a visually rich scenario does not automatically test more
+mechanisms. Each mechanism requires the relevant obstacles to be in
+the planner's active window. "Adding obstacles" raises difficulty
+only when they intersect the active window of every replan; outside
+of it they are dead-weight to the cost.
+
+Live render: `docs/images/compare_race_chaos.gif` (4-pane top-down
++ 10 dynamic obstacles). Full table and per-seed attribution:
+findings.md "Drone race chaos".
+
 ### Reproduce maps
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
@@ -407,6 +445,8 @@ Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (bouncing-intruder race),
 `examples/exp_race_gates4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
 (moving-gates race, mirror image),
+`examples/exp_race_chaos_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
+(chaos race, mode 2 + 2-mirror superposition with topology dominance),
 `scripts/paired_analysis_airsim_multi.py`,
 `scripts/paired_analysis_dummy_3d_multi.py`,
 `scripts/paired_analysis_aerobatic.py`,

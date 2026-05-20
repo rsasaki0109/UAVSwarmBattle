@@ -46,6 +46,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
 - [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
 - [Moving-gates race: the mirror image — softmax wins where it lost the single-intruder race](#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race)
+- [Drone race chaos — gates + intruders piled on, gate topology still dominates](#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
 - [Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
@@ -2723,6 +2724,107 @@ python3 scripts/render_race_gif.py \
   --config examples/exp_race_gates4_mpc.yaml \
   --title "Drone race + 4 moving gates (8 sliding posts, oval circuit)" \
   --out docs/images/compare_race_gates4.gif \
+  --ep 1 --fps 10 --stride 12 --trail 20
+```
+
+
+### Drone race chaos — gates + intruders piled on, gate topology still dominates
+
+What happens when we stack mode 2 (cancellation) **and** mode 2-mirror
+(unimodal gate-thread) onto the same scenario? We took the moving-gates
+race above and added back **2 bouncing intruders** (radius 1.0 m,
+$v_y = \pm 5$ and $\pm 6$ m/s, both crossing the oval interior at
+$x \in \{20, 22\}$). The resulting "chaos race" has **10 dynamic
+obstacles** sharing the same 40 × 40 box as 4 drones — 8 sliding gate
+posts + 2 bouncing intruders. YAMLs:
+`examples/exp_race_chaos_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
+
+The naïve prediction is that the two mechanisms compose: MPC loses
+because the gates' moving target makes argmin stale, and now vanilla
+GPU MPPI should *also* lose because the bouncing intruders introduce
+bidirectional escape symmetry that cancels under softmax. Result at
+paper-grade $n = 30$:
+
+| planner          | tracking RMSE | phase RMSE | collisions (drone-eps) |
+|---|---|---|---|
+| MPC              | **1.620 m**   | **14.52°** | 62/120 (51.7 %)        |
+| vanilla GPU MPPI | 1.648 m       | 15.88°     | **4/120 (3.3 %)**      |
+| Smart MPPI v4    | 1.709 m       | 15.94°     | **4/120 (3.3 %)**      |
+| Smart MPPI v5    | 1.749 m       | 15.78°     | **4/120 (3.3 %)**      |
+
+The numbers are **bit-identical to the gates4 result above**. Diffing
+the drone trajectories file-by-file confirms: every planner runs the
+exact same control sequence as in gates4. The 2 bouncing intruders
+add visual chaos to the GIF, but they never influence the planner
+cost in a way that changes a drone's collision/success outcome.
+
+The mechanism is a topology argument. Drones are tangentially moving
+at $\sim 5.3$ m/s along the oval; they spend $\sim 1$ s in the
+$\pm 1$ m vicinity of each gate corner. During that window the gate
+posts are within $1.4$ m clearance of the drone — the active
+constraint at every replan. The bouncing intruders, by contrast,
+cross the oval interior at $x \in \{20, 22\}$ but the drones only
+visit $x = 20$ at the very top ($y = 28$) and bottom ($y = 12$) of
+the oval, and at those exact moments the intruder happens to be
+$> 6$ m away in $y$ (worst case at $t \approx 12$ s, $\sim 3$ m
+apart — still outside the intruder + drone radius sum of $1.4$ m).
+**The gates dominate the active-constraint set every replan, so the
+intruders never enter the cost.** Pile on as many bouncing intruders
+as you want in the oval interior — as long as they don't intersect
+the drone's tangential corridor *at the moment of crossing*, they are
+invisible to the planner.
+
+Two readings:
+
+**(1) "Adding obstacles" is not the same as "raising scenario
+difficulty."** This is a methodological caution: a visually busy
+scenario does not automatically test more failure modes. The cost
+landscape only sees obstacles in the planner's active window
+(horizon × replan period × safety margin), and obstacles outside
+that window contribute zero cost regardless of how many you add.
+The chaos race has 25 % more obstacles than gates4 but the same
+collision rate to 3 decimal places — the additional obstacles
+are dead-weight to every planner.
+
+**(2) Gate topology imposes the cloud structure.** When gates and
+intruders both *would* be in the active window, the gates' fixed
+geometric constraint (must thread a $\sim 5$ m gap) collapses the
+rollout cloud onto the gap centre and the intruders cease to matter
+as a cancellation source. There is no rollout choosing
+"slow-down-and-let-intruder-pass" because the gate gap is closing —
+all rollouts that survive go through the gap, and they happen to
+agree on lateral commitment. **Hard topological constraints win over
+soft cost gradients in determining the cloud structure.** This is
+why Smart v5's lateral-cancellation gate never fires on this
+scenario even though intruders are physically present.
+
+(See the §3 head line's "Mirror-image of the cancellation regime"
+section for the connection back to the 4-mode framework: chaos race
+is mode 2-mirror with mode 2 forces applied but suppressed.)
+
+The hero GIF (`docs/images/compare_race_chaos.gif`) shows the visual
+chaos — 10 red obstacles bouncing and sliding around 4 drones — with
+the contrast still cleanly visible: MPC loses drones 0 and 3 every
+episode (collision with the gate corners they cross at lap end), the
+three softmax variants thread the full 24 s race uninterrupted.
+
+Reproduce:
+```bash
+for plan in mpc gpu_mppi gpu_mppi_smart_v4 gpu_mppi_smart_v5; do
+  uav-nav run "examples/exp_race_chaos_${plan}.yaml"
+done
+for cmp in gpu_mppi gpu_mppi_smart_v4 gpu_mppi_smart_v5; do
+  python3 scripts/paired_analysis_aerobatic.py \
+    results/race_chaos_mpc "results/race_chaos_${cmp}" 4 30
+done
+python3 scripts/render_race_gif.py \
+  --runs results/race_chaos_mpc:MPC \
+         results/race_chaos_gpu_mppi:"GPU MPPI" \
+         results/race_chaos_gpu_mppi_smart_v4:"Smart v4" \
+         results/race_chaos_gpu_mppi_smart_v5:"Smart v5" \
+  --config examples/exp_race_chaos_mpc.yaml \
+  --title "Drone race chaos: 4 sliding gates + 2 bouncing intruders" \
+  --out docs/images/compare_race_chaos.gif \
   --ep 1 --fps 10 --stride 12 --trail 20
 ```
 

@@ -12,54 +12,65 @@ every example YAML carries its own validated finding.**
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, four planners side-by-side" width="1080">
+<img src="docs/images/compare_race_chaos.gif" alt="4-drone oval race chaos: 4 moving gates + 2 bouncing intruders + 4 planners side-by-side" width="1080">
 
-<i><b>One scenario, four planners, the full §3 4-mode story</b>
-(paired n=30, seed-stable to 3 decimal places).
-4 drones lap a horizontal oval (12 × 8 m, 12 s period, 2 laps) while a
-bouncing red intruder crosses the track every ~4 s. Same hyperparameters
-across all four panes — only the rollout aggregation differs.
-<b>MPC</b> (argmin) — safety baseline, 60/120 drone-eps lost (50 %).
-<b>vanilla GPU MPPI</b> (softmax) — tighter tracking (RMSE 1.658 m on
-every drone-episode) but the same softmax operator cancels L/R escape
-modes when the intruder enters a corridor: 90/120 lost (75 %).
-<b>Smart MPPI v4</b> (unconditional cluster softmax) — recovers
-MPC-level safety (60/120) and keeps a 2.5 % tracking edge over MPC.
-<b>Smart MPPI v5</b> (mode-aware switcher with lateral-cancellation
-gate) — the same safety as v4, slightly looser race tracking, but
-<b>dominates v4 on the dyn-cell sweep</b>: dyn_v2 cancellation rises
-from v4's 50 % to <b>66.7 %</b> (+47 pp over vanilla, +17 pp over v4)
-and the mode 1 / planner-swap regressions v4 cost (-23 pp each) are
-mostly recovered (+13 pp / +23 pp).
-Live demonstration of the §3 4-mode framework — and the working
-mode-aware switcher it predicted should exist.
-See <a href="docs/findings.md#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision">findings.md</a>
+<i><b>Drone race chaos — 10 dynamic obstacles, 4 drones, 4 planners</b>
+(paired n=30, seed-stable). Same 12 × 8 m oval as the rest of §3 + the
+full <b>4 sliding gates</b> from <a href="#mirror-image">gates4</a>
+(eight posts that pair-slide vertically) <b>and</b> 2 bouncing
+intruders crossing the oval interior. Each lap a different race —
+gate velocities (1.6 / 1.8 / 2.0 / 2.2 m/s) and intruder velocities
+(±5, ±6 m/s) are desynchronised so the encounter timing drifts.
+<b>MPC</b> (argmin) — <b>62/120 (51.7 %)</b> drone-eps lost: the
+gates' moving-target argmin commit goes stale between replans, and
+the bouncing intruders pile on with no escape side that is
+unambiguously cheaper.
+<b>Vanilla GPU MPPI</b>, <b>Smart v4</b>, <b>Smart v5</b> — all three
+clear at <b>4/120 (3.3 %)</b>. The gate constraints force a unimodal
+rollout cloud (one feasible gap to thread) that the softmax aggregator
+naturally averages onto; the bouncing intruders never get a chance to
+fire the §3 mode-2 cancellation regime because the gate topology
+dominates the cloud structure.
+<b>One scenario, two §3 mode mechanisms in superposition</b> —
+mode 2-mirror (unimodal gate-thread) <b>and</b> mode 2 (potential
+bidirectional cancellation if escapes were free) — and a planner
+ranking that the topology, not the individual planner, decides.
+See <a href="docs/findings.md#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates">findings.md "Drone race chaos"</a>
 and the <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a>.</i>
 
-<br><br>
+<details>
+<summary><b>Companion hero GIFs</b> — single-intruder race (mode 2) + gates race (mode 2-mirror)</summary>
+
+<img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, four planners side-by-side" width="1080">
+
+<i><b>Single bouncing intruder (mode 2 cancellation regime).</b>
+Removes the gates from the chaos scene; the lone bouncing intruder now
+forces every drone into a bidirectional L/R escape decision.
+<b>MPC</b> 60/120 (50 %) — argmin commits to one side. <b>Vanilla
+GPU MPPI</b> 90/120 (75 %) — softmax averages the two escape modes
+back toward zero lateral motion; this is the §3 mode-2 cancellation
+mechanism in its purest form. <b>Smart v4</b> 60/120 (50 %) —
+cluster softmax breaks the symmetry by committing to one lateral
+cluster. <b>Smart v5</b> matches v4 on race + dominates v4 on the
+dyn-cell sweep (dyn_v2 cancellation +17 pp over v4).</i>
+
+<br>
 
 <img src="docs/images/compare_race_gates4.gif" alt="4-drone oval race + 4 moving gates (8 sliding posts), four planners side-by-side" width="1080">
 
-<i><b>The mirror image — softmax now wins, MPC now loses</b>
-(same oval geometry, paired n=30). The single intruder is replaced by
-<b>4 paired sliding gates</b> at the corners of the oval — each gate is
-two posts moving together so the gap drifts vertically. The drone has
-exactly <b>one</b> feasible lateral target per gate (the moving gap
-centre), so the rollout cloud is <b>unimodal</b> — and that flips the
-winner.
-<b>MPC</b> (argmin) — <b>62/120 (51.7 %)</b> drone-eps lost: the
-argmin commits to whichever individual rollout looks cheapest, but the
-gap moves during the planner cycle and the chosen rollout becomes
-stale before the next replan.
-<b>vanilla GPU MPPI</b>, <b>Smart v4</b>, <b>Smart v5</b> — all three
-clear at <b>4/120 (3.3 %)</b>. With unimodal rollouts, softmax
-averaging gives a smoother command than argmin and there is no
-cancellation regime for the mode-aware variants to gate on (v5 stays
-in vanilla mode — exactly what the scenario rewards).
-<b>The same softmax-vs-argmin operator</b> that lost the
-single-intruder race above now wins by 48 pp — the rollout-cloud
-topology, not the planner, is what selects the right aggregator.
-See <a href="docs/findings.md#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race">findings.md "Moving-gates race"</a>.</i>
+<i><b>4 moving gates (mode 2-mirror).</b> Removes the intruder from the
+chaos scene; only the 8 sliding gate posts remain. The drone has
+exactly one feasible lateral target per gate (the moving gap centre),
+so the rollout cloud is <b>unimodal</b> — and the winner flips.
+<b>MPC</b> 62/120 (51.7 %) — argmin commits to the cheapest single
+rollout this step, but the gap moves before next replan and the
+commit goes stale. <b>Softmax variants</b> all clear at 4/120
+(3.3 %) — averaging across a unimodal cloud is exactly the right
+operator. <b>The same softmax-vs-argmin operator that lost on the
+single-intruder race wins here by 48 pp</b>; the cloud topology, not
+the planner, selects the right aggregator.</i>
+
+</details>
 
 <details>
 <summary><b>More demos</b> — aerobatic loop, multi-drone Δ-flip headline, AirSim</summary>

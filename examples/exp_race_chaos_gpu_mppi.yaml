@@ -1,0 +1,66 @@
+# Drone race: full chaos (gates + bouncing intruders).
+# Paired GPU MPPI (vanilla) variant of exp_race_chaos_mpc.yaml.
+# See that file's header for full scenario description.
+name: race_chaos_gpu_mppi
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 12.0
+  radius_y: 8.0
+  period: 12.0
+  n_loops: 2
+  normal_axis: z
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - {start: [28.0, 23.0, 7.0], velocity: [0.0, 1.8, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 29.0, 7.0], velocity: [0.0, 1.8, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 23.0, 7.0], velocity: [0.0, 2.0, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 29.0, 7.0], velocity: [0.0, 2.0, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 11.0, 7.0], velocity: [0.0, -2.2, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 17.0, 7.0], velocity: [0.0, -2.2, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 11.0, 7.0], velocity: [0.0, -1.6, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 17.0, 7.0], velocity: [0.0, -1.6, 0.0], reflect: true, radius: 0.5}
+    - {start: [20.0, 5.0, 7.0], velocity: [0.0, 5.0, 0.0], reflect: true, radius: 1.0}
+    - {start: [22.0, 35.0, 7.0], velocity: [0.0, -6.0, 0.0], reflect: true, radius: 1.0}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 480
+  max_accel: 80.0
+  goal_radius: 0.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  temperature: 1.0
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  ctg_cache_tolerance: 3
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/race_chaos_gpu_mppi

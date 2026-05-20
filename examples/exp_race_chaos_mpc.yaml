@@ -1,0 +1,92 @@
+# Drone race: full chaos (gates + bouncing intruders).
+#
+# Same oval as exp_race_gates4_*.yaml (4 drones, 12 × 8 m oval, 12 s
+# period, 2 laps = 24 s) with **both** the 4 sliding gates from gates4
+# AND 2 bouncing intruders crossing the oval interior. That puts
+# §3 mode 2 (bidirectional cancellation when an intruder is dead-ahead)
+# and mode 2-mirror (gate-thread unimodal commit) simultaneously
+# active across the same 24 s episode.
+#
+# Dynamic-obstacle inventory:
+#   - 8 sliding gate posts (gates4, paired NE/NW/SW/SE, gap drifts in y)
+#   - 2 bouncing intruders on the oval interior (vertical bounce in y)
+# = **10 dynamic obstacles** sharing the same 40 × 40 box as 4 drones.
+#
+# Intruder placement deliberately stays in the central x band
+# (x = 20, 22) where the gates are NOT (gates sit at x = 12 / 28), so
+# intruders and gates probe different drone-corridor moments — gates
+# fire at the oval ends, intruders fire at the long sides.
+#
+# Each planner faces *both* failure mechanisms in the same episode:
+#   - MPC's argmin commit goes stale on the moving gates (gates4 result)
+#   - Vanilla GPU MPPI's softmax cancels on the bouncing intruders
+#     (oval4 result)
+#   - Smart MPPI v4/v5: scenario-safe on gates + mode-aware on intruders.
+name: race_chaos_mpc
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 12.0
+  radius_y: 8.0
+  period: 12.0
+  n_loops: 2
+  normal_axis: z
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    # ----- 4 sliding gates (gates4 inventory, identical phase) -----
+    - {start: [28.0, 23.0, 7.0], velocity: [0.0, 1.8, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 29.0, 7.0], velocity: [0.0, 1.8, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 23.0, 7.0], velocity: [0.0, 2.0, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 29.0, 7.0], velocity: [0.0, 2.0, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 11.0, 7.0], velocity: [0.0, -2.2, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 17.0, 7.0], velocity: [0.0, -2.2, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 11.0, 7.0], velocity: [0.0, -1.6, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 17.0, 7.0], velocity: [0.0, -1.6, 0.0], reflect: true, radius: 0.5}
+    # ----- 2 bouncing intruders (central x band, vertical bounce) -----
+    # Intruder A: starts low (y=5), v=+5 m/s. Reaches y=20 at t=3 s,
+    # bounces at y=40 at t=7 s. Crosses south-side drone path twice/lap.
+    - {start: [20.0, 5.0, 7.0], velocity: [0.0, 5.0, 0.0], reflect: true, radius: 1.0}
+    # Intruder B: starts high (y=35), v=-6 m/s. Reaches y=20 at t=2.5 s,
+    # bounces at y=0 at t=5.8 s. Out-of-phase with intruder A.
+    - {start: [22.0, 35.0, 7.0], velocity: [0.0, -6.0, 0.0], reflect: true, radius: 1.0}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 480
+  max_accel: 80.0
+  goal_radius: 0.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  ctg_cache_tolerance: 3
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/race_chaos_mpc
