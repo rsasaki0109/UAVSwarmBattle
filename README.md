@@ -12,146 +12,17 @@ every example YAML carries its own validated finding.**
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_dyn4.gif" alt="4-drone oval race + 4 path-intersecting intruders, four planners side-by-side, all visibly avoiding" width="1080">
+<img src="docs/images/compare_race_dyn4.gif" alt="4-drone oval race + 4 path-intersecting intruders, four planners side-by-side" width="1080">
 
-<i><b>Dynamic-obstacle avoidance, visualised</b> (paired n=30,
-4-pane side-by-side). 4 drones lap a 12 × 8 m oval (dashed gray) while
-4 intruders bounce on lines that <b>directly intersect</b> each drone's
-segment of the oval. There is no "background obstacles" cheat — every
-intruder is engineered to cross a drone's path, so the drones
-<b>must</b> deviate from the dashed reference to survive. The colored
-trail behind each drone shows the actual path taken; the open ring
-shows where that drone <b>would</b> be if it were tracking the oval
-exactly, and the dotted line connecting the two shows the
-instantaneous deviation. <b>The trail visibly bends off the oval
-every time a drone encounters its intruder</b>, by up to 2.7 m at the
-extreme, then re-acquires the reference after the intruder clears.
-<b>Every planner clears at 4/120 (3.3 %)</b> — collisions are confined
-to seed-42 ep 0 (initial chase ceiling, all 4 drones face a
-synchronised first-second crossing they cannot dodge). On the
-remaining 29 paired episodes <b>every drone survives every intruder
-crossing</b>, and the planners separate on tracking precision:
-mean reference deviation 1.65 - 1.75 m, with <b>vanilla GPU MPPI's
-softmax tracking 0.10 m tighter than MPC on all 120/120 paired
-drone-episodes</b> — §3 mode 4 (precision under aerobatic load)
-firing under dynamic-obstacle stress.
-This is the controlled <a href="docs/findings.md#dyn4-path-intersecting-intruders">dynamic-obstacle avoidance harness</a>
-that the §3 4-mode framework's harder scenarios (race / gates / chaos
-below) are built on. Use it to confirm <b>the planner stack actually
-avoids dynamic obstacles</b> before reading the mode-discriminating
-heroes.</i>
-
-<details>
-<summary><b>The mode-discriminating heroes</b> — single-intruder race (mode 2), gates race (mode 2-mirror), chaos (topology dominance)</summary>
-
-<img src="docs/images/compare_race_chaos.gif" alt="4-drone oval race chaos: 4 moving gates + 2 bouncing intruders + 4 planners side-by-side" width="1080">
-
-<i><b>Drone race chaos — 10 dynamic obstacles, 4 drones, 4 planners</b>
-(paired n=30). Same oval as above + the full <b>4 sliding gates</b>
-(eight pair-sliding posts at the corners) <b>and</b> 2 bouncing
-intruders crossing the oval interior. MPC 62/120 (51.7 %) — gates'
-moving-target argmin commit goes stale between replans. All three
-softmax variants clear at 4/120 (3.3 %). The gate constraints force
-a unimodal rollout cloud and the bouncing intruders never get a chance
-to fire mode-2 cancellation. <b>Topology dominance</b> — hard
-geometric constraints (gates) decide the cloud structure, soft cost
-gradients (intruders) ride along.
-See <a href="docs/findings.md#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates">findings.md "Drone race chaos"</a>.</i>
-
-<br>
-
-<img src="docs/images/compare_race_oval4.gif" alt="4-drone oval race + bouncing intruder, four planners side-by-side" width="1080">
-
-<i><b>Single bouncing intruder (mode 2 cancellation regime).</b>
-Removes the gates from the chaos scene; the lone bouncing intruder now
-forces every drone into a bidirectional L/R escape decision.
-<b>MPC</b> 60/120 (50 %) — argmin commits to one side. <b>Vanilla
-GPU MPPI</b> 90/120 (75 %) — softmax averages the two escape modes
-back toward zero lateral motion; this is the §3 mode-2 cancellation
-mechanism in its purest form. <b>Smart v4</b> 60/120 (50 %) —
-cluster softmax breaks the symmetry by committing to one lateral
-cluster. <b>Smart v5</b> matches v4 on race + dominates v4 on the
-dyn-cell sweep (dyn_v2 cancellation +17 pp over v4).</i>
-
-<br>
-
-<img src="docs/images/compare_race_gates4.gif" alt="4-drone oval race + 4 moving gates (8 sliding posts), four planners side-by-side" width="1080">
-
-<i><b>4 moving gates (mode 2-mirror).</b> Removes the intruder from the
-chaos scene; only the 8 sliding gate posts remain. The drone has
-exactly one feasible lateral target per gate (the moving gap centre),
-so the rollout cloud is <b>unimodal</b> — and the winner flips.
-<b>MPC</b> 62/120 (51.7 %) — argmin commits to the cheapest single
-rollout this step, but the gap moves before next replan and the
-commit goes stale. <b>Softmax variants</b> all clear at 4/120
-(3.3 %) — averaging across a unimodal cloud is exactly the right
-operator. <b>The same softmax-vs-argmin operator that lost on the
-single-intruder race wins here by 48 pp</b>; the cloud topology, not
-the planner, selects the right aggregator.</i>
-
-</details>
-
-<details>
-<summary><b>More demos</b> — aerobatic loop, multi-drone Δ-flip headline, AirSim</summary>
-
-<table>
-<tr>
-<td colspan="2"><img src="docs/images/compare_aerobatic_loop4.gif" width="720"></td>
-</tr>
-<tr><td colspan="2" align="center"><i><b>§3 mode 4</b> — aerobatic synchronized loop: 4 drones, 1 vertical loop, phase-offset 90°. GPU MPPI delivers 84 % tighter phase sync (1.67° vs 10.73° RMSE) and 21 % lower tracking error.</i></td></tr>
-<tr>
-<td colspan="2"><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" width="720"></td>
-</tr>
-<tr><td colspan="2" align="center"><i><b>§3 mode 1</b> — N=4 paired n=100: joint tied (78.0 vs 77.0 %), Δ over indep⁴ +0.8 vs <b>+11.4 pp</b>. GPU MPPI's failures cluster.</i></td></tr>
-<tr>
-<td><img src="docs/images/demo_mpc.gif" width="280"></td>
-<td><img src="docs/images/demo_gpu_mppi.gif" width="280"></td>
-</tr>
-<tr><td align="center"><i>2D MPC (n=16, h=20)</i></td><td align="center"><i>3D GPU MPPI (n=64) rollout cloud</i></td></tr>
-<tr>
-<td colspan="2"><img src="docs/images/compare_airsim_multi_obstacles.gif" width="720"></td>
-</tr>
-<tr><td colspan="2" align="center"><i>AirSim multi-drone Drone1 FPV — MPC (left) vs GPU MPPI (right) through the same Blocks scenario.</i></td></tr>
-</table>
-
-</details>
+<i>4 drones lap an oval (dashed) while 4 intruders cross their paths.
+Colored trail = actual route, open ring = where the drone <i>would</i>
+be if tracking exactly. Trails visibly bend off the oval to dodge —
+every planner clears the avoidance, and softmax variants track 0.10 m
+tighter than MPC on 120/120 paired drone-episodes.
+&nbsp;<a href="docs/findings.md">More heroes (mode 2 / 2-mirror / chaos)</a>
+&middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
 </div>
-
-> **TL;DR.** On a 50 × 50 dynamic-obstacle scenario (n=30 episodes,
-> Wilson 95 % CIs), this framework produces — from seven one-line
-> `uav-nav run` invocations — straight-line **0 %**, A* **20 %**,
-> RRT* **23 %** (CPU-saturated), CHOMP **53 %** (cheapest at 21 ms),
-> RRT **73 %**, **CHOMP+RRT-init 90 %** (+17 pp over RRT at cheaper
-> compute), Pareto-MPC **100 %**. Each example YAML carries the
-> table, the heatmap, and the reproduce command in its header.
-
----
-
-## ✨ What you get
-
-- **Pluggable backends** for sim / scenario / planner / sensor / predictor —
-  add one with a `@REGISTRY.register("name")` decorator and a
-  `from_config(cfg)` classmethod.
-- **YAML experiments** + Cartesian-product sweeps:
-  `uav-nav sweep cfg.yaml --param k=a,b,c --param k2=start:stop:step`.
-- **Statistical rigor by default**: Wilson 95% intervals on rates,
-  mean ± 1.96·SEM on continuous metrics, per-call planner compute
-  budget (mean / p95 / max ms).
-- **Multi-drone** scenarios with joint-success aggregation and palette viz.
-- **6-panel sweep heatmap** for compute-aware ablations, animated GIF replays.
-
-## 🤔 Why
-
-Most UAV planning research either (a) hard-codes a single MPC variant,
-single sensor, single scenario, and reports a number, or (b) buries
-ablations under stacks of glue code. Neither makes it easy to ask *"does
-this idea actually beat what I already have, with the CI to back it?"*
-
-`uav-nav-lab` is the framework I wanted *while* doing the research:
-declare the experiment in YAML, sweep with `--param`, get heatmaps and
-Wilson 95 % CIs out of the box, and have every config carry its own
-validated finding — so the file is the artifact, not a Notion page.
 
 ## 🚀 Quick start
 
@@ -159,10 +30,8 @@ validated finding — so the file is the artifact, not a Notion page.
 git clone https://github.com/rsasaki0109/uav-nav-lab
 cd uav-nav-lab
 pip install -e '.[dev,viz]'        # numpy + pyyaml + matplotlib + pytest
-# Optional heavier stacks:
-#   pip install -e '.[gpu]'         # PyTorch for planner.type=gpu_mppi
-#   pip install -e '.[rl]'          # gymnasium + stable-baselines3
-pytest -q                          # full suite runs in seconds
+# Optional: pip install -e '.[gpu]' (PyTorch for gpu_mppi), '.[rl]' (SB3)
+pytest -q
 
 uav-nav run     examples/exp_basic.yaml
 uav-nav eval    results/basic_astar
@@ -185,22 +54,18 @@ uav-nav viz <out>     # → 6-panel sweep_summary.png
 | command | what |
 |---|---|
 | `uav-nav run <yaml>` | run all episodes, write per-episode JSONs + `summary.json` |
-| `uav-nav eval <run_dir>` | recompute metrics from logs, print Wilson 95 % rates + planner-dt budget |
+| `uav-nav eval <run_dir>` | recompute metrics, print Wilson 95 % CIs + planner-dt budget |
 | `uav-nav compare <a> <b> ...` | side-by-side table with ± half-widths |
-| `uav-nav sweep <yaml> --param k=spec` | Cartesian-product over `--param`s; each cell gets its own dir |
-| `uav-nav viz <run_or_sweep>` | trajectory PNG per episode, or 1D / 2D sweep heatmap |
+| `uav-nav sweep <yaml> --param k=spec` | Cartesian-product over `--param`s |
+| `uav-nav viz <run_or_sweep>` | trajectory PNG per episode, or 6-panel sweep heatmap |
 | `uav-nav anim <run_dir>` | animated GIF replay (2D) |
-| `uav-nav video <run_dir>` | ffmpeg per-step AirSim camera frames into per-episode MP4 |
+| `uav-nav video <run_dir>` | ffmpeg AirSim camera frames into per-episode MP4 |
 | `uav-nav list` | enumerate registered planners / sensors / sims / scenarios |
 
-`--param` syntax: `start:stop:step` for ranges, `a,b,c` for explicit lists,
-`[3,0]` for vector values, `true` / `false` literals. Three-level dotted
-keys work: `planner.predictor.velocity_noise_std=0.0,0.5,1.0`.
+`--param` syntax: `start:stop:step`, `a,b,c`, `[3,0]`, `true` / `false`, and
+dotted keys like `planner.predictor.velocity_noise_std=0.0,0.5,1.0`.
 
 ## 🏗️ Architecture
-
-The CLI is one verb per pipeline stage; each verb composes the same
-pluggable backends:
 
 ```mermaid
 flowchart LR
@@ -221,254 +86,95 @@ flowchart LR
     SWEEP -.uses.-> backends
 ```
 
-Source layout:
+| kind | shipped |
+|---|---|
+| sim | `dummy_2d`, `dummy_3d`, `airsim`, `ros2` |
+| scenario | `grid_world`, `voxel_world`, `multi_drone_{grid,voxel,aerobatic}` |
+| planner | `astar`, `straight`, `mpc`, `mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp` |
+| sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `pointcloud_occupancy`, `depth_image_occupancy` |
+| predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity` |
 
-```
-uav_nav_lab/
-├── sim/         dummy_2d / dummy_3d (point-mass), airsim, ros2
-├── scenario/    grid_world, voxel_world, multi_drone_grid
-├── planner/     astar, straight, mpc, rrt, rrt_star, chomp, mpc_chomp  (registry: PLANNER_REGISTRY)
-├── sensor/      perfect, delayed, kalman_delayed, lidar, pointcloud_occupancy
-├── predictor/   constant_velocity, noisy_velocity, kalman_velocity
-├── runner/      experiment, multi (multi-drone), sweep
-├── eval/        metrics (Wilson + SEM CIs), compare
-├── viz / anim / sweep_viz   2D + 3D + GIF + 6-panel heatmap
-└── cli          run / eval / compare / sweep / viz / anim / list
-```
+Add a backend by dropping a file with `@REGISTRY.register("name")` and a
+`from_config(cfg)` classmethod — the CLI picks it up via `type: name`.
 
-Backends at a glance:
+## 📊 Research findings
 
-| kind | shipped | registry |
-|---|---|---|
-| sim | `dummy_2d`, `dummy_3d`, `airsim`, `ros2` | `SIM_REGISTRY` |
-| scenario | `grid_world`, `voxel_world`, `multi_drone_grid` | `SCENARIO_REGISTRY` |
-| planner | `astar`, `straight`, `mpc`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp` | `PLANNER_REGISTRY` |
-| sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `pointcloud_occupancy` | `SENSOR_REGISTRY` |
-| predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity` | `PREDICTOR_REGISTRY` |
+Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
+the §3 4-mode framework is in
+[`docs/paper_a/section_3_headline.md`](docs/paper_a/section_3_headline.md).
+Headline themes:
 
-Adding a new backend is one new file with a `@REGISTRY.register("name")`
-decorator and a `from_config(cfg)` classmethod — the CLI picks it up via
-`type: name` in YAML, no central wiring needed.
+- **GPU MPPI softmax vs CPU MPC argmin** — one operator, four
+  regime-dependent expressions. Mode 1 (multi-drone clustering),
+  mode 2 (dynamic-obstacle cancellation), mode 2-mirror (unimodal
+  gate-thread), mode 4 (aerobatic precision). Mission metric selects
+  the right planner, not a universal winner.
+- **Smart MPPI v1-v5** — variants of the softmax aggregator that
+  detect and repair specific failure modes; v5's lateral-cancellation
+  gate dominates v4 across 4 of 5 paired dyn cells.
+- **Planner head-to-head** (50 × 50 dynamic-obstacle, n=30) —
+  straight 0 %, A* 20 %, RRT\* 23 % (CPU-saturated), CHOMP 53 %,
+  RRT 73 %, CHOMP+RRT-init 90 %, Pareto-MPC 100 %.
+- **AirSim transferability** — Δ-flip mechanism reproduces under
+  AirSim physics, with a sign reversal at the dense corner (`base_ew06`).
+- **Methodology** — Wilson 95 % CIs by default, McNemar paired tests
+  for matched-seed comparisons, Pareto-cell re-validation as a guard
+  against ablating off-Pareto.
 
-## 📊 Selected research findings
+<details>
+<summary><b>Companion hero GIFs</b> — chaos / single intruder / gates</summary>
 
-Each finding lives in the comment header of the YAML that produces it,
-along with a one-line `uav-nav sweep` invocation that reproduces it.
-Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
+<img src="docs/images/compare_race_chaos.gif" width="1080"><br>
+<i><b>Chaos race</b> (gates + 2 intruders, n=30): MPC 51.7 % collisions,
+softmax variants 3.3 %. Gate topology dominates the cloud structure;
+the intruders ride along inert.</i>
 
-### 🏁 Planner head-to-head on dynamic obstacles
+<br><br>
 
-Same 50 × 50 world, same three bouncing obstacles, same perfect sensor —
-only the planner changes. n=30 episodes per configuration:
+<img src="docs/images/compare_race_oval4.gif" width="1080"><br>
+<i><b>Single bouncing intruder</b> (mode 2 cancellation): MPC 50 %,
+vanilla GPU MPPI 75 %, Smart v4 50 %. Softmax averages bimodal L/R
+escapes back toward zero motion; cluster softmax (v4) repairs it.</i>
+
+<br><br>
+
+<img src="docs/images/compare_race_gates4.gif" width="1080"><br>
+<i><b>4 moving gates</b> (mode 2-mirror): MPC 51.7 %, all softmax
+variants 3.3 %. Unimodal rollouts (one feasible gap to thread) —
+softmax wins, MPC's argmin commit goes stale between replans.</i>
+
+</details>
+
+<details>
+<summary><b>More demos</b> — aerobatic loop, multi-drone Δ-flip, AirSim</summary>
 
 <table>
-<tr>
-<td align="center"><b>straight</b><br>0.0 %</td>
-<td align="center"><b>astar</b><br>20.0 %</td>
-<td align="center"><b>rrt*</b><br>23.3 %</td>
-<td align="center"><b>chomp</b><br>53.3 %</td>
-<td align="center"><b>rrt</b><br>73.3 %</td>
-<td align="center"><b>chomp+rrt</b><br>90.0 %</td>
-<td align="center"><b>mpc (Pareto)</b><br>100.0 %</td>
-</tr>
-<tr>
-<td><img src="docs/images/cmp_straight.png" width="120"></td>
-<td><img src="docs/images/cmp_astar.png" width="120"></td>
-<td><img src="docs/images/cmp_rrt_star.png" width="120"></td>
-<td><img src="docs/images/cmp_chomp.png" width="120"></td>
-<td><img src="docs/images/cmp_rrt.png" width="120"></td>
-<td><img src="docs/images/cmp_chomp_rrt.png" width="120"></td>
-<td><img src="docs/images/cmp_mpc.png" width="120"></td>
-</tr>
-<tr>
-<td align="center">plan_dt<br>0.04 / 0.05 ms</td>
-<td align="center">plan_dt<br>4.75 / 8.97 ms</td>
-<td align="center">plan_dt<br>464 / 521 ms ⚠️</td>
-<td align="center">plan_dt<br>21.31 / 22.31 ms</td>
-<td align="center">plan_dt<br>29.99 / 64.27 ms</td>
-<td align="center">plan_dt<br>32.20 / 48.63 ms</td>
-<td align="center">plan_dt<br>52.16 / 56.96 ms</td>
-</tr>
+<tr><td><img src="docs/images/compare_aerobatic_loop4.gif" width="720"></td></tr>
+<tr><td align="center"><i>§3 mode 4 — aerobatic loop, GPU MPPI delivers 84 % tighter phase sync.</i></td></tr>
+<tr><td><img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" width="720"></td></tr>
+<tr><td align="center"><i>§3 mode 1 — joint tied at 78 / 77 %, Δ over indep⁴ +0.8 vs <b>+11.4 pp</b>.</i></td></tr>
+<tr><td><img src="docs/images/compare_airsim_multi_obstacles.gif" width="720"></td></tr>
+<tr><td align="center"><i>AirSim multi-drone FPV — MPC vs GPU MPPI through the same Blocks scenario.</i></td></tr>
 </table>
 
-A* sees only a snapshot at replan time and walks into where the bouncing
-obstacles will be 0.2 s later — 20 %. **RRT (continuous-space sampling)
-beats grid A* by +53 pp at similar compute** — the path is not constrained
-to the 8-connected lattice, so straight-line edges across open space
-move the drone past obstacles before they cross. MPC at the Pareto
-config (`n_samples=16, horizon=20`) is the only planner with explicit
-motion prediction and clears every episode.
-
-**CHOMP slots in the middle (53.3 %) and is the cheapest non-trivial
-planner of the lot — 21.3 ms ± 0.12, p95 22.3 ms — beating both RRT and
-MPC on per-replan compute**. The smoothness term keeps trajectories
-short and tight (47.6 ± 8.2 m vs RRT's typical zigzag) but local
-optimisation cannot tunnel through obstacles the straight-line init
-crosses, capping success below RRT's continuous-space sampling.
-
-**Layering RRT init under the CHOMP smoother (`init: rrt`) jumps
-success to 90.0 % [74.4, 96.5] at +50 % compute — second only to
-MPC, beating plain RRT by +17 pp at *cheaper* per-replan cost (32 ms
-vs 30 ms mean, but 49 ms vs 64 ms p95)**. RRT contributes
-probabilistic completeness, CHOMP contributes smoothness, and
-stacking them gets both — a strict layering win, with the same
-Pareto-saturation lesson as the rest of the table: the layer wins
-only because it stays inside the replan budget.
-
-**Counter-intuitively, RRT\* loses to plain RRT here.** Asymptotic
-optimality costs ~15× the per-replan compute (464 ms mean vs 30 ms),
-which is 2.3× the 200 ms replan period — every replan arrives late, so
-the drone follows stale plans into moving obstacles. Optimality cannot
-beat freshness in a dynamic scenario unless the optimization fits the
-replan budget. Same Pareto-saturation trap the 2D MPC re-validation
-saga uncovered, just on the search side.
-
-> Reproduce: `uav-nav run examples/exp_compare_{straight,astar,rrt,rrt_star,chomp,chomp_rrt,mpc}.yaml`,
-> then `uav-nav compare results/cmp_straight results/cmp_astar results/cmp_rrt_star results/cmp_chomp results/cmp_rrt results/cmp_chomp_rrt results/cmp_mpc`.
-
-### More studies — see [docs/findings.md](docs/findings.md)
-
-Each finding lives in the comment header of the YAML that produces it,
-plus a long-form write-up in [`docs/findings.md`](docs/findings.md).
-Grouped by theme:
-
-**Pareto cells & methodology**
-- **MPC Pareto** (2D + 3D) — `n_samples × horizon` sweep; the 3D
-  `plan_dt` blow-up was a missing cost-to-go cache, not a CPU cliff.
-- **3D perception-latency cliff** — same corner shape as 2D, softened
-  by escape volume; velocity_window optimum *inverts* (window=1, not 5).
-- **Pareto config rewrites prior conclusions** — methodological
-  lesson on always re-validating ablations at the planner's Pareto cell.
-
-**GPU MPPI vs CPU MPC**
-- **GPU MPPI Pareto** (2D + 3D, `gpu_mppi` on CUDA) — a goal-mask
-  bug fix unlocked long horizons; the 3D Pareto cell (n=64-256,
-  h=20 → 100 %) dominates the CPU MPC baseline (88 % / 70 ms) at
-  3.5 ms steady-state.
-- **Multi-drone Δ-flip** (n=100 paired, dummy_3d) — joint success
-  tied (78.0 vs 77.0 %), coordination Δ over indep⁴ separates:
-  MPC **+0.8 pp** vs GPU MPPI **+11.4 pp** (failures cluster
-  within seeds). Same joint rate, very different failure shape.
-- **Temperature ablation** (3D Pareto cell) — softmax T sweep;
-  the CPU-MPPI temperature rules of thumb don't transfer to GPU.
-
-**Multi-drone coordination**
-- **Multi-drone N-scaling** — peer prediction correlates failures
-  the right way (+14.7 pp Δ over indep at N=4); ablating prediction
-  costs as much per-drone success as 8× obstacle density (49 pp).
-- **AirSim multi-drone Δ-flip portability** (n=30 paired × 3 cells:
-  `exp_airsim_multi_{n30,mid_n30,uniform_n30}*.yaml`) — bimodal
-  response. ±2-4 m and ±1 m staggered: both planners 100 % joint.
-  Uniform z=30: MPC holds **46.7 %** joint; GPU MPPI **collapses to
-  0/30** (McNemar paired exact p ≈ 0.00012). Trajectory-spread
-  signal preserved across all cells (GPU/MPC 4-27 × ratio) — the
-  softmax mechanism is universal, but the failure-level Δ can't
-  register on no-obstacle scenarios. **GPU MPPI is not a drop-in
-  MPC replacement at tight-coupling geometries.**
-
-**Sim transferability & ROS 2**
-- **AirSim vs dummy_3d** — same plan, different physics: latency
-  cliff transfers but is softened by SimpleFlight's velocity controller.
-- **AirSim + GPU MPPI parity** (single-drone) — planner portable to
-  Blocks, but dummy_3d's 20× plan-time edge collapses to <5 % on
-  AirSim because sim-side overhead dominates.
-- **ROS 2 bridge** — Twist + Odometry round-trip, sim-time anchoring,
-  AirSim-over-ROS-2 parity harness via `compare_spatial_runs.py`.
-
-**Other**
-- **Planner head-to-head** (table above) — RRT beats grid A* by
-  +53 pp at similar compute; CHOMP+RRT-init beats RRT by +17 pp at
-  *cheaper* compute; RRT\* loses to plain RRT because it runs
-  2.3× the replan budget.
-- **Wind miscalibration** — +73 pp swing from awareness at one
-  cell, no belief beats `sim_wind > max_speed` physics.
-- **Perception-latency saga** — four steps including an honest
-  negative result on Kalman ego.
-- **Bridge fix: pause-after-reset** — the multi-drone reset path
-  used to leave AirSim's collision flag set at t=0; fixed by
-  pausing immediately after `client.reset()`. Uncovered during the
-  n=30 paired study.
+</details>
 
 ## ✅ Status
 
-- **v0.1.0** released; GitHub Actions CI on Python 3.10 / 3.11 / 3.12
-  + a CLI smoke job.
-- **6 sensor backends** (`perfect`, `delayed`, `kalman_delayed`, `lidar`, `pointcloud_occupancy`, `depth_image_occupancy`),
-  **3 predictor backends** (`constant_velocity`, `noisy_velocity`,
-  `kalman_velocity`), **9 planners** (`astar`, `straight`, `mpc`, `mppi`,
-  `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`), **4 scenarios**
-  (`grid_world`, `voxel_world`, `multi_drone_grid`, `multi_drone_voxel`).
-- All ablation results are reproducible from the example YAMLs by
-  copy-pasting one `uav-nav sweep ...` line.
+v0.1.0 released; CI on Python 3.10 / 3.11 / 3.12. 6 sensors,
+3 predictors, 9 planners, 5 scenarios. All ablation results are
+reproducible from the example YAMLs by copy-pasting one
+`uav-nav sweep ...` line.
 
-External backends:
+**External backends:**
 
-**AirSim** (`uav_nav_lab/sim/airsim_bridge.py`, install via
-`pip install airsim`) — end-to-end ENU ↔ NED bridge with
-`simPause` + `simContinueForTime` for deterministic stepping. The
-bridge is sensor-agnostic — sensors and perception sit in their
-own backends and consume what the bridge surfaces:
-
-- **LiDAR**: `lidars: [name, …]` → `getLidarData()` →
-  `state.extra["lidar_points"][name]`. Pair with the
-  `pointcloud_occupancy` sensor to rasterize into an occupancy grid.
-- **Cameras**: `cameras: [{name, image_type}, …]` → `simGetImages()` →
-  `state.extra["camera_images"][name]`. With
-  `output.save_camera_frames: true`, `uav-nav video <run_dir>`
-  ffmpegs them into per-camera MP4s.
-- **Depth**: `depths: [{name, fov_deg, width, height}, …]` →
-  same call with `pixels_as_float=True` →
-  `state.extra["depth_images"][name]`. Pair with `depth_image_occupancy`.
-- **Multi-drone**: `simulator.vehicles: [Drone1, …]` paired with
-  `multi_drone_voxel`. One bridge per drone; only the master
-  advances AirSim's shared clock, peers queue `moveByVelocityAsync`
-  while paused. See `examples/exp_airsim_multi_demo.yaml`.
-- A mock-injectable client makes the ENU/NED math CI-testable
-  without an AirSim install.
-
-**ROS 2** (`uav_nav_lab/sim/ros2_bridge.py`, requires `rclpy`) —
-publishes `geometry_msgs/Twist` on `/cmd_vel`, subscribes to
-`nav_msgs/Odometry` on `/odom` (and optional `std_msgs/Bool` on
-`/collision`), spins once per `dt`. Frames default to ENU per
-REP-103; set `frame: ned` for NED-speaking wrappers.
-
-- **AirSim over ROS 2**: `cmd_msg_type: airsim_vel_cmd` publishes
-  AirSim's ROS wrapper velocity message. `exp_airsim_ros2.yaml`
-  exercises AirSim through ROS 2 against the direct bridge —
-  spatial agreement checked via
-  `scripts/compare_spatial_runs.py`.
-- **LiDAR + cameras**: `sensor_msgs/PointCloud2` / `sensor_msgs/Image`
-  subscriptions populate the same `state.extra` keys as the AirSim
-  bridge, so the perception sensors (`pointcloud_occupancy` etc.)
-  consume both backends with no code change.
-- **Sim-time anchoring**: `use_sim_time: true` (+ optional
-  `clock_topic` and `sim_time_wall_timeout`) anchors `state.t` on
-  `/clock`, so PX4-SITL fast-forward and Gazebo `--lockstep` speed
-  the experiment by the same factor as the sim. The wall-clock
-  timeout protects the runner from a paused or crashed sim.
-- Mock-injectable adapter is CI-testable without `rclpy`.
-
-## 🗺️ Roadmap
-
-- **AirSim Δ-flip discriminating cell** — the dummy_3d multi-drone
-  Δ-flip (+11.4 pp) is bracketed but not directly measured on AirSim
-  across three altitude-stagger cells: ±2-4 m / ±1 m at ceiling,
-  uniform z=30 below the floor. Landing in the per-drone 60-90 %
-  band needs added Blocks static obstacles — either a lower-altitude
-  variant (z ≈ 8 where Blocks cubes are dense) or a perception path
-  with `LidarFront` on all drones + `pointcloud_occupancy`.
-- **AirSim multi-drone reset hang** — Blocks' RPC handler wedges
-  after 1-2 sequential multi-drone `client.reset()` calls. Worked
-  around with `scripts/run_airsim_multi_chunked.sh` (per-episode
-  Blocks bounce); root cause appears to be inside AirSim itself,
-  worth filing upstream.
-- **AirSim cliff limit case** — push `exp_airsim_latency_limit.yaml`
-  toward higher speed and obstacle density to find whether the
-  dummy_3d latency cliff reappears beyond SimpleFlight's smoothing
-  regime.
-- **AirSim-over-ROS-2 wrapper reset/teleport** — add a wrapper-
-  specific reset path so repeated ROS 2 episodes can start from the
-  same pose without manual scene setup.
+- **AirSim** (`uav_nav_lab/sim/airsim_bridge.py`) — ENU ↔ NED bridge
+  with deterministic stepping (`simPause` + `simContinueForTime`),
+  multi-vehicle, LiDAR / cameras / depth, mock-injectable client for
+  CI. See `examples/exp_airsim_*.yaml`.
+- **ROS 2** (`uav_nav_lab/sim/ros2_bridge.py`, requires `rclpy`) —
+  Twist + Odometry round-trip, sim-time anchoring via `/clock`,
+  AirSim-over-ROS-2 parity. See `examples/exp_ros2*.yaml`.
 
 ## 📄 License
 
