@@ -335,6 +335,62 @@ static planner cell.
 Live render: `docs/images/compare_race_oval4.gif` (hero, 3-pane
 side-by-side with overlaid rollout cloud).
 
+### Mirror-image of the cancellation regime: moving-gates race
+
+The single-intruder race establishes that softmax averaging *hurts*
+when the rollout cloud is bimodal (mode 2). The complementary claim —
+that softmax averaging *helps* when the rollout cloud is unimodal —
+needs a scenario where the geometry forces all sample weight onto a
+single feasible escape. We construct it by replacing the bouncing
+intruder with **4 paired sliding gates** at the NE/NW/SW/SE corners
+of the same 12 × 8 m oval. Each gate is two posts (radius 0.5 m, gap
+centred at $y = 26$ or $y = 14$) that share a vertical velocity
+(desynchronised across gates at 1.6 / 1.8 / 2.0 / 2.2 m/s); both
+posts slide together so the gap moves while the gap width stays
+constant. The drone has exactly **one** feasible lateral target per
+gate — the moving gap centre, not either post. YAMLs:
+`examples/exp_race_gates4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
+
+Paper-grade $n = 30$:
+
+| planner          | tracking RMSE | phase RMSE | collisions (drone-eps) |
+|---|---|---|---|
+| MPC              | **1.620 m**   | **14.52°** | 62/120 (51.7 %)        |
+| vanilla GPU MPPI | 1.648 m       | 15.88°     | **4/120 (3.3 %)**      |
+| Smart MPPI v4    | 1.709 m       | 15.94°     | **4/120 (3.3 %)**      |
+| Smart MPPI v5    | 1.749 m       | 15.78°     | **4/120 (3.3 %)**      |
+
+This is the **mirror image** of the single-intruder race. There,
+vanilla GPU MPPI sat at $75\,\%$ collisions while MPC held at
+$50\,\%$ — bimodal rollouts × softmax = cancellation. Here, vanilla
+GPU MPPI sits at $3.3\,\%$ collisions while MPC inflates to
+$51.7\,\%$ — unimodal rollouts × argmin = stale commit. Same code
+on each side, the topology of the rollout cloud is what flips the
+winner. The cluster-softmax variants (v4) and the lateral-gated
+switcher (v5) both keep softmax behaviour on this scenario (v5's
+lateral-cancellation gate never fires because the cancellation
+signature is absent), confirming that the mode-aware machinery is
+*scenario-safe* — it doesn't degrade a winning regime in order to
+fix a losing one.
+
+MPC's failure mode is the dual of vanilla GPU MPPI's failure on the
+bouncing-intruder cell: the argmin sample at each replan picks
+whichever individual rollout looks cheapest *this step*, and because
+the gap moves during the planner cycle the committed rollout becomes
+stale before the next replan. Across 30 episodes MPC loses 62
+drone-eps (just over half) while the three softmax variants clear
+116/120. The deployment recommendation therefore extends: not only
+is the right planner mode-dependent (modes 1-4 above), it is also
+**rollout-cloud-topology-dependent** within a single mode — pick the
+softmax aggregator when escape volumes are unimodal, the argmin
+commit when they are bimodal and you have a way to break symmetry
+(v4's cluster split, or the scenario itself).
+
+Live render: `docs/images/compare_race_gates4.gif` (4-pane
+side-by-side, MPC vs vanilla GPU MPPI vs Smart v4 vs Smart v5).
+Full table and per-seed attribution: findings.md "Moving-gates
+race: the mirror image".
+
 ### Reproduce maps
 
 Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
@@ -347,6 +403,11 @@ Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 `examples/exp_airsim_multi_discriminating_n30{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_discriminating_central_n30{,_gpu_mppi}.yaml`
 (base_ew06, §4.4.4),
+`examples/exp_race_oval4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5,gpu_mppi_asym}.yaml`
+(bouncing-intruder race),
+`examples/exp_race_gates4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
+(moving-gates race, mirror image),
 `scripts/paired_analysis_airsim_multi.py`,
 `scripts/paired_analysis_dummy_3d_multi.py`,
+`scripts/paired_analysis_aerobatic.py`,
 `scripts/run_airsim_multi_chunked.sh`.

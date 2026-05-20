@@ -45,6 +45,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
 - [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
 - [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
+- [Moving-gates race: the mirror image — softmax wins where it lost the single-intruder race](#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
 - [Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
@@ -2636,6 +2637,93 @@ python3 scripts/render_race_gif.py \
          results/race_oval4_gpu_mppi_smart_v4:"Smart MPPI v4" \
   --out docs/images/compare_race_oval4.gif \
   --ep 0 --fps 10 --stride 8 --trail 30
+```
+
+
+### Moving-gates race: the mirror image — softmax wins where it lost the single-intruder race
+
+Same oval geometry as the bouncing-intruder race above (4 drones, 12 ×
+8 m oval, 12 s period, 2 laps = 24 s) but the single intruder is
+replaced by **4 sliding gates** at the NE/NW/SW/SE corners of the
+oval. Each gate is two posts (radius 0.5 m, gap centre at y = 26 or
+y = 14 at t = 0) that share a vertical velocity; both posts slide
+together in y so the gap moves while keeping a fixed gap width. Gate
+velocities are deliberately desynchronised (1.8 / 2.0 / 2.2 / 1.6 m/s)
+so the encounter timing per lap drifts instead of repeating. YAMLs:
+`examples/exp_race_gates4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
+
+With paper-grade $n = 30$:
+
+| planner                   | tracking RMSE | max error | phase RMSE | collisions (drone-eps) |
+|---|---|---|---|---|
+| MPC                       | **1.620 m**   | 2.439 m   | **14.52°** | 62/120 (51.7 %)        |
+| vanilla GPU MPPI          | 1.648 m       | **1.972 m** | 15.88°   | **4/120 (3.3 %)**      |
+| Smart MPPI v4 (mode-aware)| 1.709 m       | 2.166 m   | 15.94°     | **4/120 (3.3 %)**      |
+| Smart MPPI v5 (switcher)  | 1.749 m       | 2.137 m   | 15.78°     | **4/120 (3.3 %)**      |
+
+**This flips the cancellation-regime story.** In the single-intruder
+race above, the rollout cloud is *bimodal* (left or right escape) at
+the moment of crossing — softmax averages the two modes back toward
+zero lateral motion and GPU MPPI crashes 75 % of drone-eps; v4's
+cluster softmax repairs that. With **paired posts** the topology is
+different: the drone must thread the gap centre, and there is exactly
+**one** feasible lateral target (the moving gap, not either post).
+The rollout cloud is *unimodal* — the goal-cost basin has one
+minimum, and softmax-averaging across samples converges to it more
+robustly than MPC's hard argmin commit. **The mirror image of the
+cancellation regime**: where averaging hurt before, here it is the
+right operator.
+
+MPC's failure mode is now the dual of GPU MPPI's vanilla failure on
+the single-intruder race: the argmin sample at each replan picks
+whichever individual rollout looks cheapest *this step*, and because
+the gap moves while the drone is committing, the chosen rollout
+becomes stale before the next replan. Across 30 episodes the MPC
+loses 62 drone-eps (just over half), while all three softmax variants
+(vanilla, v4, v5) clear 116/120. That includes v5 — even though its
+lateral-cancellation gate (cf. "Smart MPPI v5") never fires on this
+scenario because the rollout cloud isn't bimodal, so v5 stays in
+vanilla-softmax mode, which is exactly what the scenario rewards.
+
+Two clean readings, one $n = 30$ run:
+
+**(1) Softmax averaging is the right operator when rollouts are
+unimodal.** This is the symmetric claim to §3 mode 2 (the failure
+mode is that softmax averages bimodal rollouts back to zero). When
+rollouts cluster around a single feasible escape, averaging gives a
+smoother command than argmin — fewer planner-step jumps, fewer
+stale-commit failures, **51.7 % → 3.3 % collisions**.
+
+**(2) Mode-aware gating doesn't hurt here.** v4 and v5 both keep the
+3.3 % collision rate of vanilla — v4 does cluster softmax aggregation
+but with unimodal rollouts the two "clusters" collapse to (almost)
+the same direction, so the output matches plain softmax. v5 detects
+no cancellation signature and stays in vanilla mode. The mode-aware
+variants are *scenario-safe*: they don't degrade vanilla-softmax wins
+in order to fix cancellation-regime losses.
+
+The hero GIF (`docs/images/compare_race_gates4.gif`) shows all four
+planners side-by-side on episode 1 — MPC loses 2 of 4 drones to gate
+collisions while all three softmax variants thread every gap.
+
+Reproduce:
+```bash
+for plan in mpc gpu_mppi gpu_mppi_smart_v4 gpu_mppi_smart_v5; do
+  uav-nav run "examples/exp_race_gates4_${plan}.yaml"
+done
+for cmp in gpu_mppi gpu_mppi_smart_v4 gpu_mppi_smart_v5; do
+  python3 scripts/paired_analysis_aerobatic.py \
+    results/race_gates4_mpc "results/race_gates4_${cmp}" 4 30
+done
+python3 scripts/render_race_gif.py \
+  --runs results/race_gates4_mpc:MPC \
+         results/race_gates4_gpu_mppi:"GPU MPPI" \
+         results/race_gates4_gpu_mppi_smart_v4:"Smart v4" \
+         results/race_gates4_gpu_mppi_smart_v5:"Smart v5" \
+  --config examples/exp_race_gates4_mpc.yaml \
+  --title "Drone race + 4 moving gates (8 sliding posts, oval circuit)" \
+  --out docs/images/compare_race_gates4.gif \
+  --ep 1 --fps 10 --stride 12 --trail 20
 ```
 
 

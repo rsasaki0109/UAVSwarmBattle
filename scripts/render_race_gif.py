@@ -44,27 +44,37 @@ def load_drones(run_dir: Path, ep: int, n_drones: int = 4) -> list[dict]:
     return drones
 
 
-def trajectory_arrays(drones: list[dict]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def trajectory_arrays(
+    drones: list[dict], T_pad: int | None = None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Returns (true_pos[D,T,3], ref_pos[D,T,3], collision_step[D]) arrays.
     `collision_step[i]` = step index where drone i first reports a
-    collision flag, or T (never) if no flag was raised."""
+    collision flag, or T (never) if no flag was raised.
+
+    When `T_pad` is given (e.g. the longest drone-episode across all
+    panes), shorter trajectories are right-padded by holding their last
+    logged position — so a planner that fails fast freezes in place
+    instead of vanishing from the GIF mid-way."""
     D = len(drones)
-    T = min(len(d["steps"]) for d in drones)
+    T_drones = min(len(d["steps"]) for d in drones)
+    T = T_pad if T_pad is not None and T_pad > T_drones else T_drones
     true_pos = np.zeros((D, T, 3))
     ref_pos = np.zeros((D, T, 3))
     collision_step = np.full(D, T, dtype=int)
     for i, d in enumerate(drones):
+        last_true = None
+        last_ref = None
         for k in range(T):
-            s = d["steps"][k]
-            true_pos[i, k] = s["true_pos"]
-            ref_pos[i, k] = s.get("reference_pos", s["true_pos"])
-            if collision_step[i] == T and s.get("collision"):
-                collision_step[i] = k
-        # Fallback: if the drone outcome says collision but no per-step
-        # flag was logged (peer-collision shortcut), pin the step to the
-        # final logged step so the visual flash still triggers at the end.
+            if k < len(d["steps"]):
+                s = d["steps"][k]
+                last_true = s["true_pos"]
+                last_ref = s.get("reference_pos", s["true_pos"])
+                if collision_step[i] == T and s.get("collision"):
+                    collision_step[i] = k
+            true_pos[i, k] = last_true
+            ref_pos[i, k] = last_ref
         if collision_step[i] == T and d.get("outcome") == "collision":
-            collision_step[i] = T - 1
+            collision_step[i] = len(d["steps"]) - 1
     return true_pos, ref_pos, collision_step
 
 
@@ -178,6 +188,12 @@ def main() -> int:
     ap.add_argument("--obstacle-vel", type=float, nargs=3, default=[0.0, 6.0, 0.0])
     ap.add_argument("--obstacle-radius", type=float, default=1.2)
     ap.add_argument("--world", type=float, nargs=3, default=[40.0, 40.0, 14.0])
+    ap.add_argument("--config", default=None,
+                    help="Optional path to scenario YAML — when given, all "
+                         "scenario.dynamic_obstacles entries are loaded and "
+                         "rendered (overrides --obstacle-* args).")
+    ap.add_argument("--title", default="Drone race (4 drones, oval circuit) + bouncing intruder",
+                    help="Title prefix shown above the panes (time stamp appended).")
     args = ap.parse_args()
 
     runs = [parse_run(r) for r in args.runs]
@@ -186,18 +202,26 @@ def main() -> int:
         raise SystemExit("--runs must list 2..4 entries")
 
     all_drones: list[list[dict]] = []
-    true_arr: list[np.ndarray] = []
-    ref_arr: list[np.ndarray] = []
-    coll_step_arr: list[np.ndarray] = []
     rollouts_per_pane: list[list[list[tuple[float, np.ndarray]]]] = []
     for run_dir, _ in runs:
         drones = load_drones(run_dir, args.ep)
         all_drones.append(drones)
-        true_p, ref_p, coll_step = trajectory_arrays(drones)
+        rollouts_per_pane.append(load_rollout_replans(drones))
+
+    # Pad shorter panes to the longest pane's timeline by holding final
+    # positions — so planners that fail fast freeze in place instead of
+    # truncating every other pane.
+    T_pad = max(
+        min(len(d["steps"]) for d in pane_drones) for pane_drones in all_drones
+    )
+    true_arr: list[np.ndarray] = []
+    ref_arr: list[np.ndarray] = []
+    coll_step_arr: list[np.ndarray] = []
+    for pane_drones in all_drones:
+        true_p, ref_p, coll_step = trajectory_arrays(pane_drones, T_pad=T_pad)
         true_arr.append(true_p)
         ref_arr.append(ref_p)
         coll_step_arr.append(coll_step)
-        rollouts_per_pane.append(load_rollout_replans(drones))
 
     # Recover oval geometry from the first run's reference trajectory
     ref0 = ref_arr[0][0]
@@ -209,15 +233,30 @@ def main() -> int:
     world = np.asarray(args.world, dtype=float)
     ox, oy, oz = oval_polyline(center, rx, ry)
 
-    # Dynamic obstacle trajectory (analytical)
+    # Dynamic obstacle trajectories (analytical). Sourced either from a
+    # config YAML (all `scenario.dynamic_obstacles` entries) or from the
+    # single-obstacle `--obstacle-*` args.
     T_max = min(t.shape[1] for t in true_arr)
-    obs_traj = obstacle_trajectory(
-        np.asarray(args.obstacle_start, dtype=float),
-        np.asarray(args.obstacle_vel, dtype=float),
-        args.dt,
-        T_max,
-        world,
-    )
+    obstacles: list[dict] = []
+    if args.config:
+        import yaml as _yaml
+        cfg = _yaml.safe_load(Path(args.config).read_text())
+        for d in cfg.get("scenario", {}).get("dynamic_obstacles", []) or []:
+            obstacles.append({
+                "start": np.asarray(d["start"], dtype=float),
+                "vel": np.asarray(d["velocity"], dtype=float),
+                "radius": float(d.get("radius", 0.5)),
+            })
+    if not obstacles:
+        obstacles.append({
+            "start": np.asarray(args.obstacle_start, dtype=float),
+            "vel": np.asarray(args.obstacle_vel, dtype=float),
+            "radius": float(args.obstacle_radius),
+        })
+    obs_trajs = [
+        obstacle_trajectory(o["start"], o["vel"], args.dt, T_max, world)
+        for o in obstacles
+    ]
 
     # How many rollout polylines to pre-allocate per (pane, drone). Read
     # the first non-empty rollout cloud to size the pool.
@@ -266,11 +305,19 @@ def main() -> int:
         trail_lines.append(pane_trails)
         drone_pts.append(pane_pts)
         rollout_lines.append(pane_rollouts)
-        ot, = ax.plot([], [], [], color=OBSTACLE_COLOR, linewidth=0.8, alpha=0.4)
-        op, = ax.plot([], [], [], "o", color=OBSTACLE_COLOR,
-                      markersize=16, markeredgecolor="black", markeredgewidth=0.7)
-        obs_trail_artists.append(ot)
-        obs_pt_artists.append(op)
+        pane_obs_trails: list = []
+        pane_obs_pts: list = []
+        for ob in obstacles:
+            # Marker size scales with radius so paired-post gates read
+            # smaller than the original solo intruder.
+            ms = max(6.0, 4.0 + 6.0 * ob["radius"])
+            ot, = ax.plot([], [], [], color=OBSTACLE_COLOR, linewidth=0.8, alpha=0.35)
+            op, = ax.plot([], [], [], "o", color=OBSTACLE_COLOR,
+                          markersize=ms, markeredgecolor="black", markeredgewidth=0.6)
+            pane_obs_trails.append(ot)
+            pane_obs_pts.append(op)
+        obs_trail_artists.append(pane_obs_trails)
+        obs_pt_artists.append(pane_obs_pts)
 
     title_text = fig.suptitle("", fontsize=13)
     frames = list(range(0, T_max, args.stride))
@@ -316,10 +363,12 @@ def main() -> int:
                         ln_r.set_data(empty_xyz, empty_xyz)
                         ln_r.set_3d_properties(empty_xyz)
                 artists.extend(rollout_lines[pane][i])
-            obs_trail_artists[pane].set_data(obs_traj[k0:k+1, 0], obs_traj[k0:k+1, 1])
-            obs_trail_artists[pane].set_3d_properties(obs_traj[k0:k+1, 2])
-            obs_pt_artists[pane].set_data(obs_traj[k:k+1, 0], obs_traj[k:k+1, 1])
-            obs_pt_artists[pane].set_3d_properties(obs_traj[k:k+1, 2])
+            for o_idx, otraj in enumerate(obs_trajs):
+                obs_trail_artists[pane][o_idx].set_data(
+                    otraj[k0:k+1, 0], otraj[k0:k+1, 1])
+                obs_trail_artists[pane][o_idx].set_3d_properties(otraj[k0:k+1, 2])
+                obs_pt_artists[pane][o_idx].set_data(otraj[k:k+1, 0], otraj[k:k+1, 1])
+                obs_pt_artists[pane][o_idx].set_3d_properties(otraj[k:k+1, 2])
             err = np.linalg.norm(tp[:, k, :] - ref_arr[pane][:, k, :], axis=1).mean()
             # Live collision counter: # drones whose first-collision step
             # has already passed at this frame.
@@ -332,11 +381,9 @@ def main() -> int:
             )
             artists.extend(trail_lines[pane])
             artists.extend(drone_pts[pane])
-            artists.append(obs_trail_artists[pane])
-            artists.append(obs_pt_artists[pane])
-        title_text.set_text(
-            f"Drone race (4 drones, oval circuit) + bouncing intruder   t = {t_s:.2f} s"
-        )
+            artists.extend(obs_trail_artists[pane])
+            artists.extend(obs_pt_artists[pane])
+        title_text.set_text(f"{args.title}   t = {t_s:.2f} s")
         artists.append(title_text)
         return artists
 

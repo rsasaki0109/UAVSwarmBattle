@@ -36,6 +36,31 @@ mode-aware switcher it predicted should exist.
 See <a href="docs/findings.md#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision">findings.md</a>
 and the <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a>.</i>
 
+<br><br>
+
+<img src="docs/images/compare_race_gates4.gif" alt="4-drone oval race + 4 moving gates (8 sliding posts), four planners side-by-side" width="1080">
+
+<i><b>The mirror image — softmax now wins, MPC now loses</b>
+(same oval geometry, paired n=30). The single intruder is replaced by
+<b>4 paired sliding gates</b> at the corners of the oval — each gate is
+two posts moving together so the gap drifts vertically. The drone has
+exactly <b>one</b> feasible lateral target per gate (the moving gap
+centre), so the rollout cloud is <b>unimodal</b> — and that flips the
+winner.
+<b>MPC</b> (argmin) — <b>62/120 (51.7 %)</b> drone-eps lost: the
+argmin commits to whichever individual rollout looks cheapest, but the
+gap moves during the planner cycle and the chosen rollout becomes
+stale before the next replan.
+<b>vanilla GPU MPPI</b>, <b>Smart v4</b>, <b>Smart v5</b> — all three
+clear at <b>4/120 (3.3 %)</b>. With unimodal rollouts, softmax
+averaging gives a smoother command than argmin and there is no
+cancellation regime for the mode-aware variants to gate on (v5 stays
+in vanilla mode — exactly what the scenario rewards).
+<b>The same softmax-vs-argmin operator</b> that lost the
+single-intruder race above now wins by 48 pp — the rollout-cloud
+topology, not the planner, is what selects the right aggregator.
+See <a href="docs/findings.md#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race">findings.md "Moving-gates race"</a>.</i>
+
 <details>
 <summary><b>More demos</b> — aerobatic loop, multi-drone Δ-flip headline, AirSim</summary>
 

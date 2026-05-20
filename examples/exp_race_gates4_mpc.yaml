@@ -1,0 +1,85 @@
+# Drone race with 4 moving gates (proper "drone racing" topology).
+#
+# Geometry is the same oval race as exp_race_oval4_*.yaml — 4 drones,
+# 12 × 8 m oval, 12 s period, 2 laps = 24 s — but the bouncing intruder
+# is replaced by **4 sliding gates** placed at the NE/NW/SW/SE corners
+# of the oval where the drones cross. Each gate is two posts (radius
+# 0.5 m, gap centre at y = 26 / y = 14 at t = 0) that share a vertical
+# velocity. Both posts slide together in y so the gap moves vertically
+# in the world frame; whether the gap aligns with the oval at a given
+# moment depends on the gate's velocity and phase.
+#
+# Velocities are deliberately *desynchronised* across the four gates
+# (1.8 / 2.0 / 2.2 / 1.6 m/s) so the encounter timing per lap drifts
+# instead of repeating. Each lap is a different race.
+#
+# Per-lap arithmetic: drone tangential speed at 45° angles is
+# sqrt((12 ω sin)² + (8 ω cos)²) at θ ∈ {π/4, 3π/4, ...} =
+# ω · sqrt(72 + 32) = ω · 10.2 ≈ 5.3 m/s, so the drone spends ~1 s
+# inside the gap window at each gate; the gate's gap centre drifts
+# 1.6-2.2 m in that second — about a full radius of slack. Tight but
+# not impossible.
+name: race_gates4_mpc
+seed: 42
+num_episodes: 30
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 12.0
+  radius_y: 8.0
+  period: 12.0
+  n_loops: 2
+  normal_axis: z
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    # Gate NE (corner near x=28, y≈26). Slides up; gap centre starts at y=26.
+    - {start: [28.0, 23.0, 7.0], velocity: [0.0, 1.8, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 29.0, 7.0], velocity: [0.0, 1.8, 0.0], reflect: true, radius: 0.5}
+    # Gate NW (x=12, y≈26).
+    - {start: [12.0, 23.0, 7.0], velocity: [0.0, 2.0, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 29.0, 7.0], velocity: [0.0, 2.0, 0.0], reflect: true, radius: 0.5}
+    # Gate SW (x=12, y≈14). Slides down.
+    - {start: [12.0, 11.0, 7.0], velocity: [0.0, -2.2, 0.0], reflect: true, radius: 0.5}
+    - {start: [12.0, 17.0, 7.0], velocity: [0.0, -2.2, 0.0], reflect: true, radius: 0.5}
+    # Gate SE (x=28, y≈14).
+    - {start: [28.0, 11.0, 7.0], velocity: [0.0, -1.6, 0.0], reflect: true, radius: 0.5}
+    - {start: [28.0, 17.0, 7.0], velocity: [0.0, -1.6, 0.0], reflect: true, radius: 0.5}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 480
+  max_accel: 80.0
+  goal_radius: 0.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  ctg_cache_tolerance: 3
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/race_gates4_mpc
