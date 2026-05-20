@@ -326,12 +326,13 @@ def main() -> int:
         pane_obs_trails: list = []
         pane_obs_pts: list = []
         for ob in obstacles:
-            # Marker size scales with radius so paired-post gates read
-            # smaller than the original solo intruder.
-            ms = max(6.0, 4.0 + 6.0 * ob["radius"])
+            # Tetris-block style: filled square marker scaled by radius.
+            # Solid black border + bright red fill reads as "block" at
+            # thumbnail size, where a small circle would look like a dot.
+            ms = max(10.0, 6.0 + 12.0 * ob["radius"])
             ot, = ax.plot([], [], [], color=OBSTACLE_COLOR, linewidth=0.8, alpha=0.35)
-            op, = ax.plot([], [], [], "o", color=OBSTACLE_COLOR,
-                          markersize=ms, markeredgecolor="black", markeredgewidth=0.6)
+            op, = ax.plot([], [], [], "s", color=OBSTACLE_COLOR,
+                          markersize=ms, markeredgecolor="black", markeredgewidth=1.0)
             pane_obs_trails.append(ot)
             pane_obs_pts.append(op)
         obs_trail_artists.append(pane_obs_trails)
