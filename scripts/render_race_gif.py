@@ -325,15 +325,16 @@ def main() -> int:
         ref_line_artists.append(pane_ref_lines)
         pane_obs_trails: list = []
         pane_obs_pts: list = []
+        # Render each obstacle as a square sized to match its physical
+        # radius (in world units, projected to point-space). The world is
+        # 40 m wide and each pane is `pane_w` inches at 100 dpi, so 1 m
+        # ≈ 2.5 * pane_w points. Sphere diameter in pts ≈ 5 * pane_w * r.
+        px_per_m = 2.5 * pane_w
         for ob in obstacles:
-            # Tetris-block style: filled square marker, sized so each
-            # block reads at thumbnail. Aggressive scaling so radius
-            # 0.5 gates and radius 1.2 intruders both look like clear
-            # blocks rather than dots.
-            ms = max(22.0, 14.0 + 24.0 * ob["radius"])
+            ms = max(6.0, 2.0 * ob["radius"] * px_per_m)
             ot, = ax.plot([], [], [], color=OBSTACLE_COLOR, linewidth=0.8, alpha=0.35)
             op, = ax.plot([], [], [], "s", color=OBSTACLE_COLOR,
-                          markersize=ms, markeredgecolor="black", markeredgewidth=1.4)
+                          markersize=ms, markeredgecolor="black", markeredgewidth=1.0)
             pane_obs_trails.append(ot)
             pane_obs_pts.append(op)
         obs_trail_artists.append(pane_obs_trails)
