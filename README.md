@@ -12,14 +12,15 @@ every example YAML carries its own validated finding.**
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_dyn4.gif" alt="4-drone oval race + 4 path-intersecting intruders, four planners side-by-side" width="1080">
+<img src="docs/images/compare_race_gates4.gif" alt="4-drone oval race + 4 moving gates, four planners side-by-side, MPC loses 2/4 drones while softmax clears" width="1080">
 
-<i>4 drones lap an oval (dashed) while 4 intruders cross their paths.
-Colored trail = actual route, open ring = where the drone <i>would</i>
-be if tracking exactly. Trails visibly bend off the oval to dodge —
-every planner clears the avoidance, and softmax variants track 0.10 m
-tighter than MPC on 120/120 paired drone-episodes.
-&nbsp;<a href="docs/findings.md">More heroes (mode 2 / 2-mirror / chaos)</a>
+<i>4 drones lap an oval while <b>4 sliding gates</b> close around them.
+Same planner stack, same seed, only the rollout aggregator changes.
+<b>MPC's argmin commit goes stale between replans — 51.7 % drone-eps
+lost.</b> The three softmax variants clear at <b>3.3 %</b>: averaging
+across a unimodal rollout cloud is exactly the right operator when the
+geometry has one feasible gap to thread.
+&nbsp;<a href="docs/findings.md">More heroes (mode 2 / dyn4 / chaos)</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
 </div>
@@ -122,12 +123,15 @@ Headline themes:
   against ablating off-Pareto.
 
 <details>
-<summary><b>Companion hero GIFs</b> — chaos / single intruder / gates</summary>
+<summary><b>Companion hero GIFs</b> — dyn4 / single intruder / chaos</summary>
 
-<img src="docs/images/compare_race_chaos.gif" width="1080"><br>
-<i><b>Chaos race</b> (gates + 2 intruders, n=30): MPC 51.7 % collisions,
-softmax variants 3.3 %. Gate topology dominates the cloud structure;
-the intruders ride along inert.</i>
+<img src="docs/images/compare_race_dyn4.gif" width="1080"><br>
+<i><b>dyn4 path-intersecting intruders</b> (controlled avoidance harness,
+n=30). 4 intruders engineered to cross each drone's segment of the
+oval. Open-ring overlay shows where each drone <i>would</i> be on the
+oval; the colored trail bends off the dashed line to dodge. All
+planners clear at 3.3 %, softmax variants track 0.10 m tighter than
+MPC on 120/120 paired drone-episodes (§3 mode 4 under dynamic load).</i>
 
 <br><br>
 
@@ -138,10 +142,10 @@ escapes back toward zero motion; cluster softmax (v4) repairs it.</i>
 
 <br><br>
 
-<img src="docs/images/compare_race_gates4.gif" width="1080"><br>
-<i><b>4 moving gates</b> (mode 2-mirror): MPC 51.7 %, all softmax
-variants 3.3 %. Unimodal rollouts (one feasible gap to thread) —
-softmax wins, MPC's argmin commit goes stale between replans.</i>
+<img src="docs/images/compare_race_chaos.gif" width="1080"><br>
+<i><b>Chaos race</b> (gates + 2 intruders, n=30): MPC 51.7 %,
+softmax variants 3.3 %. Gate topology dominates the cloud structure;
+the bouncing intruders ride along inert.</i>
 
 </details>
 
