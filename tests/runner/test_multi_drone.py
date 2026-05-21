@@ -150,3 +150,81 @@ def test_multi_drone_voxel_runs_and_logs(tmp_path: Path) -> None:
     drone_logs = sorted(run_dir.glob("episode_*_drone_*.json"))
     assert len(drone_logs) == 2  # 1 episode × 2 drones
     assert (run_dir / "episode_000_joint.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Characterization tests for the helpers extracted by the multi.py split.
+# Lock down current behaviour so the refactor preserves the contract.
+# ---------------------------------------------------------------------------
+
+
+def test_peers_view_filters_self_and_zeros_finished_velocity() -> None:
+    """`_peers_view` returns the *other* drones' true poses, with finished
+    peers reported at zero velocity (the simplest reasonable 'stuck' model)."""
+    from types import SimpleNamespace
+    from uav_nav_lab.runner.multi import _peers_view
+
+    states = [
+        SimpleNamespace(position=np.array([0.0, 0.0]), velocity=np.array([1.0, 2.0])),
+        SimpleNamespace(position=np.array([5.0, 5.0]), velocity=np.array([3.0, 4.0])),
+        SimpleNamespace(position=np.array([9.0, 9.0]), velocity=np.array([7.0, 8.0])),
+    ]
+    radii = [0.4, 0.5, 0.6]
+    finished = [False, True, False]
+
+    peers = _peers_view(states, radii, finished, me=0)
+
+    # me=0 filtered out → 2 peers remain.
+    assert len(peers) == 2
+    # peer at index 1 is finished → velocity zeroed.
+    assert peers[0]["position"] == [5.0, 5.0]
+    assert peers[0]["velocity"] == [0.0, 0.0]
+    assert peers[0]["radius"] == 0.5
+    # peer at index 2 is alive → velocity passed through.
+    assert peers[1]["position"] == [9.0, 9.0]
+    assert peers[1]["velocity"] == [7.0, 8.0]
+    assert peers[1]["radius"] == 0.6
+
+
+def test_check_peer_collision_pairwise_inflation() -> None:
+    """Two drones within (drone_radius + peer_radius) overlap → both flagged."""
+    from types import SimpleNamespace
+    from uav_nav_lab.runner.multi import _check_peer_collision
+
+    # Drones 0 and 1 are at distance 0.6 with combined radii 0.7 → collide.
+    # Drones 0 and 2 are at distance 5 with combined radii 0.7 → safe.
+    states = [
+        SimpleNamespace(position=np.array([0.0, 0.0])),
+        SimpleNamespace(position=np.array([0.6, 0.0])),
+        SimpleNamespace(position=np.array([5.0, 0.0])),
+    ]
+    radii = [0.35, 0.35, 0.35]
+    hit = _check_peer_collision(states, radii, drone_radius=0.35)
+    assert hit == [True, True, False]
+
+
+def test_build_multi_rejects_vehicles_count_mismatch() -> None:
+    """`simulator.vehicles` must match `scenario.n_drones` if provided."""
+    from uav_nav_lab.runner.multi import _build_multi
+
+    cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone.yaml")
+    cfg.simulator["vehicles"] = ["Drone1"]  # scenario has 2 drones
+    with pytest.raises(ValueError, match="simulator.vehicles"):
+        _build_multi(cfg)
+
+
+def test_build_multi_assigns_per_drone_components() -> None:
+    """`_build_multi` returns (scenario, sims, planners, sensors) with
+    one entry per drone, and only sim 0 advances the shared scenario."""
+    from uav_nav_lab.runner.multi import _build_multi
+
+    cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone.yaml")
+    scenario, sims, planners, sensors = _build_multi(cfg)
+    n = scenario.n_drones
+    assert len(sims) == n
+    assert len(planners) == n
+    assert len(sensors) == n
+    # Only sim 0 advances the scenario; the rest are passive.
+    advance_flags = [getattr(s, "_advance_scenario", True) for s in sims]
+    assert advance_flags[0] is True
+    assert all(f is False for f in advance_flags[1:])
