@@ -61,13 +61,13 @@ The headline multi-drone study (§3) uses `multi_drone_voxel` at
 N = 4, with the four drones flying a cross-pattern (east/west and
 north/south pairs starting at opposite faces and converging on the
 volume centre). The volume is 40 × 40 × 12 cells with 30 random
-static obstacles. The §3 dynamic-obstacle extension (Table 2) re-uses
-the same N=4 cell and adds one moving sphere on the north drone's
-corridor at $v \in \{2, 4, 8\}$ m/s via `multi_drone_voxel`'s
-`dynamic_obstacles` field (linear-motion `_DynamicObstacle3D` objects
-with optional wall reflection). The (N, density) grid sweep
-referenced by §6 varies N ∈ {2, 3, 4, 6, 8, 10, 12} and obstacle
-count ∈ {30, 120, 240} on the same crossing geometry. The AirSim
+static obstacles. The retracted §3 dynamic-obstacle extension re-used
+the same N=4 cell through `multi_drone_voxel`'s `dynamic_obstacles`
+field, but the corresponding claims are retracted after the
+`1646e11` dynamic-obstacle freeze fix and are not part of the current
+paper-grade result set. The (N, density) grid sweep referenced by §6
+varies N ∈ {2, 3, 4, 6, 8, 10, 12} and obstacle count ∈ {30, 120, 240}
+on the same crossing geometry. The AirSim
 transferability checks (§4.4) use `multi_drone_voxel` on a
 60 × 60 × 40 volume with the four drones crossing at altitudes
 26-32 m, well above the Blocks env's ground geometry. Configurations

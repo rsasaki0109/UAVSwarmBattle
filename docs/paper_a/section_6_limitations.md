@@ -91,57 +91,17 @@ behaviour; it is one paired cell, not an AirSim-wide statement.
 Mapping the (N, density, drone-count symmetry) surface across
 non-circular geometries and at finer resolution remains future work.
 
-A separate axis we probed only at one cell is **obstacle dynamics**.
-Extending the §3 N=4 baseline by adding one moving sphere obstacle
-($(20, 5, 6)$, velocity $(0, +v, 0)$, $v \in \{2, 4, 8\}$ m/s; full
-table in findings.md "dummy_3d N=4 + moving obstacle speed sweep")
-collapses GPU MPPI's joint success from 86.7 % (§3) to **3.3 %** at
-$v=2$ m/s, while MPC holds at 73 %; at $v=4$ the same pattern repeats
-(GPU 3.3 %, MPC 80 %); at $v=8$ both planners collapse to the 3.3 %
-floor. The GPU MPPI failure is deterministic and single-drone: across
-all v=2/4 GPU MPPI failures, only drone idx 2 (north, whose corridor
-the obstacle moves along) collides, at $t \approx 4.9-5.2$ s. The
-mechanism is the same softmax-averaging operator §3 describes, but
-now expressing as **bidirectional avoidance cancellation**: half the
-rollouts say "detour left", half say "detour right", the softmax
-mean lateral command is near zero, and the drone slows in the
-central corridor while the obstacle catches up. MPC's argmin commits
-to one side and clears. This dynamic-obstacle cell is therefore the
-*opposite* deployment story from §3: under moving obstacles GPU
-MPPI's softmax conservatism is no longer a coordination liability —
-it is a generalised brittleness to any obstacle-avoidance situation
-that admits two symmetric escape directions. The finding is from one
-trajectory geometry, one $(N, \text{density})$ corner, and one moving
-obstacle; like the static-grid mechanism, the *qualitative* story
-(softmax cancels bidirectional commits) is the robust claim and the
-absolute magnitudes are corner-specific.
-
-Three probes sharpen the mechanism's scope further. **Off-corridor
-probe**: moving the obstacle from $x=20$ (on the north corridor) to
-$x=15$ (5 m offset) at $v=4$ m/s restores the §3 static baseline
-exactly — per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$
-$-1.0$/$+5.2$ pp, $p=1.00$. The dynamic failure mode is **specific
-to obstacle-on-corridor alignment**. **Two-obstacle compound probe**:
-placing one moving sphere on the north corridor and one on the east
-corridor at $v=4$ m/s drops both planners to the joint floor (MPC
-13.3 %, GPU 3.3 %). The cancellation mechanism applies *per corridor
-alignment*. **Off-corridor gradient probe** at $x \in \{17, 18, 19\}$
-(3, 2, 1 m offsets) maps out the transition between the on-corridor
-(GPU collapse) and off-corridor ($\geq$ 3 m, §3 baseline) regimes
-and reveals it is **non-monotonic**: at offset 2 m (i.e. $x=18$),
-MPC collapses to per-drone 69 % / joint 6.7 % while GPU MPPI holds
-at 87.5 % / 70 % (McNemar $p \approx 0$, GPU-only on 20 seeds).
-The MPC failure at offset 2 is the §3 mechanism with planner roles
-reversed: MPC's argmin oscillates between asymmetric east/west
-detour sides as the moving obstacle perturbs the cost landscape,
-freezing the drone (mean MPC final_t 23.6 s vs GPU 4.5 s); GPU
-MPPI's softmax averages the two sides into a smooth lateral command
-and clears. The combined dynamic-obstacle picture is therefore:
-**the smoothing operator helps when the argmin would commit to a
-wrong side (offset 2 m) and hurts when there is no right side to
-commit to (offset 0)**. The two regimes are adjacent in scenario
-space (a 1-2 m corridor offset flips the winner), so any deployment
-recommendation built on a single $x$ value is unsafe.
+A separate axis we attempted to probe is **obstacle dynamics**, but
+that axis is now retracted rather than merely limited. Commit
+`1646e11` fixed a multi-runner bug that could leave dynamic obstacles
+frozen after a total-wipeout episode. The former dummy_3d moving-
+obstacle sweep, Smart MPPI dynamic cells, and race / gates / chaos /
+dyn4 scenarios were measured before that fix and should be read only
+as artifact provenance. Post-fix reruns show the existing dynamic
+scenarios are generally all-planner floor cases, so the current paper
+does not claim a dynamic-obstacle mode. A future version needs a
+newly tuned cell where at least one baseline planner can win under
+moving obstacles before this axis can support a planner comparison.
 
 Finally, this paper is simulation-only. The ROS 2 bridge and
 AirSim-over-ROS-2 harness show spatial parity across software stacks,

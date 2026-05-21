@@ -101,20 +101,18 @@ shape wins; where the goal is "all or none", they're equivalent.
 
 The §3 prose now structures the section in three subsections:
 1. **Static baseline** (Table 1 above): the original Δ-flip.
-2. **Dynamic-obstacle extension** (Table 2 in
-   `section_3_headline.md`): adding one moving sphere to the same
-   N=4 cell collapses GPU MPPI joint to 3.3 % at $v=2$ m/s while MPC
-   holds at 73 %. Single-drone deterministic failure — the
-   softmax-averaging operator now expresses as bidirectional
-   avoidance cancellation rather than coordination clustering.
+2. **Dynamic-obstacle extension retraction**: the former Table 2 and
+   race/gates/dyn4 cells are pre-`1646e11` artifacts caused by the
+   multi-runner dynamic-obstacle freeze bug. This axis is now an open
+   re-tuning task, not a paper-grade result.
 3. **Sim transferability** (forward to §4.4): four AirSim regimes
    with the AirSim base_ew06 cell adding sign-reversed corner.
 
 The "combined reading" reframes GPU MPPI's softmax as **one
-smoothing operator with three regime-specific failure modes**:
-static-peers clustering, dynamic-obstacle cancellation, sim-physics
-sign-reversal. Deployment story is regime-dependent, not "GPU MPPI
-is better".
+smoothing operator with three currently valid mode expressions**:
+static-peers clustering, sim-physics sign-reversal, and aerobatic
+precision. Deployment story is regime-dependent, not "GPU MPPI is
+better"; the dynamic-obstacle mode is pending a new winnable cell.
 
 Side-by-side: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`.
 

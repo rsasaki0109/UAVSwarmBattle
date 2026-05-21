@@ -98,128 +98,22 @@ clustering signature**, not a planner-dependent winner. §6 documents
 the full grid; the N=4 baseline cell described here is the cleanest
 demonstration of the mechanism but not a universal one.
 
-## Dynamic-obstacle extension: the softmax-averaging operator under moving obstacles
+## Dynamic-obstacle extension: retracted pending re-tune
 
-Adding a *moving* obstacle to the N=4 baseline cell makes the
-softmax-averaging mechanism visible in a second failure mode that
-does not require the $\Delta$ statistic to see. We add one sphere
-obstacle at $(20, 5, 6)$, radius 0.8, moving north along $x=20$ at
-$v \in \{2, 4, 8\}$ m/s — directly along the north drone's corridor
-$(20, 3, 6) \to (20, 37, 6)$. Same paired-seed protocol (n=30 per
-cell, seeds 42-71), same static obstacles, same planner Pareto cells.
+The previous draft used a dynamic-obstacle "Table 2" and the race /
+gates / chaos / dyn4 follow-up cells as the second mode in a 4-mode
+framework. Those claims are now retracted. Commit `1646e11`
+(2026-05-21) fixed a multi-runner bug where dynamic obstacles could
+remain frozen after a total-wipeout episode. Post-fix reruns of the
+affected dynamic-obstacle scenarios collapse to 100 % collision for
+the tested planners, so the earlier "MPC 51.7 % vs GPU MPPI 3.3 %"
+and Smart MPPI v4-v5 improvements were pre-fix artifacts, not
+paper-grade planner mechanisms.
 
-**Table 2.** N=4 baseline + one moving obstacle on the north corridor.
-$v=0$ row is the §3 static baseline; $v \in \{2, 4, 8\}$ rows are
-the dynamic-obstacle cells.
-
-| $v$ (m/s) | MPC joint | GPU MPPI joint | McNemar | GPU MPPI failure attribution |
-|---|---|---|---|---|
-| 0 (static) | 78.0 % | 77.0 % | $p = 1.00$ | clustered across seeds (§3 mechanism) |
-| 2 | 73.3 % | **3.3 %** (1/30) | $p \approx 0$ | north drone, $t \approx 5.0$ s, every failed seed |
-| 4 | 80.0 % | **3.3 %** (1/30) | $p \approx 0$ | north drone, $t \approx 5.0$ s, every failed seed |
-| 8 | 3.3 % (1/30) | 3.3 % (1/30) | $p = 1.00$ | both planners floor under fast obstacle |
-
-At $v=2$ m/s GPU MPPI's joint success collapses by 74 pp against
-the §3 static baseline; at $v=4$ the collapse persists with the same
-$\sim 3.3$ % joint floor. MPC holds at 73-80 % joint over this
-range. Reading the failure attribution per-seed makes the mechanism
-transparent: in every GPU MPPI failed episode at $v \in \{2, 4\}$,
-**only the north drone collides**, and the collision time is
-$t = 0.15$ s (step 4) across all 29 of 30 failed seeds. The other
-three drones (east, west, south, all on perpendicular corridors)
-succeed in every failed episode. Episode-level `final_t` in the
-analysis tables reads as $\sim 5$ s only because the other three
-drones complete normally while drone 2 has already crashed; the
-*drone-2* failure is immediate, not late-episode.
-
-The dyn_v2 cell's immediacy is partly fortuitous: the static
-obstacle seed (`seed: 7`, count=30) happens to place a voxel
-obstacle at $(20, 5, 6)$ — the *exact* initial position of the
-moving sphere. North drone at $(20, 3, 6)$ therefore faces a
-stacked static + dynamic obstacle just 2 m ahead at $t = 0$, and
-the §3-mechanism near-zero lateral command lets it crash into the
-voxel cell within 4 steps. The off-corridor probe at $x = 18$
-(below) is the cleaner manifestation of the same mechanism without
-this incidental confound — there the cliff persists with no
-static-obstacle overlap and the role swap (MPC failing instead)
-emerges.
-
-The mechanism is the *same* softmax-averaging operator that produced
-the §3 static $\Delta$-flip, now expressed as **bidirectional
-avoidance cancellation**: when the dynamic obstacle is dead ahead
-on the north drone's corridor, half of GPU MPPI's 64 rollouts find
-escape volumes by detouring east-of-obstacle and half by detouring
-west-of-obstacle, with comparable cost. The softmax-weighted mean
-lateral command averages the two sides to near zero, the north drone
-slows in the central corridor, and the slow-moving obstacle catches
-up from behind. MPC's argmin selects the single lowest-cost rollout
-each replan, commits to one side, and clears.
-
-This is the cleanest single-drone demonstration of the §3 mechanism
-in the paper. The §3 static case manifests as a +11.4 pp $\Delta$
-over indep$^4$ — an aggregate effect across 100 paired episodes that
-requires the indep$^4$ baseline to read. The dynamic case manifests
-as **a 74-pp joint-success cliff against a single nominal change to
-the scenario** (adding one obstacle that moves at 25 % of drone
-max-speed), with a deterministic failed-drone identity tied to the
-obstacle's spatial alignment with the drone's corridor. The
-deployment consequence inverts: under static peers GPU MPPI's
-softmax conservatism is a coordination liability ($\Delta$ flip);
-under dynamic obstacles it is a single-drone catastrophic failure
-mode that MPC's argmin avoids.
-
-At $v=8$ m/s (parity with drone `max_speed`), both planners drop to
-the joint floor (3.3 %, 1/30). MPC's per-drone collapses to 50.8 %
-and the failures distribute across all four drones, with three
-seeds timing out at $t = 75$ s — the obstacle is fast enough that
-the 1-2 s lookahead in both planner cells no longer supports a
-stable detour. This $v=8$ floor establishes the dynamic regime's
-upper bound but does not change the qualitative claim: at $v=2$ m/s
-already, the $\Delta$-flip mechanism's softmax-averaging root cause
-produces a deployment-relevant failure mode.
-
-Three probes localise the mechanism. An **off-corridor probe**
-($x=15$, 5 m offset, $v=4$) restores the §3 static baseline numbers
-exactly (per-drone 95.8/95.0 %, joint 83.3/86.7 %, $\Delta$
-$-1.0$/$+5.2$ pp, $p=1.00$). GPU MPPI is not generically bad at
-moving obstacles — it fails specifically when the obstacle aligns
-with a drone's corridor and presents bidirectional escape symmetry.
-A **2-obstacle compound probe** (one obstacle each on the north and
-east corridors) drops both planners to the joint floor (MPC 13.3 %,
-GPU 3.3 %). The cancellation mechanism applies *per corridor
-alignment*. Finally, an **off-corridor gradient probe** at $x \in
-\{17, 18, 19\}$ (3, 2, 1 m offsets) traverses a regime where the
-planner roles *swap*: at offset 2 m (i.e. $x=18$) **MPC collapses**
-(per-drone 69 %, joint 6.7 %) while GPU MPPI holds (per-drone 87.5 %,
-joint 70 %, McNemar $p \approx 0$, GPU-only successes on 20 seeds).
-The MPC failure mode at offset 2 is the §3 mechanism with the planner
-roles reversed: MPC's argmin commits to one detour side (east or
-west of the obstacle), but with the obstacle offset 2 m the two
-sides have *asymmetric* static-obstacle clearance, and on hard
-seeds the argmin oscillates between sides as the obstacle moves —
-freezing the drone (mean MPC episode time 23.6 s vs GPU 4.5 s).
-GPU MPPI's softmax averages the two sides into a smooth lateral
-command and clears. The regime map is therefore non-monotonic in
-offset:
-
-| offset (m) | who fails             | mechanism                                |
-|---|---|---|
-| 0          | GPU MPPI catastrophic | softmax cancels bidirectional escape     |
-| 1          | tied, GPU slight edge | both planners stressed                   |
-| 2          | MPC catastrophic      | argmin commits to wrong side under asymmetric static clutter |
-| 3-5        | tied, GPU $\Delta$ edge | §3 static mechanism restored             |
-
-**The smoothing operator helps when the argmin would commit to a
-wrong side, and hurts when there is no right side to commit to.**
-The two regimes are adjacent in scenario space; small geometry
-changes (1-2 m corridor offset) flip the winner.
-
-Full table and per-seed attribution in findings.md "dummy_3d N=4 +
-moving obstacle speed sweep" (including all three probes). Repro
-configs:
-`examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`,
-`examples/exp_multi_drone_3d_4_dyn_{off_v4,off{1,2,3}_v4,2x_v4}{,_gpu_mppi}.yaml`,
-analysis script `scripts/paired_analysis_dummy_3d_multi.py`.
+The dynamic-obstacle axis is therefore an open design problem rather
+than a result. A valid replacement cell must first be re-tuned so it
+is winnable by at least one baseline planner under moving obstacles;
+only then can it be promoted back into §3.
 
 ## Sim transferability
 
@@ -247,23 +141,19 @@ confirms drone-drone collisions at the central crossing in MPC
 episodes).
 
 **Combined reading.** GPU MPPI's softmax conservatism is a single
-**smoothing operator on the action space** with four distinct
-modes across the regimes of this paper:
+**smoothing operator on the action space** with three currently valid
+mode expressions across the regimes of this paper:
 
 1. **Static-obstacle multi-drone clustering** (§3 N=4 baseline,
    Table 1): the operator amplifies seed-correlated peer-prediction
    noise into +11.4 pp $\Delta$ over indep$^4$, while MPC's argmin
    stays near zero. **MPC wins on Δ.**
-2. **Dynamic-obstacle bidirectional cancellation** (Table 2): the
-   operator averages out left/right avoidance commits when a moving
-   obstacle is dead ahead, collapsing the affected single drone's
-   success from ~95 % to ~3 % at $v=2$ m/s. **MPC wins.**
-3. **Sim-physics density-corner sign-reversal** (§4.4.4): at the
+2. **Sim-physics density-corner sign-reversal** (§4.4.4): at the
    N=4-dense corner of the (N, density) grid the planner roles swap
    — MPC's argmin lock-step concentrates failures across drones and
    GPU MPPI's averaging now suppresses the cluster mode.
    **GPU MPPI wins.**
-4. **Aerobatic choreography precision** (`multi_drone_aerobatic`
+3. **Aerobatic choreography precision** (`multi_drone_aerobatic`
    scenario, findings.md "Aerobatic synchronized loop"): with the
    mission goal shifted from "avoid failures" to "tight reference
    tracking + synchronized formation", the operator's smooth
@@ -274,207 +164,26 @@ modes across the regimes of this paper:
    **GPU MPPI wins decisively.**
 
 The shared structural mechanism — softmax averaging vs argmin
-commit, against a shared world model — is one operator with four
-mode expressions. The deployment story is therefore not "GPU MPPI
+commit, against a shared world model — is one operator with three
+validated mode expressions. The deployment story is therefore not "GPU MPPI
 is better" or "MPC is better" but a **mode-dependent question**:
 - *Coordination-Δ minimisation under static peers* → MPC.
-- *Avoidance commit under dynamic obstacles on corridor* → MPC.
 - *Multi-drone safety under dense static obstacles* → GPU MPPI.
 - *Choreography precision / formation flight* → GPU MPPI.
 
-The robust paper-grade claim is this **shared mechanism, four mode
+The robust paper-grade claim is this **shared mechanism, three mode
 expressions** — and the mission's metric (Δ, joint success,
 tracking RMSE, phase sync) is what selects the right planner.
 
-### Mode superposition in a single scenario: drone race + bouncing intruder
+### Dynamic-obstacle race cells: retired from §3
 
-The four modes are not mutually exclusive — a single mission can
-straddle two or more simultaneously. The cleanest live demonstration
-is `multi_drone_race` (findings.md "Drone race + bouncing intruder"):
-4 drones tracking a horizontal-oval reference (mode 4 active for all
-24 s) while a single bouncing intruder crosses the track every ~4 s
-(mode 2 active whenever the intruder enters a drone's corridor).
-Paired $n = 30$ paper-grade (unlocked by the Dijkstra cost-to-go
-cache tolerance — see "Cost-to-go cache tolerance" finding — which
-cut MPC per-episode wallclock from $\sim 9$ min to $\sim 2.4$ min and
-GPU MPPI from $\sim 12$ min to $\sim 2.3$ min). The scenario is
-seed-deterministic except for planner-internal RNG, so the failure
-pattern is seed-stable to 3 decimal places and $n = 30$ numbers
-match the $n = 5$ first cut exactly. Same hyperparameters across
-planners, only the rollout aggregation differs:
-
-- **MPC** — argmin commit. Survives the intruder ($50\,\%$ collision
-  rate, ceiling-limited by the geometric collision at $t \approx 10$ s
-  that no planner can dodge) but pays a tracking-precision tax
-  (RMSE 1.76 m).
-- **Vanilla GPU MPPI** — global softmax. Tracks tighter than MPC on
-  *every* drone-episode (RMSE 1.66 m, $-6\,\%$, phase RMSE $-0.66°$),
-  but the same softmax operator drives the bidirectional-cancellation
-  regime when the intruder enters a corridor, costing $+5$ collisions
-  ($75\,\%$ vs $50\,\%$). One operator, two opposite valences in the
-  same episode.
-- **Smart MPPI v4** (mode-aware cluster softmax) — keeps the
-  softmax-precision edge (RMSE 1.72 m, $-2.5\,\%$ vs MPC on every
-  drone-episode) and recovers MPC's $50\,\%$ collision rate by
-  committing to one lateral cluster during cancellation events.
-- **Smart MPPI v2** (asymmetric perturbation) — also tested here as
-  a parallel comparator; numbers in findings.md.
-- **Smart MPPI v5** (mode-aware switcher) — v4 gated on the actual
-  lateral-cancellation signature; on race it matches v4's safety
-  (60/120) and MPC's tracking RMSE, but on the dyn-cell sweep it
-  dominates v4 cleanly: dyn_v2 $+17$ pp, dyn_off2 $+23$ pp, baseline
-  $+13$ pp recovery toward vanilla. See "Smart MPPI v5 (mode-aware
-  switcher)" finding for the 5-cell paired table.
-
-The cell `base_ew06` on AirSim (§4.4.4) shows two-mode interaction
-across episodes (cluster mode at the central crossing × peer-prediction
-tail); the race scenario shows two-mode interaction *within a single
-24 s episode* and proves the deployment recommendation cannot be a
-static planner cell.
-
-Live render: `docs/images/compare_race_oval4.gif` (hero, 3-pane
-side-by-side with overlaid rollout cloud).
-
-### Mirror-image of the cancellation regime: moving-gates race
-
-The single-intruder race establishes that softmax averaging *hurts*
-when the rollout cloud is bimodal (mode 2). The complementary claim —
-that softmax averaging *helps* when the rollout cloud is unimodal —
-needs a scenario where the geometry forces all sample weight onto a
-single feasible escape. We construct it by replacing the bouncing
-intruder with **4 paired sliding gates** at the NE/NW/SW/SE corners
-of the same 12 × 8 m oval. Each gate is two posts (radius 0.5 m, gap
-centred at $y = 26$ or $y = 14$) that share a vertical velocity
-(desynchronised across gates at 1.6 / 1.8 / 2.0 / 2.2 m/s); both
-posts slide together so the gap moves while the gap width stays
-constant. The drone has exactly **one** feasible lateral target per
-gate — the moving gap centre, not either post. YAMLs:
-`examples/exp_race_gates4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
-
-Paper-grade $n = 30$:
-
-| planner          | tracking RMSE | phase RMSE | collisions (drone-eps) |
-|---|---|---|---|
-| MPC              | **1.620 m**   | **14.52°** | 62/120 (51.7 %)        |
-| vanilla GPU MPPI | 1.648 m       | 15.88°     | **4/120 (3.3 %)**      |
-| Smart MPPI v4    | 1.709 m       | 15.94°     | **4/120 (3.3 %)**      |
-| Smart MPPI v5    | 1.749 m       | 15.78°     | **4/120 (3.3 %)**      |
-
-This is the **mirror image** of the single-intruder race. There,
-vanilla GPU MPPI sat at $75\,\%$ collisions while MPC held at
-$50\,\%$ — bimodal rollouts × softmax = cancellation. Here, vanilla
-GPU MPPI sits at $3.3\,\%$ collisions while MPC inflates to
-$51.7\,\%$ — unimodal rollouts × argmin = stale commit. Same code
-on each side, the topology of the rollout cloud is what flips the
-winner. The cluster-softmax variants (v4) and the lateral-gated
-switcher (v5) both keep softmax behaviour on this scenario (v5's
-lateral-cancellation gate never fires because the cancellation
-signature is absent), confirming that the mode-aware machinery is
-*scenario-safe* — it doesn't degrade a winning regime in order to
-fix a losing one.
-
-MPC's failure mode is the dual of vanilla GPU MPPI's failure on the
-bouncing-intruder cell: the argmin sample at each replan picks
-whichever individual rollout looks cheapest *this step*, and because
-the gap moves during the planner cycle the committed rollout becomes
-stale before the next replan. Across 30 episodes MPC loses 62
-drone-eps (just over half) while the three softmax variants clear
-116/120. The deployment recommendation therefore extends: not only
-is the right planner mode-dependent (modes 1-4 above), it is also
-**rollout-cloud-topology-dependent** within a single mode — pick the
-softmax aggregator when escape volumes are unimodal, the argmin
-commit when they are bimodal and you have a way to break symmetry
-(v4's cluster split, or the scenario itself).
-
-Live render: `docs/images/compare_race_gates4.gif` (4-pane
-side-by-side, MPC vs vanilla GPU MPPI vs Smart v4 vs Smart v5).
-Full table and per-seed attribution: findings.md "Moving-gates
-race: the mirror image".
-
-### Mode superposition under topology dominance: chaos race
-
-Stacking mode 2 (cancellation) and mode 2-mirror (unimodal commit) on
-the same scenario tests whether the two mechanisms compose or whether
-one suppresses the other. We took the gates4 scenario and added 2
-bouncing intruders (radius 1.0 m, $v_y = \pm 5$ and $\pm 6$ m/s)
-crossing the oval interior — 10 dynamic obstacles in total. YAMLs:
-`examples/exp_race_chaos_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
-
-Paper-grade $n = 30$ results are **bit-identical to gates4**:
-MPC 62/120 collisions (51.7 %), softmax variants all at 4/120
-(3.3 %). The intruders are physically present but never enter any
-planner's active cost window, because (i) drone tangential motion at
-the oval ends sweeps them through the intruder-x band ($x = 20$) only
-during a $\sim 1$ s window per lap, (ii) at those moments the closest
-intruder is $> 3$ m away in $y$, outside the $1.4$ m clearance sum
-of intruder + drone radii. The gates' fixed corner geometry, by
-contrast, is in the active window every replan at every oval end.
-
-This is a topology-dominance result. **Hard geometric constraints
-(must-thread gates) define the rollout cloud structure; soft
-constraints (cost gradients from far-away moving obstacles) do not
-get a chance to fire the cancellation mechanism, even when they
-otherwise would.** Smart v5's lateral-cancellation gate confirms it:
-the gate never fires on the chaos scenario despite intruders being
-present, because the gate-constrained cloud is already unimodal.
-
-The methodological caution generalises to the §3 4-mode framework as
-a whole: a visually rich scenario does not automatically test more
-mechanisms. Each mechanism requires the relevant obstacles to be in
-the planner's active window. "Adding obstacles" raises difficulty
-only when they intersect the active window of every replan; outside
-of it they are dead-weight to the cost.
-
-Live render: `docs/images/compare_race_chaos.gif` (4-pane top-down
-+ 10 dynamic obstacles). Full table and per-seed attribution:
-findings.md "Drone race chaos".
-
-### Controlled avoidance harness: dyn4 path-intersecting intruders
-
-The chaos result raises the question whether the planners are
-*actually* avoiding the dynamic obstacles or merely tolerating them
-as background. We construct a complementary scenario where the
-intruders are unambiguously on every drone's path: 4 intruders
-(radius 1.2 m, $v_y$ or $v_x$ in 5-8 m/s) each bouncing on a line
-that intersects one drone's oval segment. No gates. YAMLs:
-`examples/exp_race_dyn4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`.
-
-Paper-grade $n = 30$ confirms two things at once:
-
-1. **All planners avoid the intruders.** Collision rate is tied at
-   4/120 (3.3 %) across MPC, vanilla GPU MPPI, Smart v4, and Smart
-   v5 — the only failures are the seed-42 ep 0 simultaneous chase
-   that no planner can dodge. Mean reference deviation across the
-   116 paired-success episodes is 1.7 m and max 2.7 m: drones
-   visibly swerve off the oval to clear each intruder, then
-   re-acquire. This is the validation harness for the
-   dynamic-obstacle bridge / predictor / cost gradient / replan
-   loop — call it before reading the mode-discriminating heroes.
-
-2. **§3 mode 4 fires under dynamic-obstacle stress.** With
-   collision tied at the ceiling, planners separate on tracking
-   precision *while detouring*. Vanilla GPU MPPI's softmax tracks
-   0.102 m better than MPC on **every** one of the 120 paired
-   drone-episodes — a deterministic precision win driven by
-   smoother detour commands when averaging across 64 rollouts.
-   Smart v4 lands at $-0.045$ m / 118-120, Smart v5 ties (the
-   cancellation gate never fires because the rollout cloud doesn't
-   go bimodal — each drone faces exactly one intruder at a time,
-   not the L/R symmetric escape of the single-intruder race). Mode
-   4 (precision under aerobatic-load) reproduced under dynamic
-   obstacles.
-
-This positions dyn4 as the *floor* of the §3 dynamic-obstacle
-study: a scenario where the planners' avoidance is necessary and
-sufficient, and the differentiation is purely about how smoothly
-they accomplish it. The harder scenarios (single-intruder race,
-gates, chaos) layer adversarial cloud topologies on top of this
-baseline.
-
-Live render: `docs/images/compare_race_dyn4.gif` (4-pane top-down,
-dashed reference oval overlay, visible drone swerves). Full table
-and per-seed attribution: findings.md "dyn4 path-intersecting
-intruders".
+The bouncing-intruder race, moving-gates race, chaos race, and dyn4
+path-intersecting-intruders sections were previously used to argue
+mode superposition and Smart MPPI repairs. They are no longer part of
+the paper-grade §3 result set. The YAMLs and renders remain useful as
+failure-mode regression tests and as starting points for a re-tuned
+dynamic-obstacle cell, but their pre-`1646e11` quantitative tables
+must not be cited as planner evidence.
 
 ### Reproduce maps
 
@@ -482,20 +191,10 @@ Side-by-side render: `docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif`
 (dummy_3d study), `docs/images/compare_airsim_multi_mpc_vs_gpu_mppi.gif`
 (AirSim n=1 demo). Full configs and analysis scripts:
 `examples/exp_multi_drone_3d_4{,_gpu_mppi}.yaml`,
-`examples/exp_multi_drone_3d_4_dyn_v{2,4,8}{,_gpu_mppi}.yaml`
-(dynamic-obstacle Table 2),
 `examples/exp_airsim_multi_{n30,uniform_n30}{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_discriminating_n30{,_gpu_mppi}.yaml`,
 `examples/exp_airsim_multi_discriminating_central_n30{,_gpu_mppi}.yaml`
 (base_ew06, §4.4.4),
-`examples/exp_race_oval4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5,gpu_mppi_asym}.yaml`
-(bouncing-intruder race),
-`examples/exp_race_gates4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
-(moving-gates race, mirror image),
-`examples/exp_race_chaos_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
-(chaos race, mode 2 + 2-mirror superposition with topology dominance),
-`examples/exp_race_dyn4_{mpc,gpu_mppi,gpu_mppi_smart_v4,gpu_mppi_smart_v5}.yaml`
-(dyn4 path-intersecting intruders, controlled avoidance harness),
 `scripts/paired_analysis_airsim_multi.py`,
 `scripts/paired_analysis_dummy_3d_multi.py`,
 `scripts/paired_analysis_aerobatic.py`,

@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-19 (dummy_3d N-scaling × density grid + dynamic obstacle sweep + §3 restructure)
+> 最終更新: 2026-05-21 (1646e11 dynamic-obstacle freeze fix 後の retraction / README 整理)
 
 ---
 
@@ -18,8 +18,15 @@
 - **v0.2.0 タグ済み** (2026-05-17)。`CHANGELOG.md` に差分要約あり。
 - v0.1.0 → v0.2.0 で **88 commit**。中身は §1 を参照。
 - 論文ドラフト (`docs/paper_a/`) は §1〜§7 まで本文/appendix map あり。
-- GitHub の About / README ヒーロー GIF / Roadmap 節は v0.2.0 公開時点で
-  最新化済み。**README には触れずに研究を進める方が摩擦が少ない**。
+- **重要更新 (2026-05-21)**: commit `1646e11` で multi-runner の
+  dynamic-obstacle freeze bug を修正。total-wipeout episode の直後に
+  dynamic obstacles が凍り、次 episode 以降の race / gates / dyn4 / chaos
+  系の数値を汚染していた。修正後の再走では該当シナリオが各 planner
+  **100 % collision** になり、旧 "MPC 51.7 % vs softmax 3.3 %" 系の
+  headline は artifact 扱い。README はこの注意書きに更新済み。
+- GitHub About / README hero は応急整理済み。ただし **奥の
+  `docs/findings.md` と `docs/paper_a/section_3_headline.md` には
+  pre-fix の dynamic-obstacle claim がまだ残る**。次はここを潰す。
 
 ### 0.2 直近で閉じた open question
 
@@ -89,6 +96,12 @@ spawn する経路を追加し、n=30 paired を実走:
    になる。`scripts/paired_analysis_*.py` 系は **first replan を捨てて
    steady-state mean / p95 を出す** convention になっている (`docs/paper_a/
    section_4_prerequisites.md` §4.3 参照)。
+
+7. **multi-runner dynamic obstacle freeze (commit `1646e11`)** —
+   total-wipeout episode 後に dynamic obstacles が freeze し、次 episode
+   以降が見かけ上 easy になる bug があった。2026-05-21 時点で fix 済み。
+   **pre-fix の race / gates / dyn4 / chaos / Smart MPPI v4-v5 数値は
+   citation 禁止**。使うなら必ず `1646e11` 以後で rerun する。
 
 ### 0.4 引き継ぎ用の最短再現手順
 
@@ -520,7 +533,7 @@ hang しないか、staggered スポーン姿勢が引き継がれるか。
      しないことを明示
 
 3. **Dynamic obstacle 速度 sweep** at §3 N=4 baseline (commits `d9571ab`,
-   `38bc4f0`):
+   `38bc4f0`) — **pre-fix result, 2026-05-21 時点では citation 禁止**:
    - v=2 m/s で GPU MPPI joint が **86.7 % → 3.3 %** 崩壊、MPC は 73 %
    - 失敗 drone は **常に北 drone** (t ≈ 5 s)、softmax bidirectional
      cancellation メカニズム
@@ -529,6 +542,11 @@ hang しないか、staggered スポーン姿勢が引き継がれるか。
      corridor-specific と確定
    - 2-obstacle compound (north + east): 両 planner ground、MPC mean_t=56 s
      (timeout dominance)
+   - ただし commit `1646e11` の multi-runner freeze fix 後、この系列は
+     runner bug の影響を受けていた可能性が高い。修正後再走では
+     race / gates / dyn4 / chaos 系が全 planner 100 % collision に落ちた。
+     §3 Table 2 と Smart MPPI 系の paper claim は、再設計・再走まで
+     artifact として扱う。
 
 4. **論文 §3 restructure** (commits `18b80d6`, `0e4592f`, `159410f`,
    `e760598`):
@@ -569,21 +587,145 @@ hang しないか、staggered スポーン姿勢が引き継がれるか。
    dummy_3d (40×40×12, max_speed=8) より大きく、GPU MPPI が up-detour で
    bidirectional symmetry を破る。再現には以下のいずれか必要:
    ceiling obstacle 層、max_speed=8 化、40×40×12 化、または corridor
-   側面の static cube wall。Future work — 当面は dummy_3d Table 2 が
-   §3 dynamic claim の主証拠。
+   側面の static cube wall。Future work。なお `1646e11` 後は
+   dummy_3d Table 2 自体を主証拠に使えないため、この AirSim 再現も
+   「旧 Table 2 を移植する」ではなく「dynamic obstacle cell を
+   再設計する」タスクとして扱う。
 
-4. **Figure 整備** — §3 Table 2 cliff、(N, density) heatmap、off-corridor
-   gradient、§4.4.4 cluster trace を可視化。submit-ready にするなら必須。
+4. **Figure 整備** — まずは static 系だけを対象にする:
+   (N, density) heatmap、§4.4.4 cluster trace、AirSim base_ew06 variability。
+   §3 Table 2 cliff / off-corridor gradient は `1646e11` 後の再設計・再走が
+   終わるまで figure 化しない。
 
 5. **SAC RL ベースライン**との比較 — §3 mechanism は planner-specific
    action selection rule の話だが、learned policy も同じ mode に陥るか
    未測。`train_rl_baseline.py` の scaffold あり。
 
-6. **Plan.md の §3 中期 / §4 長期** を更新 — `3.1 AirSim Δ-flip シリーズ`
-   は今日のコミットで実質 closed、§3.4 sim-to-real は変更なし。
-   §3.3 RL は item 5 で動かす場合更新。
+6. ~~**Plan.md の §3 中期 / §4 長期** を更新~~ — 2026-05-21 に
+   `1646e11` 後の retraction を反映。次は `docs/findings.md` /
+   `docs/paper_a/section_3_headline.md` の本文側を直す。
 
 ---
+
+### 2.6 候補 F: **1646e11 後の dynamic-obstacle claim 整理** (2026-05-21)
+
+**動機**: `uav_nav_lab/runner/multi.py` の commit `1646e11` で、
+total-wipeout episode 後に dynamic obstacles が凍る bug を修正した。
+修正後の再走では race / gates / dyn4 / chaos が全 planner 100 %
+collision になり、旧 dynamic-obstacle headline と Smart MPPI v4-v5 の
+優位主張は pre-fix artifact の可能性が高い。
+
+**今すぐやること**:
+
+1. `docs/findings.md` の dynamic-obstacle race / gates / dyn4 / chaos /
+   Smart MPPI v1-v5 節に **invalidated by `1646e11`** の注意を入れる。
+2. `docs/paper_a/section_3_headline.md` の Table 2 / 4-mode framework /
+   Smart MPPI 記述を、static coordination と AirSim static transferability
+   だけで矛盾しない形に縮退する。
+3. README は入口として応急整理済み。`plan.md` へのリンクは置かない方針。
+4. 新しい dynamic-obstacle cell は、全 planner floor にならないように
+   gate gap / obstacle speed / oval size / lookahead を再設計してから
+   n=30 paired に戻す。
+
+**2026-05-21 追加進捗**: `race_simple` 系から post-fix の non-floor
+pilot を発見し、`examples/exp_race_simple_retuned_n5_{mpc,gpu_mppi}.yaml`
+として固定した。設定は `radius=16`, `radius_y=12`, `period=20`,
+`max_steps=800`, `w_goal=0.3`, `w_obs=200`、dynamic obstacles は
+旧 simple の 2 slow intruders (radius 1.0, |v|=1.5) のまま。
+full-duration n=5 (seeds 42-46) 結果:
+
+| planner | per-drone | joint | note |
+|---------|-----------|-------|------|
+| MPC (n=8,h=40) | 15/20 = 75 % | 0/5 | drone 1 が全 seed で collision |
+| GPU MPPI (n=64,h=40) | 20/20 = 100 % | 5/5 | ceiling |
+
+`paired_analysis_aerobatic.py` では GPU tracking RMSE も MPC より
+0.139 m 低く、20/20 drone-episodes で GPU better。全 planner floor は
+脱出したが、GPU ceiling + deterministic MPC drone-1 failure なので、
+次は (a) n=30 確認、または (b) obstacle radius/speed/phase を少し戻して
+GPU も 60-90 % 帯に落とす sweep。
+
+追加 boundary probe:
+
+| period | max_steps | MPC n=3 | GPU MPPI n=3 | read |
+|--------|-----------|---------|--------------|------|
+| 18.0 | 720 | 0/3 joint | 0/3 joint | 両 planner floor |
+| 19.0 | 760 | 0/3 joint (3/12 per) | 0/3 joint | 両 planner floor |
+| 19.5 | 780 | 0/3 joint (3/12 per) | 0/3 joint (3/12 per) | floor 寄り |
+| 19.8 | 792 | 3/3 joint | 3/3 joint | ceiling |
+| 19.9 | 796 | 3/3 joint | 3/3 joint | ceiling |
+| 20.0 | 800 | 0/5 joint (15/20 per) | 5/5 joint | MPC drone 1 固定 failure |
+
+period=20 の MPC failure は全 seed で drone 1, t=29.6s,
+`collision_object=null`。dynamic obstacle 直撃というより、回避後の
+drone-drone / phase geometry failure。したがってこの cell は
+「全 planner floor から抜けた regression pilot」として有用だが、
+そのまま dynamic-obstacle mode claim にするには knife-edge すぎる。
+
+#### 2.6.1 period / obstacle knob probe の追加ログ (2026-05-21)
+
+目的: `period=20` cell は GPU ceiling + MPC deterministic failure で
+non-floor にはなったが、planner mechanism としては knife-edge。そこで
+`period=19.8` ceiling cell と `period=19.5` floor-ish cell の両側から、
+dynamic obstacle の radius / speed を少し動かして中間帯が出るか見た。
+
+共通設定:
+
+- base: `exp_race_simple_mpc.yaml`
+- `radius=16`, `radius_y=12`, `w_goal=0.3`, `w_obs=200`
+- full-duration: `max_steps = period * 2 / 0.05`
+- n=3 seeds 42-44
+- planner: MPC `(n=8,h=40)` vs GPU MPPI `(n=64,h=40)`
+
+結果:
+
+| cell | obstacle knob | MPC n=3 | GPU MPPI n=3 | read |
+|------|---------------|---------|--------------|------|
+| p19.8 | baseline r=1.0, v=1.5 | 3/3 joint | 3/3 joint | ceiling |
+| p19.8 | r=1.2 | 3/3 joint | 3/3 joint | radius 強化では ceiling 崩れず |
+| p19.8 | v=2.0 | 3/3 joint | 3/3 joint | speed 強化でも ceiling 崩れず |
+| p19.5 | baseline r=1.0, v=1.5 | 0/3 joint (3/12 per) | 0/3 joint (3/12 per) | floor 寄り |
+| p19.5 | r=0.8 | 0/3 joint (3/12 per) | 3/3 joint (12/12 per) | GPU-only ceiling, MPC floor-ish |
+| p19.5 | r=0.9 | 0/3 joint (3/12 per) | 3/3 joint (12/12 per) | r=0.8 と同じ |
+| p19.5 | v=1.0 | 3/3 joint | 3/3 joint | 両 planner ceiling |
+| p19.5 | r=0.95 | partial / killed | not completed | mpc 側が長時間化。途中保存分は drone 1-3 collision 型。citation 禁止 |
+
+読み:
+
+1. **period が主 knob で、obstacle radius/speed は二次 knob。**
+   `period=19.8` では obstacle を r=1.2 / v=2.0 にしても両 planner ceiling。
+   逆に `period=19.5` では baseline が両 planner floor-ish。つまり
+   hardness は obstacle 単体の clearance というより、oval phase と
+   drone-drone crossing geometry の resonance で決まっている。
+2. **radius は discontinuous。**
+   `period=19.5` で r=1.0 は両 planner floor-ish、r=0.9 / 0.8 は
+   GPU ceiling + MPC floor-ish。中間の r=0.95 は実行が長時間化して
+   incomplete。ここに境界はありそうだが、滑らかな partial-success band
+   ではなく seed-invariant な幾何 phase failure に見える。
+3. **speed を下げると簡単になりすぎる。**
+   `period=19.5, v=1.0` は両 planner ceiling。speed sweep だけで
+   30-60 % collision 帯を作る見込みは薄い。
+4. **現時点の best regression pilot は `period=20` または `p19.5,r=0.9`。**
+   どちらも GPU-only success を作るが、dynamic-obstacle hit ではなく
+   phase / drone-drone geometry separation に寄っている疑いが強い。
+
+次の推奨:
+
+- **n=30 に上げるなら**、paper claim ではなく regression/pilot として
+  `exp_race_simple_retuned_n5_{mpc,gpu_mppi}.yaml` を n=30 化する。
+  目的は「post-fix でも non-floor scenario は作れる」の確認まで。
+- **mode cell を狙うなら**、period/radius/speed ではなく obstacle
+  **phase / start position** を sweep する。具体的には p19.5 or p19.8
+  で obstacle start y を `[5,7,9]` / `[31,33,35]` にずらし、drone-drone
+  crossing ではなく obstacle proximity が collision_object / final_t に
+  出る cell を探す。
+- **citation rule**: `period=20` / `p19.5,r=0.9` 系は、現段階では
+  "dynamic obstacle mode restored" と書かない。書けるのは
+  "post-fix all-planner floor was escaped in a retuned pilot, but the
+  failure source is still phase-geometry dominated" まで。
+
+**判定**: 最優先。README と findings / paper が矛盾している状態を先に
+閉じる。新規実験や figure 整備はその後。
 
 ## 3. 中期 (次の 5-10 PR)
 
@@ -595,15 +737,17 @@ AirSim 側の対応:
 - [x] **静的障害物密度 sweep** — dummy_3d で完了。AirSim base_ew06 は
       1 cell のみで N=4 dense regime と一致。AirSim 側の density grid は
       cost に対し追加情報が薄いので保留。
-- [x] **dynamic obstacle 速度 sweep** — dummy_3d で完了 (§2.5)。
-      AirSim Blocks に moving cube spawn の path は未実装、cross-sim
-      化したい場合のみ実装する。優先度 中。
+- [ ] **dynamic obstacle 速度 sweep の再設計** — 旧 dummy_3d sweep は
+      `1646e11` 前の runner bug 影響を受けていたため claim から外す。
+      まず findings / paper の retraction を入れ、その後に全 planner floor
+      にならない cell を再設計する。AirSim Blocks 側の moving cube path は
+      bridge 実装済みだが、cross-sim 化は新 cell が固まってから。
 - [x] **N=2, 3, 4, 6 で AirSim multi-drone N-scaling** — dummy_3d で
       N ∈ {2..12} まで完了。AirSim 側は base_ew06 N=4 1 cell のみ。
       N-scaling の AirSim 移植も cost vs payoff で見て保留。
-- [ ] **AirSim dynamic obstacle 再現** (新規): Blocks に moving cube を
-      spawn する simulator extension + 1 paired cell で dummy_3d Table 2
-      の cliff を再現。優先度 中、§4.4 transferability の補強になる。
+- [ ] **AirSim dynamic obstacle 再現**: 旧 dummy_3d Table 2 cliff の
+      移植ではなく、`1646e11` 後に再設計した dynamic cell を AirSim に
+      移す。優先度 中、§4.4 transferability の補強候補。
 
 ### 3.2 AirSim multi-drone reset hang を upstream に報告
 

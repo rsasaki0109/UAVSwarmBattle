@@ -165,6 +165,22 @@ Concrete steps:
 Files: `examples/exp_race_simple_mpc.yaml` is the starting point.
 Sweep through `uav-nav sweep`.
 
+**2026-05-21 pilot update:** first non-floor post-fix cell found and
+committed as `examples/exp_race_simple_retuned_n5_{mpc,gpu_mppi}.yaml`.
+Retune: oval `radius=16`, `radius_y=12`, `period=20`, `max_steps=800`,
+planner weights `w_goal=0.3`, `w_obs=200`, two slow obstacles unchanged
+at radius 1.0 and |v|=1.5 m/s. Full-duration n=5 (seeds 42-46):
+MPC n=8,h=40 = 15/20 per-drone, 0/5 joint; GPU MPPI n=64,h=40 =
+20/20 per-drone, 5/5 joint. This escapes the all-planner floor but is
+GPU-ceiling / deterministic-MPC-drone-1-failure. Boundary probes show
+`period=19.8` and `19.9` give both planners 3/3 joint success, while
+`period=19.5` is floor-ish for both; the `period=20` MPC loss is a
+narrow phase/geometry failure (drone 1 collision at t=29.6 s, no
+named dynamic-obstacle collision object), not a smooth hardness
+boundary. Next step: do not jump straight to a headline claim; either
+run n=30 as a regression/pilot or tune obstacle phase/radius/speed to
+create a less knife-edge partial-success band.
+
 ### P1 — rewrite the invalidated docs
 
 Once P0 lands with a winnable scenario:

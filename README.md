@@ -27,8 +27,7 @@ changes. With the multi-runner bug fix from
 <a href="https://github.com/rsasaki0109/uav-nav-lab/commit/1646e11">1646e11</a>,
 <b>both MPC argmin and GPU MPPI softmax now lose every drone-episode</b>
 on this scenario — the closing rate is too fast for the 0.4 s
-lookahead. Scenario re-tuning is in progress; see
-<a href="PLAN.md">PLAN.md</a> for the handoff plan.
+lookahead. Scenario re-tuning is in progress.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -110,26 +109,27 @@ Add a backend by dropping a file with `@REGISTRY.register("name")` and a
 ## 📊 Research findings
 
 Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
-the §3 4-mode framework is in
-[`docs/paper_a/section_3_headline.md`](docs/paper_a/section_3_headline.md).
-Headline themes:
+the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
+active findings are grouped this way:
 
-- **GPU MPPI softmax vs CPU MPC argmin** — one operator, four
-  regime-dependent expressions. Mode 1 (multi-drone clustering),
-  mode 2 (dynamic-obstacle cancellation), mode 2-mirror (unimodal
-  gate-thread), mode 4 (aerobatic precision). Mission metric selects
-  the right planner, not a universal winner.
-- **Smart MPPI v1-v5** — variants of the softmax aggregator that
-  detect and repair specific failure modes; v5's lateral-cancellation
-  gate dominates v4 across 4 of 5 paired dyn cells.
-- **Planner head-to-head** (50 × 50 dynamic-obstacle, n=30) —
-  straight 0 %, A* 20 %, RRT\* 23 % (CPU-saturated), CHOMP 53 %,
-  RRT 73 %, CHOMP+RRT-init 90 %, Pareto-MPC 100 %.
-- **AirSim transferability** — Δ-flip mechanism reproduces under
-  AirSim physics, with a sign reversal at the dense corner (`base_ew06`).
+- **Static multi-drone coordination** — MPC argmin and GPU MPPI softmax
+  can tie on joint success while producing different failure clustering
+  (`Δ` over the independent-drone baseline). The sign depends on the
+  `(N, density)` cell, so the result is a mechanism claim, not a
+  universal planner ranking.
+- **AirSim transferability** — the same coordination mechanism appears
+  under AirSim physics, but dense static-cube cells can reverse which
+  planner clusters failures. Absolute winner claims are treated as
+  environment-sensitive.
+- **Planner / sim framework** — YAML-driven paired runs cover CPU MPC,
+  GPU MPPI, sampling planners, CHOMP variants, AirSim, ROS 2, and
+  AirSim-over-ROS-2 parity checks.
+- **Dynamic-obstacle race studies** — currently under repair after the
+  `1646e11` multi-runner fix. Old race / gates / dyn4 / chaos numbers
+  should not be cited until the scenarios are re-tuned and re-run.
 - **Methodology** — Wilson 95 % CIs by default, McNemar paired tests
-  for matched-seed comparisons, Pareto-cell re-validation as a guard
-  against ablating off-Pareto.
+  for matched-seed comparisons, and Pareto-cell re-validation before
+  making ablation claims.
 
 <details>
 <summary><b>Companion hero GIFs</b> — multi-drone Δ-flip, single-drone 3D MPPI</summary>
@@ -182,10 +182,11 @@ obstacles, larger oval) before the GIFs go back up.
 
 ## ✅ Status
 
-v0.1.0 released; CI on Python 3.10 / 3.11 / 3.12. 6 sensors,
-3 predictors, 9 planners, 5 scenarios. All ablation results are
-reproducible from the example YAMLs by copy-pasting one
-`uav-nav sweep ...` line.
+v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
+stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
+5 scenario families. Stable ablations are reproducible from the example
+YAMLs and scripts; dynamic-obstacle race scenarios are explicitly marked
+under repair after the `1646e11` bug fix.
 
 **External backends:**
 

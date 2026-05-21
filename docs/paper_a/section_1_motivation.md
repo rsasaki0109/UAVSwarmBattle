@@ -84,20 +84,18 @@ headline (§3) on them, because without the prerequisites the headline
 would have read as just one more entry in the contradictory-comparisons
 literature.
 
-**Why a single operator with three failure modes is the right framing.**
+**Why a single operator with three mode expressions is the right framing.**
 A 1-direction headline (e.g. "GPU MPPI clusters multi-drone failures
 more than CPU MPC") is what the §3 N=4 baseline cell measured at
 n=100 paired episodes; that *direction* survives a re-run of the same
-cell but does not survive replacing the static-obstacle field with a
-moving sphere (the dynamic-obstacle extension in §3 collapses GPU
-MPPI's joint success from 86.7 % to 3.3 % at $v=2$ m/s while CPU MPC
-holds at 73 %), and does not survive moving to N=4 *dense* obstacles
-or to the AirSim base_ew06 cell (MPC becomes the cluster source).
-What *does* survive across regimes is the mechanism: GPU MPPI's
-softmax averages over the rollout cost landscape, while CPU MPC's
-argmin commits to one rollout per replan. Whether averaging helps or
-hurts is regime-dependent (averaging cancels bidirectional avoidance
-under symmetric obstacle alignment, but rescues argmin from
-committing to a wrong side under asymmetric clutter). The
-**operator** is the load-bearing claim; the *direction* in any
-single cell is downstream of it.
+cell but does not survive moving to N=4 *dense* obstacles or to the
+AirSim base_ew06 cell (MPC becomes the cluster source). What *does*
+survive across regimes is the mechanism: GPU MPPI's softmax averages
+over the rollout cost landscape, while CPU MPC's argmin commits to
+one rollout per replan. Whether averaging helps or hurts is
+regime-dependent: it amplifies peer-prediction clustering in one
+static cell, suppresses MPC's dense-corner cluster mode in another,
+and improves aerobatic tracking precision when failures are not the
+binding metric. The **operator** is the load-bearing claim; the
+*direction* in any single cell is downstream of it. The former
+dynamic-obstacle mode is retracted pending a post-`1646e11` re-tune.

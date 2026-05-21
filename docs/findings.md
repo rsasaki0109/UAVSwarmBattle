@@ -10,6 +10,14 @@ Each finding lives in the comment header of the YAML that produces it,
 along with a one-line `uav-nav sweep` invocation that reproduces it.
 Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 
+**2026-05-21 dynamic-obstacle invalidation.** Commit `1646e11` fixed a
+multi-runner bug that could leave dynamic obstacles frozen after a
+total-wipeout episode. The affected pre-fix sections are retained below
+as historical debugging notes, but their numbers must not be cited as
+planner evidence until the scenarios are re-tuned and rerun: the
+dummy_3d moving-obstacle speed sweep, Smart MPPI v1-v5 dynamic cells,
+and the race / gates / chaos / dyn4 dynamic-obstacle scenarios.
+
 ## Contents
 
 - [MPC compute Pareto](#mpc-compute-pareto)
@@ -31,7 +39,7 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [Multi-drone: GPU MPPI's rollout cloud flips the coordination Δ](#multi-drone-gpu-mppis-rollout-cloud-flips-the-coordination-δ)
 - [dummy_3d N-scaling paired (MPC vs GPU MPPI, N ∈ {2, 3, 4, 6, 8, 10, 12})](#dummy_3d-n-scaling-paired-mpc-vs-gpu-mppi-n--2-3-4-6-8-10-12)
 - [dummy_3d density × planner sweep at N ∈ {4, 6, 8}: §3 mechanism is conditional on per-drone tie](#dummy_3d-density--planner-sweep-at-n--4-6-8-3-mechanism-is-conditional-on-per-drone-tie)
-- [dummy_3d N=4 + moving obstacle speed sweep: GPU MPPI's softmax averaging is catastrophic under dynamic obstacles](#dummy_3d-n4--moving-obstacle-speed-sweep-gpu-mppis-softmax-averaging-is-catastrophic-under-dynamic-obstacles)
+- [invalidated: dummy_3d N=4 + moving obstacle speed sweep](#dummy_3d-n4--moving-obstacle-speed-sweep-gpu-mppis-softmax-averaging-is-catastrophic-under-dynamic-obstacles)
 - [AirSim + GPU MPPI parity: planner portable, dummy_3d plan-time advantage lost](#airsim--gpu-mppi-parity-planner-portable-dummy_3d-plan-time-advantage-lost)
 - [AirSim multi-drone parity: stack runs end-to-end, timing spread still visible at 4/4](#airsim-multi-drone-parity-stack-runs-end-to-end-timing-spread-still-visible-at-44)
 - [AirSim multi-drone n=30 paired: planner portable, scenario ceiling-limited, timing-spread signal preserved](#airsim-multi-drone-n30-paired-planner-portable-scenario-ceiling-limited-timing-spread-signal-preserved)
@@ -40,16 +48,16 @@ Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 - [AirSim multi-drone static-cube discriminating cell n=30: GPU MPPI clears every seed while MPC drops paired seeds](#airsim-multi-drone-static-cube-discriminating-cell-n30-gpu-mppi-clears-every-seed-while-mpc-drops-paired-seeds)
 - [AirSim multi-drone base_ew06 density-sweep n=30: Δ-flip sign reverses — MPC is the clustering planner on AirSim](#airsim-multi-drone-base_ew06-density-sweep-n30-δ-flip-sign-reverses--mpc-is-the-clustering-planner-on-airsim)
 - [AirSim dynamic-obstacle bridge extension (smoke verified, paired cell still tuning)](#airsim-dynamic-obstacle-bridge-extension-smoke-verified-paired-cell-still-tuning)
-- [Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't](#smart-mppi-argmin-fallback-mechanism-detector-works-naive-fix-doesnt)
-- [Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime](#smart-mppi-v2-asymmetric-perturbation-breaks-softmax-symmetry-helps-the-planner-swap-regime)
-- [Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
-- [Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
-- [Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
-- [Moving-gates race: the mirror image — softmax wins where it lost the single-intruder race](#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race)
-- [Drone race chaos — gates + intruders piled on, gate topology still dominates](#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates)
-- [dyn4 path-intersecting intruders: controlled dynamic-avoidance harness](#dyn4-path-intersecting-intruders-controlled-dynamic-avoidance-harness)
+- [invalidated: Smart MPPI (argmin-fallback)](#smart-mppi-argmin-fallback-mechanism-detector-works-naive-fix-doesnt)
+- [invalidated: Smart MPPI v2 (asymmetric perturbation)](#smart-mppi-v2-asymmetric-perturbation-breaks-softmax-symmetry-helps-the-planner-swap-regime)
+- [invalidated: Smart MPPI v3 (temporally-coherent argmin commit)](#smart-mppi-v3-temporally-coherent-argmin-commit-trades-mode-1-success-for-swap-regime-stability)
+- [invalidated: Smart MPPI v4 (mode-aware sampling)](#smart-mppi-v4-mode-aware-sampling-the-first-variant-that-cracks-the-cancellation-regime)
+- [invalidated: Drone race + bouncing intruder](#drone-race--bouncing-intruder-smart-mppi-v4-recovers-mpc-level-safety-without-losing-tracking-precision)
+- [invalidated: Moving-gates race](#moving-gates-race-the-mirror-image--softmax-wins-where-it-lost-the-single-intruder-race)
+- [invalidated: Drone race chaos](#drone-race-chaos--gates--intruders-piled-on-gate-topology-still-dominates)
+- [invalidated: dyn4 path-intersecting intruders](#dyn4-path-intersecting-intruders-controlled-dynamic-avoidance-harness)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
-- [Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
+- [invalidated: Smart MPPI v5 (mode-aware switcher)](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -1159,6 +1167,11 @@ done
 
 ### dummy_3d N=4 + moving obstacle speed sweep: GPU MPPI's softmax averaging is catastrophic under dynamic obstacles
 
+**Invalidated by `1646e11` (2026-05-21).** This section describes
+pre-fix multi-runner data. Treat it as a debugging record for the
+dynamic-obstacle freeze bug and for scenario-design intuition, not as a
+paper-grade planner comparison.
+
 Extension to the §3 N=4 baseline cell (4 drones, 40×40×12 voxel
 world, 30 random static obstacles) by adding one moving sphere
 obstacle at $(20, 5, 6)$ with velocity $(0, +v, 0)$, radius 0.8,
@@ -2038,6 +2051,11 @@ scripts/run_airsim_multi_chunked.sh gpu_mppi 2 42 \
 
 ### Smart MPPI (argmin-fallback): mechanism detector works, naive fix doesn't
 
+**Invalidated by `1646e11` (2026-05-21).** The implementation option is
+still present, but the dynamic-obstacle paired results in this section
+were measured on pre-fix cells and should not be cited as planner
+evidence.
+
 Tests the §3 dynamic-obstacle mechanism diagnosis by **fixing it**.
 Adds a `fallback_to_argmin` option to `gpu_mppi` (commit
 `uav_nav_lab/planner/gpu_mppi.py`). Each replan computes both the
@@ -2142,6 +2160,10 @@ done
 
 ### Smart MPPI v2 (asymmetric perturbation): breaks softmax symmetry, helps the planner-swap regime
 
+**Invalidated by `1646e11` (2026-05-21).** The dynamic-obstacle cells
+used here are pre-fix artifact cells. Keep this as historical design
+context only.
+
 Follow-up to "Smart MPPI (argmin-fallback)". Where v1's argmin-fallback
 hurt at the dyn_off2 planner-swap cell (vanilla GPU joint 70 % →
 Smart v1 joint 53 %), v2 attacks the mechanism from a different
@@ -2234,6 +2256,11 @@ done
 
 ### Smart MPPI v3 (temporally-coherent argmin commit): trades mode 1 success for swap-regime stability
 
+**Invalidated by `1646e11` (2026-05-21).** The dynamic-obstacle
+comparison rows are pre-fix artifacts. Static-cell side effects remain
+useful as qualitative implementation context, but not as a Smart MPPI
+claim.
+
 Third Smart MPPI variant. Where v1's argmin-fallback fires per-replan
 (causing oscillation when the detector toggles on/off) and v2's
 asymmetric perturbation breaks symmetry at sampling time but never
@@ -2321,6 +2348,11 @@ done
 
 
 ### Smart MPPI v4 (mode-aware sampling): the first variant that cracks the cancellation regime
+
+**Invalidated by `1646e11` (2026-05-21).** The "cancellation regime"
+numbers were produced before the dynamic-obstacle freeze fix. Post-fix
+dynamic-obstacle cells need a full re-tune before this variant can be
+evaluated again.
 
 Fourth Smart MPPI variant. v1–v3 all attacked the §3 dynamic-obstacle
 **cancellation regime** at the *action-selection* layer (argmin-fallback,
@@ -2460,6 +2492,11 @@ is a no-op there. Race YAMLs default to `ctg_cache_tolerance: 3`.
 
 ### Smart MPPI v5 (mode-aware switcher): lateral-cancellation gate dominates v4 on 4/5 cells
 
+**Invalidated by `1646e11` (2026-05-21).** The dynamic-obstacle and
+race-cell comparisons below are pre-fix artifacts. The switcher remains
+an implementation candidate, but this section no longer supports a
+deployment recommendation.
+
 Fifth (and current best) Smart MPPI variant. v4's cluster softmax was
 **unconditional** once both L/R clusters had enough samples — and that
 unconditional commit hurt mode 1 (static peers, $-23$ pp vs vanilla)
@@ -2546,6 +2583,11 @@ python3 scripts/paired_analysis_aerobatic.py \
 
 
 ### Drone race + bouncing intruder: Smart MPPI v4 recovers MPC-level safety without losing tracking precision
+
+**Invalidated by `1646e11` (2026-05-21).** Post-fix reruns show the
+dynamic-obstacle race family is not currently a winnable planner cell.
+The quantitative table and Smart MPPI recovery claim below are retained
+only as historical pre-fix context.
 
 Single scenario that places **all three** §3 mode interactions on the
 same 24 s episode: 4 drones lap a horizontal oval (12 × 8 m, 12 s
@@ -2644,6 +2686,10 @@ python3 scripts/render_race_gif.py \
 
 ### Moving-gates race: the mirror image — softmax wins where it lost the single-intruder race
 
+**Invalidated by `1646e11` (2026-05-21).** Post-fix gates4 reruns put
+the tested planners at 100 % collision, so the "softmax wins" reading
+below was a frozen-obstacle artifact.
+
 Same oval geometry as the bouncing-intruder race above (4 drones, 12 ×
 8 m oval, 12 s period, 2 laps = 24 s) but the single intruder is
 replaced by **4 sliding gates** at the NE/NW/SW/SE corners of the
@@ -2730,6 +2776,10 @@ python3 scripts/render_race_gif.py \
 
 
 ### Drone race chaos — gates + intruders piled on, gate topology still dominates
+
+**Invalidated by `1646e11` (2026-05-21).** This chaos scenario inherited
+the same dynamic-obstacle freeze artifact as gates4. Do not cite the
+pre-fix planner separation below.
 
 What happens when we stack mode 2 (cancellation) **and** mode 2-mirror
 (unimodal gate-thread) onto the same scenario? We took the moving-gates
@@ -2832,6 +2882,10 @@ python3 scripts/render_race_gif.py \
 
 ### dyn4 path-intersecting intruders: controlled dynamic-avoidance harness
 
+**Invalidated by `1646e11` (2026-05-21).** The controlled harness did
+not survive post-fix reruns as a planner-grade dynamic-obstacle result;
+the old table remains only as a scenario-design record.
+
 The chaos race result raised the question "do the planners actually
 avoid the intruders, or are the intruders inert background?" — and the
 answer was "inert: the gates dominate, intruders never enter the cost
@@ -2931,10 +2985,10 @@ python3 scripts/render_race_gif.py \
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
 A new scenario type `multi_drone_aerobatic` (commit
-`uav_nav_lab/scenario/multi_drone_aerobatic.py`) tests the §3 4-mode
+`uav_nav_lab/scenario/multi_drone_aerobatic.py`) tests the §3 mode
 hypothesis directly: under choreography / formation-flight tasks,
 the *same* softmax operator that hurts in static-peer clustering
-(§3 N=4 baseline) and dynamic-obstacle cancellation (Table 2) should
+(§3 N=4 baseline) and can suppress dense-corner cluster modes should
 *help* by producing smoother, tighter trajectories.
 
 **Scenario**: 4 drones share one vertical loop in xz plane, center
@@ -2978,19 +3032,21 @@ the single lowest-cost rollout per replan, which can flip between
 fractional cost differences — producing per-step command jitter
 that the integrator smooths but does not eliminate. The smoothing
 operator is the same operator that *clusters failures* in §3
-N=4 baseline (under static peers) and *cancels avoidance* in Table 2
-(under dynamic obstacles dead ahead); here, with no failure modes
-to manifest, only the smoothing remains, and that smoothing is
+N=4 baseline (under static peers) and *suppresses cluster failures*
+in the AirSim `base_ew06` dense-corner cell; here, with no failure
+modes to manifest, only the smoothing remains, and that smoothing is
 *precisely* what choreography wants.
 
-This completes the **§3 4-mode framework**:
+This completes the currently valid **§3 3-mode framework**:
 
 | mode | regime                            | softmax outcome    | who wins   |
 |---|---|---|---|
 | 1    | Static peers, N=4 baseline         | clustering         | MPC (Δ)    |
-| 2    | Dynamic obstacle on corridor       | bidirectional canc.| MPC        |
-| 3    | Dense corner (AirSim `base_ew06`)  | suppresses cluster | GPU MPPI   |
-| 4    | Aerobatic choreography             | smooth precision   | **GPU MPPI** |
+| 2    | Dense corner (AirSim `base_ew06`)  | suppresses cluster | GPU MPPI   |
+| 3    | Aerobatic choreography             | smooth precision   | **GPU MPPI** |
+
+The former dynamic-obstacle mode is retracted after the `1646e11`
+freeze fix and must be re-tuned before it can return to the framework.
 
 **Implications**: GPU MPPI's softmax conservatism is not a planner
 defect to fix — it is a *deployment-context tradeoff*. For air-show
@@ -2998,7 +3054,7 @@ flight, formation maneuvers, synchronised inspection passes, and any
 mission where the metric is "tight reference tracking + multi-drone
 sync", GPU MPPI is the correct planner family. For static-peer
 crossings (where coordination $\Delta$ is the metric), MPC argmin's
-distributed failure shape is the correct one. The 4-mode taxonomy
+distributed failure shape is the correct one. The mode taxonomy
 turns the planner-comparison question from "which is better?" into
 "which mode does the mission live in?" — a more useful question for
 deployment engineers.

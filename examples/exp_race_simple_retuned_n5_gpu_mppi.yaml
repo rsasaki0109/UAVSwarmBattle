@@ -1,0 +1,64 @@
+# Post-1646e11 dynamic-obstacle retune pilot.
+#
+# GPU MPPI counterpart to exp_race_simple_retuned_n5_mpc.yaml.
+# Pilot result (seeds 42-46, n=5, 2026-05-21):
+#   MPC      n=8,h=40: per-drone 15/20 = 75 %, joint 0/5
+#   GPU MPPI n=64,h=40: per-drone 20/20 = 100 %, joint 5/5
+# Boundary probe: period=19.8/19.9 gives both planners 3/3 joint
+# success, period=19.5 is floor-ish for both. Period=20 is a narrow
+# phase/geometry separation, not a smooth speed-hardness boundary.
+name: race_simple_retuned_n5_gpu_mppi
+seed: 42
+num_episodes: 5
+
+scenario:
+  type: multi_drone_aerobatic
+  size: [40, 40, 14]
+  resolution: 1.0
+  n_drones: 4
+  pattern: synchronized_loop
+  center: [20.0, 20.0, 7.0]
+  radius: 16.0
+  radius_y: 12.0
+  period: 20.0
+  n_loops: 2
+  normal_axis: z
+  lookahead_t: 0.4
+  drone_radius: 0.4
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - {start: [20.0, 6.0, 7.0], velocity: [0.0, 1.5, 0.0], reflect: true, radius: 1.0}
+    - {start: [20.0, 34.0, 7.0], velocity: [0.0, -1.5, 0.0], reflect: true, radius: 1.0}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 800
+  max_accel: 80.0
+  goal_radius: 0.5
+  drone_radius: 0.4
+
+planner:
+  type: gpu_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 64
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 0.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 0.3
+  w_obs: 200.0
+  w_smooth: 0.05
+  temperature: 1.0
+  ctg_cache_tolerance: 3
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/race_simple_retuned_n5_gpu_mppi
