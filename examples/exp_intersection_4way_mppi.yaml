@@ -1,0 +1,71 @@
+# 4-way intersection ablation of intersection_v1: two head-on pairs
+# (N↔S + E↔W) meet at the centre, where a slow dynamic intruder also
+# sits. Tests whether the visible MPC-stop vs MPPI-swerve contrast
+# from the 2-drone cell scales to 4 drones with peer-prediction and
+# an intruder in the mix.
+#
+# Reproduce:
+#   uav-nav run examples/exp_intersection_4way_mppi.yaml
+name: intersection_4way_mppi
+seed: 42
+num_episodes: 5
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - name: south_to_north
+      start: [20.0, 4.0, 6.0]
+      goal:  [20.0, 36.0, 6.0]
+      radius: 0.4
+    - name: east_to_west
+      start: [36.0, 20.0, 6.0]
+      goal:  [4.0, 20.0, 6.0]
+      radius: 0.4
+    - name: north_to_south
+      start: [20.0, 36.0, 6.0]
+      goal:  [20.0, 4.0, 6.0]
+      radius: 0.4
+    - name: west_to_east
+      start: [4.0, 20.0, 6.0]
+      goal:  [36.0, 20.0, 6.0]
+      radius: 0.4
+  dynamic_obstacles:
+    - start: [20.0, 20.0, 6.0]
+      velocity: [0.5, 0.0, 0.0]
+      reflect: true
+      radius: 1.0
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 800
+  max_accel: 80.0
+  goal_radius: 1.0
+  drone_radius: 0.4
+
+planner:
+  type: mppi
+  max_speed: 6.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.0
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/intersection_4way_mppi

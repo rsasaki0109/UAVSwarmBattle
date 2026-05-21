@@ -3033,6 +3033,24 @@ and peer-prediction coordination](#multi-drone-n-scaling-and-peer-prediction-coo
 shows as a percentage gap; here it is visible in a single 5-second
 clip.
 
+**4-way ablation** (`examples/exp_intersection_4way_{mpc,mppi}.yaml`,
+n=5, 20/20 drone-episodes each, 0 collisions). Extending the cell
+from 2 drones to 4 (two head-on pairs N↔S + E↔W meeting at the centre
+with the same intruder) preserves the visible-strategy contrast:
+
+- **MPC**: the S→N drone stops & waits while the other three detour
+  around the intruder; both head-on pairs offset to the same side
+  (south for E↔W) to avoid each other simultaneously.
+- **MPPI**: all four drones swerve simultaneously, each head-on pair
+  offsetting in *opposite* directions (E→W south, W→E south at first,
+  then re-aligning) so the four trajectories braid around the
+  intruder without anyone stopping.
+
+Rendered side-by-side in `docs/images/compare_intersection_4way.gif`.
+This confirms the softmax-vs-argmin avoidance signature is not an
+artifact of the 2-drone geometry — it scales to 4 drones with mutual
+peer prediction.
+
 **Limitations.** n=5 is intentionally small: CPU MPPI at
 n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
 for MPPI in this 2-drone cell — the cost only gets steep on the
