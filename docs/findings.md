@@ -3340,6 +3340,55 @@ done
 python3 scripts/intersection_predictor_sweep.py
 ```
 
+**Crossover mechanism (the σ=10 reversal).** What is MPPI actually
+*doing* differently at σ=10 to break sooner than MPC? Per-episode
+inspection of the wave noisy100 runs shows it is not the simple
+"MPPI keeps going, MPC stops" story — both planners U-turn when the
+phantom predictions place an intruder in their path. The mechanism is
+in the *timing distribution* of the U-turn and the recovery window:
+
+| condition (wave noisy100) | drone-north outcomes (5 ep) | reverse v_y range | mean collision-time |
+|---|---|---|---|
+| MPC | 3 collision / 2 success | −6.0 to −2.0 m/s | t = 4.2 s (range 3.25-5.65) |
+| MPPI | 5 collision / 0 success | −4.4 to 0.0 m/s | t = 3.0 s (range 2.75-3.35) |
+
+MPPI's reverses are *smaller* (max −4.4 vs MPC −6.0) but happen ~250 ms
+*earlier* — and once committed there is no recovery window before the
+intruder closes. MPC's larger reverses sometimes leave enough wave-cycle
+time for the planner to re-acquire and reach the goal. The softmax
+aggregator integrates phantom rollouts into the average evasion
+direction with high enough confidence to commit *before* MPC's argmin
+has settled on whether the rollout cloud is internally consistent.
+
+`scripts/intersection_crossover_mechanism.py` →
+`docs/images/intersection_crossover_mechanism.png` (2×2):
+
+<p align="center">
+<img src="images/intersection_crossover_mechanism.png" alt="σ=10 crossover mechanism: trajectories, v_y(t) across episodes, predicted intruder Monte-Carlo cloud" width="900">
+</p>
+
+- (a) Trajectory at noisy σ=10 ep 0 — both drone-north stalk south of
+  the wave (visible kink near y≈18), MPPI dies (X) before MPC.
+- (b) Trajectory at noisy σ=3 ep 0 — the regime where MPPI's averaging
+  is a feature, not a bug.
+- (c) drone-north v_y(t) across all 5 ep at σ=10 — dotted = ep
+  succeeded, solid = ep collided. MPPI's reverse spikes cluster around
+  t = 2.7-3.3 s; MPC's spread to t = 5 s with a wider recovery window.
+- (d) Monte-Carlo (60 samples) of the noisy_velocity predictor's
+  rollouts at σ=3 vs σ=10 against the ground-truth intruder path —
+  shows the volume of "what the planner believed about the obstacle's
+  near future" at each replan. At σ=10 the cloud covers ~20 m × 20 m
+  (2 s × ±10 m/s) — essentially uniform across the centre of the
+  scenario.
+
+This refines the §3 claim once more: the aggregator advantage is not
+"softmax always wins on dynamic obstacles" but rather **softmax's
+averaging is a confidence amplifier**. When predictions are good it
+amplifies a sound evasion direction (the noisy σ=3 win); when
+predictions are pure noise it amplifies an unsound one (the σ=10
+crossover), and the commitment happens fast enough to preclude
+recovery.
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
