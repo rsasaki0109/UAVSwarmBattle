@@ -9,46 +9,10 @@ instead of
 Prints Wilson CI per planner, indep^N + Δ, McNemar joint comparison.
 """
 from __future__ import annotations
-import json
-import math
 import sys
 from pathlib import Path
 
-
-def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float, float]:
-    if n == 0:
-        return 0.0, 0.0, 0.0
-    p = k / n
-    denom = 1.0 + z * z / n
-    center = (p + z * z / (2 * n)) / denom
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return p, max(0.0, center - half), min(1.0, center + half)
-
-
-def load_dir(run_dir: Path) -> list[dict]:
-    out: list[dict] = []
-    for jp in sorted(run_dir.glob("episode_*_joint.json")):
-        d = json.loads(jp.read_text())
-        out.append({
-            "seed": d["meta"]["seed"],
-            "joint": d["outcome"] == "success",
-            "per_drone": [o == "success" for o in d["per_drone_outcomes"]],
-            "final_t": d.get("final_t"),
-        })
-    return sorted(out, key=lambda r: r["seed"])
-
-
-def binom_pmf(k: int, n: int, p: float) -> float:
-    return math.comb(n, k) * (p ** k) * ((1 - p) ** (n - k))
-
-
-def mcnemar_exact_p(b: int, c: int) -> float:
-    n = b + c
-    if n == 0:
-        return 1.0
-    k = min(b, c)
-    p_one_side = sum(binom_pmf(i, n, 0.5) for i in range(k + 1))
-    return min(1.0, 2.0 * p_one_side)
+from uav_nav_lab.analysis import load_joint_episodes, mcnemar_exact_p, wilson
 
 
 def summarise(name: str, data: list[dict]) -> None:
@@ -73,8 +37,8 @@ def summarise(name: str, data: list[dict]) -> None:
 
 
 def main(mpc_dir: str, mppi_dir: str) -> int:
-    a = load_dir(Path(mpc_dir))
-    b = load_dir(Path(mppi_dir))
+    a = load_joint_episodes(Path(mpc_dir), layout="flat")
+    b = load_joint_episodes(Path(mppi_dir), layout="flat")
     seeds_a = {r["seed"] for r in a}
     seeds_b = {r["seed"] for r in b}
     common = seeds_a & seeds_b

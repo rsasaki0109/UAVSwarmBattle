@@ -5,38 +5,15 @@ episode, each with episode_000_*.json). Prints Wilson CI per planner,
 McNemar joint-success comparison, per-seed disagreement detail.
 """
 from __future__ import annotations
-import json
-import math
 import sys
 from pathlib import Path
 
-
-def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float, float]:
-    if n == 0:
-        return 0.0, 0.0, 0.0
-    p = k / n
-    denom = 1.0 + z * z / n
-    center = (p + z * z / (2 * n)) / denom
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return p, max(0.0, center - half), min(1.0, center + half)
-
-
-def load_chunked(run_dir: Path) -> list[dict]:
-    out: list[dict] = []
-    for sd in sorted(run_dir.glob("seed_*/episode_000_joint.json")):
-        d = json.loads(sd.read_text())
-        out.append({
-            "seed": d["meta"]["seed"],
-            "joint": d["outcome"] == "success",
-            "per_drone": [o == "success" for o in d["per_drone_outcomes"]],
-            "final_t": d.get("final_t"),
-        })
-    return sorted(out, key=lambda r: r["seed"])
+from uav_nav_lab.analysis import load_joint_episodes, mcnemar_exact_p, wilson
 
 
 def main(mpc_dir: str, mppi_dir: str) -> int:
-    a = load_chunked(Path(mpc_dir))
-    b = load_chunked(Path(mppi_dir))
+    a = load_joint_episodes(Path(mpc_dir), layout="chunked")
+    b = load_joint_episodes(Path(mppi_dir), layout="chunked")
     seeds_a = {r["seed"] for r in a}
     seeds_b = {r["seed"] for r in b}
     common = seeds_a & seeds_b
@@ -73,11 +50,7 @@ def main(mpc_dir: str, mppi_dir: str) -> int:
     print(f"  GPU-only succ  : {only_b}")
     print(f"  neither succ   : {neither}")
     if only_a + only_b > 0:
-        from math import comb
-        k = min(only_a, only_b)
-        nm = only_a + only_b
-        p_val = 2 * sum(comb(nm, i) for i in range(0, k + 1)) / (2 ** nm)
-        p_val = min(1.0, p_val)
+        p_val = mcnemar_exact_p(only_a, only_b)
         print(f"  exact McNemar p ≈ {p_val:.3f}")
     print()
 

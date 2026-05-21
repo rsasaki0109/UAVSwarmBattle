@@ -14,8 +14,8 @@ from typing import Any
 
 import yaml
 
-from .config import ExperimentConfig
-from .scenario import SCENARIO_REGISTRY
+from ..config import ExperimentConfig
+from ..scenario import SCENARIO_REGISTRY
 
 
 def _need_mpl() -> Any:

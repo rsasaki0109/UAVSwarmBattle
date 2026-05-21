@@ -21,7 +21,6 @@ Usage (3-pane):
 """
 from __future__ import annotations
 import argparse
-import json
 from pathlib import Path
 
 import matplotlib
@@ -31,51 +30,10 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (registers '3d' projection)
 import numpy as np
 
+from uav_nav_lab.viz.episode_gif import DRONE_COLORS, load_drones, trajectory_arrays
 
-DRONE_COLORS = ["#e8443b", "#3aa54a", "#3865bf", "#d49b1c"]
+
 OBSTACLE_COLOR = "#cc1f1f"
-
-
-def load_drones(run_dir: Path, ep: int, n_drones: int = 4) -> list[dict]:
-    drones = []
-    for i in range(n_drones):
-        p = run_dir / f"episode_{ep:03d}_drone_{i:02d}.json"
-        drones.append(json.loads(p.read_text()))
-    return drones
-
-
-def trajectory_arrays(
-    drones: list[dict], T_pad: int | None = None
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Returns (true_pos[D,T,3], ref_pos[D,T,3], collision_step[D]) arrays.
-    `collision_step[i]` = step index where drone i first reports a
-    collision flag, or T (never) if no flag was raised.
-
-    When `T_pad` is given (e.g. the longest drone-episode across all
-    panes), shorter trajectories are right-padded by holding their last
-    logged position — so a planner that fails fast freezes in place
-    instead of vanishing from the GIF mid-way."""
-    D = len(drones)
-    T_drones = max(len(d["steps"]) for d in drones)
-    T = T_pad if T_pad is not None and T_pad > T_drones else T_drones
-    true_pos = np.zeros((D, T, 3))
-    ref_pos = np.zeros((D, T, 3))
-    collision_step = np.full(D, T, dtype=int)
-    for i, d in enumerate(drones):
-        last_true = None
-        last_ref = None
-        for k in range(T):
-            if k < len(d["steps"]):
-                s = d["steps"][k]
-                last_true = s["true_pos"]
-                last_ref = s.get("reference_pos", s["true_pos"])
-                if collision_step[i] == T and s.get("collision"):
-                    collision_step[i] = k
-            true_pos[i, k] = last_true
-            ref_pos[i, k] = last_ref
-        if collision_step[i] == T and d.get("outcome") == "collision":
-            collision_step[i] = len(d["steps"]) - 1
-    return true_pos, ref_pos, collision_step
 
 
 def load_rollout_replans(drones: list[dict]) -> list[list[tuple[float, np.ndarray]]]:

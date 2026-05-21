@@ -14,7 +14,6 @@ Usage:
 """
 from __future__ import annotations
 import argparse
-import json
 from pathlib import Path
 
 import matplotlib
@@ -24,30 +23,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers '3d' projection)
 import numpy as np
 
-
-DRONE_COLORS = ["#e8443b", "#3aa54a", "#3865bf", "#d49b1c"]
-
-
-def load_drones(run_dir: Path, ep: int) -> list[dict]:
-    drones = []
-    for i in range(4):
-        p = run_dir / f"episode_{ep:03d}_drone_{i:02d}.json"
-        drones.append(json.loads(p.read_text()))
-    return drones
-
-
-def trajectory_arrays(drones: list[dict]) -> tuple[np.ndarray, np.ndarray]:
-    """Returns (true_pos[D,T,3], ref_pos[D,T,3]) arrays."""
-    D = len(drones)
-    T = min(len(d["steps"]) for d in drones)
-    true_pos = np.zeros((D, T, 3))
-    ref_pos = np.zeros((D, T, 3))
-    for i, d in enumerate(drones):
-        for k in range(T):
-            s = d["steps"][k]
-            true_pos[i, k] = s["true_pos"]
-            ref_pos[i, k] = s.get("reference_pos", s["true_pos"])
-    return true_pos, ref_pos
+from uav_nav_lab.viz.episode_gif import DRONE_COLORS, load_drones, trajectory_arrays
 
 
 def setup_axis(ax, title: str, center: np.ndarray, radius: float):
@@ -77,8 +53,8 @@ def main() -> int:
 
     mpc_drones = load_drones(Path(args.mpc_dir), args.ep)
     mppi_drones = load_drones(Path(args.mppi_dir), args.ep)
-    true_mpc, ref_mpc = trajectory_arrays(mpc_drones)
-    true_mppi, ref_mppi = trajectory_arrays(mppi_drones)
+    true_mpc, ref_mpc, _ = trajectory_arrays(mpc_drones, fit="min")
+    true_mppi, ref_mppi, _ = trajectory_arrays(mppi_drones, fit="min")
 
     # Extract loop center & radius from the reference trajectory itself
     # (all drones share the same loop center)
