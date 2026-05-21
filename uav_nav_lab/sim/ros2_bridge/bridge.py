@@ -1,4 +1,4 @@
-"""ROS 2 bridge — wires the framework's `SimInterface` to a ROS 2 stack.
+"""ROS 2 bridge — wires the framework's ``SimInterface`` to a ROS 2 stack.
 
 Not exercised in CI (would need rclpy + a sim like Gazebo / Ignition /
 PX4-SITL via MAVROS) but the adapter is mockable, so the publish-spin-
@@ -16,12 +16,12 @@ Contract:
                           /odom message lands. Falls back to scenario.start
                           if no odom arrives within the dt window.
   - step(velocity_cmd) → publish a velocity command on cmd_topic, advance time by
-                          `dt` (wall-clock by default; sim-time if
-                          `use_sim_time` is enabled — see below), then
+                          ``dt`` (wall-clock by default; sim-time if
+                          ``use_sim_time`` is enabled — see below), then
                           read latest pose/velocity back. Collision flag
                           comes from /collision (or False if the topic is
                           unconfigured). Optional LiDAR / camera readouts
-                          populate `state.extra` mirroring the AirSim
+                          populate ``state.extra`` mirroring the AirSim
                           bridge — see below.
   - state              → ENU pose / velocity from the latest odom message.
   - obstacle_map       → comes from the scenario; this bridge does not
@@ -29,7 +29,7 @@ Contract:
 
 Coordinate frames:
   - Framework: ENU (east-north-up, +z up).
-  - ROS 2:     ENU per REP-103 by default. Set `frame: ned` for wrappers
+  - ROS 2:     ENU per REP-103 by default. Set ``frame: ned`` for wrappers
     that publish NED odometry / consume NED velocity commands, such as
     AirSim's default ROS wrapper topics.
 
@@ -42,27 +42,28 @@ Topology:
   - subscribe: clock_topic      rosgraph_msgs/Clock    (only if use_sim_time)
 
 Sim-time:
-  - Default (use_sim_time=False) — each step() does one `spin_once` with
-    a wall-clock timeout of `dt`. Fine for real-time sims (Gazebo at
+  - Default (use_sim_time=False) — each step() does one ``spin_once`` with
+    a wall-clock timeout of ``dt``. Fine for real-time sims (Gazebo at
     rate 1×, real robots) but coupled to wall-clock — PX4-SITL
     fast-forward at 8× wall-clock would still tick the bridge at
     wall-clock dt, defeating the point.
-  - use_sim_time=True — bridge spins until `/clock` has advanced by
-    `dt` of sim-time, with a wall-clock safety timeout so a paused or
+  - use_sim_time=True — bridge spins until ``/clock`` has advanced by
+    ``dt`` of sim-time, with a wall-clock safety timeout so a paused or
     crashed sim does not deadlock the runner. The runner's own
-    `state.t` then tracks sim-time and PX4-SITL fast-forward speeds the
+    ``state.t`` then tracks sim-time and PX4-SITL fast-forward speeds the
     experiment up by the sim's accelaration factor.
 
 LiDAR / camera readouts mirror the AirSim bridge so the same
-`pointcloud_occupancy` sensor and `uav-nav video` CLI work transparently
-across backends:
+``pointcloud_occupancy`` sensor and ``uav-nav video`` CLI work
+transparently across backends:
   - state.extra["lidar_points"][topic]  = (N, 3) ENU point cloud
   - state.extra["camera_images"][topic] = compressed PNG bytes
 
-The adapter abstraction (`_Ros2Adapter` duck-typed surface) keeps the
-bridge testable without rclpy installed. `_RclpyAdapter` is the
-production implementation; tests inject a fake adapter that records
-publishes and returns canned odom / lidar / camera data.
+The adapter abstraction (``_Ros2Adapter`` duck-typed surface) keeps the
+bridge testable without rclpy installed. :class:`_RclpyAdapter` (in
+:mod:`.adapter`) is the production implementation; tests inject a fake
+adapter that records publishes and returns canned odom / lidar /
+camera data.
 """
 
 from __future__ import annotations
@@ -71,21 +72,9 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from .base import SIM_REGISTRY, SimInterface, SimState, SimStepInfo
-
-
-def _enu_to_ned(p: np.ndarray) -> np.ndarray:
-    """(x, y, z)_ENU -> (y, x, -z)_NED. Pads / truncates to 3D."""
-    p = np.asarray(p, dtype=float)
-    out = np.zeros(3)
-    out[: p.size] = p[:3]
-    return np.array([out[1], out[0], -out[2]])
-
-
-def _ned_to_enu(p: np.ndarray) -> np.ndarray:
-    """(y, x, -z)_NED -> (x, y, z)_ENU."""
-    p = np.asarray(p, dtype=float)
-    return np.array([p[1], p[0], -p[2]])
+from ..base import SIM_REGISTRY, SimInterface, SimState, SimStepInfo
+from .adapter import _RclpyAdapter
+from .coords import _enu_to_ned, _ned_to_enu
 
 
 @SIM_REGISTRY.register("ros2")
@@ -319,228 +308,3 @@ class Ros2Bridge(SimInterface):
     @property
     def obstacle_map(self) -> Any:
         return self.scenario.occupancy
-
-
-class _RclpyAdapter:  # pragma: no cover
-    """Production adapter — owns an rclpy node, a Twist publisher, and
-    Odometry / Bool / PointCloud2 / Image subscriptions. Lazy-imports
-    rclpy + PIL so the bridge module imports cleanly without ROS sourced
-    or PIL installed."""
-
-    def __init__(
-        self,
-        cmd_topic: str,
-        odom_topic: str,
-        collision_topic: str | None,
-        lidar_topics: list[str] | None = None,
-        camera_topics: list[str] | None = None,
-        clock_topic: str | None = None,
-        cmd_msg_type: str = "twist",
-    ) -> None:
-        try:
-            import rclpy  # type: ignore[import-not-found]
-            from geometry_msgs.msg import Twist  # type: ignore[import-not-found]
-            from nav_msgs.msg import Odometry  # type: ignore[import-not-found]
-            from std_msgs.msg import Bool  # type: ignore[import-not-found]
-            from sensor_msgs.msg import Image, PointCloud2  # type: ignore[import-not-found]
-            from rosgraph_msgs.msg import Clock  # type: ignore[import-not-found]
-            from rclpy.qos import QoSPresetProfiles  # type: ignore[import-not-found]
-        except ImportError as e:
-            raise SystemExit(
-                "rclpy is not on PYTHONPATH. Source ROS 2 (e.g. "
-                "`source /opt/ros/jazzy/setup.bash`) before running this experiment."
-            ) from e
-
-        if not rclpy.ok():
-            rclpy.init()
-        self._rclpy = rclpy
-        self._cmd_msg_type = str(cmd_msg_type).lower()
-        if self._cmd_msg_type == "twist":
-            self._CmdMsg = Twist
-        elif self._cmd_msg_type == "airsim_vel_cmd":
-            try:
-                from airsim_interfaces.msg import VelCmd  # type: ignore[import-not-found]
-            except ImportError:
-                try:
-                    from airsim_ros_pkgs.msg import VelCmd  # type: ignore[import-not-found]
-                except ImportError as e:
-                    raise SystemExit(
-                        "AirSim ROS2 VelCmd message is not on PYTHONPATH. "
-                        "Source the AirSim ROS2 workspace before running this experiment."
-                    ) from e
-            self._CmdMsg = VelCmd
-        else:
-            raise ValueError("cmd_msg_type must be 'twist' or 'airsim_vel_cmd'")
-        self._node = rclpy.create_node("uav_nav_lab_ros2_bridge")
-        self._cmd_pub = self._node.create_publisher(self._CmdMsg, cmd_topic, 10)
-        self._latest_odom: Any = None
-        self._latest_collision: bool = False
-        self._latest_clouds: dict[str, np.ndarray] = {}
-        self._latest_images: dict[str, bytes] = {}
-        self._latest_sim_time: float | None = None
-        # SENSOR_DATA QoS: best-effort + small depth, matches typical odom /
-        # lidar / camera publishers (Gazebo, ardupilot_gz, PX4-SITL via MAVROS).
-        sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
-        self._node.create_subscription(Odometry, odom_topic, self._on_odom, sensor_qos)
-        if collision_topic is not None:
-            self._node.create_subscription(Bool, collision_topic, self._on_collision, 10)
-        for topic in (lidar_topics or []):
-            self._node.create_subscription(
-                PointCloud2, topic,
-                lambda msg, t=topic: self._on_pointcloud(t, msg),
-                sensor_qos,
-            )
-        for topic in (camera_topics or []):
-            self._node.create_subscription(
-                Image, topic,
-                lambda msg, t=topic: self._on_image(t, msg),
-                sensor_qos,
-            )
-        if clock_topic is not None:
-            # `/clock` uses RELIABLE QoS by ROS 2 convention; SENSOR_DATA
-            # would silently drop messages and break sim-time anchoring.
-            self._node.create_subscription(Clock, clock_topic, self._on_clock, 10)
-
-    def _on_odom(self, msg: Any) -> None:
-        self._latest_odom = msg
-
-    def _on_collision(self, msg: Any) -> None:
-        self._latest_collision = bool(msg.data)
-
-    def _on_pointcloud(self, topic: str, msg: Any) -> None:
-        self._latest_clouds[topic] = _decode_pointcloud2(msg)
-
-    def _on_image(self, topic: str, msg: Any) -> None:
-        self._latest_images[topic] = _encode_image_to_png(msg)
-
-    def _on_clock(self, msg: Any) -> None:
-        # rosgraph_msgs/Clock has a single field `clock` of type
-        # builtin_interfaces/Time { sec, nanosec }.
-        self._latest_sim_time = float(msg.clock.sec) + float(msg.clock.nanosec) * 1e-9
-
-    def publish_velocity(self, vx: float, vy: float, vz: float) -> None:
-        msg = self._CmdMsg()
-        target = msg.twist if self._cmd_msg_type == "airsim_vel_cmd" else msg
-        target.linear.x = float(vx)
-        target.linear.y = float(vy)
-        target.linear.z = float(vz)
-        self._cmd_pub.publish(msg)
-
-    def latest_pose_velocity(self) -> tuple[np.ndarray, np.ndarray] | None:
-        msg = self._latest_odom
-        if msg is None:
-            return None
-        p = msg.pose.pose.position
-        v = msg.twist.twist.linear
-        return (
-            np.array([p.x, p.y, p.z]),
-            np.array([v.x, v.y, v.z]),
-        )
-
-    def latest_collision(self) -> bool:
-        return self._latest_collision
-
-    def latest_lidar_clouds(self) -> dict[str, np.ndarray]:
-        return dict(self._latest_clouds)
-
-    def latest_camera_images(self) -> dict[str, bytes]:
-        return dict(self._latest_images)
-
-    def tick(self, timeout_s: float) -> None:
-        self._rclpy.spin_once(self._node, timeout_sec=float(timeout_s))
-
-    def latest_sim_time(self) -> float | None:
-        return self._latest_sim_time
-
-    def wait_for_sim_time_advance(
-        self, *, target_time: float, wall_timeout: float
-    ) -> float:
-        """Spin until `/clock` reaches `target_time` or `wall_timeout`
-        wall-clock seconds elapse, whichever comes first. Returns the
-        actual sim-time observed at exit (may exceed `target_time` if
-        the clock publish granularity is coarse, or fall short of it on
-        timeout). The bridge re-anchors on the returned value, so a
-        short overshoot does not compound across the episode."""
-        import time
-
-        start = time.monotonic()
-        # Use a small per-spin slice so a paused sim still notices wall_timeout.
-        slice_s = min(0.05, max(1e-3, wall_timeout / 100.0))
-        while True:
-            cur = self._latest_sim_time
-            if cur is not None and cur >= target_time:
-                return float(cur)
-            if (time.monotonic() - start) >= wall_timeout:
-                return float(cur if cur is not None else target_time)
-            self._rclpy.spin_once(self._node, timeout_sec=slice_s)
-
-    def teleport(self, pos_enu: np.ndarray) -> None:  # noqa: ARG002
-        # Sim-specific service call (Gazebo set_entity_state, Ignition
-        # /world/.../set_pose). Left as a no-op in the generic adapter;
-        # subclass and override if you need it.
-        return None
-
-
-def _decode_pointcloud2(msg: Any) -> np.ndarray:  # pragma: no cover
-    """Extract (N, 3) float32 ENU points from a `sensor_msgs/PointCloud2`.
-
-    Reads `x` / `y` / `z` fields by name+offset from `msg.fields`, so it
-    works against the standard PointCloud2 layout regardless of whether
-    extra fields (intensity, rgb, …) are present in between."""
-    import struct
-
-    fields = {f.name: f for f in msg.fields}
-    if not all(k in fields for k in ("x", "y", "z")):
-        return np.zeros((0, 3), dtype=np.float32)
-    n = int(msg.width) * int(msg.height)
-    if n == 0:
-        return np.zeros((0, 3), dtype=np.float32)
-    fmt_pref = ">" if getattr(msg, "is_bigendian", False) else "<"
-    fmt = f"{fmt_pref}f"
-    point_step = int(msg.point_step)
-    data = bytes(msg.data)
-    x_off = int(fields["x"].offset)
-    y_off = int(fields["y"].offset)
-    z_off = int(fields["z"].offset)
-    out = np.empty((n, 3), dtype=np.float32)
-    for i in range(n):
-        base = i * point_step
-        out[i, 0] = struct.unpack_from(fmt, data, base + x_off)[0]
-        out[i, 1] = struct.unpack_from(fmt, data, base + y_off)[0]
-        out[i, 2] = struct.unpack_from(fmt, data, base + z_off)[0]
-    return out
-
-
-def _encode_image_to_png(msg: Any) -> bytes:  # pragma: no cover
-    """Convert a `sensor_msgs/Image` to PNG bytes via PIL.
-
-    Supports the most common encodings (rgb8, bgr8, mono8, rgba8). For
-    less common encodings (depth16, yuyv, …) returns empty bytes so the
-    runner can still write the rest of the step's data without crashing."""
-    try:
-        from PIL import Image as PILImage
-    except ImportError as e:
-        raise SystemExit(
-            "PIL/Pillow is required to encode ROS Image messages. "
-            "Install with `pip install pillow` (already a `[viz]` extra)."
-        ) from e
-    import io
-
-    enc = str(msg.encoding)
-    h, w = int(msg.height), int(msg.width)
-    raw = bytes(msg.data)
-    if enc == "rgb8":
-        img = PILImage.frombytes("RGB", (w, h), raw)
-    elif enc == "bgr8":
-        img = PILImage.frombytes("RGB", (w, h), raw)
-        b, g, r = img.split()
-        img = PILImage.merge("RGB", (r, g, b))
-    elif enc == "rgba8":
-        img = PILImage.frombytes("RGBA", (w, h), raw)
-    elif enc == "mono8":
-        img = PILImage.frombytes("L", (w, h), raw)
-    else:
-        return b""  # unsupported encoding — silently skip this frame
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
