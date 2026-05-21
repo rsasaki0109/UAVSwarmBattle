@@ -3051,6 +3051,41 @@ This confirms the softmax-vs-argmin avoidance signature is not an
 artifact of the 2-drone geometry — it scales to 4 drones with mutual
 peer prediction.
 
+**Intruder-velocity sweep** (2-drone cell, n=5 each, 5 velocities ×
+2 planners = 50 episodes). Success rate is flat at **10/10
+drone-episodes for both planners across all velocities** — the cell
+is robust in the 0.0–2.0 m/s intruder range. Trajectory-level
+metrics across n=10 drones (mean ± 1.96·SEM):
+
+| intruder vel (m/s) | MPC min-dist to intruder | MPPI min-dist | MPC detour | MPPI detour | MPC min cruise speed | MPPI min cruise speed |
+|---|---|---|---|---|---|---|
+| 0.0 | 1.72 ± 0.10 | 1.65 ± 0.08 | 2.25 ± 0.27 | 1.77 ± 0.07 | 4.79 ± 0.75 | 5.24 ± 0.07 |
+| 0.3 | 1.76 ± 0.13 | 2.19 ± 0.16 | 1.90 ± 0.48 | 2.03 ± 0.15 | 4.79 ± 0.75 | 5.31 ± 0.03 |
+| 0.5 | 2.08 ± 0.03 | 2.32 ± 0.43 | 1.90 ± 0.48 | 1.93 ± 0.17 | 4.79 ± 0.75 | 5.29 ± 0.04 |
+| 1.0 | 2.85 ± 0.45 | 2.64 ± 0.56 | 1.96 ± 0.51 | 1.43 ± 0.34 | 4.79 ± 0.75 | 5.34 ± 0.05 |
+| 2.0 | 4.21 ± 1.51 | 3.89 ± 0.94 | 1.72 ± 0.36 | 2.11 ± 0.82 | 4.79 ± 0.75 | 3.77 ± 0.82 |
+
+Two readings:
+
+- **min-dist to intruder increases monotonically with intruder
+  velocity** for both planners — a faster intruder is *easier* to
+  avoid because the planner can predict its motion and time the
+  crossing, while a static intruder forces both drones to graze
+  past it. Min-dist roughly tracks `1.7 + 1.0 × vel`.
+- **min cruise speed separates the planners**. MPC sits at 4.79 m/s
+  across all velocities (large ±0.75 CI because half the drones
+  brake harder than the other half — the asymmetric stop-and-wait
+  pattern), while MPPI cruises at 5.2–5.3 m/s for vel ≤ 1.0 and
+  drops sharply to 3.8 m/s only at vel=2.0. MPPI keeps both drones
+  smooth until the intruder becomes fast enough to force a true
+  slow-down; MPC's argmin commit produces a consistent
+  brake-then-swerve regardless of intruder speed.
+
+Detour magnitude (perpendicular deviation from start-goal line)
+is **insensitive to intruder velocity** at ~1.4–2.3 m for both
+planners. The argmin-vs-softmax signature is in the *velocity
+profile*, not the *spatial deviation*.
+
 **Limitations.** n=5 is intentionally small: CPU MPPI at
 n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
 for MPPI in this 2-drone cell — the cost only gets steep on the
