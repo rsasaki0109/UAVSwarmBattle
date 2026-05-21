@@ -5,15 +5,16 @@
 **Python research framework for UAV motion planning.**
 YAML-driven ablations with Wilson 95 % CIs by default.
 
-> ⚠️ **Heads-up (2026-05-21)**: a critical multi-runner bug was found
+> ⚠️ **Heads-up (2026-05-22)**: a critical multi-runner bug was found
 > that froze dynamic obstacles in any episode following a total-wipeout
 > episode (see commit `1646e11`). The old race / gates / dyn4 / chaos
 > headline numbers ("MPC 51.7 % vs softmax 3.3 %") were artifacts of
-> frozen obstacles. The hero GIF below is the first re-tuned cell where
-> both planners actually avoid the dynamic intruders (n=5 / 20 drone-
-> episodes / 0 collisions for both). The old findings are being
-> rewritten; see `docs/findings.md` for the current state of each
-> result.
+> frozen obstacles. The hero GIF below shows the first re-tuned cell
+> where MPC and CPU MPPI **visibly** avoid a dynamic intruder while also
+> coordinating with each other — MPC stops & waits, MPPI swerves around
+> (n=5 / 10 drone-episodes / 0 collisions for both planners). The old
+> findings are being rewritten; see `docs/findings.md` for the current
+> state of each result.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -21,16 +22,18 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_avoid.gif" alt="4 drones lap an oval and avoid 2 vertical-bouncing intruders, MPC argmin vs MPPI softmax side-by-side, all 20 drone-episodes succeed" width="1080">
+<img src="docs/images/compare_intersection_avoid.gif" alt="2 drones approach a 4-way intersection from N and E while a slow dynamic intruder sits at the centre; MPC stops and waits, MPPI swerves around — both succeed in all 10 drone-episodes" width="1080">
 
-<i>4 drones lap an oval (16 × 12 m) while two slow vertical-bouncing
-intruders (red squares, 1.5 m/s) cross their path. Same stack, same
-seed, only the rollout aggregator changes — MPC argmin on the left,
-MPPI softmax on the right. First re-tuned dynamic-obstacle cell after
-the <a href="https://github.com/rsasaki0109/uav-nav-lab/commit/1646e11">1646e11</a>
-multi-runner bug fix: <b>both planners successfully detour around the
-intruders for all 20 drone-episodes (n=5 seeds × 4 drones)</b>.
-Reproduce with <code>examples/exp_race_simple_retuned_v2_{mpc,mppi}.yaml</code>.
+<i>Two drones enter a 4-way intersection from N (red) and E (green); a
+slow dynamic intruder (large red square, 0.5 m/s) sits at the centre
+and drifts E-W. Same stack, same seed, only the rollout aggregator
+changes — MPC argmin on the left, MPPI softmax on the right. Two
+different avoidance strategies emerge from the same cost: <b>MPC
+brings the N drone to a stop and waits</b> for the E drone +
+intruder to clear; <b>MPPI swerves both drones around</b> the
+intruder simultaneously. <b>Both planners succeed in all 10 drone-
+episodes (n=5 seeds × 2 drones, 0 collisions)</b>.
+Reproduce with <code>examples/exp_intersection_v1_{mpc,mppi}.yaml</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -166,13 +169,17 @@ for the path-intersecting intruders. The "MPC vs softmax" contrast
 on those scenarios was an artifact of the bug, not a real
 planner-level finding.
 
-The current hero GIF (<code>compare_race_avoid.gif</code> at the top
-of the README) is the first re-tuned cell where both planners
-actually avoid the intruders (oval 16 × 12 m, two slow vertical-
-bouncing obstacles at 1.5 m/s, n=5 / 20 drone-episodes / 0 collisions
-for both MPC and MPPI). The original gates4 / chaos / dyn4 scenarios
-still need further re-tuning (wider gaps, slower gates) before their
-GIFs go back up.
+The current hero GIF (<code>compare_intersection_avoid.gif</code> at
+the top of the README) is the first re-tuned cell where both planners
+visibly avoid a dynamic intruder while also coordinating with another
+drone — MPC stops & waits, MPPI swerves around (n=5 / 10 drone-
+episodes / 0 collisions for both). An earlier re-tune attempt on the
+oval-race scenario (<code>compare_race_avoid.gif</code>) succeeded
+statistically but did not show visible avoidance — drones at
+period=19.8 mostly slipped past the bouncing intruders without an
+obvious detour. The original gates4 / chaos / dyn4 scenarios still
+need further re-tuning (wider gaps, slower gates) before their GIFs
+go back up.
 
 </details>
 
@@ -195,10 +202,11 @@ GIFs go back up.
 v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
 stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 5 scenario families. Stable ablations are reproducible from the example
-YAMLs and scripts; the re-tuned dynamic-obstacle race cell is the
-`compare_race_avoid.gif` hero (both planners 0/20 collisions). The
-older gates4 / dyn4 / chaos scenarios remain marked under repair after
-the `1646e11` bug fix.
+YAMLs and scripts; the re-tuned dynamic-obstacle hero is the
+`compare_intersection_avoid.gif` 2-drone intersection (both planners
+0/10 collisions, visibly different avoidance strategies). The older
+race / gates4 / dyn4 / chaos scenarios remain marked under repair
+after the `1646e11` bug fix.
 
 **External backends:**
 

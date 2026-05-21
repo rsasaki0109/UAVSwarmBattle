@@ -152,7 +152,13 @@ def main() -> int:
                          "rendered (overrides --obstacle-* args).")
     ap.add_argument("--title", default="Drone race (4 drones, oval circuit) + bouncing intruder",
                     help="Title prefix shown above the panes (time stamp appended).")
+    ap.add_argument("--n-drones", type=int, default=4,
+                    help="Number of drones to load per run (default 4).")
+    ap.add_argument("--no-oval", action="store_true",
+                    help="Skip the dashed reference oval — useful for "
+                         "non-aerobatic scenarios (e.g. intersection).")
     args = ap.parse_args()
+    n_drones = args.n_drones
 
     runs = [parse_run(r) for r in args.runs]
     n_panes = len(runs)
@@ -162,7 +168,7 @@ def main() -> int:
     all_drones: list[list[dict]] = []
     rollouts_per_pane: list[list[list[tuple[float, np.ndarray]]]] = []
     for run_dir, _ in runs:
-        drones = load_drones(run_dir, args.ep)
+        drones = load_drones(run_dir, args.ep, n_drones=n_drones)
         all_drones.append(drones)
         rollouts_per_pane.append(load_rollout_replans(drones))
 
@@ -241,16 +247,17 @@ def main() -> int:
     for pane in range(n_panes):
         ax = fig.add_subplot(1, n_panes, pane + 1, projection="3d")
         setup_axis(ax, world, center)
-        ax.plot(ox, oy, oz, color="#666666", linewidth=1.0, alpha=0.7,
-                linestyle="--")
+        if not args.no_oval:
+            ax.plot(ox, oy, oz, color="#666666", linewidth=1.0, alpha=0.7,
+                    linestyle="--")
         axes.append(ax)
         pane_trails: list = []
         pane_pts: list = []
         pane_rollouts: list[list] = []
         pane_ref_pts: list = []
         pane_ref_lines: list = []
-        for i in range(4):
-            c = DRONE_COLORS[i]
+        for i in range(n_drones):
+            c = DRONE_COLORS[i % len(DRONE_COLORS)]
             # Rollout cloud (drawn under the drone marker for layering).
             drone_rollouts: list = []
             if max_k > 0:
@@ -312,7 +319,7 @@ def main() -> int:
             tp = true_arr[pane]
             coll_step = coll_step_arr[pane]
             rp = ref_arr[pane]
-            for i in range(4):
+            for i in range(n_drones):
                 trail_lines[pane][i].set_data(tp[i, k0:k+1, 0], tp[i, k0:k+1, 1])
                 trail_lines[pane][i].set_3d_properties(tp[i, k0:k+1, 2])
                 drone_pts[pane][i].set_data(tp[i, k:k+1, 0], tp[i, k:k+1, 1])
@@ -329,7 +336,7 @@ def main() -> int:
                 # Collision flash: white-out the marker for `flash_window`
                 # frames after the first collision flag, then revert to a
                 # dimmed grey ghost.
-                base_c = DRONE_COLORS[i]
+                base_c = DRONE_COLORS[i % len(DRONE_COLORS)]
                 dk = k - int(coll_step[i])
                 if dk < 0:
                     drone_pts[pane][i].set_color(base_c)
@@ -365,7 +372,7 @@ def main() -> int:
             outcomes = episode_outcomes(all_drones[pane])
             n_coll_final = sum(1 for o in outcomes if o == "collision")
             axes[pane].set_title(
-                f"{label}   err {err:.2f} m   coll {n_coll_live}/4 (final {n_coll_final}/4)",
+                f"{label}   err {err:.2f} m   coll {n_coll_live}/{n_drones} (final {n_coll_final}/{n_drones})",
                 fontsize=12,
             )
             artists.extend(trail_lines[pane])
