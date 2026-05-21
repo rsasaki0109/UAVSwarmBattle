@@ -7,11 +7,13 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 
 > ⚠️ **Heads-up (2026-05-21)**: a critical multi-runner bug was found
 > that froze dynamic obstacles in any episode following a total-wipeout
-> episode (see commit `1646e11`). Re-runs with the fix show the §3
-> race / gates / dyn4 / chaos scenarios are uniformly **100 % collision
-> for every planner** — the "MPC 51.7 % vs softmax 3.3 %" headline was
-> an artifact of frozen obstacles. The findings are being rewritten;
-> see `docs/findings.md` for the current state of each result.
+> episode (see commit `1646e11`). The old race / gates / dyn4 / chaos
+> headline numbers ("MPC 51.7 % vs softmax 3.3 %") were artifacts of
+> frozen obstacles. The hero GIF below is the first re-tuned cell where
+> both planners actually avoid the dynamic intruders (n=5 / 20 drone-
+> episodes / 0 collisions for both). The old findings are being
+> rewritten; see `docs/findings.md` for the current state of each
+> result.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -19,15 +21,16 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_gates4.gif" alt="4 drones attempt 4 sliding gates, MPC vs GPU MPPI side-by-side, current planners cannot solve" width="1080">
+<img src="docs/images/compare_race_avoid.gif" alt="4 drones lap an oval and avoid 2 vertical-bouncing intruders, MPC argmin vs MPPI softmax side-by-side, all 20 drone-episodes succeed" width="1080">
 
-<i>4 drones attempt to lap an oval through <b>4 sliding gates</b>
-(8 red blocks). Same stack, same seed, only the rollout aggregator
-changes. With the multi-runner bug fix from
-<a href="https://github.com/rsasaki0109/uav-nav-lab/commit/1646e11">1646e11</a>,
-<b>both MPC argmin and GPU MPPI softmax now lose every drone-episode</b>
-on this scenario — the closing rate is too fast for the 0.4 s
-lookahead. Scenario re-tuning is in progress.
+<i>4 drones lap an oval (16 × 12 m) while two slow vertical-bouncing
+intruders (red squares, 1.5 m/s) cross their path. Same stack, same
+seed, only the rollout aggregator changes — MPC argmin on the left,
+MPPI softmax on the right. First re-tuned dynamic-obstacle cell after
+the <a href="https://github.com/rsasaki0109/uav-nav-lab/commit/1646e11">1646e11</a>
+multi-runner bug fix: <b>both planners successfully detour around the
+intruders for all 20 drone-episodes (n=5 seeds × 4 drones)</b>.
+Reproduce with <code>examples/exp_race_simple_retuned_v2_{mpc,mppi}.yaml</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -154,15 +157,22 @@ algorithmic signature of each aggregator.</i>
 <details>
 <summary>⚠️ <b>Dynamic-obstacle hero GIFs (under repair)</b></summary>
 
-The race / gates / dyn4 / chaos GIFs that used to live here were
-rendered against the frozen-obstacle bug (fixed in `1646e11`). Re-runs
-with the fix show that the scenarios as designed are <b>uniformly
-100 % collision for every planner</b> — the moving-gate gap closes
-faster than the planner's 0.4 s lookahead can detour around, and
-likewise for the path-intersecting intruders. The "MPC vs softmax"
-contrast was an artifact of the bug, not a real planner-level finding.
-The scenarios themselves need to be re-tuned (wider gaps, slower
-obstacles, larger oval) before the GIFs go back up.
+The original race / gates / dyn4 / chaos GIFs were rendered against
+the frozen-obstacle bug (fixed in <code>1646e11</code>). Re-runs with
+the fix show those scenarios as designed are <b>uniformly 100 %
+collision for every planner</b> — the moving-gate gap closes faster
+than the planner's 0.4 s lookahead can detour around, and likewise
+for the path-intersecting intruders. The "MPC vs softmax" contrast
+on those scenarios was an artifact of the bug, not a real
+planner-level finding.
+
+The current hero GIF (<code>compare_race_avoid.gif</code> at the top
+of the README) is the first re-tuned cell where both planners
+actually avoid the intruders (oval 16 × 12 m, two slow vertical-
+bouncing obstacles at 1.5 m/s, n=5 / 20 drone-episodes / 0 collisions
+for both MPC and MPPI). The original gates4 / chaos / dyn4 scenarios
+still need further re-tuning (wider gaps, slower gates) before their
+GIFs go back up.
 
 </details>
 
@@ -185,8 +195,10 @@ obstacles, larger oval) before the GIFs go back up.
 v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
 stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 5 scenario families. Stable ablations are reproducible from the example
-YAMLs and scripts; dynamic-obstacle race scenarios are explicitly marked
-under repair after the `1646e11` bug fix.
+YAMLs and scripts; the re-tuned dynamic-obstacle race cell is the
+`compare_race_avoid.gif` hero (both planners 0/20 collisions). The
+older gates4 / dyn4 / chaos scenarios remain marked under repair after
+the `1646e11` bug fix.
 
 **External backends:**
 
