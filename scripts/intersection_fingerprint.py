@@ -32,6 +32,7 @@ CELLS = [
     ("v1",         "results/intersection_v1_mpc",                "results/intersection_v1_mppi",                "examples/exp_intersection_v1_mpc.yaml",                2),
     ("4way",       "results/intersection_4way_mpc",              "results/intersection_4way_mppi",              "examples/exp_intersection_4way_mpc.yaml",              4),
     ("chokepoint", "results/intersection_chokepoint_v1_mpc",     "results/intersection_chokepoint_v1_mppi",     "examples/exp_intersection_chokepoint_v1_mpc.yaml",     2),
+    ("wave",       "results/intersection_wave_v1_mpc",           "results/intersection_wave_v1_mppi",           "examples/exp_intersection_wave_v1_mpc.yaml",           2),
 ]
 N_EPS = 5
 

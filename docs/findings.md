@@ -3154,6 +3154,48 @@ signature is not a 2-drone artifact and not an open-space artifact —
 adding geometric pressure amplifies the planner-level fingerprint
 without breaking success.
 
+**Two-wave intruder ablation** (`examples/exp_intersection_wave_v1_{mpc,mppi}.yaml`,
+n=5, 10/10 collision-free each). Following GPT pro's E3 proposal,
+replace the single slow intruder with three phase-controlled
+intruders (1.5 m/s, alternating ±x, timed to cross the centre at
+t = 2.5 / 3.5 / 4.5 s) so that the planner has to *pick a gap*
+rather than just yield/swerve a single object. Drones still reach
+the centre at t ≈ 2.67 s, so they collide their path with the
+middle of the wave.
+
+| metric | MPC v1 (1 intruder) | MPC wave (3 intruders) | MPPI v1 | MPPI wave |
+|---|---|---|---|---|
+| min clearance (m) | 2.08 ± 0.03 | **4.22 ± 1.51** | 2.32 ± 0.43 | 2.15 ± 0.25 |
+| max lateral dev (m) | 1.90 ± 0.48 | **4.31 ± 0.97** | 1.93 ± 0.17 | 2.11 ± 0.22 |
+| path time (s) | 5.35 ± 0.06 | **5.90 ± 0.40** | 5.42 ± 0.02 | 5.55 ± 0.00 |
+| max \|Δcmd\| (m/s) | 6.38 ± 2.12 | 6.64 ± 2.31 | 2.53 ± 0.88 | 4.73 ± 0.86 |
+| plan time (ms) | 9.17 ± 0.13 | 10.36 ± 0.26 | 37.84 ± 1.07 | 40.35 ± 0.48 |
+
+**The fingerprint axis itself shifts under wave stress.** In the
+single-intruder cells (v1, chokepoint) the planner separation lived
+in the *time-derivative of control* (max |Δcmd|). In the wave cell
+it moves to *spatial* metrics:
+
+- **MPC argmin**: "scheduling looks dangerous → take a wide detour
+  and let the wave pass." Lateral deviation **4.31 m** (vs 1.90 in
+  v1, **+127 %**), min clearance **4.22 m** (vs 2.08, **+103 %**),
+  path time **5.90 s** (vs 5.35, **+10 %**). Command-jump grows
+  only slightly (6.38 → 6.64) — because the detour is itself one
+  large commitment instead of many small switches.
+- **MPPI softmax**: "weave through the gaps." Spatial metrics
+  unchanged (lateral dev 1.93 → 2.11, clearance 2.32 → 2.15,
+  path time 5.42 → 5.55) — but max |Δcmd| nearly doubles
+  (2.53 → 4.73), because softmax now has to issue rapid lateral
+  corrections at each wave-gap window.
+
+Reading: **the argmin/softmax signature is not a single metric, it
+is a planner-shaped *mode* whose dominant axis depends on the cell
+geometry**. Single intruder + walls → command time-derivative.
+Multi-wave intruder → spatial detour. Both planners stay
+collision-free; the choice is *how* they pay the cost (jerky
+commands, wider trajectory, or slower arrival), not *whether* they
+fail.
+
 **Limitations.** n=5 is intentionally small: CPU MPPI at
 n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
 for MPPI in this 2-drone cell — the cost only gets steep on the
