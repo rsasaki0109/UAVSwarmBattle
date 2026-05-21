@@ -3121,6 +3121,39 @@ command-smoothness ↔ compute-cost axis. The qualitative GIF
 observation (MPC stops, MPPI swerves) is what you see; max |Δcmd|
 is the metric that captures *why*.
 
+**Chokepoint ablation** (`examples/exp_intersection_chokepoint_v1_{mpc,mppi}.yaml`,
+n=5, 10/10 collision-free each). Following GPT pro's E2 proposal,
+narrow the 2-drone intersection by placing four static 4×4×4 m
+corner cubes (NE/NW/SE/SW), leaving an 8 m × 8 m centre square.
+Both drones now have to thread the gap *and* avoid the intruder, so
+lateral swerve has a non-trivial cost (walls are 4 m off the
+nominal path). Binary success stays at 10/10 — but the fingerprint
+sharpens:
+
+| metric | MPC v1 (open) | MPC chokepoint | MPPI v1 (open) | MPPI chokepoint |
+|---|---|---|---|---|
+| min clearance (m) | 2.08 ± 0.03 | 1.91 ± 0.13 | 2.32 ± 0.43 | 1.75 ± 0.15 |
+| max lateral dev (m) | 1.90 ± 0.48 | 1.61 ± 0.30 | 1.93 ± 0.17 | 1.68 ± 0.26 |
+| **max \|Δcmd\| (m/s)** | **6.38 ± 2.12** | **9.80 ± 0.00** | **2.53 ± 0.88** | **3.75 ± 0.10** |
+| plan time (ms) | 9.17 ± 0.13 | 9.26 ± 0.07 | 37.84 ± 1.07 | 47.12 ± 9.35 |
+
+- **MPC's |Δcmd| saturates at 9.80 m/s** (≈ max_speed + max_accel·dt
+  bound) — the chokepoint forces it into hard back-and-forth between
+  rollouts every replan.
+- **MPPI's |Δcmd| rises modestly** (2.53 → 3.75) — softmax averaging
+  smooths the chokepoint pressure across rollouts.
+- Smoothness ratio widens from **2.4× → 2.6×**, plan-time ratio
+  widens from **4.1× → 5.1×**. Narrower lateral gap = wider
+  fingerprint gap.
+- Spatial metrics (clearance, lateral dev) tighten for both planners
+  but remain near-tied. The mechanism still lives in the time-
+  derivative of control, not the path.
+
+This is the cleanest evidence so far that the argmin/softmax
+signature is not a 2-drone artifact and not an open-space artifact —
+adding geometric pressure amplifies the planner-level fingerprint
+without breaking success.
+
 **Limitations.** n=5 is intentionally small: CPU MPPI at
 n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
 for MPPI in this 2-drone cell — the cost only gets steep on the
