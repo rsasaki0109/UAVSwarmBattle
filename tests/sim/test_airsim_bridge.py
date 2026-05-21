@@ -506,3 +506,158 @@ def test_airsim_bridge_polls_lidar_and_converts_to_enu_via_mock_client() -> None
     cloud = out_state.extra["lidar_points"]["FrontLidar"]
     assert cloud.shape == (2, 3)
     assert np.allclose(cloud, np.array([[2.0, 1.0, 3.0], [5.0, 4.0, 6.0]]))
+
+
+# ---------------------------------------------------------------------------
+# Characterization tests for the helpers extracted by the subpackage split.
+# Lock down current behaviour at the *current* import locations so the
+# refactor can verify it preserves the external contract.
+# ---------------------------------------------------------------------------
+
+
+def _install_fake_airsim(monkeypatch) -> object:
+    """Inject a minimal `airsim` stand-in into sys.modules.
+
+    `_build_image_requests` / `_build_depth_requests` do
+    ``import airsim`` inside the method body, so the tests need ImageType
+    and ImageRequest defined. Returns the fake module for inspection.
+    """
+    import sys
+    from types import ModuleType
+
+    class _ImgType:
+        Scene = 0
+        DepthVis = 3
+        DepthPerspective = 2
+        DepthPlanar = 1
+        Segmentation = 5
+        SurfaceNormals = 6
+        Infrared = 7
+
+    class _ImgReq:
+        def __init__(self, camera_name, image_type, pixels_as_float, compress):
+            self.camera_name = camera_name
+            self.image_type = image_type
+            self.pixels_as_float = pixels_as_float
+            self.compress = compress
+
+    fake = ModuleType("airsim")
+    fake.ImageType = _ImgType
+    fake.ImageRequest = _ImgReq
+    monkeypatch.setitem(sys.modules, "airsim", fake)
+    return fake
+
+
+def test_airsim_bridge_enu_extent_to_ned_swaps_xy_keeps_z() -> None:
+    from uav_nav_lab.sim.airsim_bridge import _enu_extent_to_ned
+
+    assert np.allclose(
+        _enu_extent_to_ned(np.array([2.0, 4.0, 6.0])),
+        np.array([4.0, 2.0, 6.0]),
+    )
+    # Shorter inputs pad to 3D with ones (extent default).
+    assert np.allclose(_enu_extent_to_ned(np.array([3.0, 5.0])), np.array([5.0, 3.0, 1.0]))
+
+
+def test_airsim_bridge_ned_pointcloud_to_enu_handles_normal_and_edge_cases() -> None:
+    from uav_nav_lab.sim.airsim_bridge import _ned_pointcloud_to_enu
+
+    cloud = _ned_pointcloud_to_enu([1.0, 2.0, -3.0, 4.0, 5.0, -6.0])
+    assert cloud.shape == (2, 3)
+    assert np.allclose(cloud, np.array([[2.0, 1.0, 3.0], [5.0, 4.0, 6.0]]))
+
+    # Empty cloud → (0, 3).
+    empty = _ned_pointcloud_to_enu([])
+    assert empty.shape == (0, 3)
+
+    # Malformed (non-multiple of 3) cloud → (0, 3).
+    bad = _ned_pointcloud_to_enu([1.0, 2.0])
+    assert bad.shape == (0, 3)
+
+
+def test_airsim_bridge_normalise_static_obstacle_accepts_center_size_aliases() -> None:
+    from uav_nav_lab.sim.airsim_bridge import AirSimBridge
+
+    spec = AirSimBridge._normalise_static_obstacle(
+        7, {"center": [1.0, 2.0, 3.0], "size": [4.0, 5.0, 6.0]}
+    )
+    assert spec["name"] == "uav_nav_static_007"
+    assert spec["asset"] == "1M_Cube_Chamfer"  # default
+    assert np.allclose(spec["position"], [1.0, 2.0, 3.0])
+    assert np.allclose(spec["scale"], [4.0, 5.0, 6.0])
+    assert spec["physics_enabled"] is False
+    assert spec["is_blueprint"] is False
+
+
+def test_airsim_bridge_normalise_static_obstacle_requires_position_and_scale() -> None:
+    from uav_nav_lab.sim.airsim_bridge import AirSimBridge
+
+    with pytest.raises(ValueError, match="position/center and scale/size"):
+        AirSimBridge._normalise_static_obstacle(0, {"name": "x"})
+
+
+def test_airsim_bridge_intrinsics_from_fov_matches_pinhole_formula() -> None:
+    from uav_nav_lab.sim.airsim_bridge import AirSimBridge
+
+    intr = AirSimBridge._intrinsics_from_fov(90.0, 256, 144)
+    # fx = (W/2) / tan(fov/2); fov=90° → tan=1 → fx = 128.
+    assert intr["fx"] == pytest.approx(128.0)
+    assert intr["fy"] == pytest.approx(128.0)
+    assert intr["cx"] == pytest.approx(128.0)
+    assert intr["cy"] == pytest.approx(72.0)
+
+
+def test_airsim_bridge_build_image_requests_dispatches_type_map(monkeypatch) -> None:
+    fake = _install_fake_airsim(monkeypatch)
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+    from uav_nav_lab.sim.airsim_bridge import AirSimBridge
+
+    sc = SCENARIO_REGISTRY.get("grid_world").from_config(
+        {"size": [4, 4], "start": [0.0, 0.0], "goal": [3.0, 3.0], "obstacles": {"type": "none"}}
+    )
+    bridge = AirSimBridge(
+        dt=0.05, scenario=sc,
+        cameras=[
+            {"name": "rgb", "image_type": "scene"},
+            {"name": "seg", "image_type": "segmentation"},
+            {"name": "ir",  "image_type": "infrared"},
+            {"name": "weird", "image_type": "unknown_type"},  # falls back to Scene
+        ],
+    )
+    reqs = bridge._build_image_requests()
+    assert [r.camera_name for r in reqs] == ["rgb", "seg", "ir", "weird"]
+    assert reqs[0].image_type == fake.ImageType.Scene
+    assert reqs[1].image_type == fake.ImageType.Segmentation
+    assert reqs[2].image_type == fake.ImageType.Infrared
+    assert reqs[3].image_type == fake.ImageType.Scene
+    # Scene path: compressed PNG bytes, not floats.
+    assert all(r.pixels_as_float is False for r in reqs)
+    assert all(r.compress is True for r in reqs)
+
+
+def test_airsim_bridge_build_depth_requests_uses_pixels_as_float(monkeypatch) -> None:
+    fake = _install_fake_airsim(monkeypatch)
+    from uav_nav_lab.scenario import SCENARIO_REGISTRY
+    from uav_nav_lab.sim.airsim_bridge import AirSimBridge
+
+    sc = SCENARIO_REGISTRY.get("grid_world").from_config(
+        {"size": [4, 4], "start": [0.0, 0.0], "goal": [3.0, 3.0], "obstacles": {"type": "none"}}
+    )
+    bridge = AirSimBridge(
+        dt=0.05, scenario=sc,
+        depths=[
+            {"name": "front_depth", "fov_deg": 90.0, "width": 256, "height": 144},
+            {"name": "front_persp", "image_type": "depth_perspective",
+             "fov_deg": 60.0, "width": 128, "height": 72},
+            {"name": "bogus", "image_type": "depth_vis",  # not in type_map → DepthPlanar
+             "fov_deg": 45.0, "width": 64, "height": 48},
+        ],
+    )
+    reqs = bridge._build_depth_requests()
+    assert [r.camera_name for r in reqs] == ["front_depth", "front_persp", "bogus"]
+    assert reqs[0].image_type == fake.ImageType.DepthPlanar
+    assert reqs[1].image_type == fake.ImageType.DepthPerspective
+    assert reqs[2].image_type == fake.ImageType.DepthPlanar  # fallback
+    # Depth path: floats, uncompressed.
+    assert all(r.pixels_as_float is True for r in reqs)
+    assert all(r.compress is False for r in reqs)
