@@ -3279,6 +3279,67 @@ python3 scripts/render_race_gif.py \
   --ep 0 --fps 20 --stride 1 --trail 60
 ```
 
+**E5: predictor-fidelity sweep (2026-05-22).** E4 turned the predictor
+fully off and showed nopred drops both planners to 0/5. E5 sweeps the
+*fidelity* axis instead, replacing the perfect constant-velocity
+predictor with `noisy_velocity` at σ ∈ {0.2, 0.5, 1.0, 3.0, 10.0} and
+also with `kalman_velocity` as a control. Run on both the v1 cell
+(1 intruder, 0.5 m/s) and the harder wave cell (3 intruders, 1.5 m/s).
+
+`scripts/intersection_predictor_sweep.py` →
+`docs/images/intersection_predictor_sweep.png`:
+
+<p align="center">
+<img src="images/intersection_predictor_sweep.png" alt="E5 predictor-fidelity sweep: v1 binary, wave reveals MPPI robustness gradient with σ=10 crossover" width="900">
+</p>
+
+| cell | planner | nopred | σ=10 | σ=3 | σ=1 | σ=0.5 | σ=0.2 | const-vel | kalman |
+|---|---|---|---|---|---|---|---|---|---|
+| v1   | MPC  | 0/5 | — | — | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 |
+| v1   | MPPI | 0/5 | — | — | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 |
+| wave | MPC  | 0/5 | 2/5 | 1/5 | 5/5 | 5/5 | 5/5 | 5/5 | — |
+| wave | MPPI | 0/5 | 0/5 | **4/5** | 5/5 | 5/5 | 5/5 | 5/5 | — |
+
+Three findings refine the §3 two-axis claim:
+
+1. **v1 is binary**, even when the predictor hallucinates at σ=1.0
+   (twice the true intruder speed). The geometry is so forgiving that
+   any belief about motion suffices.
+2. **wave reveals a fidelity knee at σ≥3**. Below σ=1 success is
+   saturated; at σ=3 MPC drops to 1/5 while MPPI holds 4/5 — the
+   softmax aggregator's averaging across the rollout cloud is
+   **more robust to bad predictions** than argmin's single-trajectory
+   commitment.
+3. **σ=10 crossover**: at total predictor chaos MPPI breaks first
+   (0/5) while MPC recovers to 2/5. When predictions are pure noise,
+   softmax keeps chasing phantoms it averaged into the cost; argmin
+   occasionally picks a trajectory whose dominant cost was real
+   geometry rather than the random forecast.
+
+This nuances E4's "predictor sets the success axis" line: the
+*presence* of a predictor is a universal binary switch, but predictor
+*fidelity* matters only on dynamic, multi-intruder geometry, and the
+planner-aggregator advantage *reverses* between moderate-noise and
+total-noise regimes. The honest §3 framing now reads:
+
+- Success-axis switch: predictor on/off (universal).
+- Success-axis gradient: predictor σ vs intruder pressure (geometry-
+  dependent; emerges on wave at σ≥3).
+- Fingerprint axis: planner aggregator (argmin → MPC stops & detours
+  wide; softmax → MPPI weaves with smaller |Δcmd|).
+
+Reproduce (the 18 sweep yamls are checked in as
+`examples/exp_intersection_v1_{noisy02,noisy05,noisy10,kalman}_{mpc,mppi}.yaml`
+and `examples/exp_intersection_wave_{noisy02,noisy05,noisy10,noisy30,noisy100,nopred}_{mpc,mppi}.yaml`):
+
+```bash
+for f in examples/exp_intersection_v1_{noisy02,noisy05,noisy10,kalman}_{mpc,mppi}.yaml \
+         examples/exp_intersection_wave_{noisy02,noisy05,noisy10,noisy30,noisy100,nopred}_{mpc,mppi}.yaml; do
+  uav-nav run "$f"
+done
+python3 scripts/intersection_predictor_sweep.py
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
