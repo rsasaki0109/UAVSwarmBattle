@@ -98,11 +98,11 @@ clustering signature**, not a planner-dependent winner. §6 documents
 the full grid; the N=4 baseline cell described here is the cleanest
 demonstration of the mechanism but not a universal one.
 
-## Dynamic-obstacle extension: retracted pending re-tune
+## Dynamic-obstacle extension: retracted, first re-tuned cell is qualitative
 
 The previous draft used a dynamic-obstacle "Table 2" and the race /
 gates / chaos / dyn4 follow-up cells as the second mode in a 4-mode
-framework. Those claims are now retracted. Commit `1646e11`
+framework. Those claims remain retracted. Commit `1646e11`
 (2026-05-21) fixed a multi-runner bug where dynamic obstacles could
 remain frozen after a total-wipeout episode. Post-fix reruns of the
 affected dynamic-obstacle scenarios collapse to 100 % collision for
@@ -110,10 +110,26 @@ the tested planners, so the earlier "MPC 51.7 % vs GPU MPPI 3.3 %"
 and Smart MPPI v4-v5 improvements were pre-fix artifacts, not
 paper-grade planner mechanisms.
 
-The dynamic-obstacle axis is therefore an open design problem rather
-than a result. A valid replacement cell must first be re-tuned so it
-is winnable by at least one baseline planner under moving obstacles;
-only then can it be promoted back into §3.
+The first re-tuned cell that *visibly* shows planner-level avoidance
+under a dynamic obstacle is the **2-drone intersection coordination**
+scenario (`examples/exp_intersection_v1_{mpc,mppi}.yaml`, n=5):
+N-bound and E-bound drones cross at the centre, a slow dynamic
+intruder (0.5 m/s) sits in the intersection, both planners reach 5/5
+joint success / 0 collisions in 10 drone-episodes, and the same cost
+produces qualitatively different avoidance — **MPC stops & waits the
+N drone**, **MPPI swerves both drones around**. This is the current
+README hero (`docs/images/compare_intersection_avoid.gif`); see
+[findings.md → Intersection coordination](../findings.md#intersection-coordination-visible-mpc-stop-vs-mppi-swerve-under-a-dynamic-intruder)
+for the trajectory analysis and reproduce commands.
+
+This is intentionally a **qualitative** result, not a quantitative
+Table 2 replacement: n=5, single geometric configuration, no
+intruder-speed or drone-count sweep. It re-establishes that the
+softmax-vs-argmin mechanism extends past static peers and choreography
+into dynamic-obstacle avoidance, but a paper-grade table would still
+need a sweep over intruder velocity / drone-arrival timing / drone
+count, plus the GPU MPPI counterpart. The race / gates / chaos / dyn4
+cells remain retired pending further re-tuning of their geometry.
 
 ## Sim transferability
 
@@ -162,18 +178,34 @@ mode expressions across the regimes of this paper:
    RMSE 1.67° vs MPC's 10.7° (-84 % wobble), and per-drone tracking
    RMSE 1.04 m vs 1.31 m (-21 %), winning on 20/20 drone-episodes.
    **GPU MPPI wins decisively.**
+4. **Dynamic-obstacle intersection coordination** (qualitative,
+   `exp_intersection_v1_{mpc,mppi}.yaml`, n=5 / 10 drone-episodes /
+   0 collisions): with a slow dynamic intruder parked at a 2-drone
+   intersection, the operator's argmin commit lets MPC pick a clean
+   *stop-and-wait* maneuver for the N drone, while the softmax
+   averages over multi-direction rollouts and produces a *swerve*
+   for both drones without stopping. Same cost, same world, only
+   the aggregator differs — both succeed but follow visibly
+   different avoidance strategies. **Qualitative tie**, statistical
+   tightness pending a velocity/timing sweep.
 
 The shared structural mechanism — softmax averaging vs argmin
 commit, against a shared world model — is one operator with three
-validated mode expressions. The deployment story is therefore not "GPU MPPI
-is better" or "MPC is better" but a **mode-dependent question**:
+quantitatively validated mode expressions plus one qualitative
+visible-avoidance signature. The deployment story is therefore not
+"GPU MPPI is better" or "MPC is better" but a **mode-dependent
+question**:
 - *Coordination-Δ minimisation under static peers* → MPC.
 - *Multi-drone safety under dense static obstacles* → GPU MPPI.
 - *Choreography precision / formation flight* → GPU MPPI.
+- *Dynamic-obstacle visible avoidance* → qualitative tie (MPC
+  stops & waits, MPPI swerves; both succeed, see intersection cell).
 
-The robust paper-grade claim is this **shared mechanism, three mode
-expressions** — and the mission's metric (Δ, joint success,
-tracking RMSE, phase sync) is what selects the right planner.
+The robust paper-grade claim is this **shared mechanism, three
+quantitative mode expressions plus one qualitative dynamic-obstacle
+signature** — and the mission's metric (Δ, joint success,
+tracking RMSE, phase sync, or avoidance-strategy fingerprint) is
+what selects the right planner.
 
 ### Dynamic-obstacle race cells: retired from §3
 
@@ -183,7 +215,10 @@ mode superposition and Smart MPPI repairs. They are no longer part of
 the paper-grade §3 result set. The YAMLs and renders remain useful as
 failure-mode regression tests and as starting points for a re-tuned
 dynamic-obstacle cell, but their pre-`1646e11` quantitative tables
-must not be cited as planner evidence.
+must not be cited as planner evidence. The intersection coordination
+cell above is the first re-tuned scenario in this scenario family;
+the original race / gates / chaos / dyn4 geometries still need
+further widening (gaps, gate timing) before being promoted back.
 
 ### Reproduce maps
 

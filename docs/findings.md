@@ -10,13 +10,22 @@ Each finding lives in the comment header of the YAML that produces it,
 along with a one-line `uav-nav sweep` invocation that reproduces it.
 Wilson 95 % intervals on rates, mean ± 1.96·SEM on continuous metrics.
 
-**2026-05-21 dynamic-obstacle invalidation.** Commit `1646e11` fixed a
-multi-runner bug that could leave dynamic obstacles frozen after a
-total-wipeout episode. The affected pre-fix sections are retained below
-as historical debugging notes, but their numbers must not be cited as
-planner evidence until the scenarios are re-tuned and rerun: the
-dummy_3d moving-obstacle speed sweep, Smart MPPI v1-v5 dynamic cells,
-and the race / gates / chaos / dyn4 dynamic-obstacle scenarios.
+**2026-05-22 dynamic-obstacle invalidation + intersection re-tune.**
+Commit `1646e11` fixed a multi-runner bug that could leave dynamic
+obstacles frozen after a total-wipeout episode. The affected pre-fix
+sections are retained below as historical debugging notes, but their
+numbers must not be cited as planner evidence until the scenarios are
+re-tuned and rerun: the dummy_3d moving-obstacle speed sweep, Smart
+MPPI v1-v5 dynamic cells, and the race / gates / chaos / dyn4
+dynamic-obstacle scenarios. The first re-tuned cell that *visibly*
+shows planner-level avoidance behaviour is documented in
+[Intersection coordination](#intersection-coordination-visible-mpc-stop-vs-mppi-swerve-under-a-dynamic-intruder)
+(MPC stops & waits, MPPI swerves around; n=5 / 10 drone-episodes / 0
+collisions). An earlier attempt that re-tuned the oval race scenario
+to non-zero success (`exp_race_simple_retuned_v2_{mpc,mppi}.yaml`)
+hit the success-rate target but did *not* show visible avoidance —
+drones at period=19.8 mostly slipped past the bouncing intruders
+without an obvious detour.
 
 ## Contents
 
@@ -58,6 +67,7 @@ and the race / gates / chaos / dyn4 dynamic-obstacle scenarios.
 - [invalidated: dyn4 path-intersecting intruders](#dyn4-path-intersecting-intruders-controlled-dynamic-avoidance-harness)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
 - [invalidated: Smart MPPI v5 (mode-aware switcher)](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
+- [Intersection coordination: visible MPC stop vs MPPI swerve under a dynamic intruder](#intersection-coordination-visible-mpc-stop-vs-mppi-swerve-under-a-dynamic-intruder)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
 - [ROS 2 bridge: spatial equivalence verified](#ros-2-bridge-spatial-equivalence-verified)
@@ -2979,6 +2989,68 @@ python3 scripts/render_race_gif.py \
   --title "Drone race + 4 path-intersecting intruders — dynamic-obstacle avoidance" \
   --out docs/images/compare_race_dyn4.gif \
   --ep 1 --fps 10 --stride 12 --trail 30
+```
+
+
+### Intersection coordination: visible MPC stop vs MPPI swerve under a dynamic intruder
+
+**Status (2026-05-22).** First post-`1646e11` dynamic-obstacle cell
+where both planners (a) succeed deterministically and (b) produce
+*visibly* different avoidance strategies driven purely by the cost
+aggregator. This is the current README hero
+(`docs/images/compare_intersection_avoid.gif`).
+
+**Scenario** (`examples/exp_intersection_v1_{mpc,mppi}.yaml`,
+`multi_drone_voxel`, world 40×40×12): two drones approach a 4-way
+intersection from N (`[20, 4, 6] → [20, 36, 6]`) and E
+(`[36, 20, 6] → [4, 20, 6]`). A single dynamic intruder
+(radius 1.0, velocity `[0.5, 0, 0]`, reflect at world boundary) sits
+at the intersection centre `[20, 20, 6]` and drifts E-W slowly.
+Same stack, same seed range (42-46, n=5), only the planner
+aggregator changes (MPC argmin vs CPU MPPI softmax, both
+n_samples=8 / 32 respectively, horizon=40, replan_period=0.2,
+w_goal=1.0, w_obs=100, w_smooth=0.05).
+
+**Result.** Both planners 5/5 episodes joint-success, 0/10
+drone-episodes in collision. Reproduce with
+`uav-nav run examples/exp_intersection_v1_{mpc,mppi}.yaml`.
+
+**Visible behaviour (ep 000, seed 42).**
+
+- **MPC (argmin)** — the N drone brakes near `y≈8` and *waits* in a
+  short hover until the E drone and the intruder clear the
+  intersection, then accelerates through to `y=36`. The E drone
+  detours south (`y≈17.5`) to round the intruder.
+- **MPPI (softmax)** — neither drone stops. The N drone bulges west
+  (`x≈18`) to round the intruder on its west side; the E drone
+  bulges north (`y≈21–22`) to round it on the north side. Both
+  arrive at the centre simultaneously and weave through.
+
+Same cost, same world, same start/goal — the only difference is
+argmin vs softmax aggregation of the rollouts. This is the same
+mechanism the static-density Δ-flip section ([Multi-drone N-scaling
+and peer-prediction coordination](#multi-drone-n-scaling-and-peer-prediction-coordination))
+shows as a percentage gap; here it is visible in a single 5-second
+clip.
+
+**Limitations.** n=5 is intentionally small: CPU MPPI at
+n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
+for MPPI in this 2-drone cell — the cost only gets steep on the
+4-drone oval). The cell is one geometric configuration; a sweep
+over intruder velocity, drone-arrival timing offset, or drone count
+(2 → 3 → 4-way cross) would strengthen the statistical claim. The
+*visible-avoidance* property is what makes this a hero — statistical
+tightness is the job of the Δ-flip section.
+
+```bash
+python3 scripts/render_race_gif.py \
+  --runs "results/intersection_v1_mpc:MPC (argmin)" \
+         "results/intersection_v1_mppi:MPPI (softmax)" \
+  --config examples/exp_intersection_v1_mpc.yaml \
+  --n-drones 2 --no-oval \
+  --title "MPC stops & waits vs MPPI swerves: 2-drone intersection + dynamic intruder (n=5, 10/10 success)" \
+  --out docs/images/compare_intersection_avoid.gif \
+  --ep 0 --fps 20 --stride 1 --trail 60
 ```
 
 
