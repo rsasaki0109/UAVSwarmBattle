@@ -178,34 +178,37 @@ mode expressions across the regimes of this paper:
    RMSE 1.67° vs MPC's 10.7° (-84 % wobble), and per-drone tracking
    RMSE 1.04 m vs 1.31 m (-21 %), winning on 20/20 drone-episodes.
    **GPU MPPI wins decisively.**
-4. **Dynamic-obstacle intersection coordination** (qualitative,
+4. **Dynamic-obstacle behavioral fingerprint** (intersection cell,
    `exp_intersection_v1_{mpc,mppi}.yaml`, n=5 / 10 drone-episodes /
-   0 collisions): with a slow dynamic intruder parked at a 2-drone
-   intersection, the operator's argmin commit lets MPC pick a clean
-   *stop-and-wait* maneuver for the N drone, while the softmax
-   averages over multi-direction rollouts and produces a *swerve*
-   for both drones without stopping. Same cost, same world, only
-   the aggregator differs — both succeed but follow visibly
-   different avoidance strategies. **Qualitative tie**, statistical
-   tightness pending a velocity/timing sweep.
+   0 collisions; scales to 4-way 4-drone ablation at 20/20). With a
+   slow dynamic intruder in the intersection, **binary success
+   saturates at 100 % for both planners** — but trajectory-shape
+   metrics from `scripts/intersection_fingerprint.py` separate them
+   cleanly: MPC's argmin produces **max |Δcmd| ~6 m/s** step-jumps
+   (visible as a stop-and-wait yield), MPPI's softmax produces
+   **~2.5 m/s smooth commands** (visible as a lateral swerve) —
+   *2.4× smoother commands for 4× more plan-time compute* (~9 vs
+   ~38 ms / replan). Same cost, same world, only the aggregator
+   differs. **Binary-success tie, behavioral fingerprint
+   separated.**
 
 The shared structural mechanism — softmax averaging vs argmin
-commit, against a shared world model — is one operator with three
-quantitatively validated mode expressions plus one qualitative
-visible-avoidance signature. The deployment story is therefore not
-"GPU MPPI is better" or "MPC is better" but a **mode-dependent
-question**:
+commit, against a shared world model — is one operator with four
+quantitatively validated mode expressions. The deployment story is
+therefore not "GPU MPPI is better" or "MPC is better" but a
+**mode-dependent question**:
 - *Coordination-Δ minimisation under static peers* → MPC.
 - *Multi-drone safety under dense static obstacles* → GPU MPPI.
 - *Choreography precision / formation flight* → GPU MPPI.
-- *Dynamic-obstacle visible avoidance* → qualitative tie (MPC
-  stops & waits, MPPI swerves; both succeed, see intersection cell).
+- *Dynamic-obstacle command-jump vs plan-time tradeoff* → MPC
+  for fast/jerky commands (~9 ms/replan, max |Δcmd| ~6 m/s), MPPI
+  for smooth/expensive commands (~38 ms/replan, max |Δcmd| ~2.5 m/s).
+  Binary success ties; the choice is on smoothness vs compute.
 
-The robust paper-grade claim is this **shared mechanism, three
-quantitative mode expressions plus one qualitative dynamic-obstacle
-signature** — and the mission's metric (Δ, joint success,
-tracking RMSE, phase sync, or avoidance-strategy fingerprint) is
-what selects the right planner.
+The robust paper-grade claim is this **shared mechanism, four
+quantitative mode expressions** — and the mission's metric (Δ,
+joint success, tracking RMSE, phase sync, or command-jump vs
+plan-time fingerprint) is what selects the right planner.
 
 ### Dynamic-obstacle race cells: retired from §3
 

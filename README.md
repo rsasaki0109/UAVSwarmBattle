@@ -27,15 +27,18 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 <i>Two drones enter a 4-way intersection from N (red) and E (green); a
 slow dynamic intruder (large red square, 0.5 m/s) sits at the centre
 and drifts E-W. Same stack, same seed, only the rollout aggregator
-changes — MPC argmin on the left, MPPI softmax on the right. Two
-different avoidance strategies emerge from the same cost: <b>MPC
-brings the N drone to a stop and waits</b> for the E drone +
-intruder to clear; <b>MPPI swerves both drones around</b> the
-intruder simultaneously. <b>Both planners succeed in all 10 drone-
-episodes (n=5 seeds × 2 drones, 0 collisions)</b>. The same contrast
-scales to a 4-drone 4-way crossing (both pairs head-on, 20/20 drone-
-episodes, see <code>compare_intersection_4way.gif</code> below).
-Reproduce with <code>examples/exp_intersection_v1_{mpc,mppi}.yaml</code>.
+changes — MPC argmin on the left, MPPI softmax on the right. Both
+planners stay collision-free in all 10 drone-episodes (scales to
+4 drones × 20/20 in the 4-way ablation below), but their
+<b>behavioral fingerprints</b> separate cleanly: <b>MPC yields by
+stopping the N drone</b>, <b>MPPI preserves progress by lateral
+swerving</b>, and quantitatively MPC's command-jump (max |Δcmd|
+~6 m/s) is <b>2.4× larger</b> than MPPI's (~2.5 m/s) at <b>4× lower
+plan-time cost</b> (~9 vs ~38 ms). Binary success rate saturates,
+the time-derivative of control does not. <code>uav-nav-lab</code>
+records this as a behavioral fingerprint, not just a success rate.
+Reproduce with <code>examples/exp_intersection_v1_{mpc,mppi}.yaml</code>;
+metrics from <code>scripts/intersection_fingerprint.py</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 

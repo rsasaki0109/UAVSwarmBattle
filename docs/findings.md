@@ -3086,6 +3086,41 @@ is **insensitive to intruder velocity** at ~1.4–2.3 m for both
 planners. The argmin-vs-softmax signature is in the *velocity
 profile*, not the *spatial deviation*.
 
+**Behavioral fingerprint** (`scripts/intersection_fingerprint.py`).
+With success rate saturated, the planner-level signal lives in
+trajectory-shape metrics. Two of them separate cleanly across both
+the 2-drone v1 cell and the 4-drone 4-way cell (mean ± 1.96·SEM,
+n=10 / n=20 drone-episodes):
+
+| metric | MPC v1 | MPPI v1 | MPC 4-way | MPPI 4-way |
+|---|---|---|---|---|
+| min clearance (m) | 2.08 ± 0.03 | 2.32 ± 0.43 | 2.11 ± 0.27 | 2.14 ± 0.18 |
+| max lateral dev (m) | 1.90 ± 0.48 | 1.93 ± 0.17 | 2.57 ± 0.40 | 2.27 ± 0.35 |
+| path time (s) | 5.35 ± 0.06 | 5.42 ± 0.02 | 5.40 ± 0.02 | 5.41 ± 0.04 |
+| **max \|Δcmd\| (m/s)** | **6.38 ± 2.12** | **2.53 ± 0.88** | **5.94 ± 1.05** | **2.93 ± 0.64** |
+| **plan time (ms)** | **9.17 ± 0.13** | **37.84 ± 1.07** | **9.37 ± 0.03** | **39.21 ± 0.31** |
+
+- **max |Δcmd|** is the mechanistic fingerprint. MPC's argmin
+  commits to a single rollout per replan and can swap to a very
+  different command between replans, producing ~6 m/s step-to-step
+  jumps. MPPI's softmax averages over rollouts and produces
+  ~2.5–3 m/s jumps — about **2.4× smoother commands**. This is
+  the algorithmic signature each aggregator leaves on the controls,
+  independent of whether collisions actually happen.
+- **Plan time** captures the compute side. MPC at n_samples=8 runs
+  ~9 ms/replan; CPU MPPI at n_samples=32 runs ~38 ms/replan —
+  about **4× more compute** for the smoother commands.
+- Spatial metrics (clearance, lateral deviation, path time) are
+  near-tied — both planners route around the intruder with similar
+  geometry. The differentiator is in the *time-derivative of the
+  control command*, not the path itself.
+
+In other words: **binary success rate saturates at 100 %, but the
+behavioral fingerprint cleanly separates the planners** along the
+command-smoothness ↔ compute-cost axis. The qualitative GIF
+observation (MPC stops, MPPI swerves) is what you see; max |Δcmd|
+is the metric that captures *why*.
+
 **Limitations.** n=5 is intentionally small: CPU MPPI at
 n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
 for MPPI in this 2-drone cell — the cost only gets steep on the
@@ -3321,7 +3356,7 @@ the A\* baseline from `exp_basic.yaml`).
 | metric | value |
 |--------|-------|
 | env step | 0.07 ms |
-| SB3 SAC fps (RTX 4070 Ti) | **36 steps/s** |
+| SB3 SAC fps (single CUDA GPU) | **36 steps/s** |
 | time for 100k timesteps | ~46 min |
 | success @ 10k timesteps | 0 % (20 episodes) |
 | success @ 5k timesteps | 0 % (10 episodes) |
