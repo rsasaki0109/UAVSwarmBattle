@@ -11,8 +11,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from uav_nav_lab.planner import gpu_mppi as gpu_mppi_mod
 from uav_nav_lab.planner.gpu_mppi import GPUMPPIPlanner
+from uav_nav_lab.planner.gpu_mppi import ctg_cache as ctg_cache_mod
 
 
 def _free_grid(shape: tuple[int, ...] = (20, 20)) -> np.ndarray:
@@ -110,13 +110,13 @@ def test_gpu_mppi_action_norm_does_not_exceed_max_speed() -> None:
 def test_gpu_mppi_ctg_cache_reused_when_goal_cell_unchanged(monkeypatch) -> None:
     """Dijkstra runs once when consecutive replans share an integer goal cell."""
     calls = {"n": 0}
-    real = gpu_mppi_mod.dijkstra_cost_to_go
+    real = ctg_cache_mod.dijkstra_cost_to_go
 
     def spy(occ, goal_cell):
         calls["n"] += 1
         return real(occ, goal_cell)
 
-    monkeypatch.setattr(gpu_mppi_mod, "dijkstra_cost_to_go", spy)
+    monkeypatch.setattr(ctg_cache_mod, "dijkstra_cost_to_go", spy)
 
     planner = _basic_planner()
     planner.reset()
@@ -129,13 +129,13 @@ def test_gpu_mppi_ctg_cache_reused_when_goal_cell_unchanged(monkeypatch) -> None
 
 def test_gpu_mppi_ctg_cache_respects_tolerance_window(monkeypatch) -> None:
     calls = {"n": 0}
-    real = gpu_mppi_mod.dijkstra_cost_to_go
+    real = ctg_cache_mod.dijkstra_cost_to_go
 
     def spy(occ, goal_cell):
         calls["n"] += 1
         return real(occ, goal_cell)
 
-    monkeypatch.setattr(gpu_mppi_mod, "dijkstra_cost_to_go", spy)
+    monkeypatch.setattr(ctg_cache_mod, "dijkstra_cost_to_go", spy)
 
     planner = _basic_planner(ctg_cache_tolerance=2)
     planner.reset()
