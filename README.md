@@ -190,11 +190,11 @@ under repair after the `1646e11` bug fix.
 
 **External backends:**
 
-- **AirSim** (`uav_nav_lab/sim/airsim_bridge.py`) — ENU ↔ NED bridge
+- **AirSim** (`uav_nav_lab/sim/airsim_bridge/`) — ENU ↔ NED bridge
   with deterministic stepping (`simPause` + `simContinueForTime`),
   multi-vehicle, LiDAR / cameras / depth, mock-injectable client for
   CI. See `examples/exp_airsim_*.yaml`.
-- **ROS 2** (`uav_nav_lab/sim/ros2_bridge.py`, requires `rclpy`) —
+- **ROS 2** (`uav_nav_lab/sim/ros2_bridge/`, requires `rclpy`) —
   Twist + Odometry round-trip, sim-time anchoring via `/clock`,
   AirSim-over-ROS-2 parity. See `examples/exp_ros2*.yaml`.
 
