@@ -20,11 +20,15 @@ Run from the project root, with an AirSim Blocks server already up:
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
+
+from uav_nav_lab.recording import (
+    frames_to_gif,
+    pitch_front_center,
+    run_uav_nav_experiment,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNS = [
@@ -44,74 +48,18 @@ RUNS = [
 COMPARE_OUT = REPO_ROOT / "docs" / "images" / "compare_airsim_multi_obstacles.gif"
 
 
-def _setup_camera() -> None:
-    import airsim  # type: ignore[import-not-found]
-    c = airsim.MultirotorClient()
-    c.confirmConnection()
-    time.sleep(1.0)
-    cam_pose = airsim.Pose(
-        airsim.Vector3r(0.50, 0.0, 0.0),
-        airsim.to_quaternion(-0.30, 0.0, 0.0),
-    )
-    c.simSetCameraPose("front_center", cam_pose, vehicle_name="Drone1")
-    time.sleep(0.3)
-
-
-def _run_experiment(yaml: Path, results: Path) -> None:
-    if results.exists():
-        shutil.rmtree(results)
-    cmd = [sys.executable, "-c",
-           "import sys; sys.argv=['uav-nav','run',str(r'%s')];"
-           "from uav_nav_lab.cli import main; main()" % yaml]
-    subprocess.run(cmd, cwd=REPO_ROOT, check=True)
-
-
-def _frames_to_gif(
-    frames_dir: Path,
-    out: Path,
-    fps: int = 15,
-    width: int = 480,
-    target_seconds: float = 7.0,
-) -> None:
-    n_frames = sum(1 for p in frames_dir.iterdir()
-                   if p.suffix == ".png" and "front_center" in p.name)
-    desired = max(1, int(round(fps * target_seconds)))
-    keep_every = max(1, n_frames // desired)
-    palette = frames_dir / "_palette.png"
-    pattern = str(frames_dir / "step_%04d_front_center.png")
-    vf = (
-        f"select='not(mod(n,{keep_every}))',"
-        f"setpts=N/{fps}/TB,"
-        f"scale={width}:-1:flags=lanczos"
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", pattern,
-         "-vf", f"{vf},palettegen=stats_mode=diff",
-         str(palette)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", pattern, "-i", str(palette),
-         "-lavfi", f"{vf} [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=5",
-         "-loop", "0",
-         str(out)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    palette.unlink(missing_ok=True)
-
-
 def main() -> int:
     print("[1/4] camera pitch")
-    _setup_camera()
+    pitch_front_center(vehicle_name="Drone1")
     pane_gifs: list[Path] = []
     for i, run in enumerate(RUNS, start=2):
         print(f"[{i}/4] run {run['tag']}: {run['yaml'].name}")
-        _run_experiment(run["yaml"], run["results"])
+        run_uav_nav_experiment(run["yaml"], run["results"], repo_root=REPO_ROOT)
         frames = run["results"] / "frames_000_drone_00"
         if not frames.is_dir():
             raise FileNotFoundError(f"no Drone1 frames at {frames}")
         out = Path("/tmp") / f"_compare_obs_{run['tag']}.gif"
-        _frames_to_gif(frames, out)
+        frames_to_gif(frames, out, fps=15, width=480, target_seconds=7.0)
         pane_gifs.append(out)
     print("[4/4] side-by-side compose")
     subprocess.run(

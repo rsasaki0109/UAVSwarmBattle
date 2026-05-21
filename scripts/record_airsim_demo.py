@@ -12,8 +12,7 @@ End-to-end:
 Why a script instead of a CLI feature: this is a one-off recording
 operation tied to a specific scene composition (camera pitch + scenario
 geometry). Folding it into the bridge would make the bridge carry
-demo-specific concerns; a 60-line driver script keeps the framework
-clean.
+demo-specific concerns; a tiny driver script keeps the framework clean.
 
 Run from the project root, with an AirSim server already up:
   python3 scripts/record_airsim_demo.py
@@ -21,12 +20,13 @@ Run from the project root, with an AirSim server already up:
 
 from __future__ import annotations
 
-import math
-import shutil
-import subprocess
-import sys
-import time
 from pathlib import Path
+
+from uav_nav_lab.recording import (
+    frames_to_gif,
+    pitch_front_center,
+    run_uav_nav_experiment,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 YAML = REPO_ROOT / "examples" / "exp_airsim_demo.yaml"
@@ -34,84 +34,17 @@ RUN_DIR = REPO_ROOT / "results" / "airsim_demo"
 GIF_OUT = REPO_ROOT / "docs" / "images" / "demo_airsim.gif"
 
 
-def _setup_camera() -> None:
-    import airsim  # type: ignore[import-not-found]
-    c = airsim.MultirotorClient()
-    c.confirmConnection()
-    # Clear any stale collision flag from prior sessions.
-    c.reset()
-    time.sleep(2.0)
-    # Pitch front-center camera ~17° (-0.30 rad) down so the cube
-    # clusters stay in frame as we fly over them at 30 m altitude.
-    cam_pose = airsim.Pose(
-        airsim.Vector3r(0.50, 0.0, 0.0),
-        airsim.to_quaternion(-0.30, 0.0, 0.0),
-    )
-    c.simSetCameraPose("front_center", cam_pose)
-    time.sleep(0.3)
-
-
-def _run_experiment() -> None:
-    if RUN_DIR.exists():
-        shutil.rmtree(RUN_DIR)
-    cmd = [sys.executable, "-c",
-           "import sys; sys.argv=['uav-nav','run',str(r'%s')];"
-           "from uav_nav_lab.cli import main; main()" % YAML]
-    subprocess.run(cmd, cwd=REPO_ROOT, check=True)
-
-
-def _frames_to_gif(
-    frames_dir: Path,
-    out: Path,
-    fps: int = 12,
-    width: int = 320,
-    target_seconds: float = 5.5,
-) -> None:
-    if not frames_dir.is_dir():
-        raise FileNotFoundError(f"{frames_dir} not found")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    # Frame source: count PNGs to compute the speed-up factor needed
-    # to land the GIF in `target_seconds` at the chosen `fps`. The
-    # recorded flight can be 15–20 s; the README hero looks better at
-    # 5–8 s so we pick every Nth frame to compress duration without
-    # dropping resolution further.
-    n_frames = sum(1 for p in frames_dir.iterdir() if p.suffix == ".png" and "front_center" in p.name)
-    desired_frames = max(1, int(round(fps * target_seconds)))
-    keep_every = max(1, n_frames // desired_frames)
-    palette = frames_dir / "_palette.png"
-    pattern = str(frames_dir / "step_%04d_front_center.png")
-    # `select=not(mod(n,K))` keeps every K-th frame; setpts re-stamps
-    # so playback runs at `fps` regardless of source rate.
-    vf = (
-        f"select='not(mod(n,{keep_every}))',"
-        f"setpts=N/{fps}/TB,"
-        f"scale={width}:-1:flags=lanczos"
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", pattern,
-         "-vf", f"{vf},palettegen=stats_mode=diff",
-         str(palette)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", pattern, "-i", str(palette),
-         "-lavfi", f"{vf} [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=5",
-         "-loop", "0",
-         str(out)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    palette.unlink(missing_ok=True)
-    print(f"[gif] {out}  ({out.stat().st_size // 1024} KB)  "
-          f"({n_frames} frames @ every {keep_every}, ~{n_frames // keep_every / fps:.1f}s)")
-
-
 def main() -> int:
     print("[1/3] setup AirSim camera")
-    _setup_camera()
+    pitch_front_center(reset=True)
     print("[2/3] run experiment")
-    _run_experiment()
+    run_uav_nav_experiment(YAML, RUN_DIR, repo_root=REPO_ROOT)
     print("[3/3] frames → GIF")
-    _frames_to_gif(RUN_DIR / "frames_000", GIF_OUT)
+    n = frames_to_gif(
+        RUN_DIR / "frames_000", GIF_OUT,
+        fps=12, width=320, target_seconds=5.5,
+    )
+    print(f"[gif] {GIF_OUT}  ({GIF_OUT.stat().st_size // 1024} KB)  ({n} src frames)")
     return 0
 
 

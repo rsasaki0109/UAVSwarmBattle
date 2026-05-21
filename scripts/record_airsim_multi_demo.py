@@ -16,11 +16,13 @@ Run from the project root, with an AirSim server already up *and*
 
 from __future__ import annotations
 
-import shutil
-import subprocess
-import sys
-import time
 from pathlib import Path
+
+from uav_nav_lab.recording import (
+    frames_to_gif,
+    pitch_front_center,
+    run_uav_nav_experiment,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 YAML = REPO_ROOT / "examples" / "exp_airsim_multi_demo.yaml"
@@ -28,77 +30,20 @@ RUN_DIR = REPO_ROOT / "results" / "airsim_multi_demo"
 GIF_OUT = REPO_ROOT / "docs" / "images" / "demo_airsim_multi.gif"
 
 
-def _setup_camera() -> None:
-    import airsim  # type: ignore[import-not-found]
-    c = airsim.MultirotorClient()
-    c.confirmConnection()
-    # Don't reset — the experiment runner handles reset + teleport.
-    # Only pitch the camera for a better FPV angle.
-    time.sleep(1.0)
-    cam_pose = airsim.Pose(
-        airsim.Vector3r(0.50, 0.0, 0.0),
-        airsim.to_quaternion(-0.30, 0.0, 0.0),
-    )
-    c.simSetCameraPose("front_center", cam_pose, vehicle_name="Drone1")
-    time.sleep(0.3)
-
-
-def _run_experiment() -> None:
-    if RUN_DIR.exists():
-        shutil.rmtree(RUN_DIR)
-    cmd = [sys.executable, "-c",
-           "import sys; sys.argv=['uav-nav','run',str(r'%s')];"
-           "from uav_nav_lab.cli import main; main()" % YAML]
-    subprocess.run(cmd, cwd=REPO_ROOT, check=True)
-
-
-def _frames_to_gif(
-    frames_dir: Path,
-    out: Path,
-    fps: int = 15,
-    width: int = 640,
-    target_seconds: float = 7.0,
-) -> None:
-    if not frames_dir.is_dir():
-        raise FileNotFoundError(f"{frames_dir} not found")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    n_frames = sum(1 for p in frames_dir.iterdir()
-                   if p.suffix == ".png" and "front_center" in p.name)
-    desired_frames = max(1, int(round(fps * target_seconds)))
-    keep_every = max(1, n_frames // desired_frames)
-    palette = frames_dir / "_palette.png"
-    pattern = str(frames_dir / "step_%04d_front_center.png")
-    vf = (
-        f"select='not(mod(n,{keep_every}))',"
-        f"setpts=N/{fps}/TB,"
-        f"scale={width}:-1:flags=lanczos"
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", pattern,
-         "-vf", f"{vf},palettegen=stats_mode=diff",
-         str(palette)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", pattern, "-i", str(palette),
-         "-lavfi", f"{vf} [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=5",
-         "-loop", "0",
-         str(out)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    palette.unlink(missing_ok=True)
-    print(f"[gif] {out}  ({out.stat().st_size // 1024} KB)  "
-          f"({n_frames} frames @ every {keep_every}, ~{n_frames // keep_every / fps:.1f}s)")
-
-
 def main() -> int:
     print("[1/2] run experiment (4 drones)")
-    _run_experiment()
+    # Pitch camera, then run — experiment_runner handles reset + teleport.
+    pitch_front_center(vehicle_name="Drone1")
+    run_uav_nav_experiment(YAML, RUN_DIR, repo_root=REPO_ROOT)
     frames_dir = RUN_DIR / "frames_000_drone_00"
     if not frames_dir.is_dir():
         frames_dir = RUN_DIR / "frames_000"
     print(f"[2/2] frames → GIF (from {frames_dir.name}/)")
-    _frames_to_gif(frames_dir, GIF_OUT)
+    n = frames_to_gif(
+        frames_dir, GIF_OUT,
+        fps=15, width=640, target_seconds=7.0,
+    )
+    print(f"[gif] {GIF_OUT}  ({GIF_OUT.stat().st_size // 1024} KB)  ({n} src frames)")
     return 0
 
 
