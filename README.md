@@ -32,7 +32,9 @@ different avoidance strategies emerge from the same cost: <b>MPC
 brings the N drone to a stop and waits</b> for the E drone +
 intruder to clear; <b>MPPI swerves both drones around</b> the
 intruder simultaneously. <b>Both planners succeed in all 10 drone-
-episodes (n=5 seeds × 2 drones, 0 collisions)</b>.
+episodes (n=5 seeds × 2 drones, 0 collisions)</b>. The same contrast
+scales to a 4-drone 4-way crossing (both pairs head-on, 20/20 drone-
+episodes, see <code>compare_intersection_4way.gif</code> below).
 Reproduce with <code>examples/exp_intersection_v1_{mpc,mppi}.yaml</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
@@ -138,7 +140,20 @@ active findings are grouped this way:
   making ablation claims.
 
 <details>
-<summary><b>Companion hero GIFs</b> — multi-drone Δ-flip, single-drone 3D MPPI</summary>
+<summary><b>Companion hero GIFs</b> — 4-way intersection ablation, multi-drone Δ-flip, single-drone 3D MPPI</summary>
+
+<img src="docs/images/compare_intersection_4way.gif" width="720"><br>
+<i><b>Intersection 4-way ablation</b> — extend the 2-drone hero to a
+4-drone 4-way crossing (two head-on pairs N↔S + E↔W) with the same
+slow centre intruder. <b>Both planners 5/5 episodes / 20/20 drone-
+episodes / 0 collisions.</b> MPC has the S→N drone stop & wait while
+the other three detour around the intruder; MPPI has all four drones
+swerve simultaneously, each head-on pair offsetting in opposite
+directions to braid around the intruder without anyone stopping.
+Confirms the softmax-vs-argmin avoidance signature scales with peer
+count. Reproduce with <code>examples/exp_intersection_4way_{mpc,mppi}.yaml</code>.</i>
+
+<br><br>
 
 <img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" width="720"><br>
 <i><b>§3 mode 1 multi-drone Δ-flip</b> (N=4 paired n=100, dummy_3d):
