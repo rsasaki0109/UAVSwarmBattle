@@ -3196,6 +3196,44 @@ collision-free; the choice is *how* they pay the cost (jerky
 commands, wider trajectory, or slower arrival), not *whether* they
 fail.
 
+**Prediction-ablation cell** (`examples/exp_intersection_nopred_{mpc,mppi}.yaml`,
+n=5, same scenario as v1 but `use_prediction: false` in the planner
+config). Following GPT pro's E4 proposal — and as the decisive test
+of hypothesis B ("predictor is doing all the avoidance work, planner
+aggregator is secondary") — turn off the CV prediction of the
+dynamic intruder and re-run.
+
+| planner | drone-north (N→S) | drone-east (E→W) | joint |
+|---|---|---|---|
+| MPC v1 (CV pred ON) | 5/5 success | 5/5 success | 5/5 success |
+| MPPI v1 (CV pred ON) | 5/5 success | 5/5 success | 5/5 success |
+| **MPC nopred** | **5/5 success** | **0/5 success (5/5 collision)** | **0/5** |
+| **MPPI nopred** | **5/5 success** | **0/5 success (5/5 collision)** | **0/5** |
+
+Both planners drop from 100 % joint success to 0 % joint success the
+moment CV prediction is removed — and the failure is localised to
+the *one* drone whose path is collinear with the intruder's motion
+(drone-east shares the y=20 axis with the E-W intruder, drone-north
+crosses it perpendicularly at x=20 and stays safe with current-
+position-only knowledge). Crucially, the collision rate is
+*identical* for MPC and MPPI (5/5 for both).
+
+**This pins down hypothesis B from the Q7 design probe**: dynamic-
+obstacle success rate in this scenario family is dominated by
+**predictor quality**, not by the planner aggregator. The reason
+post-`1646e11` retunes look "binary-success-flat for both planners"
+is not that the cells are too easy — it is that CV prediction is
+effective enough to mask the planner-level differences in success
+rate. Turn the predictor off and the success channel reopens (and
+collapses uniformly), but the *behavioral fingerprint* axis
+(command jump, lateral detour) remains the planner-level signal
+even when the predictor is doing its job.
+
+Takeaway for §3: **success rate and behavioral fingerprint are two
+independent axes** in dynamic-obstacle cells. Predictor quality
+moves the first; planner aggregator moves the second. Reporting
+both is the honest framing.
+
 **Limitations.** n=5 is intentionally small: CPU MPPI at
 n_samples=32 dominates wall-clock (~5 s / episode for MPC vs ~5 s
 for MPPI in this 2-drone cell — the cost only gets steep on the

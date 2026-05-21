@@ -178,19 +178,29 @@ mode expressions across the regimes of this paper:
    RMSE 1.67° vs MPC's 10.7° (-84 % wobble), and per-drone tracking
    RMSE 1.04 m vs 1.31 m (-21 %), winning on 20/20 drone-episodes.
    **GPU MPPI wins decisively.**
-4. **Dynamic-obstacle behavioral fingerprint** (intersection cell,
+4. **Dynamic-obstacle: two-axis separation** (intersection cell,
    `exp_intersection_v1_{mpc,mppi}.yaml`, n=5 / 10 drone-episodes /
-   0 collisions; scales to 4-way 4-drone ablation at 20/20). With a
-   slow dynamic intruder in the intersection, **binary success
-   saturates at 100 % for both planners** — but trajectory-shape
-   metrics from `scripts/intersection_fingerprint.py` separate them
-   cleanly: MPC's argmin produces **max |Δcmd| ~6 m/s** step-jumps
-   (visible as a stop-and-wait yield), MPPI's softmax produces
-   **~2.5 m/s smooth commands** (visible as a lateral swerve) —
-   *2.4× smoother commands for 4× more plan-time compute* (~9 vs
-   ~38 ms / replan). Same cost, same world, only the aggregator
-   differs. **Binary-success tie, behavioral fingerprint
-   separated.**
+   0 collisions; scales to 4-way 4-drone ablation at 20/20). The
+   dynamic-obstacle axis splits cleanly into **two independent
+   coordinates**:
+   - *Predictor quality moves binary success.* With CV prediction
+     on, both planners stay at 100 % joint success. Switching off
+     the predictor (`use_prediction: false`,
+     `exp_intersection_nopred_*.yaml`) drops both planners
+     identically to 0/5 joint success, with the same 5/5 collisions
+     on the drone whose path is collinear with the intruder. The
+     planner aggregator does not move this number.
+   - *Planner aggregator moves behavioral fingerprint.* Across the
+     v1, 4-way, chokepoint, and wave cells, MPC's argmin produces
+     **max |Δcmd| ~6 m/s** step-jumps and wide spatial detours
+     under scheduling stress (lateral dev up to 4.31 m on the wave
+     cell), while MPPI's softmax produces **~2.5–3 m/s smooth
+     commands** at 4× the plan-time compute (~38 vs ~9 ms / replan),
+     trading lateral detour for command-jump under the same stress.
+   Reporting both axes is the honest framing — collapsing dynamic-
+   obstacle results into "success rate gap" hides the predictor
+   confound, while collapsing into "behavioral fingerprint only"
+   ignores the predictor's role in keeping the cell tractable.
 
 The shared structural mechanism — softmax averaging vs argmin
 commit, against a shared world model — is one operator with four
