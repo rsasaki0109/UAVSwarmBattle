@@ -3412,34 +3412,38 @@ aggregator integrates phantom rollouts into the average evasion
 direction with high enough confidence to commit *before* MPC's argmin
 has settled on whether the rollout cloud is internally consistent.
 
-`scripts/intersection_crossover_mechanism.py` →
-`docs/images/intersection_crossover_mechanism.png` (2×2):
+`scripts/intersection_crossover_mechanism_n20.py` →
+`docs/images/intersection_crossover_mechanism_n20.png` (2×2,
+**rebuilt at n=20 with seeded predictor**; the original
+`intersection_crossover_mechanism.png` is preserved on disk for
+audit-trail purposes but is *superseded* by this version):
 
 <p align="center">
-<img src="images/intersection_crossover_mechanism.png" alt="σ=10 crossover mechanism: trajectories, v_y(t) across episodes, predicted intruder Monte-Carlo cloud" width="900">
+<img src="images/intersection_crossover_mechanism_n20.png" alt="σ=10 chaos regime (n=20, seeded): trajectories, v_y(t) across episodes, predicted intruder Monte-Carlo cloud" width="900">
 </p>
 
 - (a) Trajectory at noisy σ=10 ep 0 — both drone-north stalk south of
   the wave (visible kink near y≈18), MPPI dies (X) before MPC.
-- (b) Trajectory at noisy σ=3 ep 0 — the regime where MPPI's averaging
-  is a feature, not a bug.
-- (c) drone-north v_y(t) across all 5 ep at σ=10 — dotted = ep
-  succeeded, solid = ep collided. MPPI's reverse spikes cluster around
-  t = 2.7-3.3 s; MPC's spread to t = 5 s with a wider recovery window.
+- (b) Trajectory at noisy σ=3 ep 0 — at the n=20 knee both planners
+  struggle (MPC 9/20, MPPI 7/20); the per-episode timing fingerprint
+  is still visible.
+- (c) drone-north v_y(t) across all 20 ep at σ=10 — dotted = ep
+  succeeded, solid = ep collided. **The timing claim survives**:
+  MPPI's reverse spikes still cluster ~250 ms earlier than MPC's, even
+  though both planners collapse to ~5-10% joint success.
 - (d) Monte-Carlo (60 samples) of the noisy_velocity predictor's
   rollouts at σ=3 vs σ=10 against the ground-truth intruder path —
-  shows the volume of "what the planner believed about the obstacle's
-  near future" at each replan. At σ=10 the cloud covers ~20 m × 20 m
-  (2 s × ±10 m/s) — essentially uniform across the centre of the
-  scenario.
+  unchanged from the original since this panel only depends on the
+  predictor's distributional output, not on planner runs.
 
-This refines the §3 claim once more: the aggregator advantage is not
-"softmax always wins on dynamic obstacles" but rather **softmax's
-averaging is a confidence amplifier**. When predictions are good it
-amplifies a sound evasion direction (the noisy σ=3 win); when
-predictions are pure noise it amplifies an unsound one (the σ=10
-crossover), and the commitment happens fast enough to preclude
-recovery.
+The earlier framing "**softmax's averaging is a confidence amplifier**"
+still captures part of the story: at σ=10 MPPI does commit earlier
+than MPC. What does *not* survive the correction is the σ=3 "feature"
+side of the framing — at the knee the corrected J sweep below shows
+that vanilla MPPI's softmax is in fact a *liability*; the win goes to
+argmin (t=0.1), which suggests softmax averaging is a confidence
+amplifier in both directions and there is no fidelity band where
+vanilla MPPI's default temperature beats either extreme.
 
 **F: peer-prediction generalization (2026-05-22).** The E5 sweep tested
 predictor fidelity against *scene* dynamic obstacles. F asks whether the
@@ -3516,6 +3520,41 @@ peer numbers should be treated as illustrative until re-run at higher
 n with the seeding fix. The peer cell's success-rate floor (0-2/5)
 likely dominates over the predictor signal regardless.
 
+**F: corrected at n=20 (MPC only, 2026-05-22).** Re-ran the 6 peer
+yamls with the seeding fix at n=20. GPU MPPI was not re-run because
+PyTorch is not installed in the current venv (the original n=5 F
+gpu_mppi numbers stay in the table above as illustrative only).
+Corrected MPC numbers:
+
+| sigma | n=5 unseeded | n=20 seeded | shift | wave (n=20, ref) |
+|---|---|---|---|---|
+| nopred       | 0/5 (0%)  | 1/20 (5%)  | +5pp  | 0/5 (0%) |
+| noisy σ=10.0 | 0/5 (0%)  | 1/20 (5%)  | +5pp  | 1/20 (5%) |
+| noisy σ=3.0  | 1/5 (20%) | 2/20 (10%) | -10pp | 9/20 (45%) |
+| noisy σ=1.0  | 1/5 (20%) | 5/20 (25%) | +5pp  | 20/20 (100%) |
+| noisy σ=0.5  | 1/5 (20%) | 6/20 (30%) | +10pp | 20/20 (100%) |
+| noisy σ=0.2  | 0/5 (0%)  | **6/20 (30%)** | **+30pp** | 20/20 (100%) |
+
+<p align="center">
+<img src="images/peer_predictor_sweep_n20.png" alt="F peer cell predictor sweep n=20, MPC only, with wave reference" width="900">
+</p>
+
+The original "peer floors at 0-2/5" claim was an artifact of an
+unlucky n=5 draw at noisy σ=0.2 (0/5). At n=20 the actual range is
+5-30%, with the SAME knee shape as wave (drop at σ=3, floor at σ=10)
+but uniformly ~30-50 pp harder. **The presence-switch holds** (nopred
+1/20, σ=10 1/20 — both at floor). **The fidelity gradient is now
+visible** in the σ ∈ {0.2, 0.5, 1, 3} band (25-30% → 10%), not flat
+as originally claimed. The original "fidelity gradient is geometry-
+dependent — flat on peer" claim is partially superseded: there is a
+gradient, it's just compressed to a tighter dynamic range because
+peer-coordination eats most of the difficulty budget.
+
+The honest 2-axis story stands but with a quantitative correction:
+peer cell **does** show a fidelity gradient (5% → 30% from σ=10 to
+σ=0.2), it's just on a compressed scale because peer-coordination
+sets a hard ceiling around 30%.
+
 **J: aggregator-temperature sweep (2026-05-22, post-bug-fix).** The
 corrected E5 numbers showed MPC > MPPI at the σ=3 knee, which raises a
 sharper question: *if vanilla MPPI's softmax is hurting the knee
@@ -3540,7 +3579,24 @@ result, what does it look like as we sweep the aggregator from argmin
 **A clean U-shape**. At the σ=3 knee, vanilla MPPI (t=1.0) is the
 worst aggregator (35%), while both extremes recover: argmin-like
 behaviour (t=0.1) wins at 70%, and very-soft behaviour (t=10) gives
-40%. The same pattern shows weakly at σ=10 (argmin 35% vs vanilla 10%
+40%.
+
+`scripts/intersection_temperature_mechanism.py` →
+`docs/images/intersection_temperature_mechanism.png` (3-pane mechanism
+illustration with empirical data — no instrumentation needed, just the
+existing J yaml runs):
+
+<p align="center">
+<img src="images/intersection_temperature_mechanism.png" alt="J U-shape mechanism: trajectories, |cmd|(t), and outcome bars at σ=3 across 4 aggregators" width="980">
+</p>
+
+- (a) σ=3 ep 0 trajectories with MPC + the three MPPI temperatures
+  overlaid (solid = drone-north, dashed = drone-east; x = collision,
+  o = success).
+- (b) |cmd|(t) for the drone-north — fingerprint difference visible
+  between the four aggregators.
+- (c) joint success bar chart across the four aggregators — the U-shape
+  is unambiguous at n=20. The same pattern shows weakly at σ=10 (argmin 35% vs vanilla 10%
 vs soft 30%) — the temperature knob preserves more diversity than
 either vanilla MPPI or MPC's single-trajectory commitment.
 
