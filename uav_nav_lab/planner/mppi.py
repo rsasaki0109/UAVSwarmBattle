@@ -92,6 +92,8 @@ class MPPIPlanner(Planner):
         self._last_costs: np.ndarray | None = None
         self._last_weights: np.ndarray | None = None
         self._last_chosen_action: np.ndarray | None = None
+        self._last_actions: np.ndarray | None = None  # [n_samples, ndim]
+        self._last_goal_dir: np.ndarray | None = None  # unit vector toward goal
 
     @classmethod
     def from_config(cls, cfg: Mapping[str, Any]) -> "MPPIPlanner":
@@ -289,6 +291,9 @@ class MPPIPlanner(Planner):
         self._last_costs = costs.copy()
         self._last_weights = weights.copy()
         self._last_chosen_action = chosen_action.copy()
+        self._last_actions = actions.copy()
+        gd_norm = float(np.linalg.norm(to_goal))
+        self._last_goal_dir = (to_goal / gd_norm) if gd_norm > 1e-9 else np.zeros_like(to_goal)
         # Cap the weighted action to max_speed (the average can drop below
         # max_speed when weights are spread; that's expected). The
         # rollout we attach to the Plan is the highest-weighted sample's

@@ -3772,6 +3772,57 @@ Reproduce:
 python3 scripts/u_shape_cost_spread.py  # writes docs/images/u_shape_cost_spread.{png,json}
 ```
 
+**I: direct verification of the refined H hypothesis (2026-05-22).**
+Extended the MPPI instrumentation to also store the per-rollout action
+array (`_last_actions`) and the unit goal direction
+(`_last_goal_dir`). `scripts/u_shape_top_rollouts.py` runs vanilla
+MPPI ep 0 on both cells at σ=3 and measures three per-replan angles:
+
+| metric (mean across ep 0 replans) | v1 | wave |
+|---|---|---|
+| top-2 weighted rollout disagreement | **29.1°** | **30.9°** |
+| vanilla chosen action vs goal direction | **9.2°** | 17.1° |
+| top-1 weighted rollout vs goal direction | **11.2°** | 17.9° |
+
+<p align="center">
+<img src="images/u_shape_top_rollouts.png" alt="I: top-rollout disagreement + prior-alignment, vanilla MPPI σ=3 ep 0" width="980">
+</p>
+
+**The refined H hypothesis is confirmed**.
+
+1. Both cells show ~30° top-2 rollout disagreement → vanilla MPPI
+   averages two rollouts with notably different evasion directions in
+   *both* cells. This is the structural reason vanilla MPPI is the
+   universal U-shape valley — it produces a phantom mid-direction
+   between two real rollouts in both v1 and wave.
+
+2. **v1's optimal action is near the prior**. Both vanilla's chosen
+   action (9.2°) and the top-1 rollout (11.2°) lie close to the
+   straight-to-goal direction. Uniform MPPI (t=10) effectively returns
+   the prior — and the prior is mostly correct on v1 (one slow
+   intruder leaves the line usable) → uniform wins at 100%.
+
+3. **wave's optimal action deviates from the prior**. Vanilla's chosen
+   action (17.1°) and the top-1 rollout (17.9°) sit further from
+   straight-to-goal, meaning the truly correct plan is a specific
+   evasion direction. Argmin MPPI (t=0.1) picks that single rollout
+   cleanly without phantom averaging → argmin wins at 70%. Uniform
+   would return the prior which collides into the wave (only 40%).
+
+The cell-dependence of the U-shape is therefore not about *how the
+cost distribution is shaped* (H — refuted) but about *whether the
+correct plan is the prior or a specific rollout*. Vanilla MPPI's
+failure mode is identical in both cells (phantom-averaging two
+disagreeing rollouts); the choice of recovery aggregator depends on
+which extreme — argmin (specific rollout) or uniform (prior) —
+matches the cell's truth.
+
+Reproduce:
+
+```bash
+python3 scripts/u_shape_top_rollouts.py  # writes u_shape_top_rollouts.{png,json}
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
