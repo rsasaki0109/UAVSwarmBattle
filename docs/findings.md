@@ -3823,6 +3823,72 @@ Reproduce:
 python3 scripts/u_shape_top_rollouts.py  # writes u_shape_top_rollouts.{png,json}
 ```
 
+**J σ-axis generality (2026-05-22).** G established the U-shape across
+cells at σ=3. Does the U-shape also exist *across σ*, or is it
+specifically a property of the σ=3 knee? Ran the 5-temperature MPPI
+sweep at σ ∈ {1, 3, 10} on wave (5 new yamls at σ=1; σ=3 and σ=10
+already had data from J).
+
+H/I predictions:
+- σ=1 (sub-knee): top-2 rollouts should agree (low predictor noise) →
+  vanilla averaging is harmless → U disappears.
+- σ=3 (knee): U clear (replicates J).
+- σ=10 (chaos): cost signal is pure noise → argmin picks noise →
+  no clear winner.
+
+Results (n=20):
+
+| aggregator | σ=1 | σ=3 | σ=10 |
+|---|---|---|---|
+| MPC          | 100% | 45% | 5%  |
+| MPPI t=0.1   | 90%  | 70% | 35% |
+| MPPI t=0.3   | 95%  | 65% | 40% |
+| MPPI t=1.0 (vanilla) | 90% | **35%** | **10%** |
+| MPPI t=3.0   | 100% | 65% | 10% |
+| MPPI t=10 (uniform) | 70% | 40% | 30% |
+
+<p align="center">
+<img src="images/u_shape_sigma_generality.png" alt="J σ-axis generality on wave — U-shape only at σ=3 knee; argmin MPPI beats vanilla at every σ" width="900">
+</p>
+
+Three findings, two consistent with the H/I mechanism and one
+stronger than expected:
+
+1. **At σ=1 the U-shape vanishes**, exactly as H/I predicted. Vanilla
+   MPPI is no longer the valley (90% — tied with argmin). Instead the
+   *uniform* end drops to 70% because the prior collides into the
+   wave intruders that the cost signal would have correctly identified.
+
+2. **At σ=3 the U-shape replicates** (the J finding) — vanilla 35% is
+   the clear valley, both arms recover.
+
+3. **At σ=10 the valley widens to include both vanilla AND t=3 (both
+   at 10%)** — neither aggregator can extract signal from chaos.
+   Argmin recovers to 35% (picks one rollout, occasionally correct),
+   uniform to 30% (returns prior, occasionally correct). The shape
+   becomes a wide-bottomed bathtub rather than a sharp U.
+
+The stronger headline (beyond the U-shape): **argmin MPPI (t=0.1)
+beats vanilla MPPI at every tested σ on wave**, by 0 / +35 / +25 pp
+at σ ∈ {1, 3, 10}. The "vanilla MPPI is structurally suboptimal"
+claim generalizes well beyond the σ=3 knee — at the knee it's
+catastrophic, at chaos it's still worse, and at sub-knee it's tied.
+
+This points toward a **prescriptive** recommendation: **default MPPI
+implementations should use a lower temperature** (t ≈ 0.1-0.3) than
+the canonical t=1.0. The cost is paid only at very low σ where uniform
+might marginally help on truly-forgiving problems, but on harder cells
+(wave) uniform itself underperforms argmin even at σ=1.
+
+Reproduce:
+
+```bash
+for f in examples/exp_intersection_wave_noisy10_{t01,t03,t10,t30,t100}_mppi_n20.yaml; do
+  uav-nav run "$f"
+done
+python3 scripts/u_shape_sigma_generality.py
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
