@@ -4141,6 +4141,58 @@ done
 python3 scripts/aggregator_3cell_compare.py
 ```
 
+**N: mechanism-based predictive rule for the cell-optimal aggregator
+(2026-05-22).** Extended the I-style instrumentation
+(`scripts/u_shape_top_rollouts.py`) from {v1, wave} to also cover 4-way
+σ=0.5. Per-replan metrics for vanilla MPPI ep 0 on all three cells:
+
+| metric (mean) | v1 | wave | **4-way** |
+|---|---|---|---|
+| top-2 weighted rollout disagreement | 29.1° | 30.9° | 33.7° |
+| vanilla MPPI chosen action vs goal direction | 9.2° | 17.1° | **4.8°** |
+| top-1 weighted rollout vs goal direction | 11.2° | 17.9° | **5.6°** |
+
+<p align="center">
+<img src="images/u_shape_top_rollouts.png" alt="N: top-rollout mechanism across 3 cells — top-2 disagreement is universal, chosen-vs-goal angle predicts cell-optimal aggregator" width="980">
+</p>
+
+**Two patterns visible**:
+
+1. **Top-2 disagreement is ~30° in ALL three cells** (29.1° / 30.9° /
+   33.7°). The phantom-averaging mechanism is universal — vanilla
+   MPPI always finds two near-best rollouts that disagree on
+   evasion direction. This is the unified explanation for *why*
+   vanilla MPPI is sub-optimal everywhere.
+
+2. **chosen-vs-goal angle predicts which extreme of the U wins on each
+   cell**. The angle measures *how much the cell's optimal action
+   deviates from the prior (straight-to-goal)*:
+   - wave 17°: large deviation needed → cost signal is informative
+     about the right evasion → **argmin wins** (picks the one good
+     rollout cleanly).
+   - 4-way 5°: tiny deviation needed → prior is essentially correct
+     → **uniform wins** (returns the prior, eliminating phantom
+     contamination).
+   - v1 9°: intermediate → both extremes help moderately, with
+     uniform slightly ahead because v1 is also forgiving.
+
+This produces a **predictive rule for prescription**:
+
+> Run vanilla MPPI for 1 episode, measure mean `chosen_action vs
+> goal_dir` angle. If small (≲ 10°), use **uniform MPPI** (t=10).
+> If large (≳ 15°), use **argmin MPPI** (t=0.1).
+
+The peer cell (K) breaks this rule because its rollouts agree on "all
+trajectories fail" rather than on any direction — the top-1 isn't
+even meaningful. Diagnostic: peer's top-2 disagreement may be much
+lower (top-2 both pointing into collision); deferred for verification.
+
+Reproduce:
+
+```bash
+python3 scripts/u_shape_top_rollouts.py  # extended to 3 cells
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 

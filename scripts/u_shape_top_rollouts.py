@@ -38,7 +38,7 @@ from uav_nav_lab.config import ExperimentConfig
 from uav_nav_lab.planner.mppi import MPPIPlanner
 from uav_nav_lab.runner.multi.experiment import run_experiment_multi
 
-DUMP = {"v1": [], "wave": []}
+DUMP = {"v1": [], "wave": [], "4way": []}
 _label = ["v1"]
 _orig_plan = MPPIPlanner.plan
 
@@ -102,10 +102,11 @@ def _run_one(yaml_path, label):
 def main() -> int:
     _run_one("examples/exp_intersection_v1_noisy30_t10_mppi_n20.yaml",   "v1")
     _run_one("examples/exp_intersection_wave_noisy30_t10_mppi_n20.yaml", "wave")
+    _run_one("examples/exp_multi_drone_3d_4_noisy05_t10_mppi_n20.yaml",  "4way")
 
     # Per-replan metrics
     results = {}
-    for label in ("v1", "wave"):
+    for label in ("v1", "wave", "4way"):
         d = DUMP[label]
         top2 = [_top2_angle(r["actions"], r["weights"]) for r in d]
         chosen_vs_goal = [_angle_between(r["chosen"], r["goal_dir"]) for r in d]
@@ -125,10 +126,12 @@ def main() -> int:
 
     # Plot
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5))
-    cell_colors = {"v1": "#2ca02c", "wave": "#1f77b4"}
-    cell_labels = {"v1": "v1 (1 intruder, easy)", "wave": "wave (3 intruders, hard)"}
+    cell_colors = {"v1": "#2ca02c", "wave": "#1f77b4", "4way": "#9467bd"}
+    cell_labels = {"v1": "v1 (1 intruder, easy)",
+                   "wave": "wave (3 intruders, hard)",
+                   "4way": "4-way (3D escape, 30 obs)"}
 
-    for label in ("v1", "wave"):
+    for label in ("v1", "wave", "4way"):
         r = results[label]
         axes[0].plot(range(len(r["top2_angle"])), r["top2_angle"],
                      "-o", ms=4, lw=1.3, alpha=0.8, color=cell_colors[label],
