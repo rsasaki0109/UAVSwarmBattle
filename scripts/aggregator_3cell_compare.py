@@ -46,6 +46,10 @@ CELLS = [
         "results/multi_drone_3d_4_noisy05_{}_mppi_n20",
         "results/multi_drone_3d_4_noisy05_mpc_n20",
         "#2ca02c"),
+    ("4way_noisy30", "4-way (σ=3, 30 obs, 3D escape)",
+        "results/multi_drone_3d_4_noisy30_{}_mppi_n20",
+        "results/multi_drone_3d_4_noisy30_mpc_n20",
+        "#9467bd"),
     ("peer_noisy05", "peer (σ=0.5, 120 obs)",
         "results/multi_drone_peer_noisy05_{}_mppi_n20",
         "results/multi_drone_peer_noisy05_mpc_n20",
@@ -111,9 +115,9 @@ def main() -> int:
     ax.grid(alpha=0.3)
     ax.legend(loc="lower left", fontsize=9)
     ax.set_title(
-        "L: 3-cell aggregator response curves — U-shape on intersection wave, "
-        "monotonic on 4-way 30-obs, flat on peer 120-obs.\n"
-        "The 'aggregator U-shape' is cell-shape-dependent, not universal.",
+        "L/M: aggregator response curves across 4 (cell, σ) points — U-shape on intersection wave (σ=3), "
+        "monotonic-increasing on 4-way (σ=0.5 AND σ=3, gap deepens),\n"
+        "flat on peer (σ=0.5). Cell-shape, not noise, determines the response shape.",
         fontsize=10,
     )
     fig.tight_layout()

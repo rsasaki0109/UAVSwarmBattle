@@ -4097,6 +4097,50 @@ done
 python3 scripts/aggregator_3cell_compare.py
 ```
 
+**M: 4-way σ=3 — monotonic intensifies (2026-05-22).** L found
+4-way σ=0.5 was monotonic with argmin worst, uniform best. Tested
+whether raising σ to 3 creates rollout disagreement and thereby
+produces a U-shape on 4-way too (the "noise → disagreement → U"
+hypothesis derived from H/I).
+
+| aggregator | 4-way σ=0.5 | 4-way σ=3 |
+|---|---|---|
+| MPC          | 75% | 40% |
+| MPPI t=0.1 (argmin) | 55% | **20%** (was 55%) ← deepens |
+| MPPI t=0.3   | 65% | 35% |
+| MPPI t=1.0 (vanilla) | 80% | 35% |
+| MPPI t=3.0   | 85% | 50% |
+| MPPI t=10 (uniform) | 85% | **65%** ← still best |
+
+**Hypothesis refuted**. 4-way σ=3 is *more* monotonic, not U-shaped.
+Argmin drops to 20% (worst across all conditions tested), uniform
+holds at 65%. The argmin-vs-uniform gap *widens* from 30 pp (σ=0.5)
+to 45 pp (σ=3) instead of collapsing into a U.
+
+This means **cell-shape, not predictor noise, determines the
+aggregator response curve**. The 4-way cell's 3D escape volume makes
+prior-trust correct *regardless of σ*; adding noise just makes
+cost-trust worse without creating a "specific rollout is right"
+regime that argmin could exploit.
+
+**Prescriptive (refined again)**: on 4-way-like cells (multi-drone,
+3D escape, mid-density), **use uniform MPPI (t=10)** — it beats MPC
+by 10 pp at σ=0.5 and 25 pp at σ=3, while argmin is catastrophic at
+both σ. The wave-cell prescription (t=0.3 or argmin) is the OPPOSITE.
+
+The L+M findings together strengthen the "no universal aggregator
+prescription" claim: cell geometry determines the response shape,
+and σ only modulates the magnitude of the cell-specific advantage.
+
+Reproduce:
+
+```bash
+for f in examples/exp_multi_drone_3d_4_noisy30_{mpc,t01_mppi,t03_mppi,t10_mppi,t30_mppi,t100_mppi}_n20.yaml; do
+  uav-nav run "$f"
+done
+python3 scripts/aggregator_3cell_compare.py
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
