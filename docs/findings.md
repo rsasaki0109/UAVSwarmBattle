@@ -4242,6 +4242,55 @@ for f in examples/exp_intersection_chokepoint_noisy30_{mpc,t01_mppi,t03_mppi,t10
 done
 ```
 
+**P: N rule applicability check via top-2 disagreement (2026-05-22).**
+Extended the I instrumentation to include peer cell + cost_min /
+cost_med. Per-replan metrics, vanilla MPPI ep 0:
+
+| metric (mean) | v1 | wave | 4-way | **peer** |
+|---|---|---|---|---|
+| top-2 disagreement | 29.1° | 30.9° | 33.7° | **83.9°** |
+| chosen-vs-goal | 9.2° | 17.1° | 4.8° | 24.9° |
+| top-1-vs-goal | 11.2° | 17.9° | 5.6° | 24.6° |
+| cost_min (median) | 12.7 | 18.1 | 8.2 | 14.1 |
+| cost_med (median) | 307 | 506 | 940 | 683 |
+
+**Peer cell has 84° top-2 disagreement — three times the other
+cells**. This is the diagnostic that explains K (peer's flat
+aggregator response): rollouts are not coherent disagreement between
+two near-best plans, they're effectively *random directions*. The
+softmax can't pick "the right rollout" because there isn't a right
+one — the cost landscape is chaos. Argmin picks one random one,
+uniform averages chaos, vanilla also averages chaos; all three end
+up at the same ~40%.
+
+Note that peer's cost_min (median 14) is *similar to wave's* (18) —
+the best rollout's cost isn't catastrophically high. The chaos is
+specifically in the *structure* of the top-2 (84° disagreement vs
+wave's 31°), not in absolute cost magnitude.
+
+**The N rule is now a two-condition predictor**:
+
+> **Step 1 (applicability check)**: measure mean top-2 angular
+> disagreement on 1 vanilla MPPI episode.
+>   - If **> ~60°**: cost landscape is chaotic → all aggregators
+>     equivalent → use any MPPI (avoid MPC); skip step 2.
+>   - If **< ~40°**: rollouts have coherent disagreement → U-shape
+>     applies → continue to step 2.
+>
+> **Step 2 (aggregator choice)**: measure mean chosen-vs-goal angle
+> on the same data.
+>   - **< ~10°**: prior is correct → use **uniform MPPI** (t=10).
+>   - **> ~15°**: prior misses, specific rollout needed → use
+>     **argmin MPPI** (t=0.1).
+>   - **intermediate**: either extreme helps moderately; pick by
+>     downstream test.
+
+Reproduce:
+
+```bash
+python3 scripts/u_shape_top_rollouts.py  # now covers v1/wave/4way/peer
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 

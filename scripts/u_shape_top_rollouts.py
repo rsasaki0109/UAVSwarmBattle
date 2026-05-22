@@ -38,7 +38,7 @@ from uav_nav_lab.config import ExperimentConfig
 from uav_nav_lab.planner.mppi import MPPIPlanner
 from uav_nav_lab.runner.multi.experiment import run_experiment_multi
 
-DUMP = {"v1": [], "wave": [], "4way": []}
+DUMP = {"v1": [], "wave": [], "4way": [], "peer": []}
 _label = ["v1"]
 _orig_plan = MPPIPlanner.plan
 
@@ -46,12 +46,16 @@ _orig_plan = MPPIPlanner.plan
 def _wrapped_plan(self, *args, **kwargs):
     plan = _orig_plan(self, *args, **kwargs)
     if self._last_actions is not None and self._last_weights is not None:
+        cost_min = float(self._last_costs.min()) if self._last_costs is not None else None
+        cost_med = float(np.median(self._last_costs)) if self._last_costs is not None else None
         DUMP[_label[0]].append({
             "actions":      self._last_actions.tolist(),
             "weights":      self._last_weights.tolist(),
             "chosen":       self._last_chosen_action.tolist(),
             "goal_dir":     self._last_goal_dir.tolist() if self._last_goal_dir is not None else None,
             "temperature":  float(self.temperature),
+            "cost_min":     cost_min,
+            "cost_med":     cost_med,
         })
     return plan
 
@@ -103,10 +107,11 @@ def main() -> int:
     _run_one("examples/exp_intersection_v1_noisy30_t10_mppi_n20.yaml",   "v1")
     _run_one("examples/exp_intersection_wave_noisy30_t10_mppi_n20.yaml", "wave")
     _run_one("examples/exp_multi_drone_3d_4_noisy05_t10_mppi_n20.yaml",  "4way")
+    _run_one("examples/exp_multi_drone_peer_noisy05_t10_mppi_n20.yaml",  "peer")
 
     # Per-replan metrics
     results = {}
-    for label in ("v1", "wave", "4way"):
+    for label in ("v1", "wave", "4way", "peer"):
         d = DUMP[label]
         top2 = [_top2_angle(r["actions"], r["weights"]) for r in d]
         chosen_vs_goal = [_angle_between(r["chosen"], r["goal_dir"]) for r in d]
@@ -114,15 +119,23 @@ def main() -> int:
             _angle_between(np.asarray(r["actions"])[int(np.argmax(r["weights"]))], r["goal_dir"])
             for r in d
         ]
+        cost_mins = [r.get("cost_min") for r in d if r.get("cost_min") is not None]
+        cost_meds = [r.get("cost_med") for r in d if r.get("cost_med") is not None]
         results[label] = {
             "top2_angle":         top2,
             "chosen_vs_goal":     chosen_vs_goal,
             "top1_vs_goal":       top1_vs_goal,
+            "cost_min":           cost_mins,
+            "cost_med":           cost_meds,
         }
         print(f"=== {label}  (n_replan={len(d)}) ===")
         print(f"  top-2 angular disagreement (mean): {np.nanmean(top2):.1f}°")
         print(f"  chosen-vs-goal angle (mean):       {np.nanmean(chosen_vs_goal):.1f}°")
         print(f"  top-1-vs-goal angle (mean):        {np.nanmean(top1_vs_goal):.1f}°")
+        if cost_mins:
+            print(f"  cost_min (mean): {np.mean(cost_mins):.1f}, median: {np.median(cost_mins):.1f}")
+        if cost_meds:
+            print(f"  cost_med (mean): {np.mean(cost_meds):.1f}")
 
     # Plot
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5))
