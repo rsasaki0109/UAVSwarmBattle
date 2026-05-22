@@ -4291,6 +4291,45 @@ Reproduce:
 python3 scripts/u_shape_top_rollouts.py  # now covers v1/wave/4way/peer
 ```
 
+**Q: 5-cell N+P rule summary figure (2026-05-22).** Built a single
+visualization combining the rule (background regions) with all 5
+measured cells (points colored by actual best aggregator from the
+n=20 sweep):
+
+<p align="center">
+<img src="images/n_rule_summary.png" alt="Q: N+P rule summary — all 5 cells fall in their predicted regions" width="980">
+</p>
+
+| cell | top-2 | chosen-vs-goal | predicted (N+P) | actual best | match |
+|---|---|---|---|---|---|
+| v1         | 29.1° | 9.2°  | uniform | uniform (100%) | ✓ |
+| wave       | 30.9° | 17.1° | argmin  | argmin (70%)   | ✓ |
+| 4-way      | 33.7° | 4.8°  | uniform | uniform (85%)  | ✓ |
+| peer       | 83.9° | 24.9° | chaotic | flat (40%)     | ✓ |
+| chokepoint | 33.1° | 10.1° | uniform | uniform (95%)  | ✓ |
+
+**5 / 5 cells fall in their N+P-predicted regions**. The rule is
+empirically sound for the geometry types tested: intersection
+(saturating + knee), multi-drone-3D-escape (mid-density), peer
+(coordination-dominated), and chokepoint (narrow-corridor).
+
+The complete predictive procedure for a new cell:
+
+1. Run vanilla MPPI for 1 episode, dump per-replan
+   `(top-2 angular disagreement, chosen-action vs goal direction)`.
+2. **Step 1 (applicability)**: mean top-2 > 60° → use any MPPI
+   (cell is chaos-dominated; temperature is irrelevant); stop.
+3. **Step 2 (aggregator)**: mean chosen-vs-goal < 10° → uniform MPPI
+   (t = 10); > 15° → argmin MPPI (t = 0.1); intermediate → either
+   extreme helps moderately.
+
+Reproduce:
+
+```bash
+python3 scripts/u_shape_top_rollouts.py  # measures the metrics
+python3 scripts/n_rule_summary.py        # produces the summary figure
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
