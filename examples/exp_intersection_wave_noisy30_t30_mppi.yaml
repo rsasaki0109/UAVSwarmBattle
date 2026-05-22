@@ -1,0 +1,70 @@
+# E3 two-wave intruder intersection: extend intersection_v1 with three
+# phase-controlled intruders all crossing the centre line (y=20) at
+# 1 s intervals, timed so drones arrive in the middle of the wave.
+#
+# Geometry: drones reach the centre at t ≈ 2.67 s (max_speed 6 m/s,
+# 16 m travel). Intruder A reaches centre at t=2.5 s (just before
+# drones), intruder B at t=3.5 s (just after — primary near-miss),
+# intruder C at t=4.5 s (during drone tail clearance). With three
+# waves the planner has to pick which gap to use, rather than just
+# "wait or detour" the single intruder.
+#
+# Reproduce:
+#   uav-nav run examples/exp_intersection_wave_v1_mppi.yaml
+name: intersection_wave_noisy30_t30_mppi
+seed: 42
+num_episodes: 5
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - name: north
+      start: [20.0, 4.0, 6.0]
+      goal:  [20.0, 36.0, 6.0]
+      radius: 0.4
+    - name: east
+      start: [36.0, 20.0, 6.0]
+      goal:  [4.0, 20.0, 6.0]
+      radius: 0.4
+  dynamic_obstacles:
+    - {start: [16.25, 20.0, 6.0], velocity: [ 1.5, 0.0, 0.0], reflect: true, radius: 1.0}
+    - {start: [25.25, 20.0, 6.0], velocity: [-1.5, 0.0, 0.0], reflect: true, radius: 1.0}
+    - {start: [13.25, 20.0, 6.0], velocity: [ 1.5, 0.0, 0.0], reflect: true, radius: 1.0}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 800
+  max_accel: 80.0
+  goal_radius: 1.0
+  drone_radius: 0.4
+
+planner:
+  type: mppi
+  max_speed: 6.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.0
+  safety_margin: 0.5
+  use_prediction: true
+  predictor:
+    type: noisy_velocity
+    velocity_noise_std: 3.0
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 3.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/intersection_wave_noisy30_t30_mppi

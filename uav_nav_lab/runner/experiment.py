@@ -106,6 +106,12 @@ def _run_episode(
     state = sim.reset(seed=seed)
     sensor.reset(seed=seed)
     planner.reset()
+    # Predictors carry RNG state (e.g. NoisyVelocityPredictor) but were
+    # never re-seeded — same config + same episode seed produced different
+    # outcomes across runs. Use seed + 7777 to decorrelate from sim/sensor.
+    pred = getattr(planner, "_predictor", None)
+    if pred is not None and hasattr(pred, "reset"):
+        pred.reset(seed=seed + 7777)
     if frame_dir is not None:
         frame_dir.mkdir(parents=True, exist_ok=True)
     step_idx = 0

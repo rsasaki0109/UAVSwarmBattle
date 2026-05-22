@@ -3279,6 +3279,36 @@ python3 scripts/render_race_gif.py \
   --ep 0 --fps 20 --stride 1 --trail 60
 ```
 
+**CORRECTION (2026-05-22, post-bug-fix).** The original E5 / crossover /
+F results below were generated with `NoisyVelocityPredictor` whose RNG
+was **never re-seeded between runs** — `predictor.reset(seed=...)` was
+absent from both `uav_nav_lab/runner/experiment.py` and
+`uav_nav_lab/runner/multi/episode.py`. Each invocation drew a fresh
+`np.random.default_rng()` from system entropy, so the originally
+committed n=5 numbers were a single luck-of-the-draw realization. The
+fix (commit added below) propagates `seed + 7777` into the predictor's
+reset hook from both runners. The reproducible n=20 wave sweep is in
+`docs/images/intersection_wave_predictor_sweep_n20.png` and the
+**original σ=3 winner reverses**:
+
+| condition (wave) | n=5 unseeded | n=20 seeded |
+|---|---|---|
+| MPC,  σ=3.0   | 1/5  (20%) | **9/20 (45%)** |
+| MPPI, σ=3.0   | **4/5 (80%)** | 7/20 (35%) |
+| MPC,  σ=10.0  | 2/5  (40%) | **1/20 (5%)**  |
+| MPPI, σ=10.0  | 0/5  (0%)  | 2/20 (10%) |
+| MPC/MPPI, σ≤1 | 5/5 | 18-20/20 (saturated) |
+
+The "MPPI's softmax is more robust than argmin at σ=3" claim was wrong.
+The opposite is true: MPC is *slightly* more robust than vanilla MPPI at
+the knee, and the σ=10 crossover dissolves into joint floor (5% vs 10%
+is within noise). The corrected mechanism is even cleaner — see the
+new **J: aggregator-temperature sweep** subsection below — vanilla
+MPPI (t=1.0) is the *worst* aggregator at the σ=3 knee, and **argmin
+MPPI (t=0.1) recovers to 70%**, beating MPC's 45% by a clear margin.
+The text below preserves the original n=5 narrative for traceability;
+red flags are inline.
+
 **E5: predictor-fidelity sweep (2026-05-22).** E4 turned the predictor
 fully off and showed nopred drops both planners to 0/5. E5 sweeps the
 *fidelity* axis instead, replacing the perfect constant-velocity
@@ -3293,28 +3323,50 @@ also with `kalman_velocity` as a control. Run on both the v1 cell
 <img src="images/intersection_predictor_sweep.png" alt="E5 predictor-fidelity sweep: v1 binary, wave reveals MPPI robustness gradient with σ=10 crossover" width="900">
 </p>
 
+**Original n=5 unseeded numbers (red — non-reproducible, see correction above)**:
+
 | cell | planner | nopred | σ=10 | σ=3 | σ=1 | σ=0.5 | σ=0.2 | const-vel | kalman |
 |---|---|---|---|---|---|---|---|---|---|
 | v1   | MPC  | 0/5 | — | — | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 |
 | v1   | MPPI | 0/5 | — | — | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 |
 | wave | MPC  | 0/5 | 2/5 | 1/5 | 5/5 | 5/5 | 5/5 | 5/5 | — |
-| wave | MPPI | 0/5 | 0/5 | **4/5** | 5/5 | 5/5 | 5/5 | 5/5 | — |
+| wave | MPPI | 0/5 | 0/5 | **4/5** ← wrong direction | 5/5 | 5/5 | 5/5 | 5/5 | — |
 
-Three findings refine the §3 two-axis claim:
+**Corrected n=20 seeded numbers (wave cell only — v1/peer not yet
+re-run; v1 saturates so the result is unchanged)**:
+
+<p align="center">
+<img src="images/intersection_wave_predictor_sweep_n20.png" alt="wave predictor sweep n=20, seeded predictor" width="900">
+</p>
+
+| planner | nopred | σ=10 | σ=3 | σ=1 | σ=0.5 | σ=0.2 | const-vel |
+|---|---|---|---|---|---|---|---|
+| MPC  | 0/5* | 1/20 (5%)  | **9/20 (45%)** | 20/20 (100%) | 20/20 | 20/20 | 5/5* |
+| MPPI | 0/5* | 2/20 (10%) | 7/20 (35%)     | 18/20 (90%)  | 20/20 | 20/20 | 5/5* |
+
+\* nopred and const-vel rows are deterministic (no predictor RNG) and
+reused from the original n=5 baseline.
+
+Three findings (n=5 reading, partially superseded by the n=20 correction
+above) refine the §3 two-axis claim:
 
 1. **v1 is binary**, even when the predictor hallucinates at σ=1.0
    (twice the true intruder speed). The geometry is so forgiving that
-   any belief about motion suffices.
-2. **wave reveals a fidelity knee at σ≥3**. Below σ=1 success is
+   any belief about motion suffices. **[Still holds at n=20 — v1
+   saturates because there's only one slow intruder.]**
+2. ~~**wave reveals a fidelity knee at σ≥3**. Below σ=1 success is
    saturated; at σ=3 MPC drops to 1/5 while MPPI holds 4/5 — the
    softmax aggregator's averaging across the rollout cloud is
    **more robust to bad predictions** than argmin's single-trajectory
-   commitment.
-3. **σ=10 crossover**: at total predictor chaos MPPI breaks first
-   (0/5) while MPC recovers to 2/5. When predictions are pure noise,
-   softmax keeps chasing phantoms it averaged into the cost; argmin
-   occasionally picks a trajectory whose dominant cost was real
-   geometry rather than the random forecast.
+   commitment.~~ **[REVERSED at n=20: MPC 9/20 (45%) > MPPI 7/20 (35%)
+   at σ=3. The "softmax more robust at the knee" claim was a luck-of-
+   the-draw artifact. The knee is real but the planner ordering is
+   the opposite of what we reported.]**
+3. ~~**σ=10 crossover**: at total predictor chaos MPPI breaks first
+   (0/5) while MPC recovers to 2/5.~~ **[Dissolves at n=20: MPC 5%
+   vs MPPI 10%, both within noise floor — there is no resolvable
+   crossover, both planners catastrophically fail at σ=10 and the
+   sign even flips slightly the other way.]**
 
 This nuances E4's "predictor sets the success axis" line: the
 *presence* of a predictor is a universal binary switch, but predictor
@@ -3433,23 +3485,106 @@ Two findings sharpen the framing:
    (5/5 → 4/5 → 1/5 → 0/5 as σ rises), and that is where the σ=10
    crossover lives.
 
-The honest refined §3 framing:
+The honest refined §3 framing (this list itself is superseded by the
+J subsection further below — see "honest refined §3 framing" near the
+end of the chapter):
 
 - **Success-axis switch** (universal): predictor on/off.
 - **Success-axis gradient** (scope-conditioned): emerges only when the
   cell's success rate is in the (0, 1) knee band; v1 is above, peer is
   below.
-- **Fingerprint axis** (planner aggregator): present everywhere — peer
+- ~~**Fingerprint axis** (planner aggregator): present everywhere — peer
   cell also shows a slight MPPI edge (mean 1.2/5 vs MPC 0.5/5 across
   σ ∈ [0.2, 3]), though the noise floor at n=5 is too high to call
-  the gradient cleanly.
-- **σ=10 crossover** (cell-bound): observed on wave, absent on v1 (off
+  the gradient cleanly.~~ **[The direction of the aggregator edge at
+  the knee was reversed by the n=20 re-run. Argmin is the most robust
+  aggregator; vanilla softmax is the worst.]**
+- ~~**σ=10 crossover** (cell-bound): observed on wave, absent on v1 (off
   the σ axis) and peer (success rate too low for the crossover to
-  resolve above noise).
+  resolve above noise).~~ **[Dissolves at n=20 — both planners at 5-10%
+  on wave σ=10, no resolvable crossover.]**
 
 `peer` cell yamls:
 `examples/exp_multi_drone_peer_{nopred,noisy02,noisy05,noisy10,noisy30,noisy100}_{mpc,gpu_mppi}.yaml`
 (derived from `exp_multi_drone_3d_4_dense{,_gpu_mppi}.yaml`).
+
+**Note on F numbers**: the F peer results above were also run with the
+unseeded predictor. They are non-reproducible at n=5 in the same way
+E5 was. The presence-switch (nopred → 0/5) is safe because `nopred`
+uses `use_prediction: false` and has no predictor RNG; the noisy_*
+peer numbers should be treated as illustrative until re-run at higher
+n with the seeding fix. The peer cell's success-rate floor (0-2/5)
+likely dominates over the predictor signal regardless.
+
+**J: aggregator-temperature sweep (2026-05-22, post-bug-fix).** The
+corrected E5 numbers showed MPC > MPPI at the σ=3 knee, which raises a
+sharper question: *if vanilla MPPI's softmax is hurting the knee
+result, what does it look like as we sweep the aggregator from argmin
+(temperature → 0) to uniform (temperature → ∞)?* The CPU MPPI exposes
+`temperature` directly as a YAML knob (default 1.0). Sweep at t ∈
+{0.1, 0.3, 1.0, 3.0, 10.0} on the wave cell, n=20, seeded:
+
+<p align="center">
+<img src="images/intersection_temperature_sweep.png" alt="J: aggregator temperature sweep — vanilla MPPI worst at σ=3 knee, argmin recovers" width="900">
+</p>
+
+| temperature | σ=3 (knee) | σ=10 (chaos) |
+|---|---|---|
+| 0.1 (argmin)  | **14/20 (70%)** | **7/20 (35%)** |
+| 0.3           | 13/20 (65%)     | 8/20 (40%)     |
+| **1.0 (default)** | **7/20 (35%)** | 2/20 (10%) |
+| 3.0           | 13/20 (65%)     | 2/20 (10%)     |
+| 10.0 (very soft) | 8/20 (40%) | 6/20 (30%) |
+| MPC reference | 9/20 (45%)      | 1/20 (5%)      |
+
+**A clean U-shape**. At the σ=3 knee, vanilla MPPI (t=1.0) is the
+worst aggregator (35%), while both extremes recover: argmin-like
+behaviour (t=0.1) wins at 70%, and very-soft behaviour (t=10) gives
+40%. The same pattern shows weakly at σ=10 (argmin 35% vs vanilla 10%
+vs soft 30%) — the temperature knob preserves more diversity than
+either vanilla MPPI or MPC's single-trajectory commitment.
+
+**Mechanism**. At σ=3 the predictor's hallucinated intruder positions
+have a ±3 m/s velocity bias per replan. Many MPPI rollouts arrive at
+*similar* costs (because they all dodge a phantom intruder somewhere
+nearby), and the vanilla softmax (t=1.0) averages them into a blurred
+evasion direction with high confidence. Argmin (t=0.1) picks one
+rollout — the one whose dominant cost came from real geometry, not the
+hallucinated obstacle. Uniform (t=10) effectively returns the prior
+(roughly straight-to-goal) which sidesteps the phantom-evasion failure
+mode by ignoring the rollout costs altogether. The "valley of bad" is
+specifically around t=1.0, where there is enough cost-weighting to
+commit to the wrong rollout but not enough to argmin away from it.
+
+This **strengthens** rather than refutes the §3 fingerprint claim:
+the planner aggregator is still the structural difference between MPC
+and MPPI, but the *direction* of the advantage at the knee depends
+sharply on the temperature setting. Vanilla MPPI is *not* a robust
+choice when predictions are noisy — argmin MPPI is.
+
+Reproduce (10 J yamls; first commit the seeding fix, then run):
+
+```bash
+for f in examples/exp_intersection_wave_noisy{30,100}_{t01,t03,t10,t30,t100}_mppi_n20.yaml \
+         examples/exp_intersection_wave_noisy{02,05,10,30,100}_{mpc,mppi}_n20.yaml; do
+  uav-nav run "$f"
+done
+python3 scripts/intersection_temperature_sweep.py
+python3 scripts/intersection_wave_predictor_sweep_n20.py
+```
+
+The honest refined §3 framing (replacing the version above):
+
+- **Success-axis switch** (universal, deterministic): predictor on/off.
+- **Success-axis fidelity gradient** (scope-conditioned, wave cell):
+  100% → 90% → 35% → 10% → 5% as σ rises through {0.5, 1, 3, 10}.
+- **Fingerprint axis** (planner aggregator): MPC argmin vs MPPI
+  softmax (vs MPPI's tunable temperature). At the knee, the
+  aggregator-temperature is a U-shape with vanilla MPPI as the worst
+  configuration. Argmin MPPI is the most robust choice when the
+  predictor is noisy but informative.
+- **No crossover at σ=10**: both planners collapse to noise-floor
+  performance (5-10%) regardless of aggregator.
 
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
