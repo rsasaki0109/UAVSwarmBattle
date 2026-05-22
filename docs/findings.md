@@ -3713,6 +3713,65 @@ The refined §3 framing (final, replacing the lists above):
   (argmin MPPI).
 - **No crossover at σ=10**: both planners collapse to noise floor.
 
+**H: cost-spread mechanism for U-shape cell-dependence (2026-05-22).**
+The G U-shape and the cell-dependence (v1 → uniform wins, wave →
+argmin wins) raise the question of *why*. Initial hypothesis: cells
+differ in the **shape of the per-replan rollout cost distribution** —
+on v1 (forgiving) most rollouts have similar cost so the softmax
+weights spread out, whereas on wave (hard) one rollout has a clearly
+lower cost so weights concentrate. Under this hypothesis, vanilla
+MPPI's softmax averaging would be a fundamentally different operator
+on the two cells.
+
+Instrumented `MPPIPlanner.plan()` with `_last_costs` / `_last_weights`
+storage and ran vanilla MPPI (t=1.0, σ=3) for ep 0 on both cells
+(`scripts/u_shape_cost_spread.py`). Per-replan metrics:
+
+| metric (mean across ep 0 replans) | v1 (49 replans) | wave (28 replans) |
+|---|---|---|
+| softmax entropy (nats)                | 0.64 | 0.74 |
+| relative cost spread (max−min)/\|min\| | 112  | 140  |
+| effective # rollouts (Simpson's, max=32) | 1.8 | 1.8 |
+
+<p align="center">
+<img src="images/u_shape_cost_spread.png" alt="H: vanilla MPPI cost distribution shape on v1 vs wave at σ=3" width="980">
+</p>
+
+**The cost-shape hypothesis is refuted by the data**. Both cells show
+nearly identical softmax characteristics: low entropy (≈0.7 nats out
+of max log 32 = 3.47), similar cost spread, and **effective rollout
+count ≈ 1.8 in both cells**. Vanilla MPPI is already operating in
+near-argmin mode (averaging the top ~2 weighted rollouts) on both
+cells. The cell-dependence of the U-shape cannot come from the cost
+distribution shape because that shape is statistically similar.
+
+**Refined mechanism hypothesis**: the cell-dependence lives in *what
+the top-2 weighted rollouts look like*, not in *how concentrated the
+weights are*. Vanilla MPPI averages two specific rollouts that, in
+both cells, disagree enough that the average is a phantom
+direction → both cells lose. The recovery direction (argmin vs
+uniform) then depends on whether the *prior* (straight-to-goal)
+happens to coincide with the true optimum:
+
+- v1: the prior is approximately correct most of the time
+  (one slow intruder leaves the straight line usable). Uniform MPPI
+  (t=10) returns near-prior → wins at 100%.
+- wave: the prior is never correct (3 intruders block the line). The
+  truly minimum-cost rollout is some specific evasion direction.
+  Argmin MPPI (t=0.1) picks that single rollout cleanly → wins at 70%.
+
+Honest negative: I did not directly verify the "two divergent top
+rollouts" part — that requires storing the action arrays per rollout
+(not done here). The refuted hypothesis (cost shape) and the refined
+hypothesis (top-rollout agreement) are not equivalent; H closed the
+shape question and points to the next mechanism axis.
+
+Reproduce:
+
+```bash
+python3 scripts/u_shape_cost_spread.py  # writes docs/images/u_shape_cost_spread.{png,json}
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 

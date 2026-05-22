@@ -86,6 +86,12 @@ class MPPIPlanner(Planner):
         self._static_occ_inflated: np.ndarray | None = None
         self._ctg_cache: np.ndarray | None = None
         self._ctg_cache_goal: tuple[int, ...] | None = None
+        # Last-replan internals — exposed for mechanism analysis. Not
+        # written to disk by the runner; standalone scripts can opt in
+        # by reading these after each call to plan().
+        self._last_costs: np.ndarray | None = None
+        self._last_weights: np.ndarray | None = None
+        self._last_chosen_action: np.ndarray | None = None
 
     @classmethod
     def from_config(cls, cfg: Mapping[str, Any]) -> "MPPIPlanner":
@@ -280,6 +286,9 @@ class MPPIPlanner(Planner):
         weights = np.exp(-(costs - cost_min) / self.temperature)
         weights = weights / float(np.sum(weights))
         chosen_action = (weights[:, None] * actions).sum(axis=0)
+        self._last_costs = costs.copy()
+        self._last_weights = weights.copy()
+        self._last_chosen_action = chosen_action.copy()
         # Cap the weighted action to max_speed (the average can drop below
         # max_speed when weights are spread; that's expected). The
         # rollout we attach to the Plan is the highest-weighted sample's
