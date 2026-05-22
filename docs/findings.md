@@ -3389,6 +3389,68 @@ predictions are pure noise it amplifies an unsound one (the σ=10
 crossover), and the commitment happens fast enough to preclude
 recovery.
 
+**F: peer-prediction generalization (2026-05-22).** The E5 sweep tested
+predictor fidelity against *scene* dynamic obstacles. F asks whether the
+same 2-axis structure holds when the "dynamic obstacles" being predicted
+are other planners (peer-vs-peer coordination), not scene intruders. The
+multi-drone runner merges peer drones into the `dynamic_obstacles` list
+passed to each planner (see `uav_nav_lab/runner/multi/peers.py`), so the
+same `predictor:` block applies. Cell: the §3 mode-1 4-drone cross with
+120 static obstacles (`exp_multi_drone_3d_4_dense{,_gpu_mppi}.yaml`),
+N=5 episodes, same predictor conditions as E5 (nopred / noisy σ ∈
+{0.2, 0.5, 1.0, 3.0, 10.0}) for MPC and GPU MPPI.
+
+| condition | MPC | GPU MPPI |
+|---|---|---|
+| nopred       | 0/5 | 0/5 |
+| noisy σ=10   | 0/5 | 0/5 |
+| noisy σ=3    | 1/5 | 1/5 |
+| noisy σ=1    | 1/5 | 1/5 |
+| noisy σ=0.5  | 1/5 | **2/5** |
+| noisy σ=0.2  | 0/5 | 1/5 |
+
+The combined 3-cell sweep figure (`scripts/intersection_predictor_sweep.py`
+→ `docs/images/intersection_predictor_sweep.png`):
+
+<p align="center">
+<img src="images/intersection_predictor_sweep.png" alt="3-cell predictor-quality sweep: v1, wave, peer" width="980">
+</p>
+
+Two findings sharpen the framing:
+
+1. **Presence-switch is universal**. All 3 cells × both planners drop
+   to 0/5 joint success when prediction is off. The peer cell confirms
+   this is not specific to scene-intruder geometry — peer-as-dynamic-
+   obstacle obeys the same switch.
+
+2. **Fidelity gradient is geometry-dependent**, and it has *scope
+   conditions*: it is observable only when the cell's success rate is
+   in the (0, 1) "knee" band. v1 saturates near 1.0 so the σ axis is
+   flat at success=1. The peer cell is in the opposite regime —
+   success-rate floors around 0-2/5 across all σ ≤ 1 because
+   peer-coordination complexity dominates over predictor fidelity.
+   Wave is the only cell where success rate transits the knee
+   (5/5 → 4/5 → 1/5 → 0/5 as σ rises), and that is where the σ=10
+   crossover lives.
+
+The honest refined §3 framing:
+
+- **Success-axis switch** (universal): predictor on/off.
+- **Success-axis gradient** (scope-conditioned): emerges only when the
+  cell's success rate is in the (0, 1) knee band; v1 is above, peer is
+  below.
+- **Fingerprint axis** (planner aggregator): present everywhere — peer
+  cell also shows a slight MPPI edge (mean 1.2/5 vs MPC 0.5/5 across
+  σ ∈ [0.2, 3]), though the noise floor at n=5 is too high to call
+  the gradient cleanly.
+- **σ=10 crossover** (cell-bound): observed on wave, absent on v1 (off
+  the σ axis) and peer (success rate too low for the crossover to
+  resolve above noise).
+
+`peer` cell yamls:
+`examples/exp_multi_drone_peer_{nopred,noisy02,noisy05,noisy10,noisy30,noisy100}_{mpc,gpu_mppi}.yaml`
+(derived from `exp_multi_drone_3d_4_dense{,_gpu_mppi}.yaml`).
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 

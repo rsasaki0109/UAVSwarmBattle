@@ -1,14 +1,21 @@
-"""E5 predictor-quality sweep: joint success rate vs predictor across MPC/MPPI.
+"""E5/F predictor-quality sweep: joint success rate vs predictor.
 
-Reads the v1 and wave intersection cells across 6 predictor conditions
-(nopred / noisy σ=1.0/0.5/0.2 / constant-vel / kalman) for both planners
-and plots joint success rate per cell.
+Three cells across two planners:
+- v1   (intersection, 1 scene intruder at 0.5 m/s, MPC vs CPU MPPI)
+- wave (intersection, 3 scene intruders at 1.5 m/s, MPC vs CPU MPPI)
+- peer (multi-drone 4-way crossing, 120 static + peer-prediction only,
+        MPC vs GPU MPPI — tests if the framing generalizes from scene
+        dynamic obstacles to peer-as-dynamic-obstacle)
 
 Hypothesis: the *predictor* sets the success axis (binary), while the
 *planner aggregator* (argmin vs softmax) sets the fingerprint axis. The
-v1 cell saturates at 1.0 except when predictor is absent, so the
-predictor-fidelity gradient (σ-axis) is only visible on the harder wave
-cell with 3 fast intruders.
+v1 cell saturates except when predictor is absent; wave reveals a
+fidelity knee at σ=3 where MPPI's softmax holds 4/5 vs MPC's 1/5 and
+a crossover at σ=10 where MPPI breaks first (mechanism: softmax
+amplifies a phantom-averaged evasion direction with high confidence).
+The peer cell asks: does the same 2-axis structure hold when the
+"dynamic obstacles" being predicted are other planners, not scene
+intruders?
 """
 import json
 from pathlib import Path
@@ -19,7 +26,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 N_EPS = 5
-PLANNERS = ["mpc", "mppi"]
 
 # Order: worst predictor → best.
 CONDITIONS = [
@@ -52,9 +58,18 @@ def wave_path(tag, planner):
     return f"results/intersection_wave_{tag}_{planner}"
 
 
+def peer_path(tag, planner):
+    # planner is "mpc" or "mppi"; map "mppi" -> "gpu_mppi" since peer cell uses GPU MPPI.
+    if tag in ("perfect", "kalman"):
+        return None
+    p = "gpu_mppi" if planner == "mppi" else planner
+    return f"results/multi_drone_peer_{tag}_{p}"
+
+
 CELLS = [
     ("v1",   v1_path,   "v1 (1 intruder, 0.5 m/s)"),
     ("wave", wave_path, "wave (3 intruders, 1.5 m/s)"),
+    ("peer", peer_path, "peer (4-drone cross, 120 static obs, peer-pred only)"),
 ]
 OUT = Path("docs/images/intersection_predictor_sweep.png")
 
@@ -80,7 +95,7 @@ def joint_success_rate(run_dir):
 
 
 def main() -> int:
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 4.8), sharey=True)
     rows = []
     for ax, (cell_tag, path_fn, cell_label) in zip(axes, CELLS):
         for planner, dx, marker in [("mpc", -0.08, "o"), ("mppi", +0.08, "s")]:
@@ -111,10 +126,10 @@ def main() -> int:
         ax.legend(loc="lower right")
     axes[0].set_ylabel(f"joint success rate (n={N_EPS})")
     fig.suptitle(
-        "E5: success vs predictor quality — v1 is binary (predictor presence is a switch); "
-        "wave reveals a fidelity gradient at σ≥3 where MPPI's softmax aggregator "
-        "is more robust to bad predictions, but breaks first at total chaos (σ=10)",
-        fontsize=9, y=1.0,
+        "Predictor-quality sweep across 3 cells — presence-switch is universal "
+        "(all 3 cells: nopred → 0/5). Fidelity gradient is geometry-dependent "
+        "(visible only on wave; v1 saturates at 1.0, peer floors at ≤2/5)",
+        fontsize=10, y=1.0,
     )
     fig.tight_layout()
     OUT.parent.mkdir(parents=True, exist_ok=True)
