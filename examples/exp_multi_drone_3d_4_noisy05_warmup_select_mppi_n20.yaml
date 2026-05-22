@@ -1,0 +1,70 @@
+# warmup_select_mppi on 4-way (3D escape, 30 obs), σ=0.5.
+# Expected pick (per N+P rule): uniform t=10 (cvg=4.8° < 12.5°).
+# Baseline t=10 sweep result on this cell: 85% joint success.
+name: multi_drone_3d_4_noisy05_warmup_select_mppi_n20
+seed: 42
+num_episodes: 20
+
+scenario:
+  type: multi_drone_voxel
+  size: [40, 40, 12]
+  resolution: 1.0
+  obstacles:
+    type: random
+    count: 30
+    seed: 7
+  drones:
+    - name: east
+      start: [3.0, 20.0, 6.0]
+      goal:  [37.0, 20.0, 6.0]
+      radius: 0.4
+    - name: west
+      start: [37.0, 20.0, 6.0]
+      goal:  [3.0, 20.0, 6.0]
+      radius: 0.4
+    - name: north
+      start: [20.0, 3.0, 6.0]
+      goal:  [20.0, 37.0, 6.0]
+      radius: 0.4
+    - name: south
+      start: [20.0, 37.0, 6.0]
+      goal:  [20.0, 3.0, 6.0]
+      radius: 0.4
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1500
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: warmup_select_mppi
+  max_speed: 8.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  predictor:
+    type: noisy_velocity
+    velocity_noise_std: 0.5
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  n_samples: 32
+  warmup_temperature: 1.0
+  uniform_temperature: 10.0
+  argmin_temperature: 0.1
+  appl_cut: 50.0
+  choice_cut: 12.5
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/multi_drone_3d_4_noisy05_warmup_select_mppi_n20
