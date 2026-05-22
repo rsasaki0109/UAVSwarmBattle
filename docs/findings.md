@@ -4025,6 +4025,78 @@ for f in examples/exp_multi_drone_peer_noisy05_{t01,t03,t10,t30,t100}_mppi_n20.y
 done
 ```
 
+**L: 4-way mid-density cell — opposite shape (2026-05-22).** K
+established that peer cell (120 obstacles) is aggregator-insensitive.
+What about the §3 4-way cell (30 obstacles, mid-density between
+intersection and peer)? Ran the same sweep at σ=0.5 with 5 MPPI
+temperatures + MPC, n=20:
+
+<p align="center">
+<img src="images/aggregator_3cell_compare.png" alt="L: 3-cell aggregator response curves at varying densities" width="900">
+</p>
+
+| aggregator | wave σ=3 | 4-way σ=0.5 (30 obs) | peer σ=0.5 (120 obs) |
+|---|---|---|---|
+| MPC          | 9/20  (45%) | 15/20 (75%) | 6/20 (30%) |
+| MPPI t=0.1   | 14/20 (70%) | **11/20 (55%)** | 8/20 (40%) |
+| MPPI t=0.3   | 13/20 (65%) | 13/20 (65%) | 8/20 (40%) |
+| MPPI t=1.0   | 7/20  (35%) | 16/20 (80%) | 8/20 (40%) |
+| MPPI t=3.0   | 13/20 (65%) | **17/20 (85%)** | 8/20 (40%) |
+| MPPI t=10    | 8/20  (40%) | **17/20 (85%)** | 8/20 (40%) |
+
+**The 4-way cell shows the OPPOSITE shape — monotonic increasing**.
+Argmin (t=0.1) is the *worst* aggregator at 55%; uniform (t=10) is
+the *best* at 85%. The "more we trust the cost signal, the worse the
+outcome" pattern reverses the wave U-shape entirely.
+
+Three aggregator response shapes now identified:
+
+- **wave (intersection, no static obs)**: U-shape with vanilla
+  (t=1.0) as the valley; argmin and uniform both recover.
+- **4-way (30 obs, 3D escape volume)**: monotonic with argmin as the
+  valley; cost-trust hurts, prior-trust wins.
+- **peer (120 obs, dense coordination)**: flat at ~40%; aggregator
+  irrelevant.
+
+**The t=0.3 prescription from the phase diagram is refuted as
+universal**. Different cell shapes produce different aggregator
+response curves; t=0.3 sits between the valley and the optimum on the
+4-way cell (65% vs uniform 85%).
+
+Mechanism interpretation (extending H/I):
+- wave: cost signal is informative; rollouts have *informative*
+  disagreement; vanilla averages two divergent rollouts into a
+  phantom direction (top-2 angle ~30°, chosen-vs-goal 17°).
+- 4-way: 3D escape volume means *most rollouts succeed*; argmin
+  commits to ONE rollout that might be unlucky; uniform averages
+  many successful rollouts and stays close to the prior, which is
+  correct most of the time.
+- peer: 4-drone-cross coordination chaos floods the rollout cost
+  landscape; rollouts agree on "everything is bad" so the
+  aggregator doesn't matter.
+
+**Final refined §3 framing (replaces all previous lists)**:
+
+- **Success-axis switch** (universal, deterministic): predictor on/off.
+- **Success-axis fidelity gradient** (intersection-cell-specific,
+  wave clearest): emerges at σ ∈ {1, 3}; absent at saturated v1 and
+  bottomed-out peer.
+- **Aggregator response curve** (cell-shape-dependent):
+  - intersection (informative cost): U-shape, vanilla is valley.
+  - mid-density 3D escape: monotonic, argmin is valley.
+  - dense coordination: flat, aggregator irrelevant.
+- **Prescription**: choose temperature per cell-shape category;
+  no universal best.
+
+Reproduce:
+
+```bash
+for f in examples/exp_multi_drone_3d_4_noisy05_{mpc,t01_mppi,t03_mppi,t10_mppi,t30_mppi,t100_mppi}_n20.yaml; do
+  uav-nav run "$f"
+done
+python3 scripts/aggregator_3cell_compare.py
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
