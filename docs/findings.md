@@ -3889,6 +3889,83 @@ done
 python3 scripts/u_shape_sigma_generality.py
 ```
 
+**Phase diagram: full 2D (cell × σ × aggregator) matrix (2026-05-22).**
+G covered cells at σ=3; J σ-axis covered σ across temperatures on
+wave. Completed the v1 σ=1 and σ=10 quadrants (12 new yamls at n=20)
+to produce a 2×3 phase diagram per cell.
+
+<p align="center">
+<img src="images/aggregator_phase_diagram.png" alt="2D phase diagram: v1 vs wave × σ ∈ {1, 3, 10} × 6 aggregators" width="980">
+</p>
+
+Full numerical matrix (joint success rate, n=20):
+
+**v1 cell** (1 slow intruder, easy geometry):
+
+| aggregator | σ=1 | σ=3 | σ=10 |
+|---|---|---|---|
+| MPC          | 95%  | 55%  | 25%  |
+| MPPI t=0.1   | 90%  | 70%  | 45%  |
+| MPPI t=0.3   | 90%  | 80%  | 55%  |
+| MPPI t=1.0 (vanilla) | 90% | 60% | 40% |
+| MPPI t=3.0   | 100% | 80%  | 75%  |
+| **MPPI t=10 (uniform)** | **100%** | **100%** | **95%** |
+
+**wave cell** (3 intruders, hard geometry):
+
+| aggregator | σ=1 | σ=3 | σ=10 |
+|---|---|---|---|
+| MPC          | 100% | 45% | 5% |
+| MPPI t=0.1   | 90%  | 70% | 35% |
+| MPPI t=0.3   | 95%  | 65% | 40% |
+| MPPI t=1.0 (vanilla) | 90% | 35% | 10% |
+| MPPI t=3.0   | 100% | 65% | 10% |
+| MPPI t=10 (uniform) | 70% | 40% | 30% |
+
+**Findings**:
+
+1. **v1 cell is dominated by uniform MPPI (t=10)**: 100/100/95% across
+   the entire σ axis. The forgiving geometry (one slow intruder)
+   means the prior is correct at every replan; trusting the cost
+   signal can only hurt. Even MPC drops to 25% at σ=10, but uniform
+   MPPI holds 95% — a 70 pp gap from explicit cost-trust.
+
+2. **wave cell rewards middle-low temperatures (t=0.3 or t=3)**:
+   uniform MPPI DROPS to 70% at σ=1 because the prior collides into
+   the wave's three intruders. Argmin (t=0.1) is good but t=0.3
+   slightly edges it at σ=1 (95% vs 90%). t=3 is a clean alternative
+   middle path.
+
+3. **Vanilla MPPI (t=1.0) is sub-optimal in every quadrant** —
+   beaten by at least one alternative in all 6 (cell × σ) cells.
+
+**Prescriptive recommendation: change MPPI default from t=1.0 to
+t=0.3.** Aggregate success across the 6 (cell × σ) quadrants:
+
+| temperature | mean | min | max |
+|---|---|---|---|
+| t=0.1 (argmin)   | 67% | 35% | 90% |
+| **t=0.3**         | **71%** | **40%** | **95%** |
+| t=1.0 (vanilla)  | 54% | 10% | 90% |
+| t=3.0            | 72% | 10% | 100% |
+| t=10 (uniform)   | 73% | 30% | 100% |
+
+t=0.3 and t=3 and t=10 all average higher than vanilla; t=3 and t=10
+have higher peaks (100%) but lower minimums (10%, 30%) due to wave
+failure modes. **t=0.3 has the highest minimum across the grid
+(40%)** — the most *robust* default. The full prescription depends
+on whether the user values peak performance (t=10 on v1) or worst-case
+robustness (t=0.3 across both cells).
+
+Reproduce:
+
+```bash
+for f in examples/exp_intersection_v1_noisy{10,100}_{mpc,t01_mppi,t03_mppi,t10_mppi,t30_mppi,t100_mppi}_n20.yaml; do
+  uav-nav run "$f"
+done
+python3 scripts/aggregator_phase_diagram.py
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
