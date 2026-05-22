@@ -29,6 +29,17 @@ At the start of episode 1, the per-replan means feed the N+P rule
 Episodes >=1 use the selected temperature. The warmup buffers stay
 populated so callers (and the meta dict on returned Plans) can read
 back which temperature was picked and why.
+
+Multi-drone runs default to `share_warmup=True`: planner instances
+built from the same config pool their warmup samples into a single
+shared session (keyed by `share_warmup_key`, default "_default") and
+the N+P rule fires once against the pooled means, so every drone in
+the run adopts the same temperature for ep 1+. This matches how the
+N+P rule was calibrated (per-cell pooled means) and prevents the
+per-drone selection drift observed on v1 in the first cut, where two
+drones whose individual cvg signals straddled the choice_cut picked
+opposite temperatures. Opt out with `share_warmup: false` to recover
+per-drone behavior.
 """
 
 from __future__ import annotations
@@ -60,6 +71,41 @@ def _top2_angle(actions: np.ndarray, weights: np.ndarray) -> float:
     return _angle_between(actions[idx[0]], actions[idx[1]])
 
 
+class _WarmupSession:
+    """Pooled warmup state shared across planner instances in a run.
+
+    Members write into `top2` / `cvg` during their ep 0 plan() calls.
+    The first member to hit ep 1 in reset() picks a temperature from
+    the pooled means and stores it on the session; subsequent members
+    read it back instead of recomputing from their own buffer."""
+
+    __slots__ = ("top2", "cvg", "selected_temperature", "selected_reason")
+
+    def __init__(self) -> None:
+        self.top2: list[float] = []
+        self.cvg: list[float] = []
+        self.selected_temperature: float | None = None
+        self.selected_reason: str | None = None
+
+    def reset_for_ep0(self) -> None:
+        self.top2.clear()
+        self.cvg.clear()
+        self.selected_temperature = None
+        self.selected_reason = None
+
+
+# Module-level registry of active warmup sessions, keyed by
+# share_warmup_key. Cleared on each member's ep 0 reset (idempotent — all
+# members clear to the same empty state before any plan() runs).
+_SHARED_SESSIONS: dict[str, _WarmupSession] = {}
+
+
+def _get_session(key: str | None) -> _WarmupSession | None:
+    if key is None:
+        return None
+    return _SHARED_SESSIONS.setdefault(key, _WarmupSession())
+
+
 @PLANNER_REGISTRY.register("warmup_select_mppi")
 class WarmupSelectMPPIPlanner(MPPIPlanner):
     def __init__(
@@ -70,12 +116,10 @@ class WarmupSelectMPPIPlanner(MPPIPlanner):
         argmin_temperature: float = 0.1,
         appl_cut: float = 50.0,
         choice_cut: float = 12.5,
+        share_warmup: bool = True,
+        share_warmup_key: str = "_default",
         **mppi_kwargs: Any,
     ) -> None:
-        # Force the parent to start at warmup_temperature regardless of
-        # what the caller passed via `temperature`. Episode 0 is the
-        # warmup pass; the runtime-selected temperature kicks in at the
-        # second reset().
         mppi_kwargs["temperature"] = float(warmup_temperature)
         super().__init__(**mppi_kwargs)
         self._warmup_temperature = float(warmup_temperature)
@@ -83,7 +127,9 @@ class WarmupSelectMPPIPlanner(MPPIPlanner):
         self._argmin_temperature = float(argmin_temperature)
         self._appl_cut = float(appl_cut)
         self._choice_cut = float(choice_cut)
-        # Mutable state, reset on each call to reset().
+        self._share_warmup_key: str | None = (
+            str(share_warmup_key) if share_warmup else None
+        )
         self._episode_idx: int = -1  # -1 means "no reset() called yet"
         self._warm_top2: list[float] = []
         self._warm_cvg: list[float] = []
@@ -97,6 +143,8 @@ class WarmupSelectMPPIPlanner(MPPIPlanner):
             argmin_temperature=float(cfg.get("argmin_temperature", 0.1)),
             appl_cut=float(cfg.get("appl_cut", 50.0)),
             choice_cut=float(cfg.get("choice_cut", 12.5)),
+            share_warmup=bool(cfg.get("share_warmup", True)),
+            share_warmup_key=str(cfg.get("share_warmup_key", "_default")),
             max_speed=float(cfg.get("max_speed", 10.0)),
             horizon=int(cfg.get("horizon", 60)),
             dt_plan=float(cfg.get("dt_plan", 0.05)),
@@ -116,33 +164,57 @@ class WarmupSelectMPPIPlanner(MPPIPlanner):
     def reset(self) -> None:
         super().reset()
         self._episode_idx += 1
+        session = _get_session(self._share_warmup_key)
         if self._episode_idx == 0:
             self.temperature = self._warmup_temperature
             self._warm_top2.clear()
             self._warm_cvg.clear()
+            if session is not None:
+                # Idempotent — all members of the session clear to the
+                # same empty state before any plan() runs in ep 0.
+                session.reset_for_ep0()
             self._selected_reason = "warmup_pass"
         elif self._episode_idx == 1:
-            self.temperature, self._selected_reason = self._select_from_warmup()
+            self.temperature, self._selected_reason = self._select_from_warmup(session)
 
-    def _select_from_warmup(self) -> tuple[float, str]:
-        if not self._warm_top2 or not self._warm_cvg:
-            return self._warmup_temperature, "no_warmup_samples_fallback"
-        mean_top2 = float(np.nanmean(self._warm_top2))
-        mean_cvg = float(np.nanmean(self._warm_cvg))
-        if mean_top2 > self._appl_cut:
-            return (
-                self._warmup_temperature,
-                f"chaotic_top2={mean_top2:.1f}>appl_cut={self._appl_cut}",
-            )
-        if mean_cvg < self._choice_cut:
-            return (
-                self._uniform_temperature,
-                f"prior_aligned_cvg={mean_cvg:.1f}<choice_cut={self._choice_cut}",
-            )
-        return (
-            self._argmin_temperature,
-            f"prior_misses_cvg={mean_cvg:.1f}>=choice_cut={self._choice_cut}",
-        )
+    def _select_from_warmup(
+        self, session: _WarmupSession | None
+    ) -> tuple[float, str]:
+        # If another member of the session already picked, adopt it.
+        if session is not None and session.selected_temperature is not None:
+            return session.selected_temperature, session.selected_reason or "shared"
+        # Otherwise compute from pooled (or local-only) buffers.
+        if session is not None:
+            top2 = session.top2
+            cvg = session.cvg
+        else:
+            top2 = self._warm_top2
+            cvg = self._warm_cvg
+        if not top2 or not cvg:
+            decision = (self._warmup_temperature, "no_warmup_samples_fallback")
+        else:
+            mean_top2 = float(np.nanmean(top2))
+            mean_cvg = float(np.nanmean(cvg))
+            tag = "pooled" if session is not None else "local"
+            if mean_top2 > self._appl_cut:
+                decision = (
+                    self._warmup_temperature,
+                    f"chaotic_{tag}_top2={mean_top2:.1f}>appl_cut={self._appl_cut}",
+                )
+            elif mean_cvg < self._choice_cut:
+                decision = (
+                    self._uniform_temperature,
+                    f"prior_aligned_{tag}_cvg={mean_cvg:.1f}<choice_cut={self._choice_cut}",
+                )
+            else:
+                decision = (
+                    self._argmin_temperature,
+                    f"prior_misses_{tag}_cvg={mean_cvg:.1f}>=choice_cut={self._choice_cut}",
+                )
+        if session is not None:
+            session.selected_temperature = decision[0]
+            session.selected_reason = decision[1]
+        return decision
 
     def plan(
         self,
@@ -155,9 +227,6 @@ class WarmupSelectMPPIPlanner(MPPIPlanner):
         plan = super().plan(
             observation, goal, obstacle_map, dynamic_obstacles=dynamic_obstacles
         )
-        # Only accumulate during warmup. Subsequent episodes still
-        # populate `_last_*` but we ignore them — the selection is
-        # frozen.
         if (
             self._episode_idx == 0
             and self._last_actions is not None
@@ -165,10 +234,14 @@ class WarmupSelectMPPIPlanner(MPPIPlanner):
             and self._last_chosen_action is not None
             and self._last_goal_dir is not None
         ):
-            self._warm_top2.append(_top2_angle(self._last_actions, self._last_weights))
-            self._warm_cvg.append(
-                _angle_between(self._last_chosen_action, self._last_goal_dir)
-            )
+            top2 = _top2_angle(self._last_actions, self._last_weights)
+            cvg = _angle_between(self._last_chosen_action, self._last_goal_dir)
+            self._warm_top2.append(top2)
+            self._warm_cvg.append(cvg)
+            session = _get_session(self._share_warmup_key)
+            if session is not None:
+                session.top2.append(top2)
+                session.cvg.append(cvg)
         plan.meta = dict(plan.meta or {})
         plan.meta["warmup_select"] = {
             "episode_idx": self._episode_idx,
