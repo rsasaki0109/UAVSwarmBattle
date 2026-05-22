@@ -3966,6 +3966,65 @@ done
 python3 scripts/aggregator_phase_diagram.py
 ```
 
+**K: peer cell U-shape — vanishes (2026-05-22).** The phase diagram
+established the prescription on intersection-style cells (v1, wave).
+What about the multi-drone peer cell (4-drone cross, 120 static
+obstacles) where the F sweep showed MPC at 30% at σ=0.5? Ran the same
+5-temperature CPU MPPI sweep on the peer cell at σ=0.5, n=20:
+
+| aggregator | peer σ=0.5 |
+|---|---|
+| MPC          | 6/20 (30%) |
+| MPPI t=0.1   | 8/20 (40%) |
+| MPPI t=0.3   | 8/20 (40%) |
+| MPPI t=1.0   | 8/20 (40%) |
+| MPPI t=3.0   | 8/20 (40%) |
+| MPPI t=10    | 8/20 (40%) |
+
+**The U-shape vanishes**. All five MPPI temperatures collapse to
+identical 40% joint success — the aggregator and the temperature both
+become irrelevant. MPC under-performs by 10 pp; **MPPI's stochastic
+sampling helps over deterministic argmin, but the temperature on
+those samples does not matter at all**.
+
+Mechanism (consistent with H/I): the U-shape requires that rollouts
+have enough cost-spread to *actually disagree* in interesting ways.
+On the peer cell, with 4 cross-flying drones and a dense static
+obstacle field, the rollout cost landscape is dominated by
+coordination chaos — most rollouts fail for similar reasons, so the
+top-2 weighted rollouts agree on "everything is bad" rather than
+disagreeing on which evasion direction to take. Vanilla MPPI's
+phantom-averaging failure mode requires informative disagreement, and
+the peer cell does not provide it.
+
+**Scope of the t=0.3 prescription is refined**: it applies to cells
+whose aggregator-sensitivity is non-zero (intersection cells, where
+the U-shape exists). On peer-coordination-dominated cells (where the
+success ceiling is set by inter-drone interactions rather than by
+prediction noise), the aggregator and temperature do not affect
+outcomes — use any MPPI variant, MPC is the only one that under-
+performs.
+
+This points to a final §3 framing:
+
+- **Aggregator U-shape** is observable when the cell has informative
+  cost-spread among rollouts (intersection cells).
+- **Cell-dependent optimum** within the U is a "prior-trust vs
+  cost-trust" axis: forgiving geometry favors prior (uniform),
+  multi-intruder favors specific rollout (argmin/t=0.3).
+- **Peer-coordination cells are aggregator-insensitive** — MPPI
+  sampling helps over MPC by ~10 pp but temperature is irrelevant.
+- **Default MPPI temperature should be t=0.3** for intersection-
+  style cells; on peer-dominated cells, any MPPI works.
+
+Reproduce:
+
+```bash
+for f in examples/exp_multi_drone_peer_noisy05_{t01,t03,t10,t30,t100}_mppi_n20.yaml; do
+  uav-nav run "$f"
+done
+```
+
 
 ### Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync
 
