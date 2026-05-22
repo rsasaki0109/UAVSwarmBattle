@@ -83,8 +83,8 @@ def _plot_trajectories(ax, ep=0):
     ax.set_ylabel("y (m)")
     ax.set_aspect("equal")
     ax.set_title(
-        f"(a) σ=3 ep 0 trajectories (solid = drone-north, dashed = drone-east; "
-        f"x = collision, o = success)",
+        "(a) σ=3 ep 0 trajectories (solid = drone-north, dashed = drone-east; "
+        "x = collision, o = success)",
         fontsize=9,
     )
     ax.legend(loc="lower right", fontsize=8)

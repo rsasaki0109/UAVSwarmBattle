@@ -88,7 +88,7 @@ def main() -> int:
     ys_w = []
     for i, (tag, label) in enumerate(CONDITIONS):
         if tag == "nopred":
-            r = joint_success_rate(f"results/intersection_nopred_mpc", n_max=5)
+            r = joint_success_rate("results/intersection_nopred_mpc", n_max=5)
         else:
             r = joint_success_rate(f"results/intersection_wave_{tag}_mpc_n20", n_max=20)
         # All peer dirs at n=20 — nopred peer is 1/20 (5%), use that
@@ -107,7 +107,7 @@ def main() -> int:
     ax.set_xticklabels([c[1] for c in CONDITIONS], rotation=20, ha="right",
                        fontsize=9)
     ax.set_ylim(-0.05, 1.10)
-    ax.set_ylabel(f"joint success rate (n=20; nopred n=5, deterministic)")
+    ax.set_ylabel("joint success rate (n=20; nopred n=5, deterministic)")
     ax.axhline(1.0, color="grey", ls=":", lw=0.6)
     ax.axhline(0.0, color="grey", ls=":", lw=0.6)
     ax.grid(alpha=0.3)
