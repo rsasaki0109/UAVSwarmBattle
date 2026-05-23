@@ -4647,3 +4647,87 @@ Scripts: `scripts/x_planner_family_gather.py`,
 `scripts/x_planner_family_visualize.py`. Data:
 `docs/data/x_planner_family_data.json`. Figure:
 `docs/images/x_planner_family_landscape.png`.
+
+
+## U: chokepoint mechanism — N+P's scope condition is geometric, not signal-based
+
+The T arc reported 1/4 city cells where the N+P rule confidently picked
+the wrong temperature: `city_chokepoint` (pooled cvg = 3.6° → rule
+picked uniform t=10 = 35 %, but empirical best was argmin t=0.1 =
+45 %). It was the only confident miss across 9 calibration + OOD
+cells, and it was also the cell where MPC posted its worst result
+(20 %, the lowest of any planner across any cell). Two anomalies in
+one cell suggested a shared mechanism worth dissecting.
+
+### Step 1: per-step warmup signal is indistinguishable from "hit" cells
+
+For each of the 9 cells, the per-replan `(top2, cvg)` buffers
+accumulated during the warmup episode were dumped from
+`_SHARED_SESSIONS` and compared across seven candidate aggregators
+(mean, median, max, p75, latter-half mean, last-quarter mean, std):
+
+| cell | cvg mean | cvg med | cvg max | cvg p75 | cvg lhalf | cvg lq | cvg std | hit |
+|---|---|---|---|---|---|---|---|---|
+| city_v1 σ=3 | 5.7 | 1.6 | 100.0 | 2.6 | 3.8 | 1.7 | 17.6 | hit (uniform wins) |
+| city_3x3 σ=3 | 5.8 | 1.4 | 106.0 | 3.4 | 3.9 | 1.9 | 14.7 | hit (uniform wins) |
+| **city_chokepoint σ=3** | **3.6** | **1.4** | **33.3** | **2.4** | **3.9** | **1.7** | **7.3** | **MISS (argmin wins)** |
+
+Across every aggregator tried, `city_chokepoint`'s cvg signal looks
+*more* prior-aligned than the two cells where uniform is the right
+pick. The same holds for `top2`. No tweak to the aggregator function
+saves the rule on this cell without breaking the hit cells.
+
+The warmup signal does not contain the information that decides
+chokepoint's planner ranking. Script:
+`scripts/u_chokepoint_timeseries.py`; figure:
+`docs/images/u_chokepoint_timeseries.png`; data:
+`docs/data/u_chokepoint_aggregators.json`.
+
+### Step 2: the deciding information is geometric — corner walls turn an open obstacle field into a forced commitment
+
+Two cells share the same 4 cube cluster (4 × 4 × 4 m) and the same
+slow central intruder: `intersection_chokepoint` (uniform wins 95 %,
+N+P hit) and `city_chokepoint` (argmin wins 45 %, N+P miss).
+
+| feature | intersection_chokepoint | city_chokepoint |
+|---|---|---|
+| world size | 40 × 40 | 60 × 60 |
+| corner buildings | none | 4 × (24 × 24 × 10) m |
+| cube cluster | 4 × (4³) at SW quadrant centred on drone crossings | 4 × (4³) at the centre of a 12 m corridor |
+| forced gap width | wide-open 40 m | 4 m (between corridor wall and outer cube faces) |
+| MPC | 60 % | 20 % |
+| MPPI t=0.1 | 85 % | **45 %** |
+| MPPI t=1.0 | 80 % | 35 % |
+| MPPI t=10 | **95 %** | 35 % |
+
+Same dynamic-obstacle complexity, same predictor noise, same drone
+count; the only structural difference is the wall ring. The walls
+collapse the navigable region into a 12 m corridor whose centre is
+plugged by cubes, forcing drones to commit to a single ~4 m gap.
+Averaging rollouts across both sides of an obstacle (uniform t=10)
+produces an averaged trajectory that smears into the obstacle.
+Argmin (t=0.1) commits to one side and squeezes through. Gradient
+MPC gets trapped in a local minimum at the cube cluster (worst at
+20 %). Figure: `docs/images/u_chokepoint_geometry.png`, script:
+`scripts/u_chokepoint_geometry.py`.
+
+### Conclusion: scope condition, not a fixable signal
+
+The N+P rule's signals (`top2`, `cvg`) measure cost-landscape
+*disagreement* and *prior-alignment* — they are rollout statistics
+the planner already computes. They are blind to corridor width and
+forced-commitment geometry. `city_chokepoint` is the first observed
+cell where geometric constraint, not landscape character, is the
+decisive feature.
+
+The honest framing is that the N+P rule has a **scope condition**:
+it predicts planner ranking when cost-landscape character (rollout
+disagreement, prior alignment) dominates the outcome, but fails when
+forced gap width < ~uncertainty radius. This is not a bug in the
+rule — the warmup is silent on geometric constraint. Adding a third
+axis (e.g., minimum free-corridor width along the warmup trajectory)
+would let the rule see this dimension, but that is a follow-on
+extension, not a parameter to tune. As a partial mitigation, callers
+who know they are in a tight corridor regime should override the
+auto-pick to argmin; the rule remains correct on the 8/9 cells where
+the signal does carry the deciding information.
