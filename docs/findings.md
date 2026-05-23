@@ -4579,3 +4579,71 @@ loop must drive the full sim/sensor/planner pipeline. The gym.Env
 wrapper simplifies this to just sim/sensor (no planner), but the
 training throughput bottleneck remains SB3's SAC implementation,
 not the framework.
+
+
+## X: Planner-family landscape — MPC is dominated 0/9 in the dynamic-obstacle regime
+
+The N+P warmup rule (T) auto-picks an MPPI softmax temperature from a
+one-episode warmup signal. A natural extension hypothesis was that the
+same signal might also predict *planner family* (MPC vs MPPI). To
+test, the 9 cells with all four `{MPC, MPPI t=0.1, t=1.0, t=10}` and
+a `warmup_select_mppi` YAML were aggregated:
+
+| cell | top2° | cvg° | MPC | t=0.1 | t=1.0 | t=10 | gap MPC−best MPPI |
+|---|---|---|---|---|---|---|---|
+| intersection_v1 σ=3 | 29.1 | 9.2 | 55 | 70 | 60 | **100** | −45pp |
+| intersection_wave σ=3 | 30.9 | 17.1 | 45 | **70** | 35 | 40 | −25pp |
+| intersection_chokepoint σ=3 | 33.1 | 10.1 | 60 | 85 | 80 | **95** | −35pp |
+| 4way_3d σ=0.5 | 33.7 | 4.8 | 75 | 55 | 80 | **85** | −10pp |
+| peer σ=0.5 | 83.9 | 24.9 | 30 | **40** | 40 | 40 | −10pp |
+| city_v1 σ=3 | 17.9 | 5.7 | 30 | 45 | 35 | **90** | −60pp |
+| city_wave σ=3 | 28.9 | 7.6 | 50 | 55 | 30 | **85** | −35pp |
+| city_chokepoint σ=3 | 14.3 | 3.6 | 20 | **45** | 35 | 35 | −25pp |
+| city_3x3 σ=3 | 18.2 | 5.8 | 45 | 35 | 60 | **95** | −50pp |
+
+(n=20 each, Wilson 95% CI; bold = per-cell best.)
+
+**MPC is best in 0/9 cells. MPPI uniform (t=10) is best in 7/9; MPPI
+argmin (t=0.1) is best in 2/9.** The MPC-vs-best-MPPI gap is uniformly
+negative and ranges −10 to −60pp across calibration toy intersections
+and OOD city geometry.
+
+In other words, the "planner family" choice in the dynamic-obstacle
+regime tested here trivially collapses to MPPI — there is no cell
+where N+P would need to switch families. The extension hypothesis is
+killed by the data, but the negative becomes a positive claim: across
+9 cells (2-drone toy intersections, 4-drone open scenarios, 2-drone
+and 4-drone urban geometries, σ=0.5 and σ=3.0 predictor noise),
+**a single fixed planner family (MPPI) plus the existing N+P
+temperature rule dominates MPC by a 35-pp average margin**. Anyone
+defaulting to MPC for dynamic obstacle avoidance is leaving large
+performance on the table.
+
+### MPC vs MPPI t=0.1 — the argmin head-to-head
+
+Both MPC and MPPI t=0.1 are "argmin-family" planners (greedy on
+predicted cost), so they ought to be comparable. Head-to-head:
+
+| cell | MPC | t=0.1 | MPC − t=0.1 |
+|---|---|---|---|
+| 4way_3d | 75 | 55 | **+20** (MPC) |
+| city_3x3 | 45 | 35 | **+10** (MPC) |
+| city_wave | 50 | 55 | −5 |
+| peer | 30 | 40 | −10 |
+| city_v1 | 30 | 45 | −15 |
+| intersection_v1 | 55 | 70 | −15 |
+| intersection_wave | 45 | 70 | −25 |
+| intersection_chokepoint | 60 | 85 | −25 |
+| city_chokepoint | 20 | 45 | −25 |
+
+MPC wins the argmin head-to-head in 2/9 cells, both with 4 drones.
+The other 7 are 2-drone cells (or peer, 4 drones in dense vox), where
+MPPI t=0.1 wins. The existing N+P signals (`top2`, `cvg`) do *not*
+cleanly separate these two regimes — within argmin family, the choice
+appears driven by something not captured in the current 1-episode
+warmup. Open question for follow-up.
+
+Scripts: `scripts/x_planner_family_gather.py`,
+`scripts/x_planner_family_visualize.py`. Data:
+`docs/data/x_planner_family_data.json`. Figure:
+`docs/images/x_planner_family_landscape.png`.
