@@ -24,7 +24,14 @@ from typing import Any, Mapping
 import numpy as np
 
 from ..predictor import Predictor, build_predictor
-from ._grid import dijkstra_cost_to_go, inflate_obstacles, sample_unit_directions
+from ._grid import (
+    dijkstra_cost_to_go,
+    inflate_obstacles,
+    mask_dynamic_obstacle_cells,
+    point_is_occupied,
+    point_to_cell,
+    sample_unit_directions,
+)
 from .base import PLANNER_REGISTRY, Plan, Planner
 
 
@@ -101,53 +108,6 @@ class SamplingMPCPlanner(Planner):
         self._ctg_cache = None
         self._ctg_cache_goal = None
 
-    def _cell(self, p: np.ndarray, shape: tuple[int, ...]) -> tuple[int, ...]:
-        return tuple(
-            int(np.clip(p[i] / self.resolution, 0, shape[i] - 1)) for i in range(len(shape))
-        )
-
-    def _mask_dynamic_cells(self, occ_raw: np.ndarray, d: Mapping[str, Any]) -> None:
-        """Zero out cells inside a dynamic obstacle's footprint (in-place).
-
-        The heuristic ignores movers — the rollout's sphere-sphere distance
-        check is what enforces dynamic-obstacle avoidance. Mask is applied
-        once per episode against the raw (un-inflated) occupancy.
-        """
-        pos = np.asarray(d.get("position", ()), dtype=float)
-        if pos.size == 0:
-            return
-        radius = float(d.get("radius", 0.5))
-        cells = max(1, int(np.ceil(radius / self.resolution)))
-        ndim = occ_raw.ndim
-        center = self._cell(pos[:ndim], occ_raw.shape)
-        if ndim == 2:
-            for dx in range(-cells + 1, cells):
-                for dy in range(-cells + 1, cells):
-                    cx, cy = center[0] + dx, center[1] + dy
-                    if 0 <= cx < occ_raw.shape[0] and 0 <= cy < occ_raw.shape[1]:
-                        occ_raw[cx, cy] = False
-        else:  # 3D
-            for dx in range(-cells + 1, cells):
-                for dy in range(-cells + 1, cells):
-                    for dz in range(-cells + 1, cells):
-                        cx, cy, cz = center[0] + dx, center[1] + dy, center[2] + dz
-                        if (
-                            0 <= cx < occ_raw.shape[0]
-                            and 0 <= cy < occ_raw.shape[1]
-                            and 0 <= cz < occ_raw.shape[2]
-                        ):
-                            occ_raw[cx, cy, cz] = False
-
-    def _occupied(self, occ: np.ndarray, p: np.ndarray) -> bool:
-        ndim = occ.ndim
-        coords = []
-        for i in range(ndim):
-            ci = int(p[i] / self.resolution)
-            if not (0 <= ci < occ.shape[i]):
-                return True  # OOB counts as obstacle
-            coords.append(ci)
-        return bool(occ[tuple(coords)])
-
     def plan(
         self,
         observation: np.ndarray,
@@ -182,7 +142,7 @@ class SamplingMPCPlanner(Planner):
         if dist_goal < 1e-6:
             return Plan(waypoints=np.asarray([gl], dtype=float), meta={"planner": "mpc"})
 
-        if occ[self._cell(obs, occ.shape)] or occ[self._cell(gl, occ.shape)]:
+        if occ[point_to_cell(obs, occ.shape, self.resolution)] or occ[point_to_cell(gl, occ.shape, self.resolution)]:
             occ = occ_raw
 
         # Heuristic ctg lives on a cached static-only occupancy: dynamic
@@ -194,12 +154,12 @@ class SamplingMPCPlanner(Planner):
             static_raw = occ_raw.copy()
             if dynamic_obstacles:
                 for d in dynamic_obstacles:
-                    self._mask_dynamic_cells(static_raw, d)
+                    mask_dynamic_obstacle_cells(static_raw, d, self.resolution)
             self._static_occ_inflated = inflate_obstacles(static_raw, self.inflate)
             self._ctg_cache = None
             self._ctg_cache_goal = None
 
-        goal_cell = self._cell(gl, self._static_occ_inflated.shape)
+        goal_cell = point_to_cell(gl, self._static_occ_inflated.shape, self.resolution)
         if self._ctg_cache is None or self._ctg_cache_goal is None:
             need_recompute = True
         elif self.ctg_cache_tolerance <= 0:
@@ -249,7 +209,7 @@ class SamplingMPCPlanner(Planner):
                 if d2 <= gr2:
                     reaches_goal = True
                     break
-                if self._occupied(occ, rollout[h]):
+                if point_is_occupied(occ, rollout[h], self.resolution):
                     collision_pen += 1
                 # predicted dynamic obstacles (precomputed by self._predictor)
                 if pred_traj is not None:
@@ -257,7 +217,7 @@ class SamplingMPCPlanner(Planner):
                     sep2 = np.sum(diffs * diffs, axis=1)
                     if np.any(sep2 <= r2_arr):
                         collision_pen += 1
-                cell_h = self._cell(rollout[h], occ.shape)
+                cell_h = point_to_cell(rollout[h], occ.shape, self.resolution)
                 ctg_h = float(ctg[cell_h]) if np.isfinite(ctg[cell_h]) else unreachable_penalty
                 ctg_sum_until += ctg_h
                 if ctg_h < ctg_min:

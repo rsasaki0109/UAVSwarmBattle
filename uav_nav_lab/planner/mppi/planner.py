@@ -1,28 +1,16 @@
-"""MPPI — sampling MPC with softmax-weighted action selection.
+"""MPPI planner orchestration.
 
-Same per-step pipeline as `SamplingMPCPlanner` (Dijkstra cost-to-go
-heuristic, n direction samples covering 2D circle / 3D Fibonacci sphere,
-horizon-step rollouts scored by goal + obstacle + smoothness terms),
-with one substitution at the end:
+Same per-step pipeline as :class:`uav_nav_lab.planner.mpc.SamplingMPCPlanner`
+(Dijkstra cost-to-go heuristic, n direction samples covering 2D circle /
+3D Fibonacci sphere, horizon-step rollouts scored by goal + obstacle +
+smoothness terms), with one substitution at the end:
 
   argmin → softmax-weighted average
 
-    weight_i = exp(-(cost_i - cost_min) / temperature)
-    action   = sum(weight_i * action_i) / sum(weight_i)
-
-cost_min is subtracted before the exponent for numerical stability —
-shifts cancel inside softmax so the output is unchanged. Low temperature
-collapses MPPI back to MPC's argmin behavior; high temperature
-approaches the uniform mean of all sampled actions.
-
-Shares the static cost-to-go cache + dynamic-obstacle predictor with
-MPC, so the only conceptual difference is the selection rule. Tradeoff
-(verified in `examples/exp_compare_mppi.yaml`): MPPI's continuous weight
-function smooths action selection over time and handles multi-modal
-cost landscapes (e.g. obstacle on the goal direction → split the
-weight between left / right detours instead of committing to one),
-at the cost of attenuating the chosen action toward the population
-mean — a trade that helps in some scenarios and hurts in others.
+The per-sample cost compute lives in :mod:`.rollout`; the softmax
+selection lives in :mod:`.aggregator`. This file only orchestrates:
+setup (occupancy / cost-to-go cache / direction sampling), delegation
+to the two helpers, and the final :class:`.base.Plan` packaging.
 """
 
 from __future__ import annotations
@@ -31,9 +19,17 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from ..predictor import Predictor, build_predictor
-from ._grid import dijkstra_cost_to_go, inflate_obstacles, sample_unit_directions
-from .base import PLANNER_REGISTRY, Plan, Planner
+from ...predictor import Predictor, build_predictor
+from .._grid import (
+    dijkstra_cost_to_go,
+    inflate_obstacles,
+    mask_dynamic_obstacle_cells,
+    point_to_cell,
+    sample_unit_directions,
+)
+from ..base import PLANNER_REGISTRY, Plan, Planner
+from .aggregator import softmax_aggregate
+from .rollout import score_rollouts
 
 
 @PLANNER_REGISTRY.register("mppi")
@@ -122,47 +118,6 @@ class MPPIPlanner(Planner):
         self._ctg_cache = None
         self._ctg_cache_goal = None
 
-    def _cell(self, p: np.ndarray, shape: tuple[int, ...]) -> tuple[int, ...]:
-        return tuple(
-            int(np.clip(p[i] / self.resolution, 0, shape[i] - 1)) for i in range(len(shape))
-        )
-
-    def _mask_dynamic_cells(self, occ_raw: np.ndarray, d: Mapping[str, Any]) -> None:
-        pos = np.asarray(d.get("position", ()), dtype=float)
-        if pos.size == 0:
-            return
-        radius = float(d.get("radius", 0.5))
-        cells = max(1, int(np.ceil(radius / self.resolution)))
-        ndim = occ_raw.ndim
-        center = self._cell(pos[:ndim], occ_raw.shape)
-        if ndim == 2:
-            for dx in range(-cells + 1, cells):
-                for dy in range(-cells + 1, cells):
-                    cx, cy = center[0] + dx, center[1] + dy
-                    if 0 <= cx < occ_raw.shape[0] and 0 <= cy < occ_raw.shape[1]:
-                        occ_raw[cx, cy] = False
-        else:
-            for dx in range(-cells + 1, cells):
-                for dy in range(-cells + 1, cells):
-                    for dz in range(-cells + 1, cells):
-                        cx, cy, cz = center[0] + dx, center[1] + dy, center[2] + dz
-                        if (
-                            0 <= cx < occ_raw.shape[0]
-                            and 0 <= cy < occ_raw.shape[1]
-                            and 0 <= cz < occ_raw.shape[2]
-                        ):
-                            occ_raw[cx, cy, cz] = False
-
-    def _occupied(self, occ: np.ndarray, p: np.ndarray) -> bool:
-        ndim = occ.ndim
-        coords = []
-        for i in range(ndim):
-            ci = int(p[i] / self.resolution)
-            if not (0 <= ci < occ.shape[i]):
-                return True
-            coords.append(ci)
-        return bool(occ[tuple(coords)])
-
     def plan(
         self,
         observation: np.ndarray,
@@ -175,7 +130,9 @@ class MPPIPlanner(Planner):
         ndim = occ_raw.ndim
         if self.use_prediction and dynamic_obstacles:
             horizon_dts = np.arange(1, self.horizon + 1, dtype=float) * self.dt_plan
-            pred_traj = self._predictor.predict(dynamic_obstacles, horizon_dts)[:, :, :ndim]
+            pred_traj = self._predictor.predict(
+                dynamic_obstacles, horizon_dts
+            )[:, :, :ndim]
             r2_arr = np.array(
                 [(float(d.get("radius", 0.5)) + self.safety_margin) ** 2 for d in dynamic_obstacles],
                 dtype=float,
@@ -192,19 +149,20 @@ class MPPIPlanner(Planner):
         if dist_goal < 1e-6:
             return Plan(waypoints=np.asarray([gl], dtype=float), meta={"planner": "mppi"})
 
-        if occ[self._cell(obs, occ.shape)] or occ[self._cell(gl, occ.shape)]:
+        if occ[point_to_cell(obs, occ.shape, self.resolution)] or \
+                occ[point_to_cell(gl, occ.shape, self.resolution)]:
             occ = occ_raw
 
         if self._static_occ_inflated is None or self._static_occ_inflated.shape != occ.shape:
             static_raw = occ_raw.copy()
             if dynamic_obstacles:
                 for d in dynamic_obstacles:
-                    self._mask_dynamic_cells(static_raw, d)
+                    mask_dynamic_obstacle_cells(static_raw, d, self.resolution)
             self._static_occ_inflated = inflate_obstacles(static_raw, self.inflate)
             self._ctg_cache = None
             self._ctg_cache_goal = None
 
-        goal_cell = self._cell(gl, self._static_occ_inflated.shape)
+        goal_cell = point_to_cell(gl, self._static_occ_inflated.shape, self.resolution)
         if self._ctg_cache is None or self._ctg_cache_goal != goal_cell:
             self._ctg_cache = dijkstra_cost_to_go(self._static_occ_inflated, goal_cell)
             self._ctg_cache_goal = goal_cell
@@ -222,72 +180,21 @@ class MPPIPlanner(Planner):
         else:
             wind_step = None
 
-        # Score every sample (no early-out — we need all costs for softmax).
-        # Same scoring shape as MPC so the two planners are directly
-        # comparable; only the selection rule differs.
-        costs = np.empty(self.n_samples, dtype=float)
-        rollouts: list[np.ndarray] = []
-        gr2 = self.goal_radius * self.goal_radius
-        for k, v in enumerate(actions):
-            rollout = np.empty((self.horizon + 1, ndim), dtype=float)
-            rollout[0] = obs
-            collision_pen = 0
-            ctg_min = np.inf
-            ctg_sum_until = 0.0
-            steps_until = 0
-            reaches_goal = False
-            for h in range(1, self.horizon + 1):
-                step = v * self.dt_plan
-                if wind_step is not None:
-                    step = step + wind_step * self.dt_plan
-                rollout[h] = rollout[h - 1] + step
-                d2 = float(np.sum((rollout[h] - gl) ** 2))
-                if d2 <= gr2:
-                    reaches_goal = True
-                    break
-                if self._occupied(occ, rollout[h]):
-                    collision_pen += 1
-                if pred_traj is not None:
-                    diffs = pred_traj[:, h - 1, :] - rollout[h]
-                    sep2 = np.sum(diffs * diffs, axis=1)
-                    if np.any(sep2 <= r2_arr):
-                        collision_pen += 1
-                cell_h = self._cell(rollout[h], occ.shape)
-                ctg_h = float(ctg[cell_h]) if np.isfinite(ctg[cell_h]) else unreachable_penalty
-                ctg_sum_until += ctg_h
-                if ctg_h < ctg_min:
-                    ctg_min = ctg_h
-                steps_until = h
-            smooth_pen = 0.0
-            if self._prev_action is not None:
-                smooth_pen = float(np.linalg.norm(v - self._prev_action))
-            if reaches_goal and collision_pen == 0:
-                cost = -1e6 + self.w_smooth * smooth_pen
-            elif reaches_goal:
-                ctg_avg = ctg_sum_until / max(1, steps_until)
-                cost = (
-                    self.w_goal * ctg_avg
-                    + self.w_obs * collision_pen
-                    + self.w_smooth * smooth_pen
-                )
-            else:
-                ctg_avg = ctg_sum_until / max(1, steps_until)
-                cost = (
-                    self.w_goal * (0.5 * ctg_avg + 0.5 * ctg_min)
-                    + self.w_obs * collision_pen
-                    + self.w_smooth * smooth_pen
-                )
-            costs[k] = cost
-            rollouts.append(rollout[: steps_until + 1] if steps_until > 0 else rollout)
+        # Per-sample rollout scoring (no early-out — softmax needs all costs).
+        costs, rollouts = score_rollouts(
+            actions=actions, obs=obs, gl=gl, occ=occ, ctg=ctg,
+            unreachable_penalty=unreachable_penalty,
+            horizon=self.horizon, dt_plan=self.dt_plan,
+            resolution=self.resolution, goal_radius=self.goal_radius,
+            pred_traj=pred_traj, r2_arr=r2_arr, wind_step=wind_step,
+            prev_action=self._prev_action,
+            w_goal=self.w_goal, w_obs=self.w_obs, w_smooth=self.w_smooth,
+        )
 
-        # MPPI selection: softmax-weighted average over all sampled actions.
-        # Subtract the min before exp() to keep the magnitudes finite even
-        # when one rollout has the -1e6 reach-goal bonus; the shift cancels
-        # in the normalisation so the result is unchanged.
-        cost_min = float(np.min(costs))
-        weights = np.exp(-(costs - cost_min) / self.temperature)
-        weights = weights / float(np.sum(weights))
-        chosen_action = (weights[:, None] * actions).sum(axis=0)
+        # Softmax aggregation.
+        chosen_action, weights, cost_min, best_k = softmax_aggregate(
+            costs, actions, self.temperature,
+        )
         self._last_costs = costs.copy()
         self._last_weights = weights.copy()
         self._last_chosen_action = chosen_action.copy()
@@ -301,7 +208,6 @@ class MPPIPlanner(Planner):
         speed = float(np.linalg.norm(chosen_action))
         if speed > self.max_speed:
             chosen_action = chosen_action * (self.max_speed / speed)
-        best_k = int(np.argmax(weights))
         best_rollout = rollouts[best_k]
         self._prev_action = chosen_action
 

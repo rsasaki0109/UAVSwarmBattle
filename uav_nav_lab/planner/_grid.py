@@ -1,14 +1,16 @@
 """Shared N-D occupancy-grid utilities for grid-based planners.
 
-Both `astar` and `mpc` need the same neighbour table, obstacle dilation, and
-goal-rooted Dijkstra. Keep them here so the planners stay short and so a fix
-applies in one place.
+Used by ``astar``, ``mpc``, and ``mppi`` — the neighbour table, obstacle
+dilation, Dijkstra cost-to-go, point-to-cell mapping, occupancy lookup,
+and dynamic-obstacle masking all live here so a fix applies in one
+place and the planner files stay small.
 """
 
 from __future__ import annotations
 
 import heapq
 import itertools
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -87,6 +89,74 @@ def dijkstra_cost_to_go(occ: np.ndarray, goal_cell: tuple[int, ...]) -> np.ndarr
                 heapq.heappush(heap, (nd, counter, nb))
                 counter += 1
     return dist
+
+
+def point_to_cell(
+    p: np.ndarray,
+    shape: tuple[int, ...],
+    resolution: float,
+) -> tuple[int, ...]:
+    """Map a continuous point to its grid cell (clipped to bounds).
+
+    Duplicated as ``_cell()`` on the MPC and MPPI classes before the
+    S0 cleanup — kept identical to preserve numerical behaviour.
+    """
+    return tuple(
+        int(np.clip(p[i] / resolution, 0, shape[i] - 1)) for i in range(len(shape))
+    )
+
+
+def point_is_occupied(
+    occ: np.ndarray,
+    p: np.ndarray,
+    resolution: float,
+) -> bool:
+    """Lookup at a continuous point. Out-of-bounds counts as obstacle."""
+    ndim = occ.ndim
+    coords = []
+    for i in range(ndim):
+        ci = int(p[i] / resolution)
+        if not (0 <= ci < occ.shape[i]):
+            return True
+        coords.append(ci)
+    return bool(occ[tuple(coords)])
+
+
+def mask_dynamic_obstacle_cells(
+    occ_raw: np.ndarray,
+    d: Mapping[str, Any],
+    resolution: float,
+) -> None:
+    """Zero out cells inside a dynamic obstacle's footprint (in-place).
+
+    The heuristic ignores movers — the rollout's sphere-sphere distance
+    check is what enforces dynamic-obstacle avoidance. Mask is applied
+    once per episode against the raw (un-inflated) occupancy.
+    """
+    pos = np.asarray(d.get("position", ()), dtype=float)
+    if pos.size == 0:
+        return
+    radius = float(d.get("radius", 0.5))
+    cells = max(1, int(np.ceil(radius / resolution)))
+    ndim = occ_raw.ndim
+    center = point_to_cell(pos[:ndim], occ_raw.shape, resolution)
+    if ndim == 2:
+        for dx in range(-cells + 1, cells):
+            for dy in range(-cells + 1, cells):
+                cx, cy = center[0] + dx, center[1] + dy
+                if 0 <= cx < occ_raw.shape[0] and 0 <= cy < occ_raw.shape[1]:
+                    occ_raw[cx, cy] = False
+    else:  # 3D
+        for dx in range(-cells + 1, cells):
+            for dy in range(-cells + 1, cells):
+                for dz in range(-cells + 1, cells):
+                    cx, cy, cz = center[0] + dx, center[1] + dy, center[2] + dz
+                    if (
+                        0 <= cx < occ_raw.shape[0]
+                        and 0 <= cy < occ_raw.shape[1]
+                        and 0 <= cz < occ_raw.shape[2]
+                    ):
+                        occ_raw[cx, cy, cz] = False
 
 
 def sample_unit_directions(ndim: int, n_samples: int, base: np.ndarray) -> np.ndarray:
