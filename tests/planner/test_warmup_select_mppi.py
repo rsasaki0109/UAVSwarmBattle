@@ -80,12 +80,12 @@ def test_first_reset_arms_warmup_pass() -> None:
     assert p._warm_cvg == []
 
 
-def test_warmup_episode_collects_angles_from_plan() -> None:
+def test_warmup_episode_collects_angles_from_plan(empty_grid_30) -> None:
     """During episode 0, plan() must populate the warmup buffers from
     the parent MPPI's _last_* diagnostics."""
     p = _make_local()
     p.reset()
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     p.plan(np.array([2.0, 2.0]), np.array([20.0, 20.0]), occ)
     p.plan(np.array([3.0, 3.0]), np.array([20.0, 20.0]), occ)
     assert len(p._warm_top2) == 2
@@ -143,10 +143,10 @@ def test_selection_persists_across_later_resets() -> None:
     assert p.temperature == pytest.approx(selected_temp)
 
 
-def test_plan_meta_carries_warmup_select_diagnostics() -> None:
+def test_plan_meta_carries_warmup_select_diagnostics(empty_grid_30) -> None:
     p = _make_local()
     p.reset()
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     plan = p.plan(np.array([2.0, 2.0]), np.array([20.0, 20.0]), occ)
     info = plan.meta["warmup_select"]
     assert info["episode_idx"] == 0
@@ -265,12 +265,12 @@ def test_different_keys_do_not_pool() -> None:
     assert b.temperature == pytest.approx(0.1)
 
 
-def test_shared_writes_to_session_during_plan() -> None:
+def test_shared_writes_to_session_during_plan(empty_grid_30) -> None:
     """plan() during ep 0 must push samples into the shared session AND
     the local buffer."""
     p = _make_shared("pool_h")
     p.reset()
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     p.plan(np.array([2.0, 2.0]), np.array([20.0, 20.0]), occ)
     p.plan(np.array([3.0, 3.0]), np.array([20.0, 20.0]), occ)
     assert len(_SHARED_SESSIONS["pool_h"].top2) == 2

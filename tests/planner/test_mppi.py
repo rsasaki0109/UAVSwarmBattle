@@ -31,7 +31,7 @@ def test_sample_unit_directions_3d() -> None:
     assert np.allclose(dirs[0], base)
 
 
-def test_mppi_low_temperature_collapses_to_argmin() -> None:
+def test_mppi_low_temperature_collapses_to_argmin(empty_grid_30) -> None:
     """As temperature → 0 the softmax weights become a one-hot at the
     argmin sample, so MPPI's chosen action should converge to MPC's. We
     verify with both planners on the same scenario at temperature=0.001 —
@@ -40,7 +40,7 @@ def test_mppi_low_temperature_collapses_to_argmin() -> None:
     from uav_nav_lab.planner.mpc import SamplingMPCPlanner
     from uav_nav_lab.planner.mppi import MPPIPlanner
 
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     obs = np.array([2.0, 2.0])
     goal = np.array([20.0, 20.0])
 
@@ -57,7 +57,7 @@ def test_mppi_low_temperature_collapses_to_argmin() -> None:
     assert np.allclose(mppi_action, mpc_action, atol=0.1)
 
 
-def test_mppi_high_temperature_attenuates_speed() -> None:
+def test_mppi_high_temperature_attenuates_speed(empty_grid_30) -> None:
     """As temperature → ∞ the softmax weights flatten to uniform, so the
     chosen action converges to the *mean* of all sample directions. For
     an n=16 set of evenly-spread 2D directions the mean magnitude collapses
@@ -65,7 +65,7 @@ def test_mppi_high_temperature_attenuates_speed() -> None:
     framework's default temperature=10 sits in a deliberate middle range)."""
     from uav_nav_lab.planner.mppi import MPPIPlanner
 
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     obs = np.array([2.0, 2.0])
     goal = np.array([20.0, 20.0])
 
@@ -81,28 +81,25 @@ def test_mppi_high_temperature_attenuates_speed() -> None:
     assert speed_low > speed_high + 1.0
 
 
-def test_mppi_invalid_temperature_raises() -> None:
+def test_mppi_invalid_temperature_raises(planner_registry) -> None:
     """Zero or negative temperature would make the softmax explode (divide
     by zero in the exp argument). Construction must reject it loudly."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
     with pytest.raises(ValueError, match="temperature must be"):
-        PLANNER_REGISTRY.get("mppi").from_config({"temperature": 0.0})
+        planner_registry.get("mppi").from_config({"temperature": 0.0})
     with pytest.raises(ValueError, match="temperature must be"):
-        PLANNER_REGISTRY.get("mppi").from_config({"temperature": -1.0})
+        planner_registry.get("mppi").from_config({"temperature": -1.0})
 
 
-def test_mppi_meta_carries_softmax_diagnostics() -> None:
+def test_mppi_meta_carries_softmax_diagnostics(planner_registry, empty_grid_30) -> None:
     """weight_max ∈ [1/n, 1] and weight_entropy ∈ [0, log(n)] tell the
     user how concentrated MPPI's selection was. These appear in the plan
     metadata for downstream eval / sweep filtering."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
     import math
 
-    p = PLANNER_REGISTRY.get("mppi").from_config(
+    p = planner_registry.get("mppi").from_config(
         {"horizon": 20, "n_samples": 16, "max_speed": 5.0, "temperature": 5.0}
     )
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     plan = p.plan(np.array([2.0, 2.0]), np.array([20.0, 20.0]), occ)
     assert plan.meta["planner"] == "mppi"
     assert 1.0 / 16 <= plan.meta["weight_max"] <= 1.0 + 1e-6

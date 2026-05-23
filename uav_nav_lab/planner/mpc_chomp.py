@@ -33,7 +33,11 @@ import numpy as np
 
 from ._grid import inflate_obstacles
 from .base import PLANNER_REGISTRY, Plan, Planner
-from .chomp import _distance_field, _obstacle_cost_and_grad, _smoothness_hessian
+from .chomp.objective import (
+    distance_field,
+    obstacle_cost_and_grad,
+    smoothness_hessian,
+)
 from .mpc import SamplingMPCPlanner
 
 
@@ -119,7 +123,7 @@ class MPCChompPlanner(Planner):
         cached = self._K_cache.get(n)
         if cached is not None:
             return cached
-        K = _smoothness_hessian(n)
+        K = smoothness_hessian(n)
         k_int = K[1:-1, 1:-1]
         K_int_inv = np.linalg.inv(k_int + 1e-6 * np.eye(n - 2))
         K_endpts = K[1:-1][:, [0, -1]]
@@ -157,7 +161,7 @@ class MPCChompPlanner(Planner):
 
         occ_raw = np.asarray(obstacle_map, dtype=bool)
         occ = inflate_obstacles(occ_raw, self.smooth_inflate)
-        dist = _distance_field(occ, self.smooth_resolution, cap=2.0 * self.epsilon)
+        dist = distance_field(occ, self.smooth_resolution, cap=2.0 * self.epsilon)
 
         # Action-jump cost contribution. Cost = w_jump · ||(x[1] - x[0])/dt
         # - prev_emitted||²; gradient w.r.t. x[1] is
@@ -177,7 +181,7 @@ class MPCChompPlanner(Planner):
         )
 
         for _ in range(self.n_smooth_iters):
-            _c, grad_obs = _obstacle_cost_and_grad(
+            _c, grad_obs = obstacle_cost_and_grad(
                 x, dist, self.epsilon, self.smooth_resolution
             )
             grad_smooth_int = k_int @ x[1:-1] + K_endpts @ endpts

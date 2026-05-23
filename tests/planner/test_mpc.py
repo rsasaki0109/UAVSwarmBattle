@@ -40,14 +40,14 @@ def test_mpc_runs(tmp_path: Path) -> None:
     assert summary["n_episodes"] == 1
 
 
-def test_mpc_prediction_changes_action() -> None:
+def test_mpc_prediction_changes_action(empty_grid_30) -> None:
     """A rollout that reaches the goal but passes through a *predicted*
     obstacle position should be rejected when use_prediction=True. Without
     prediction the planner picks the goal-direction action even though it
     walks through the obstacle's future location."""
     from uav_nav_lab.planner.mpc import SamplingMPCPlanner
 
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     goal = np.array([20.0, 5.0])
     pos = np.array([2.0, 5.0])
     # Cross-path threat: at h=20 (1.0s @ dt_plan=0.05) it sits on the

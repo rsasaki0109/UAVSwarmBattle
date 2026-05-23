@@ -19,17 +19,16 @@ from uav_nav_lab.runner import expand_sweep, run_experiment  # noqa: F401
 from tests._helpers import EXAMPLES, _basic_cfg, _require_mplot3d  # noqa: F401
 
 
-def test_chomp_open_world_returns_essentially_straight_line() -> None:
+def test_chomp_open_world_returns_essentially_straight_line(
+    planner_registry, empty_grid_20
+) -> None:
     """With no obstacles the smoothness term dominates and CHOMP should
     converge to the straight-line trajectory (zero second-difference).
     Endpoints stay pinned at start / goal exactly."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    chomp = PLANNER_REGISTRY.get("chomp").from_config(
+    chomp = planner_registry.get("chomp").from_config(
         {"n_waypoints": 20, "n_iters": 50}
     )
-    occ = np.zeros((20, 20), dtype=bool)
-    plan = chomp.plan(np.array([1.0, 1.0]), np.array([18.0, 18.0]), occ)
+    plan = chomp.plan(np.array([1.0, 1.0]), np.array([18.0, 18.0]), empty_grid_20)
     assert plan.meta["status"] == "ok"
     # Endpoints clamped to start / goal exactly.
     assert np.allclose(plan.waypoints[0], [1.0, 1.0])
@@ -38,17 +37,15 @@ def test_chomp_open_world_returns_essentially_straight_line() -> None:
     assert float(np.linalg.norm(np.diff(plan.waypoints, n=2, axis=0))) < 1e-6
 
 
-def test_chomp_routes_around_a_horizontal_bar() -> None:
+def test_chomp_routes_around_a_horizontal_bar(planner_registry, empty_grid_20) -> None:
     """A straight-line init from (2, 8) to (18, 12) crosses a horizontal
     bar at y=10 (x ∈ [5, 14]). CHOMP's local optimisation should detour
     *under* the bar (lower y) and report `status=ok`. Asymmetric start /
     goal y-coordinates break the symmetry that traps the box test."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    chomp = PLANNER_REGISTRY.get("chomp").from_config(
+    chomp = planner_registry.get("chomp").from_config(
         {"n_waypoints": 30, "n_iters": 100}
     )
-    occ = np.zeros((20, 20), dtype=bool)
+    occ = empty_grid_20
     occ[5:15, 10] = True
     plan = chomp.plan(np.array([2.0, 8.0]), np.array([18.0, 12.0]), occ)
     assert plan.meta["status"] == "ok"
@@ -59,34 +56,34 @@ def test_chomp_routes_around_a_horizontal_bar() -> None:
     assert float(plan.waypoints[:, 1].min()) <= 9.0
 
 
-def test_chomp_reports_local_minimum_when_init_cannot_escape() -> None:
+def test_chomp_reports_local_minimum_when_init_cannot_escape(
+    planner_registry, empty_grid_30
+) -> None:
     """Symmetric box: start (2, 15), goal (28, 15), box at x∈[10,19],
     y∈[10,19]. The straight-line init is symmetric across y=15 so the
     obstacle gradient cancels in the y-axis — CHOMP cannot decide to go
     up or down. The planner should detect this and return
     `status=local_minimum`, not silently produce a colliding plan."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    chomp = PLANNER_REGISTRY.get("chomp").from_config(
+    chomp = planner_registry.get("chomp").from_config(
         {"n_waypoints": 30, "n_iters": 100}
     )
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     occ[10:20, 10:20] = True
     plan = chomp.plan(np.array([2.0, 15.0]), np.array([28.0, 15.0]), occ)
     assert plan.meta["status"] == "local_minimum"
 
 
-def test_chomp_smoothness_hessian_inverse_keeps_step_stable_at_n50() -> None:
+def test_chomp_smoothness_hessian_inverse_keeps_step_stable_at_n50(
+    planner_registry, empty_grid_30
+) -> None:
     """Plain GD on K diverges around n≈20 because λ_max(K) ≳ 16. The
     M⁻¹-preconditioned step should stay bounded for n=50 + 200 iters with
     a high obstacle weight. Regression guard against re-introducing the
     `K @ x` raw-gradient bug."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    chomp = PLANNER_REGISTRY.get("chomp").from_config(
+    chomp = planner_registry.get("chomp").from_config(
         {"n_waypoints": 50, "n_iters": 200, "w_obs": 10.0}
     )
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     occ[14, 14] = True  # single-cell obstacle near the path
     plan = chomp.plan(np.array([2.0, 14.0]), np.array([28.0, 14.0]), occ)
     # No waypoint blew outside a generous box around the world.
@@ -95,18 +92,18 @@ def test_chomp_smoothness_hessian_inverse_keeps_step_stable_at_n50() -> None:
     assert np.all(np.isfinite(plan.waypoints))
 
 
-def test_chomp_init_rrt_escapes_box_that_traps_straight_init() -> None:
+def test_chomp_init_rrt_escapes_box_that_traps_straight_init(
+    planner_registry, empty_grid_30
+) -> None:
     """The symmetric box scenario locks straight-line init in a saddle
     (see test_chomp_reports_local_minimum_when_init_cannot_escape).
     `init: rrt` uses an RRT path as the warm start, which detours around
     the box, so CHOMP smooths a *collision-free* trajectory and reports
     `status=ok` — the whole point of the feature."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     occ[10:20, 10:20] = True
 
-    chomp = PLANNER_REGISTRY.get("chomp").from_config(
+    chomp = planner_registry.get("chomp").from_config(
         {
             "n_waypoints": 30,
             "n_iters": 100,
@@ -124,17 +121,17 @@ def test_chomp_init_rrt_escapes_box_that_traps_straight_init() -> None:
     assert int(occ[tuple(cells.T)].sum()) == 0
 
 
-def test_chomp_init_rrt_falls_back_to_straight_when_rrt_fails() -> None:
+def test_chomp_init_rrt_falls_back_to_straight_when_rrt_fails(
+    planner_registry, empty_grid_30
+) -> None:
     """When the inner RRT exhausts max_samples without finding a path,
     CHOMP must keep working — fall back to straight-line init and report
     `init=rrt_fallback_straight` so the failure is observable in the
     plan log without crashing the run."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    occ = np.zeros((30, 30), dtype=bool)
+    occ = empty_grid_30
     occ[10:20, 10:20] = True
 
-    chomp = PLANNER_REGISTRY.get("chomp").from_config(
+    chomp = planner_registry.get("chomp").from_config(
         {
             "n_waypoints": 30,
             "n_iters": 50,
@@ -153,7 +150,7 @@ def test_chomp_resample_polyline_uniform_arc_length() -> None:
     (segments 10 + 6 = 16 m) into n equally-spaced points along the
     polyline. Index 10 of 17 sits exactly at the joint (10/16 of arc
     length)."""
-    from uav_nav_lab.planner.chomp import _resample_polyline
+    from uav_nav_lab.planner.chomp.planner import _resample_polyline
 
     wps = np.array([[0.0, 0.0], [10.0, 0.0], [10.0, 6.0]])
     out = _resample_polyline(wps, 17)
@@ -167,21 +164,17 @@ def test_chomp_resample_polyline_uniform_arc_length() -> None:
     assert np.allclose(out2, np.tile([3.0, 4.0], (5, 1)))
 
 
-def test_chomp_init_invalid_value_raises() -> None:
+def test_chomp_init_invalid_value_raises(planner_registry) -> None:
     """Typo in the init field should fail loud at construction, not
     silently default — guards `init: 'RRT'` / `init: 'random'` from
     looking like they did something."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
     with pytest.raises(ValueError, match="init must be"):
-        PLANNER_REGISTRY.get("chomp").from_config({"init": "random"})
+        planner_registry.get("chomp").from_config({"init": "random"})
 
 
-def test_chomp_registry_and_from_config_round_trip() -> None:
+def test_chomp_registry_and_from_config_round_trip(planner_registry) -> None:
     """Registration + from_config wiring smoke test."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    cls = PLANNER_REGISTRY.get("chomp")
+    cls = planner_registry.get("chomp")
     chomp = cls.from_config(
         {
             "max_speed": 7.0,

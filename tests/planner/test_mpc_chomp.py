@@ -19,25 +19,25 @@ from uav_nav_lab.runner import expand_sweep, run_experiment  # noqa: F401
 from tests._helpers import EXAMPLES, _basic_cfg, _require_mplot3d  # noqa: F401
 
 
-def test_mpc_chomp_smooths_mpc_rollout_corners() -> None:
+def test_mpc_chomp_smooths_mpc_rollout_corners(
+    planner_registry, empty_grid_20
+) -> None:
     """The MPC rollout is a piecewise-straight constant-velocity prediction;
     CHOMP smoothing should reduce the trajectory's second-difference norm
     versus the raw MPC waypoints (acceleration profile), without breaking
     the start position. We use an obstacle-free world so the only force on
     the optimiser is the smoothness term — the smoothed path stays on the
     same direct route as the raw MPC rollout."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
     obs = np.array([2.0, 2.0])
     goal = np.array([18.0, 18.0])
-    occ = np.zeros((20, 20), dtype=bool)
+    occ = empty_grid_20
 
-    mpc = PLANNER_REGISTRY.get("mpc").from_config(
+    mpc = planner_registry.get("mpc").from_config(
         {"horizon": 30, "dt_plan": 0.05, "n_samples": 16, "max_speed": 5.0}
     )
     raw = mpc.plan(obs, goal, occ)
 
-    hybrid = PLANNER_REGISTRY.get("mpc_chomp").from_config(
+    hybrid = planner_registry.get("mpc_chomp").from_config(
         {
             "max_speed": 5.0,
             "n_smooth_iters": 30,
@@ -65,20 +65,20 @@ def test_mpc_chomp_smooths_mpc_rollout_corners() -> None:
     assert sm_acc <= raw_acc + 1e-6
 
 
-def test_mpc_chomp_clears_target_velocity_for_pure_pursuit() -> None:
+def test_mpc_chomp_clears_target_velocity_for_pure_pursuit(
+    planner_registry, empty_grid_20
+) -> None:
     """Even when the underlying MPC sets target_velocity (its normal mode),
     the wrapper must clear it so the runner falls back to pure-pursuit on
     the smoothed waypoints. Otherwise the smoothing is purely cosmetic."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    occ = np.zeros((20, 20), dtype=bool)
-    raw = PLANNER_REGISTRY.get("mpc").from_config(
+    occ = empty_grid_20
+    raw = planner_registry.get("mpc").from_config(
         {"horizon": 20, "dt_plan": 0.05, "n_samples": 8, "max_speed": 5.0}
     ).plan(np.array([2.0, 2.0]), np.array([18.0, 18.0]), occ)
     # Sanity: raw MPC does set target_velocity.
     assert raw.target_velocity is not None
 
-    hybrid = PLANNER_REGISTRY.get("mpc_chomp").from_config(
+    hybrid = planner_registry.get("mpc_chomp").from_config(
         {
             "max_speed": 5.0,
             "n_smooth_iters": 5,
@@ -89,17 +89,15 @@ def test_mpc_chomp_clears_target_velocity_for_pure_pursuit() -> None:
     assert plan.target_velocity is None
 
 
-def test_mpc_chomp_short_rollout_passthrough() -> None:
+def test_mpc_chomp_short_rollout_passthrough(planner_registry, empty_grid_20) -> None:
     """When the MPC rollout has fewer than 3 waypoints there's nothing to
     smooth — wrapper should pass the plan through unchanged (preserving
     target_velocity) so the goal-reach behaviour is identical to plain MPC.
     Regression guard against trying to invert a 1×1 interior Hessian."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    occ = np.zeros((20, 20), dtype=bool)
+    occ = empty_grid_20
     # horizon=2 ⇒ MPC returns at most 2 waypoints (rollout[1:] of length 2),
     # which is below the wrapper's smoothing threshold.
-    hybrid = PLANNER_REGISTRY.get("mpc_chomp").from_config(
+    hybrid = planner_registry.get("mpc_chomp").from_config(
         {
             "max_speed": 5.0,
             "mpc": {
@@ -118,11 +116,9 @@ def test_mpc_chomp_short_rollout_passthrough() -> None:
     assert plan.target_velocity is not None
 
 
-def test_mpc_chomp_registry_and_from_config_round_trip() -> None:
+def test_mpc_chomp_registry_and_from_config_round_trip(planner_registry) -> None:
     """Registration + from_config wiring smoke test."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    cls = PLANNER_REGISTRY.get("mpc_chomp")
+    cls = planner_registry.get("mpc_chomp")
     p = cls.from_config(
         {
             "max_speed": 7.0,
@@ -137,16 +133,16 @@ def test_mpc_chomp_registry_and_from_config_round_trip() -> None:
     assert p.output == "waypoints"  # default
 
 
-def test_mpc_chomp_velocity_profile_output_shape_and_dt() -> None:
+def test_mpc_chomp_velocity_profile_output_shape_and_dt(
+    planner_registry, empty_grid_20
+) -> None:
     """`output: velocity_profile` must emit a (T, ndim) profile aligned to
     the MPC's dt_plan grid: one velocity per smoothed waypoint, each
     representing the displacement traveled in one dt_plan tick. T equals
     the smoothed waypoint count (forward differences from the obs+wps stack
     yield exactly len(waypoints) velocities)."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    occ = np.zeros((20, 20), dtype=bool)
-    p = PLANNER_REGISTRY.get("mpc_chomp").from_config(
+    occ = empty_grid_20
+    p = planner_registry.get("mpc_chomp").from_config(
         {
             "max_speed": 5.0,
             "n_smooth_iters": 5,
@@ -165,13 +161,11 @@ def test_mpc_chomp_velocity_profile_output_shape_and_dt() -> None:
     assert float(speeds.max()) <= 5.0 + 1e-6
 
 
-def test_mpc_chomp_velocity_profile_invalid_output_raises() -> None:
+def test_mpc_chomp_velocity_profile_invalid_output_raises(planner_registry) -> None:
     """Typo in `output` must fail loud at construction, mirroring the
     `init` validation in the inner CHOMP planner."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
     with pytest.raises(ValueError, match="output must be"):
-        PLANNER_REGISTRY.get("mpc_chomp").from_config(
+        planner_registry.get("mpc_chomp").from_config(
             {"output": "spline", "mpc": {"horizon": 10, "n_samples": 4}}
         )
 
@@ -205,15 +199,15 @@ def test_follow_plan_velocity_profile_indexed_by_elapsed_time() -> None:
                        [0.5, 0.0])
 
 
-def test_mpc_chomp_w_action_jump_meta_and_round_trip() -> None:
+def test_mpc_chomp_w_action_jump_meta_and_round_trip(
+    planner_registry, empty_grid_20
+) -> None:
     """w_action_jump round-trips through from_config, surfaces in meta on
     velocity_profile emit, and is accepted as a non-zero default. (The
     knob's *empirical effect* on smoothness is documented in the YAML
     header as a negative result — it modifies x[1] but the smoothness
     Hessian's neighbour coupling reverses the gain at sample 1.)"""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    p = PLANNER_REGISTRY.get("mpc_chomp").from_config(
+    p = planner_registry.get("mpc_chomp").from_config(
         {
             "max_speed": 5.0,
             "w_action_jump": 0.5,
@@ -222,20 +216,20 @@ def test_mpc_chomp_w_action_jump_meta_and_round_trip() -> None:
         }
     )
     assert p.w_action_jump == 0.5
-    occ = np.zeros((20, 20), dtype=bool)
+    occ = empty_grid_20
     plan = p.plan(np.array([2.0, 2.0]), np.array([18.0, 18.0]), occ)
     assert plan.meta["w_action_jump"] == 0.5
 
 
-def test_mpc_chomp_w_action_jump_only_active_after_first_replan() -> None:
+def test_mpc_chomp_w_action_jump_only_active_after_first_replan(
+    planner_registry, empty_grid_20
+) -> None:
     """Episode-start replan has prev_emitted=None so the jump cost is
     inactive — otherwise the first plan of every episode would be biased
     by stale state. Tests the dispatch guard and the reset() hook clearing
     the cache."""
-    from uav_nav_lab.planner import PLANNER_REGISTRY
-
-    occ = np.zeros((20, 20), dtype=bool)
-    p = PLANNER_REGISTRY.get("mpc_chomp").from_config(
+    occ = empty_grid_20
+    p = planner_registry.get("mpc_chomp").from_config(
         {
             "max_speed": 5.0,
             "n_smooth_iters": 5,
