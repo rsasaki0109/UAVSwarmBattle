@@ -1,13 +1,17 @@
 """Multi-drone runner subpackage.
 
-Split from a 440-line single-file module into:
+Layout (each module is independently readable / testable):
 
-- :mod:`.builder`    — :func:`_build_multi` (scenario / sims / planners / sensors)
+- :mod:`.builder`    — :func:`_build_multi` (scenario / sims / planners / sensors).
 - :mod:`.peers`      — pure peer helpers (:func:`_peers_view`,
-  :func:`_check_peer_collision`)
-- :mod:`.episode`    — :func:`run_episode_multi` and its phase helpers
-  (replan, log-step, master hand-off, outcome resolution)
-- :mod:`.experiment` — :func:`run_experiment_multi` driver
+  :func:`_check_peer_collision`).
+- :mod:`.phases`     — per-drone per-tick helpers (:func:`_replan_one_drone`,
+  :func:`_log_step_for_drone`).
+- :mod:`.outcomes`   — end-of-step state machine (:func:`_handoff_master`,
+  :func:`_resolve_outcomes`, :func:`_finalize_timeouts`).
+- :mod:`.episode`    — :func:`run_episode_multi` orchestrator + small setup
+  helpers.
+- :mod:`.experiment` — :func:`run_experiment_multi` driver (episode loop).
 
 One scenario, N drones. Each drone gets its own simulator / sensor /
 planner instance; all instances share the same scenario object so the

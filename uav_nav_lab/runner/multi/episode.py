@@ -1,9 +1,11 @@
-"""Per-episode loop for multi-drone runs.
+"""Per-episode orchestrator for multi-drone runs.
 
-`run_episode_multi` orchestrates the per-step loop. The previously
-in-lined sub-phases — single-drone replan, per-drone log-step (with
-camera-frame dump), master hand-off, outcome resolution — are extracted
-as small helpers so each phase is independently readable and testable.
+:func:`run_episode_multi` is the main loop. The per-drone, per-tick
+helpers (replan, log-step) live in :mod:`.phases`; the end-of-step
+state-machine helpers (outcome resolution, master hand-off,
+finalize-timeouts) live in :mod:`.outcomes`. The orchestrator keeps
+only the setup helpers it uses once (drone radius, reset) plus the
+main loop itself.
 """
 
 from __future__ import annotations
@@ -17,7 +19,9 @@ import numpy as np
 from ...planner import Plan, Planner
 from ...recorder import EpisodeRecorder
 from ..experiment import _follow_plan
-from .peers import _check_peer_collision, _peers_view
+from .outcomes import _finalize_timeouts, _handoff_master, _resolve_outcomes
+from .peers import _check_peer_collision
+from .phases import _log_step_for_drone, _replan_one_drone
 
 
 def _drone_radius_from_sim(sim: Any, fallback_radii: list[float]) -> float:
@@ -60,170 +64,6 @@ def _reset_drones(
         if pred is not None and hasattr(pred, "reset"):
             pred.reset(seed=seed + 7777 + 1000 * i)
     return states
-
-
-def _replan_one_drone(
-    *,
-    drone_idx: int,
-    t: float,
-    scenario: Any,
-    sims: list[Any],
-    planners: list[Planner],
-    sensors: list[Any],
-    states: list[Any],
-    finished: list[bool],
-    radii: list[float],
-    obs_i: Any,
-) -> Plan:
-    """Run one drone's perception + replan and return the new plan.
-
-    Side-effect-free w.r.t. peers and the loop's `plans` list — the
-    caller stores the returned plan back into `plans[i]` and updates
-    `last_replan_t[i]`.
-    """
-    perceived_map = sensors[drone_idx].observe_map(
-        t, states[drone_idx].position, sims[drone_idx].obstacle_map,
-        sim_extra=states[drone_idx].extra or None,
-    )
-    scenario_dyn = scenario.dynamic_obstacles
-    peer_dyn = _peers_view(states, radii, finished, me=drone_idx)
-    # Filter through the sensor — a range-limited sensor will drop
-    # peers / scene-dyn obstacles beyond its range.
-    perceived_dyn = sensors[drone_idx].observe_dynamics(
-        t, states[drone_idx].position, scenario_dyn + peer_dyn
-    )
-    # Aerobatic / choreography scenarios provide a *time-varying* goal
-    # via `dynamic_goal_at(drone_idx, t)`; non-aerobatic scenarios use
-    # the static sim.goal as before.
-    if hasattr(scenario, "dynamic_goal_at"):
-        cur_goal = scenario.dynamic_goal_at(drone_idx, t)
-        sims[drone_idx].set_goal(cur_goal)
-    else:
-        cur_goal = sims[drone_idx].goal
-    return planners[drone_idx].plan(
-        obs_i,
-        cur_goal,
-        perceived_map,
-        dynamic_obstacles=perceived_dyn,
-    )
-
-
-def _log_step_for_drone(
-    *,
-    drone_idx: int,
-    step: int,
-    t: float,
-    scenario: Any,
-    states: list[Any],
-    new_states: list[Any],
-    observations: list[Any],
-    cmd: np.ndarray,
-    info: Any,
-    recorder: EpisodeRecorder,
-    frame_dirs: list[Path | None] | None,
-) -> None:
-    """Common log + frame-dump path for both two-phase and single-phase steps."""
-    ref_pos = (
-        scenario.reference_position(drone_idx, t)
-        if hasattr(scenario, "reference_position")
-        else None
-    )
-    ns = new_states[drone_idx]
-    recorder.log_step(
-        t=t,
-        true_pos=states[drone_idx].position,
-        true_vel=states[drone_idx].velocity,
-        observed_pos=observations[drone_idx],
-        cmd=cmd,
-        info={"collision": info.collision, "goal_reached": info.goal_reached},
-        sim_extra=dict(ns.extra) if ns.extra else None,
-        reference_pos=ref_pos,
-    )
-    if frame_dirs is not None and frame_dirs[drone_idx] is not None and ns.extra:
-        cam_imgs = ns.extra.get("camera_images") or {}
-        for cam_name, png_bytes in cam_imgs.items():
-            if not png_bytes:
-                continue
-            fname = f"step_{step:04d}_{cam_name}.png"
-            (frame_dirs[drone_idx] / fname).write_bytes(bytes(png_bytes))
-
-
-def _handoff_master(sims: list[Any], finished: list[bool]) -> None:
-    """Hand the scenario-clock master flag to the next live drone if the
-    current master finished this tick.
-
-    Backends with a shared physics clock (airsim) elect one bridge to
-    advance time via ``_advance_scenario``; once that bridge finishes,
-    the runner stops calling its step() — and the clock freezes for
-    everyone else. This hand-off keeps the remaining drones flying.
-    """
-    n = len(sims)
-    master_idx = next(
-        (i for i in range(n) if getattr(sims[i], "_advance_scenario", False)),
-        None,
-    )
-    if master_idx is not None and finished[master_idx]:
-        sims[master_idx]._advance_scenario = False
-        for i in range(n):
-            if not finished[i] and hasattr(sims[i], "_advance_scenario"):
-                sims[i]._advance_scenario = True
-                break
-
-
-def _resolve_outcomes(
-    *,
-    scenario: Any,
-    new_states: list[Any],
-    infos: list[Any],
-    peer_hit: list[bool],
-    finished: list[bool],
-    final_states: list[Any],
-    recorders: list[EpisodeRecorder],
-) -> None:
-    """Mark per-drone outcomes after a step.
-
-    Aerobatic scenarios (`dynamic_goal_at`) suppress goal-reach
-    termination — `goal_reached` ticks spuriously whenever the drone
-    happens to be near the current lookahead point. Let max_steps end
-    the episode instead; the eval is tracking-error based, not binary
-    success.
-    """
-    _aerobatic = hasattr(scenario, "dynamic_goal_at")
-    for i, info in enumerate(infos):
-        if finished[i]:
-            continue
-        if info.collision or peer_hit[i]:
-            recorders[i].set_outcome("collision", final_t=float(new_states[i].t))
-            finished[i] = True
-            final_states[i] = new_states[i]
-            continue
-        if info.goal_reached and not _aerobatic:
-            recorders[i].set_outcome("success", final_t=float(new_states[i].t))
-            finished[i] = True
-            final_states[i] = new_states[i]
-            continue
-
-
-def _finalize_timeouts(
-    *,
-    scenario: Any,
-    states: list[Any],
-    finished: list[bool],
-    final_states: list[Any],
-    recorders: list[EpisodeRecorder],
-) -> None:
-    """Mark "success"/"timeout" for any drones still running at max_steps.
-
-    Aerobatic / choreography scenarios reach max_steps as the natural
-    completion condition (completed all loops without collision), so
-    mark "success" rather than "timeout".
-    """
-    _aerobatic = hasattr(scenario, "dynamic_goal_at")
-    for i in range(len(states)):
-        if not finished[i]:
-            outcome = "success" if _aerobatic else "timeout"
-            recorders[i].set_outcome(outcome, final_t=float(states[i].t))
-            final_states[i] = states[i]
 
 
 def run_episode_multi(
