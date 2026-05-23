@@ -1,0 +1,54 @@
+# city_wave: 4 buildings + 3 timed wave intruders
+name: city_wave_noisy30_mpc_n20
+seed: 42
+num_episodes: 20
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 12]
+  resolution: 1.0
+  obstacles:
+    type: none
+    boxes:
+      - {center: [12, 12, 5], size: [24, 24, 10]}
+      - {center: [12, 48, 5], size: [24, 24, 10]}
+      - {center: [48, 12, 5], size: [24, 24, 10]}
+      - {center: [48, 48, 5], size: [24, 24, 10]}
+  drones:
+    - {name: north, start: [30.0, 4.0, 6.0], goal: [30.0, 56.0, 6.0], radius: 0.4}
+    - {name: east,  start: [56.0, 30.0, 6.0], goal: [4.0, 30.0, 6.0], radius: 0.4}
+  dynamic_obstacles:
+    - {start: [25.25, 30.0, 6.0], velocity: [ 1.5, 0.0, 0.0], reflect: true, radius: 1.0}
+    - {start: [35.25, 30.0, 6.0], velocity: [-1.5, 0.0, 0.0], reflect: true, radius: 1.0}
+    - {start: [23.25, 30.0, 6.0], velocity: [ 1.5, 0.0, 0.0], reflect: true, radius: 1.0}
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1200
+  max_accel: 80.0
+  goal_radius: 1.0
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 6.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 8
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.0
+  safety_margin: 0.5
+  use_prediction: true
+  predictor: {type: noisy_velocity, velocity_noise_std: 3.0}
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/city_wave_noisy30_mpc_n20
