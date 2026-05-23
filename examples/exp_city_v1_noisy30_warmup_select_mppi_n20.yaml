@@ -1,0 +1,80 @@
+# S: OOD city scenario — N+P rule was calibrated on toy intersections
+# and random-voxel multi-drone cells. This is the first cell with
+# *structured urban geometry*: 4 corner buildings (24x24x10 m) bracket
+# a 12 m wide "+" corridor crossing N-S and E-W. Lateral swerve room
+# is bounded by building walls, unlike chokepoint where corner cubes
+# left wide open quadrants.
+#
+# 2 drones (N->S, E->W) traverse the corridor crossing at the central
+# plaza where a slow intruder sits. Same predictor, planner, and σ=3
+# noise as intersection_v1, so the only variable is the obstacle
+# geometry. The OOD claim: warmup_select_mppi must pick the right
+# temperature (predicted: uniform t=10, by analogy to intersection_v1
+# whose pooled cvg=9.2°) without recalibration.
+name: city_v1_noisy30_warmup_select_mppi_n20
+seed: 42
+num_episodes: 20
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 12]
+  resolution: 1.0
+  obstacles:
+    type: none
+    boxes:
+      - {center: [12, 12, 5], size: [24, 24, 10]}   # SW building
+      - {center: [12, 48, 5], size: [24, 24, 10]}   # NW
+      - {center: [48, 12, 5], size: [24, 24, 10]}   # SE
+      - {center: [48, 48, 5], size: [24, 24, 10]}   # NE
+  drones:
+    - name: north
+      start: [30.0, 4.0, 6.0]
+      goal:  [30.0, 56.0, 6.0]
+      radius: 0.4
+    - name: east
+      start: [56.0, 30.0, 6.0]
+      goal:  [4.0, 30.0, 6.0]
+      radius: 0.4
+  dynamic_obstacles:
+    - start: [30.0, 30.0, 6.0]
+      velocity: [0.5, 0.0, 0.0]
+      reflect: true
+      radius: 1.0
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 1200
+  max_accel: 80.0
+  goal_radius: 1.0
+  drone_radius: 0.4
+
+planner:
+  type: warmup_select_mppi
+  max_speed: 6.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.0
+  safety_margin: 0.5
+  use_prediction: true
+  predictor:
+    type: noisy_velocity
+    velocity_noise_std: 3.0
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  warmup_temperature: 1.0
+  uniform_temperature: 10.0
+  argmin_temperature: 0.1
+  appl_cut: 50.0
+  choice_cut: 12.5
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/city_v1_noisy30_warmup_select_mppi_n20
