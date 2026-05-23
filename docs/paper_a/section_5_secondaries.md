@@ -1,10 +1,13 @@
-# §5. Secondary findings: when coordination exists at all
+# §5. Secondary findings: where coordination exists, and how MPPI should adapt
 
 The §3 result is not a statement that GPU MPPI always changes
 multi-drone coordination. It appears at a specific operating point:
 four drones, a 3D volume tight enough that their routes interact, and
 enough remaining free space that planners can still recover. Two
-secondary ablations define that operating region.
+secondary ablations define that operating region. The second half of
+this section asks a different follow-up: once MPPI is the family of
+interest, can a benchmark cell tell us which softmax temperature to
+use without sweeping every temperature?
 
 ## 5.1 Escape volume can erase coordination Δ
 
@@ -79,3 +82,94 @@ headline Δ flip is therefore not an isolated planner trick. It is one
 case inside a broader rule: coordination metrics only become
 load-bearing when the scenario leaves enough, but not too much,
 per-agent free volume.
+
+## 5.3 One warmup episode predicts the MPPI temperature regime
+
+The temperature sweeps that led to §3 also showed a less obvious
+pattern: no fixed MPPI temperature is globally right. In one
+intersection cell, high temperature (nearly uniform averaging) is best;
+in a wave-like intruder cell, low temperature (argmin-like commitment)
+is best; in a peer-dominated cell, all temperatures are nearly flat.
+That looks at first like another sweep burden. The useful observation
+is that the required temperature can be predicted from statistics the
+vanilla MPPI planner already computes.
+
+The rule uses a single episode at the vanilla temperature
+(`temperature = 1.0`). For every replan we record two angles:
+
+1. **top-2 disagreement**: the angular separation between the two
+   highest-weighted rollout actions.
+2. **chosen-vs-goal (cvg)**: the angle between vanilla MPPI's weighted
+   action and the straight-to-goal direction.
+
+The first angle is an applicability check. When top-2 disagreement is
+very large, the rollout set is not choosing between coherent escape
+modes; the landscape is chaotic, and temperature does not carry much
+information. When top-2 disagreement is moderate, cvg predicts which
+end of the softmax spectrum should win. Low cvg means the prior
+straight-to-goal action is already right, so averaging many rollouts is
+beneficial. High cvg means the prior misses and one specific evasion
+direction matters, so argmin-like commitment is beneficial.
+
+The calibrated rule used by `warmup_select_mppi` is:
+
+| warmup signal | interpretation | selected temperature |
+|---|---|---|
+| mean top-2 > 50-60 deg | chaotic rollout landscape | keep vanilla, `t = 1.0` |
+| otherwise, mean cvg < 12.5 deg | prior-aligned cell | uniform-like, `t = 10` |
+| otherwise | prior misses, commit to a side | argmin-like, `t = 0.1` |
+
+On the five calibration cells, the rule matches the measured best
+temperature in every case:
+
+| cell | top-2 | cvg | N+P prediction | measured best |
+|---|---:|---:|---|---|
+| intersection v1 | 29.1 deg | 9.2 deg | `t = 10` | `t = 10` (100 %) |
+| wave intruders | 30.9 deg | 17.1 deg | `t = 0.1` | `t = 0.1` (70 %) |
+| 4-way 3D | 33.7 deg | 4.8 deg | `t = 10` | `t = 10` (85 %) |
+| peer-dominated | 83.9 deg | 24.9 deg | flat / vanilla | all MPPI temps tied (40 %) |
+| chokepoint | 33.1 deg | 10.1 deg | `t = 10` | `t = 10` (95 %) |
+
+This turns a post-hoc temperature sweep into a small adaptive
+procedure: spend episode 0 measuring the cell, then run the remaining
+episodes at the selected temperature. In multi-drone runs, the planner
+pools the warmup samples across drones and picks one shared temperature
+for the whole session. That matters because per-drone warmup signals
+can straddle the threshold even when the cell-wide decision is clear.
+
+## 5.4 The family-selector hypothesis fails, but in a useful direction
+
+The next hypothesis was that the same warmup signal might decide not
+only the MPPI temperature, but the planner family itself: MPC in some
+cells, MPPI in others. That extension failed. Across the nine cells
+where we have `{MPC, MPPI t=0.1, MPPI t=1.0, MPPI t=10}` plus a
+warmup-select run, MPC is the empirical best planner in **0/9** cells.
+The best MPPI temperature exceeds MPC in every row, by 10-60 pp and
+35 pp on average:
+
+| cell | MPC | best MPPI | gap |
+|---|---:|---:|---:|
+| intersection v1 | 55 % | 100 % (`t = 10`) | -45 pp |
+| intersection wave | 45 % | 70 % (`t = 0.1`) | -25 pp |
+| intersection chokepoint | 60 % | 95 % (`t = 10`) | -35 pp |
+| 4-way 3D | 75 % | 85 % (`t = 10`) | -10 pp |
+| peer-dominated | 30 % | 40 % (all MPPI temps) | -10 pp |
+| city v1 | 30 % | 90 % (`t = 10`) | -60 pp |
+| city wave | 50 % | 85 % (`t = 10`) | -35 pp |
+| city chokepoint | 20 % | 45 % (`t = 0.1`) | -25 pp |
+| city 3x3 | 45 % | 95 % (`t = 10`) | -50 pp |
+
+So the negative result is the point: in these dynamic-prediction
+regimes, there is no evidence that the adaptive system needs to switch
+back to MPC. The useful prescription is narrower and stronger:
+choose MPPI as the family, then use the N+P warmup rule to choose the
+temperature.
+
+There is one important caveat. The city chokepoint row is the only
+confident temperature miss: the warmup signal is strongly prior-aligned
+(cvg = 3.6 deg), so N+P selects `t = 10`, but the measured best is
+`t = 0.1`. The failure is not a noisy-threshold problem. It is a
+geometric scope condition: city walls and cube obstacles create a
+forced 4 m gap, and averaging rollouts across both sides smears the
+command into the obstacle. §6 treats that as a limitation of the rule,
+not as a parameter to tune away.

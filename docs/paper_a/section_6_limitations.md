@@ -91,6 +91,23 @@ behaviour; it is one paired cell, not an AirSim-wide statement.
 Mapping the (N, density, drone-count symmetry) surface across
 non-circular geometries and at finer resolution remains future work.
 
+The N+P warmup rule in §5 has its own scope condition. It predicts the
+best MPPI temperature from rollout statistics: top-2 disagreement and
+chosen-vs-goal angle. Those signals describe the sampled cost
+landscape, not the geometry of the free space. The `city_chokepoint`
+cell exposes the blind spot. Its warmup signal looks even more
+prior-aligned than the city cells where uniform MPPI is correct
+(cvg mean 3.6 deg, median 1.4 deg), so the rule confidently picks
+`t = 10`. The measured best is instead `t = 0.1` (45 % joint vs
+35 % for `t = 10`) because the corner buildings collapse the navigable
+space into a 12 m corridor and the central cube cluster leaves a
+forced gap of roughly 4 m. In that geometry, averaging left/right
+rollouts is physically wrong; the planner must commit to one side.
+The limitation is therefore geometric, not statistical. A future rule
+needs an explicit corridor-width or forced-commitment feature; the
+current N+P rule should be overridden to argmin in known tight-corridor
+cells.
+
 A separate axis we attempted to probe is **obstacle dynamics**, but
 that axis is now retracted rather than merely limited. Commit
 `1646e11` fixed a multi-runner bug that could leave dynamic obstacles

@@ -187,14 +187,22 @@ backend-dependent.
 
 ## 5. Secondary findings
 
-Status: `section_5_secondaries.md` written. It keeps the §3 narrative
-tight by using two companion ablations:
+Status: `section_5_secondaries.md` written and now includes the N+P
+temperature-selection arc. It keeps the §3 narrative tight with four
+companion findings:
 
 1. **3D escape volume / density ablation** — coordination Δ disappears
    in open 3D, then returns at intermediate density.
 2. **3D peer-prediction ablation** — removing CV peer prediction at
    that intermediate density is as damaging as an 8× static-obstacle
    increase.
+3. **N+P warmup rule** — one vanilla-MPPI episode supplies top-2
+   disagreement and chosen-vs-goal angle; those signals select
+   `t = 10`, `t = 0.1`, or vanilla in the 5-cell calibration set.
+4. **Family-selector negative** — extending N+P to choose MPC vs MPPI
+   fails because MPC is empirical best in 0/9 cells. The useful
+   prescription is fixed family MPPI + N+P temperature selection,
+   with the `city_chokepoint` geometric miss deferred to §6.
 
 ## 6. Limitations
 
@@ -302,6 +310,9 @@ anchor. It also corrects the stale outline placeholders:
 - §5 peer-prediction ablation uses
   `examples/exp_multi_drone_3d_4_dense_indep.yaml` and
   `examples/exp_multi_drone_3d_4_packed_indep.yaml`.
+- §5 N+P rule uses the `*_warmup_select_mppi_n20.yaml` family plus
+  `scripts/n_rule_summary.py`, `scripts/warmup_select_validate.py`,
+  and `scripts/x_planner_family_gather.py`.
 
 ## 8. Open decisions before submission
 
