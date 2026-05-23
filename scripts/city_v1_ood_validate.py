@@ -17,7 +17,6 @@ For city_v1 reports:
 """
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 
@@ -26,10 +25,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from uav_nav_lab.config import ExperimentConfig
-from uav_nav_lab.runner.multi.builder import _build_multi
-from uav_nav_lab.runner.multi.episode import run_episode_multi
-from uav_nav_lab.planner.warmup_select_mppi import _SHARED_SESSIONS
+from uav_nav_lab.analysis import diagnose_warmup, joint_success_rate
 
 N_EPS = 20
 
@@ -42,70 +38,23 @@ VARIANTS = [
 ]
 
 OUT = Path("docs/images/city_v1_ood.png")
-
-
-def joint_outcomes(d: str) -> list[str]:
-    p = Path(d)
-    if not p.exists():
-        return []
-    return [
-        json.load(open(p / f"episode_{ep:03d}_joint.json"))["outcome"]
-        for ep in range(N_EPS)
-        if (p / f"episode_{ep:03d}_joint.json").exists()
-    ]
-
-
-def success_rate(outs: list[str]) -> tuple[float, float, float]:
-    n = len(outs)
-    if n == 0:
-        return float("nan"), float("nan"), float("nan")
-    k = sum(1 for o in outs if o == "success")
-    p = k / n
-    z = 1.96
-    denom = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / denom
-    halfw = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return p * 100, max(0, centre - halfw) * 100, min(1, centre + halfw) * 100
-
-
-def diagnose_warmup() -> tuple[float, float, float, str]:
-    """Re-run one warmup episode and return (pooled_top2, pooled_cvg,
-    selected_temperature, selected_reason)."""
-    _SHARED_SESSIONS.clear()
-    cfg = ExperimentConfig.from_yaml(
-        Path("examples/exp_city_v1_noisy30_warmup_select_mppi_n20.yaml")
-    )
-    cfg.num_episodes = 2
-    scenario, sims, planners, sensors = _build_multi(cfg)
-    run_episode_multi(
-        scenario, sims, planners, sensors,
-        seed=42, replan_period=0.2, max_steps=1200,
-        episode_index=0, frame_dirs=[None] * scenario.n_drones,
-    )
-    sess = list(_SHARED_SESSIONS.values())[0]
-    pooled_top2 = float(np.nanmean(sess.top2))
-    pooled_cvg = float(np.nanmean(sess.cvg))
-    run_episode_multi(
-        scenario, sims, planners, sensors,
-        seed=43, replan_period=0.2, max_steps=1200,
-        episode_index=1, frame_dirs=[None] * scenario.n_drones,
-    )
-    return pooled_top2, pooled_cvg, planners[0].temperature, planners[0]._selected_reason
+WARMUP_YAML = "examples/exp_city_v1_noisy30_warmup_select_mppi_n20.yaml"
 
 
 def main() -> int:
     rates: dict[str, tuple[float, float, float]] = {}
     print(f"{'variant':<25} {'success%':>12}")
     for label, dirpath, _ in VARIANTS:
-        outs = joint_outcomes(dirpath)
-        r = success_rate(outs)
+        r = joint_success_rate(dirpath, n_eps=N_EPS)[:3]
         rates[label] = r
         if math.isnan(r[0]):
             print(f"{label:<25} {'—':>12}")
         else:
             print(f"{label:<25} {r[0]:>7.0f}% [{r[1]:.0f},{r[2]:.0f}]")
 
-    pooled_top2, pooled_cvg, selected_t, reason = diagnose_warmup()
+    diag = diagnose_warmup(WARMUP_YAML, episodes=2)
+    pooled_top2, pooled_cvg = diag.top2_mean, diag.cvg_mean
+    selected_t, reason = diag.selected_temperature, diag.selected_reason
     print()
     print("N+P diagnostic (warmup ep 0, pooled across 2 drones):")
     print(f"  pooled mean top-2 disagreement : {pooled_top2:.1f}° (appl_cut=50)")

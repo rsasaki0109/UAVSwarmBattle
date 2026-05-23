@@ -13,7 +13,6 @@ warmup_select bar marked with a ★ when it matches the empirical-best.
 """
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 
@@ -22,10 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from uav_nav_lab.config import ExperimentConfig
-from uav_nav_lab.runner.multi.builder import _build_multi
-from uav_nav_lab.runner.multi.episode import run_episode_multi
-from uav_nav_lab.planner.warmup_select_mppi import _SHARED_SESSIONS
+from uav_nav_lab.analysis import diagnose_warmup, joint_success_rate
 
 N_EPS = 20
 
@@ -53,49 +49,6 @@ VARIANTS = [
 OUT = Path("docs/images/city_full_validate.png")
 
 
-def outcomes(d: str) -> list[str]:
-    p = Path(d)
-    if not p.exists():
-        return []
-    return [
-        json.load(open(p / f"episode_{ep:03d}_joint.json"))["outcome"]
-        for ep in range(N_EPS)
-        if (p / f"episode_{ep:03d}_joint.json").exists()
-    ]
-
-
-def success_rate(outs: list[str]) -> tuple[float, float, float]:
-    n = len(outs)
-    if n == 0:
-        return float("nan"), float("nan"), float("nan")
-    k = sum(1 for o in outs if o == "success")
-    p = k / n
-    z = 1.96
-    denom = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / denom
-    halfw = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return p * 100, max(0, centre - halfw) * 100, min(1, centre + halfw) * 100
-
-
-def diagnose_warmup(yaml_path: str, replan_period: float, max_steps: int) -> tuple[float, float, float, str]:
-    """Re-run ep 0 + ep 1 reset to capture pooled warmup means and the
-    auto-selected temperature."""
-    _SHARED_SESSIONS.clear()
-    cfg = ExperimentConfig.from_yaml(Path(yaml_path))
-    cfg.num_episodes = 2
-    scenario, sims, planners, sensors = _build_multi(cfg)
-    run_episode_multi(scenario, sims, planners, sensors,
-                      seed=42, replan_period=replan_period, max_steps=max_steps,
-                      episode_index=0, frame_dirs=[None] * scenario.n_drones)
-    sess = list(_SHARED_SESSIONS.values())[0]
-    pooled_top2 = float(np.nanmean(sess.top2))
-    pooled_cvg = float(np.nanmean(sess.cvg))
-    run_episode_multi(scenario, sims, planners, sensors,
-                      seed=43, replan_period=replan_period, max_steps=max_steps,
-                      episode_index=1, frame_dirs=[None] * scenario.n_drones)
-    return pooled_top2, pooled_cvg, planners[0].temperature, planners[0]._selected_reason
-
-
 def main() -> int:
     fig, ax = plt.subplots(figsize=(16, 7.5))
     n_cells = len(CELLS)
@@ -111,11 +64,14 @@ def main() -> int:
         rates: dict[str, tuple[float, float, float]] = {}
         for var_label, var_suffix, _ in VARIANTS:
             dirpath = f"results/{cell_tag}_{var_suffix}"
-            rates[var_label] = success_rate(outcomes(dirpath))
+            rates[var_label] = joint_success_rate(dirpath, n_eps=N_EPS)[:3]
 
-        # N+P diagnostic + auto-pick
+        # N+P diagnostic + auto-pick (replan_period / max_steps come
+        # from the YAML inside diagnose_warmup, so the per-CELLS rp/ms
+        # tuple is informational only).
         try:
-            ptop2, pcvg, ptemp, _ = diagnose_warmup(ws_yaml, rp, ms)
+            diag = diagnose_warmup(ws_yaml, episodes=2)
+            ptop2, pcvg, ptemp = diag.top2_mean, diag.cvg_mean, diag.selected_temperature
         except Exception as e:
             ptop2, pcvg, ptemp = float("nan"), float("nan"), float("nan")
             print(f"  warmup diag failed for {cell_tag}: {e}")

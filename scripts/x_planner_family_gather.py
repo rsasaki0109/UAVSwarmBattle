@@ -19,13 +19,7 @@ import json
 import math
 from pathlib import Path
 
-import numpy as np
-import yaml
-
-from uav_nav_lab.config import ExperimentConfig
-from uav_nav_lab.runner.multi.builder import _build_multi
-from uav_nav_lab.runner.multi.episode import run_episode_multi
-from uav_nav_lab.planner.warmup_select_mppi import _SHARED_SESSIONS
+from uav_nav_lab.analysis import diagnose_warmup, joint_success_rate
 
 N_EPS = 20
 
@@ -61,49 +55,6 @@ VARIANT_DIRS = [
 OUT_JSON = Path("docs/data/x_planner_family_data.json")
 
 
-def outcomes(d: str) -> list[str]:
-    p = Path(d)
-    if not p.exists():
-        return []
-    return [
-        json.load(open(p / f"episode_{ep:03d}_joint.json"))["outcome"]
-        for ep in range(N_EPS)
-        if (p / f"episode_{ep:03d}_joint.json").exists()
-    ]
-
-
-def success_rate(outs: list[str]) -> tuple[float, float, float, int, int]:
-    n = len(outs)
-    if n == 0:
-        return float("nan"), float("nan"), float("nan"), 0, 0
-    k = sum(1 for o in outs if o == "success")
-    p = k / n
-    z = 1.96
-    denom = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / denom
-    halfw = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return p * 100, max(0, centre - halfw) * 100, min(1, centre + halfw) * 100, k, n
-
-
-def diagnose_warmup(yaml_path: str) -> tuple[float, float]:
-    """Re-run ep 0 to capture pooled (top2, cvg) means."""
-    _SHARED_SESSIONS.clear()
-    cfg = ExperimentConfig.from_yaml(Path(yaml_path))
-    cfg.num_episodes = 1
-    scenario, sims, planners, sensors = _build_multi(cfg)
-    # Read replan_period and max_steps from raw YAML
-    raw = yaml.safe_load(open(yaml_path))
-    rp = float(raw["planner"]["replan_period"])
-    ms = int(raw["simulator"]["max_steps"])
-    run_episode_multi(scenario, sims, planners, sensors,
-                      seed=42, replan_period=rp, max_steps=ms,
-                      episode_index=0, frame_dirs=[None] * scenario.n_drones)
-    sess = list(_SHARED_SESSIONS.values())[0]
-    if not sess.top2 or not sess.cvg:
-        return float("nan"), float("nan")
-    return float(np.nanmean(sess.top2)), float(np.nanmean(sess.cvg))
-
-
 def main() -> int:
     print("| cell | top2 | cvg | MPC | t=0.1 | t=1.0 | t=10 | best | family_winner |")
     print("|---|---|---|---|---|---|---|---|---|")
@@ -112,10 +63,10 @@ def main() -> int:
         rates = {}
         for var_label, var_suffix in VARIANT_DIRS:
             d = f"results/{cell_tag}_{var_suffix}"
-            r = success_rate(outcomes(d))
-            rates[var_label] = r
+            rates[var_label] = joint_success_rate(d, n_eps=N_EPS)
 
-        top2, cvg = diagnose_warmup(ws_yaml)
+        diag = diagnose_warmup(ws_yaml, episodes=1)
+        top2, cvg = diag.top2_mean, diag.cvg_mean
 
         # Determine best within MPPI temperature group
         mppi = {k: v for k, v in rates.items() if k != "MPC" and not math.isnan(v[0])}

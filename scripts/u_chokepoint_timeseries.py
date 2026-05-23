@@ -1,10 +1,11 @@
 """U step 1: per-step warmup time-series across 9 cells, with focus on
 why city_chokepoint is the one N+P confident miss.
 
-For each cell with a warmup_select_mppi YAML, run ep 0 and grab the
-pooled (top2, cvg) buffers stored in _SHARED_SESSIONS. These contain
-ALL per-replan samples across drones, in the order plan() was called
-(two-phase multi-drone runner: drone0_t0, drone1_t0, drone0_t1, ...).
+For each cell with a warmup_select_mppi YAML, run ep 0 via
+:func:`uav_nav_lab.analysis.diagnose_warmup` and pull the pooled
+(top2, cvg) series off the returned :class:`WarmupDiagnostic`. The
+series are interleaved per-drone per-replan in the order ``plan()``
+was called by the two-phase multi-drone runner.
 
 Output:
   (A) per-cell time series of top2 + cvg (small-multiple grid)
@@ -15,7 +16,6 @@ Output:
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
 import matplotlib
@@ -23,12 +23,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import yaml
 
-from uav_nav_lab.config import ExperimentConfig
-from uav_nav_lab.runner.multi.builder import _build_multi
-from uav_nav_lab.runner.multi.episode import run_episode_multi
-from uav_nav_lab.planner.warmup_select_mppi import _SHARED_SESSIONS
+from uav_nav_lab.analysis import diagnose_warmup
 
 # (cell_tag, warmup_yaml, n_drones, hit_or_miss_or_uniform_pick)
 # hit/miss refers to whether N+P's auto-pick matched empirical-best in T.
@@ -48,23 +44,6 @@ CHOICE_CUT = 12.5
 APPL_CUT = 50.0
 OUT_TS = Path("docs/images/u_chokepoint_timeseries.png")
 OUT_JSON = Path("docs/data/u_chokepoint_aggregators.json")
-
-
-def run_warmup_ep0(yaml_path: str) -> tuple[list[float], list[float], int]:
-    _SHARED_SESSIONS.clear()
-    cfg = ExperimentConfig.from_yaml(Path(yaml_path))
-    cfg.num_episodes = 1
-    scenario, sims, planners, sensors = _build_multi(cfg)
-    raw = yaml.safe_load(open(yaml_path))
-    rp = float(raw["planner"]["replan_period"])
-    ms = int(raw["simulator"]["max_steps"])
-    run_episode_multi(
-        scenario, sims, planners, sensors,
-        seed=42, replan_period=rp, max_steps=ms,
-        episode_index=0, frame_dirs=[None] * scenario.n_drones,
-    )
-    sess = list(_SHARED_SESSIONS.values())[0]
-    return list(sess.top2), list(sess.cvg), scenario.n_drones
 
 
 def aggregators(xs: list[float]) -> dict[str, float]:
@@ -90,16 +69,16 @@ def main() -> int:
     rows = []
     for cell_tag, ws_yaml, n_drones, hm in CELLS:
         print(f"running ep 0 for {cell_tag} ...")
-        top2, cvg, n = run_warmup_ep0(ws_yaml)
+        diag = diagnose_warmup(ws_yaml, episodes=1)
         rows.append({
             "cell_tag": cell_tag,
-            "n_drones": n,
-            "n_samples": len(top2),
+            "n_drones": diag.n_drones,
+            "n_samples": diag.n_samples,
             "hit_miss": hm,
-            "top2": top2,
-            "cvg": cvg,
-            "top2_agg": aggregators(top2),
-            "cvg_agg": aggregators(cvg),
+            "top2": diag.top2_series,
+            "cvg": diag.cvg_series,
+            "top2_agg": aggregators(diag.top2_series),
+            "cvg_agg": aggregators(diag.cvg_series),
         })
 
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)

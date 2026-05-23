@@ -21,7 +21,6 @@ bars below = selection drift (per-drone calibration vs per-cell).
 """
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 
@@ -29,6 +28,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+from uav_nav_lab.analysis import joint_success_rate
 
 N_EPS = 20
 
@@ -84,41 +85,14 @@ CELLS = [
 OUT = Path("docs/images/warmup_select_validate.png")
 
 
-def joint_outcomes(d: str) -> list[str]:
-    p = Path(d)
-    if not p.exists():
-        return []
-    outs = []
-    for ep in range(N_EPS):
-        f = p / f"episode_{ep:03d}_joint.json"
-        if f.exists():
-            outs.append(json.load(open(f))["outcome"])
-    return outs
-
-
-def success_rate(outs: list[str]) -> tuple[float, float, float]:
-    """Returns (rate, ci_lo, ci_hi) using Wilson 95% CI."""
-    n = len(outs)
-    if n == 0:
-        return float("nan"), float("nan"), float("nan")
-    k = sum(1 for o in outs if o == "success")
-    p = k / n
-    z = 1.96
-    denom = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / denom
-    halfw = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return p * 100, max(0, (centre - halfw)) * 100, min(1, (centre + halfw)) * 100
-
-
 def main() -> int:
     rows = []
     for cell_label, pred_label, pred_dir, ws_dir, baselines in CELLS:
         row = {"cell": cell_label, "pred": pred_label}
-        ws_outs = joint_outcomes(ws_dir)
-        row["warmup_select"] = success_rate(ws_outs)
-        row["pred_actual"] = success_rate(joint_outcomes(pred_dir))
+        row["warmup_select"] = joint_success_rate(ws_dir, n_eps=N_EPS)[:3]
+        row["pred_actual"] = joint_success_rate(pred_dir, n_eps=N_EPS)[:3]
         for k, d in baselines.items():
-            row[k] = success_rate(joint_outcomes(d))
+            row[k] = joint_success_rate(d, n_eps=N_EPS)[:3]
         rows.append(row)
 
     # Print table
