@@ -7,10 +7,11 @@ smoothness terms), with one substitution at the end:
 
   argmin → softmax-weighted average
 
-The per-sample cost compute lives in :mod:`.rollout`; the softmax
-selection lives in :mod:`.aggregator`. This file only orchestrates:
-setup (occupancy / cost-to-go cache / direction sampling), delegation
-to the two helpers, and the final :class:`.base.Plan` packaging.
+The per-sample cost compute lives in :mod:`uav_nav_lab.planner._rollout`
+(shared with MPC); the softmax selection lives in :mod:`.aggregator`.
+This file only orchestrates: setup (occupancy / cost-to-go cache /
+direction sampling), delegation to the two helpers, and the final
+:class:`.base.Plan` packaging.
 """
 
 from __future__ import annotations
@@ -27,9 +28,9 @@ from .._grid import (
     point_to_cell,
     sample_unit_directions,
 )
+from .._rollout import score_rollouts
 from ..base import PLANNER_REGISTRY, Plan, Planner
 from .aggregator import softmax_aggregate
-from .rollout import score_rollouts
 
 
 @PLANNER_REGISTRY.register("mppi")

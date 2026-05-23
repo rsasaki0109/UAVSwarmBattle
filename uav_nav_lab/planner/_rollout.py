@@ -1,21 +1,27 @@
-"""Per-sample rollout scoring for MPPI.
+"""Per-sample rollout scoring — shared between MPC and MPPI.
 
-Simulates each sampled constant-velocity action for ``horizon`` steps,
-accumulating goal-attraction cost (Dijkstra cost-to-go), obstacle
-penalties (static occupancy + dynamic-obstacle prediction), and a
-smoothness term against the previous chosen action. Returns the full
-cost vector plus the rollout polylines for downstream weighting.
+Both :class:`uav_nav_lab.planner.mpc.SamplingMPCPlanner` and
+:class:`uav_nav_lab.planner.mppi.MPPIPlanner` simulate each sampled
+constant-velocity action for ``horizon`` steps with the **same** cost
+shape:
 
-Same cost shape as :mod:`..mpc` so MPPI and MPC scoring stay
-directly comparable — the only difference between the two planners is
-the action-aggregation rule (argmin vs softmax).
+  w_goal   * (cost-to-go avg + min along rollout)
+  w_obs    * occupied-cells traversed (static + predicted dynamic)
+  w_smooth * |action - prev_action|
+
+Clean reach (no collisions) takes a -1e6 bonus. Collision-laden reach
+forfeits the bonus.
+
+The two planners differ **only** in how they aggregate the resulting
+``costs`` vector: MPC takes argmin, MPPI takes a softmax-weighted
+average (see ``mpc/aggregator.py`` and ``mppi/aggregator.py``).
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from .._grid import point_is_occupied, point_to_cell
+from ._grid import point_is_occupied, point_to_cell
 
 
 def score_rollouts(
@@ -40,8 +46,8 @@ def score_rollouts(
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """Score every sampled action by simulating a horizon-step rollout.
 
-    Parameters mirror the MPPIPlanner internals — they are passed
-    explicitly so this function is pure (no self) and unit-testable.
+    Parameters are passed explicitly (kwargs-only) so this function is
+    pure — no ``self`` coupling to either planner class.
     Returns ``(costs[n_samples], rollouts[n_samples])`` where each
     rollout is truncated at the first goal-reach or end of horizon.
     """

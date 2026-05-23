@@ -1,20 +1,28 @@
-"""Sampling-based MPC planner with an A* cost-to-go heuristic — N-D.
+"""Sampling-based MPC planner orchestration — N-D.
 
 Each replan we
 
-  1. run Dijkstra from the goal cell over the (inflated) occupancy grid to
-     get a global cost-to-go map — the obstacle-aware "distance to goal".
-  2. sample `n_samples` constant-velocity candidates covering all directions
-     (full circle in 2D, Fibonacci sphere in 3D); the goal direction is
-     always the first sample.
-  3. roll each out for `horizon` steps and score by
-        w_goal * (cost_to_go avg + cost_to_go min along rollout)
-        + w_obs  * occupied_cells_traversed
-        + w_smooth * |action - prev_action|
-     A rollout that touches the goal radius mid-horizon dominates.
+  1. run Dijkstra from the goal cell over the (inflated) occupancy grid
+     to get a global cost-to-go map — the obstacle-aware "distance to
+     goal".
+  2. sample ``n_samples`` constant-velocity candidates covering all
+     directions (full circle in 2D, Fibonacci sphere in 3D); the goal
+     direction is always the first sample.
+  3. roll each out for ``horizon`` steps and score by
+        w_goal   * (cost-to-go avg + min along rollout)
+        w_obs    * occupied_cells_traversed
+        w_smooth * |action - prev_action|
+     A rollout that touches the goal radius mid-horizon with no
+     collisions dominates.
 
-Returned `Plan.target_velocity` is applied directly by the runner — no
-pure-pursuit aliasing under noisy observations.
+Per-sample cost compute lives in :mod:`uav_nav_lab.planner._rollout`
+(shared with MPPI); argmin selection lives in :mod:`.aggregator`.
+This file only orchestrates: setup (occupancy / cost-to-go cache /
+direction sampling), delegation to the two helpers, and the final
+:class:`.base.Plan` packaging.
+
+Returned ``Plan.target_velocity`` is applied directly by the runner —
+no pure-pursuit aliasing under noisy observations.
 """
 
 from __future__ import annotations
@@ -23,16 +31,17 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from ..predictor import Predictor, build_predictor
-from ._grid import (
+from ...predictor import Predictor, build_predictor
+from .._grid import (
     dijkstra_cost_to_go,
     inflate_obstacles,
     mask_dynamic_obstacle_cells,
-    point_is_occupied,
     point_to_cell,
     sample_unit_directions,
 )
-from .base import PLANNER_REGISTRY, Plan, Planner
+from .._rollout import score_rollouts
+from ..base import PLANNER_REGISTRY, Plan, Planner
+from .aggregator import argmin_aggregate
 
 
 @PLANNER_REGISTRY.register("mpc")
@@ -188,72 +197,22 @@ class SamplingMPCPlanner(Planner):
         else:
             wind_step = None
 
-        best_cost = np.inf
-        best_rollout: np.ndarray | None = None
-        best_action: np.ndarray | None = None
-        gr2 = self.goal_radius * self.goal_radius
-        for v in actions:
-            rollout = np.empty((self.horizon + 1, ndim), dtype=float)
-            rollout[0] = obs
-            collision_pen = 0
-            ctg_min = np.inf
-            ctg_sum_until = 0.0
-            steps_until = 0
-            reaches_goal = False
-            for h in range(1, self.horizon + 1):
-                step = v * self.dt_plan
-                if wind_step is not None:
-                    step = step + wind_step * self.dt_plan
-                rollout[h] = rollout[h - 1] + step
-                d2 = float(np.sum((rollout[h] - gl) ** 2))
-                if d2 <= gr2:
-                    reaches_goal = True
-                    break
-                if point_is_occupied(occ, rollout[h], self.resolution):
-                    collision_pen += 1
-                # predicted dynamic obstacles (precomputed by self._predictor)
-                if pred_traj is not None:
-                    diffs = pred_traj[:, h - 1, :] - rollout[h]
-                    sep2 = np.sum(diffs * diffs, axis=1)
-                    if np.any(sep2 <= r2_arr):
-                        collision_pen += 1
-                cell_h = point_to_cell(rollout[h], occ.shape, self.resolution)
-                ctg_h = float(ctg[cell_h]) if np.isfinite(ctg[cell_h]) else unreachable_penalty
-                ctg_sum_until += ctg_h
-                if ctg_h < ctg_min:
-                    ctg_min = ctg_h
-                steps_until = h
-            smooth_pen = 0.0
-            if self._prev_action is not None:
-                smooth_pen = float(np.linalg.norm(v - self._prev_action))
-            if reaches_goal and collision_pen == 0:
-                # Clean reach: huge bonus.
-                cost = -1e6 + self.w_smooth * smooth_pen
-            elif reaches_goal:
-                # Reaches goal but with collisions on the way — the bonus is
-                # withheld so a non-reaching, non-colliding alternative wins.
-                ctg_avg = ctg_sum_until / max(1, steps_until)
-                cost = (
-                    self.w_goal * ctg_avg
-                    + self.w_obs * collision_pen
-                    + self.w_smooth * smooth_pen
-                )
-            else:
-                ctg_avg = ctg_sum_until / max(1, steps_until)
-                cost = (
-                    self.w_goal * (0.5 * ctg_avg + 0.5 * ctg_min)
-                    + self.w_obs * collision_pen
-                    + self.w_smooth * smooth_pen
-                )
-            if cost < best_cost:
-                best_cost = cost
-                best_rollout = rollout[: steps_until + 1] if steps_until > 0 else rollout
-                best_action = v
+        costs, rollouts = score_rollouts(
+            actions=actions, obs=obs, gl=gl, occ=occ, ctg=ctg,
+            unreachable_penalty=unreachable_penalty,
+            horizon=self.horizon, dt_plan=self.dt_plan,
+            resolution=self.resolution, goal_radius=self.goal_radius,
+            pred_traj=pred_traj, r2_arr=r2_arr, wind_step=wind_step,
+            prev_action=self._prev_action,
+            w_goal=self.w_goal, w_obs=self.w_obs, w_smooth=self.w_smooth,
+        )
 
-        assert best_rollout is not None and best_action is not None
+        best_action, best_cost, best_k = argmin_aggregate(costs, actions)
+        best_rollout = rollouts[best_k]
         self._prev_action = best_action
+
         return Plan(
             waypoints=best_rollout[1:],
             target_velocity=best_action,
-            meta={"planner": "mpc", "cost": float(best_cost)},
+            meta={"planner": "mpc", "cost": best_cost},
         )
