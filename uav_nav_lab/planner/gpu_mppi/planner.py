@@ -67,6 +67,7 @@ class GPUMPPIPlanner(Planner):
         mode_aware_lateral_ratio: float = 0.5,
         ctg_cache_tolerance: int = 0,
         viz_rollouts: int = 24,
+        log_action_provenance: bool = False,
         predictor: Predictor | None = None,
         device: str = "cuda",
     ) -> None:
@@ -99,6 +100,7 @@ class GPUMPPIPlanner(Planner):
         self.mode_aware_lateral_ratio = max(0.0, float(mode_aware_lateral_ratio))
         self.ctg_cache_tolerance = max(0, int(ctg_cache_tolerance))
         self.viz_rollouts = int(viz_rollouts)
+        self.log_action_provenance = bool(log_action_provenance)
         self._predictor: Predictor = (
             predictor if predictor is not None else build_predictor(None)
         )
@@ -150,6 +152,7 @@ class GPUMPPIPlanner(Planner):
             mode_aware_lateral_ratio=float(cfg.get("mode_aware_lateral_ratio", 0.5)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
+            log_action_provenance=bool(cfg.get("log_action_provenance", False)),
             predictor=build_predictor(cfg.get("predictor")),
             device=str(cfg.get("device", "cuda")),
         )
@@ -213,6 +216,76 @@ class GPUMPPIPlanner(Planner):
         bias_perp = bias_perp / bn
         biased = base + self.asymmetric_bias * bias_perp
         return biased / float(np.linalg.norm(biased))
+
+    def _build_action_provenance(
+        self,
+        *,
+        rr: Any,
+        agg: Any,
+        chosen_action_t: Any,
+        base: np.ndarray,
+        ndim: int,
+        top_k: int = 5,
+    ) -> dict[str, Any]:
+        """Small JSON-safe snapshot of how the replan command was chosen."""
+        torch_mod = _require_torch()
+
+        def vec(tensor: Any) -> list[float]:
+            return [float(v) for v in tensor.detach().cpu().numpy().tolist()]
+
+        if agg.mode_aware_triggered:
+            action_source = "mode_aware"
+        elif agg.fallback_triggered:
+            action_source = "argmin_fallback"
+        else:
+            action_source = "softmax"
+
+        argmax_weight_idx = int(rr.weights.argmax().item())
+        top_n = min(max(1, int(top_k)), int(rr.weights.shape[0]))
+        top_weights, top_indices = torch_mod.topk(rr.weights, k=top_n)
+        top_rows: list[dict[str, Any]] = []
+        for rank, (weight, sample_idx_t) in enumerate(zip(top_weights, top_indices), start=1):
+            sample_idx = int(sample_idx_t.item())
+            top_rows.append(
+                {
+                    "rank": rank,
+                    "sample_idx": sample_idx,
+                    "weight": float(weight.item()),
+                    "cost": float(rr.costs[sample_idx].item()),
+                    "action": vec(rr.actions_t[sample_idx]),
+                }
+            )
+
+        y_weight_mass: dict[str, float | None]
+        if ndim > 1:
+            y_actions = rr.actions_t[:, 1]
+            y_weight_mass = {
+                "positive": float(rr.weights[y_actions > 0].sum().item()),
+                "negative": float(rr.weights[y_actions < 0].sum().item()),
+                "near_zero": float(rr.weights[y_actions == 0].sum().item()),
+            }
+        else:
+            y_weight_mass = {"positive": None, "negative": None, "near_zero": None}
+
+        return {
+            "action_source": action_source,
+            "temperature": self.temperature,
+            "best_rollout_sample_idx": int(agg.best_k),
+            "argmax_weight_idx": argmax_weight_idx,
+            "argmin_idx": int(rr.argmin_idx),
+            "chosen_action": vec(chosen_action_t),
+            "softmax_action": vec(rr.softmax_action),
+            "argmax_weight_action": vec(rr.actions_t[argmax_weight_idx]),
+            "argmin_action": vec(rr.argmin_action),
+            "base_direction": [float(v) for v in base.tolist()],
+            "cost_min": float(rr.cost_min.item()),
+            "weight_max": float(rr.weights.max().item()),
+            "weight_entropy": float(
+                (-rr.weights * torch_mod.log(rr.weights + 1e-12)).sum().item()
+            ),
+            "weight_mass_by_action_y_sign": y_weight_mass,
+            "top_weighted_actions": top_rows,
+        }
 
     def plan(
         self,
@@ -331,23 +404,32 @@ class GPUMPPIPlanner(Planner):
 
         chosen_action = chosen_action_t.cpu().numpy()
         self._prev_action = chosen_action
+        meta = {
+            "planner": "gpu_mppi",
+            "cost_min": float(rr.cost_min.item()),
+            "weight_max": float(rr.weights.max().item()),
+            "weight_entropy": float(
+                (-rr.weights * torch_mod.log(rr.weights + 1e-12)).sum().item()
+            ),
+            "n_samples": self.n_samples,
+            "device": str(self._device),
+            "rollouts": rollouts_meta,
+            "best_rollout_idx": int(best_vis_idx),
+            "fallback_to_argmin": bool(agg.fallback_triggered),
+            "mode_aware_triggered": bool(agg.mode_aware_triggered),
+            "mode_aware_cluster_sign": int(agg.mode_aware_cluster_sign),
+        }
+        if self.log_action_provenance:
+            meta["action_provenance"] = self._build_action_provenance(
+                rr=rr,
+                agg=agg,
+                chosen_action_t=chosen_action_t,
+                base=base,
+                ndim=ndim,
+            )
 
         return Plan(
             waypoints=best_full[1:],
             target_velocity=chosen_action,
-            meta={
-                "planner": "gpu_mppi",
-                "cost_min": float(rr.cost_min.item()),
-                "weight_max": float(rr.weights.max().item()),
-                "weight_entropy": float(
-                    (-rr.weights * torch_mod.log(rr.weights + 1e-12)).sum().item()
-                ),
-                "n_samples": self.n_samples,
-                "device": str(self._device),
-                "rollouts": rollouts_meta,
-                "best_rollout_idx": int(best_vis_idx),
-                "fallback_to_argmin": bool(agg.fallback_triggered),
-                "mode_aware_triggered": bool(agg.mode_aware_triggered),
-                "mode_aware_cluster_sign": int(agg.mode_aware_cluster_sign),
-            },
+            meta=meta,
         )

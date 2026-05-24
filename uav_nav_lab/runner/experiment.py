@@ -148,6 +148,11 @@ def _run_episode(
                 planner_dt_ms=planner_dt_ms,
                 rollouts=plan.meta.get("rollouts"),
                 best_rollout_idx=plan.meta.get("best_rollout_idx"),
+                planner_meta=(
+                    {"action_provenance": plan.meta["action_provenance"]}
+                    if "action_provenance" in plan.meta
+                    else None
+                ),
             )
 
         cmd = _follow_plan(

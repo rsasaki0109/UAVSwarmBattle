@@ -1004,6 +1004,57 @@ JSON を出す。claim に使う主 table は GPU env-collision rows:
 3. easy side `5.625/34.375` 以降は GPU env collision row が 0。したがって
    mechanism claim は split band に限定するのが正確。
 
+Action provenance check (2026-05-25):
+
+GPU MPPI に opt-in の `planner.log_action_provenance` を追加し、
+`scripts/run_race_simple_phase_sweep.py --gpu-log-action-provenance` から
+有効化できるようにした。runner/recorder は `replans[].planner_meta.
+action_provenance` に compact JSON を保存する。既存の `rollouts` /
+`best_rollout_idx` consumers はそのまま。
+
+repro:
+
+```bash
+python scripts/run_race_simple_phase_sweep.py \
+  --n 1 --period 19.8 --y-pair 5.5,34.5 \
+  --planner gpu_mppi \
+  --output-root results/_race_simple_action_provenance \
+  --gpu-log-action-provenance --python /usr/bin/python3
+
+python scripts/run_race_simple_phase_sweep.py \
+  --n 1 --period 19.8 --y-pair 5.375,34.625 \
+  --planner gpu_mppi \
+  --output-root results/_race_simple_action_provenance \
+  --gpu-log-action-provenance --python /usr/bin/python3
+
+python scripts/analyze_race_simple_action_provenance.py \
+  --run-dir results/_race_simple_action_provenance/p19p8_y5p5_34p5/gpu_mppi
+python scripts/analyze_race_simple_action_provenance.py \
+  --run-dir results/_race_simple_action_provenance/p19p8_y5p375_34p625/gpu_mppi
+```
+
+Both split cells reproduce the same provenance at the pre-contact replan
+(`replan_t=29.10`):
+
+| cell | event_t | source | cmd vs chosen | chosen vs softmax | visible rollout clearance | cmd/chosen/softmax y | argmax/argmin y | weight mass y + / - |
+|------|---------|--------|---------------|-------------------|----------------------------|----------------------|-----------------|---------------------|
+| p19.8, y=5.375/34.625 | 29.20 | softmax | 0.000e+00 | 0.000e+00 | +0.37 m | -1.51 m/s toward obstacle | +3.61 m/s escape | 0.381 / 0.619 |
+| p19.8, y=5.50/34.50 | 29.25 | softmax | 0.000e+00 | 0.000e+00 | +0.47 m | -1.51 m/s toward obstacle | +3.61 m/s escape | 0.381 / 0.619 |
+
+Additional common values: `weight_max=0.053`, entropy `3.13`; top weighted
+sample is also argmin (`idx=18`, `cost=-999999.9`, `y=+3.61`, escape).
+
+This resolves the command provenance: the step `cmd` is exactly
+`Plan.target_velocity`, `target_velocity` is exactly the vanilla softmax
+weighted action, and the clean visible rollout is the highest-weight/argmin
+sample used for visualization and waypoints, **not** the actual velocity
+command. The failure mechanism is therefore more precise than the earlier
+wording:
+
+> GPU MPPI sees a clean escape rollout, but vanilla softmax action aggregation
+> averages enough lower-weight toward-obstacle samples to emit a toward-obstacle
+> target velocity. MPC/argmin would have taken the escape sample.
+
 0.25 m bracket sweep (n=3, seeds 42-44):
 
 | cell | MPC | GPU MPPI | read |

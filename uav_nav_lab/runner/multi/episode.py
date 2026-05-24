@@ -120,6 +120,11 @@ def run_episode_multi(
                     planner_dt_ms=planner_dt_ms,
                     rollouts=plans[i].meta.get("rollouts"),
                     best_rollout_idx=plans[i].meta.get("best_rollout_idx"),
+                    planner_meta=(
+                        {"action_provenance": plans[i].meta["action_provenance"]}
+                        if "action_provenance" in plans[i].meta
+                        else None
+                    ),
                 )
 
         # 2. step each drone's sim.

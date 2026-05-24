@@ -87,6 +87,7 @@ def test_gpu_mppi_from_config_roundtrip_preserves_knobs() -> None:
         "mode_aware_lateral_ratio": 0.7,
         "ctg_cache_tolerance": 3,
         "viz_rollouts": 16,
+        "log_action_provenance": True,
         "w_goal": 0.5,
         "w_obs": 50.0,
         "w_smooth": 0.1,
@@ -105,6 +106,28 @@ def test_gpu_mppi_action_norm_does_not_exceed_max_speed() -> None:
     plan = planner.plan(np.array([5.0, 5.0]), np.array([15.0, 15.0]), _free_grid())
     speed = float(np.linalg.norm(plan.target_velocity))
     assert speed <= 3.0 + 1e-6
+
+
+def test_gpu_mppi_action_provenance_meta_is_opt_in() -> None:
+    obs = np.array([5.0, 5.0])
+    goal = np.array([15.0, 15.0])
+
+    default_plan = _basic_planner().plan(obs, goal, _free_grid())
+    assert "action_provenance" not in default_plan.meta
+
+    plan = _basic_planner(log_action_provenance=True).plan(obs, goal, _free_grid())
+    provenance = plan.meta["action_provenance"]
+    assert provenance["action_source"] == "softmax"
+    assert provenance["chosen_action"] == pytest.approx(plan.target_velocity.tolist())
+    assert len(provenance["softmax_action"]) == 2
+    assert len(provenance["argmax_weight_action"]) == 2
+    assert len(provenance["argmin_action"]) == 2
+    assert provenance["top_weighted_actions"]
+    assert set(provenance["weight_mass_by_action_y_sign"]) == {
+        "positive",
+        "negative",
+        "near_zero",
+    }
 
 
 def test_gpu_mppi_ctg_cache_reused_when_goal_cell_unchanged(monkeypatch) -> None:

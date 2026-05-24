@@ -91,6 +91,7 @@ def build_config(
     radius: float,
     speed: float,
     output_root: Path,
+    gpu_log_action_provenance: bool = False,
 ) -> dict[str, Any]:
     cfg = copy.deepcopy(base)
     tag = _variant_tag(period, y_low, y_high)
@@ -112,6 +113,8 @@ def build_config(
     n_loops = int(scenario.get("n_loops", 2))
     cfg["simulator"]["max_steps"] = int(round(float(period) * n_loops / dt))
     cfg.setdefault("output", {})["dir"] = str(output_root / tag / planner)
+    if planner == "gpu_mppi" and gpu_log_action_provenance:
+        cfg.setdefault("planner", {})["log_action_provenance"] = True
     return cfg
 
 
@@ -341,6 +344,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="skip uav-nav runs and summarize existing result directories",
     )
+    p.add_argument(
+        "--gpu-log-action-provenance",
+        action="store_true",
+        help="enable compact GPU MPPI action-source logging in replan JSON",
+    )
     return p.parse_args(argv)
 
 
@@ -370,6 +378,7 @@ def main(argv: list[str]) -> int:
                     radius=args.radius,
                     speed=args.speed,
                     output_root=args.output_root,
+                    gpu_log_action_provenance=bool(args.gpu_log_action_provenance),
                 )
                 config_path = args.scratch_dir / f"{variant}_{planner}.yaml"
                 _write_yaml(config_path, cfg)

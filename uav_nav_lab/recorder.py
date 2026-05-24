@@ -68,6 +68,7 @@ class EpisodeRecorder:
         planner_dt_ms: float,
         rollouts: list | None = None,
         best_rollout_idx: int | None = None,
+        planner_meta: dict[str, Any] | None = None,
     ) -> None:
         entry: dict[str, Any] = {
             "t": float(t),
@@ -78,6 +79,8 @@ class EpisodeRecorder:
             entry["rollouts"] = rollouts
             if best_rollout_idx is not None:
                 entry["best_rollout_idx"] = int(best_rollout_idx)
+        if planner_meta:
+            entry["planner_meta"] = planner_meta
         self.replans.append(entry)
 
     def set_outcome(self, outcome: str, **extra: Any) -> None:
