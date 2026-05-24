@@ -936,6 +936,32 @@ GPU MPPI は short-horizon constant-action rollout では clean と評価した
 内側 shortcut に softmax が戻り、次 replan で dynamic obstacle 側に
 切り返す。MPC は argmin/CHOMP 的に +y/+z へ強く避けるため接触しない。
 
+Static mechanism figure (2026-05-25):
+
+```bash
+python scripts/render_race_simple_phase_mechanism.py
+```
+
+`scripts/render_race_simple_phase_mechanism.py` を追加。既存の
+`p19p8_y5p5_34p5` logs だけを読み、seed 42 / drone 3 / t=28.6〜29.35 の
+XY 静止図を `results/_race_simple_phase_sweep/p19p8_y5p5_34p5/mechanism_trace.png`
+へ出す。図は GPU/MPC actual path、reference、GPU の visible rollouts、
+t=28.7/28.9/29.1/29.25/29.3 の dynamic obstacle contact disk、GPU の
+env collision point を重ねる。
+
+default output:
+
+- GPU replan t=29.10 の visible rollouts は 24 本中 2 本が predicted hit。
+  全 rollout の最小 clearance は -0.34 m。
+- ただし選択 visible rollout の clearance は +0.47 m。局所評価上は clean。
+- 実閉ループの GPU window min clearance は +0.03 m at t=29.25 で、
+  同じ row から collision flag が立つ (episode final_t は 29.30)。
+- MPC の同 window min clearance は +0.34 m at t=29.00。
+
+これで「dynamic obstacle を見ていない」のではなく、「visible rollout 内では
+clean に見える shortcut を選ぶが、replan 後の実閉ループが obstacle contact
+disk 側へ戻る」という mechanism candidate を図で固定できた。
+
 0.25 m bracket sweep (n=3, seeds 42-44):
 
 | cell | MPC | GPU MPPI | read |
