@@ -913,14 +913,36 @@ python scripts/run_race_simple_phase_sweep.py \
   --n 10 --period 19.8 --y-pair 5.5,34.5 --python /usr/bin/python3
 ```
 
+Mechanism trace helper:
+
+```bash
+python scripts/analyze_race_simple_phase_trace.py
+```
+
+seed 42 / drone 3 の trace:
+
+- MPC は t=28.9 で `cmd_y=+7.85`、t=29.1 で `cmd_y=+5.33` に切り、
+  obstacle 側から +y / +z に逃げて clearance を +0.34 m → +1.10 m へ戻す。
+- GPU MPPI は t=28.9 で `cmd_y=+1.80` までは逃げるが、t=29.1 で
+  `cmd_y=-1.51` に切り返し、clearance が +0.52 m → +0.03 m へ縮む。
+- GPU の visible rollouts は t=28.7 / 28.9 / 29.1 でそれぞれ
+  1/24, 1/24, 2/24 が predicted dynamic hit。つまり dynamic obstacle を
+  完全に見ていないわけではない。一方、選択可視 rollout の clearance は
+  +1.07 m, +1.04 m, +0.47 m と positive に評価されており、実際の閉ループ
+  command sequence が接触側へ戻っている。
+
+暫定読み: post-fix dynamic obstacle は planner に入っているが、この cell の
+GPU MPPI は short-horizon constant-action rollout では clean と評価した
+内側 shortcut に softmax が戻り、次 replan で dynamic obstacle 側に
+切り返す。MPC は argmin/CHOMP 的に +y/+z へ強く避けるため接触しない。
+
 次にやるなら:
 
-1. GPU seed 42 の rollout viz / final clearance trace を見る。
-   目的は、drone 3 が dynamic obstacle を見ているのに softmax 平均で
-   wrong-side に流れるのか、そもそも prediction/occupancy の時相がずれて
-   見えていないのかを切り分けること。
-2. その後に `y=5.25/34.75` と `y=5.75/34.25` を n=3 で挟み、
+1. `y=5.25/34.75` と `y=5.75/34.25` を n=3 で挟み、
    deterministic floor/ceiling ではなく partial band があるか確認する。
+2. GPU seed 42 の rollout viz を作るなら、t=28.7〜29.3 付近に絞る。
+   full GIF より、dynamic obstacle / reference / selected visible rollout /
+   actual closed-loop path の静止図の方が mechanism 図として読みやすい。
 3. n=30 は、partial band か mechanism figure の狙いが立ってからでよい。
 
 ---
