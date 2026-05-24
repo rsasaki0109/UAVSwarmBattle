@@ -888,22 +888,24 @@ dummy_3d per-drone logs から collision source を分類する。
 | p19.8, y=5/35 | 1 | 0/1 joint, 1/4 per, env=1 peer=2, min_dyn +0.08 m | 0/1 joint, 0/4 per, env=2 peer=2, min_dyn +0.01 m | p19.8 baseline から 1 m 外側に振ると floor |
 | p19.8, y=7/33 | 1 | 0/1 joint, 0/4 per, env=2 peer=2, min_dyn -0.48 m | 0/1 joint, 0/4 per, env=2 peer=2, min_dyn -0.48 m | 1 m 内側も floor、clearance は contact proxy で負 |
 | p19.8, y=6/34 | 1 | 1/1 joint, 4/4 per | 1/1 joint, 4/4 per | 同じ runner path で baseline ceiling を再確認 |
-| **p19.8, y=5.5/34.5** | **3** | **3/3 joint, 12/12 per** | **0/3 joint, 3/12 per, env=3 peer=6, min_dyn +0.03 m** | first usable post-fix dynamic-contact candidate |
+| **p19.8, y=5.5/34.5** | **10** | **10/10 joint, 40/40 per** | **0/10 joint, 10/40 per, env=10 peer=20, min_dyn +0.03 m** | deterministic post-fix dynamic-contact regression cell |
 
 重要な読み:
 
 1. start-y は period/radius/speed よりさらに鋭い phase knob。
    p19.8 は y=6/34 で ceiling、y=5/35 と y=7/33 で floor、y=5.5/34.5
    で MPC clear / GPU dynamic-contact failure に分かれた。
-2. `p19.8, y=5.5/34.5` は seed 42-44 で deterministic:
+2. `p19.8, y=5.5/34.5` は seed 42-51 で deterministic:
    GPU は毎 seed で drone 3 が env collision at t=29.3 s、その後 drone 2
    が peer at t=34.2 s、drone 1 が peer at t=39.0 s。MPC は全機完走。
 3. これは `period=20` pilot とは逆向き (MPC loss ではなく GPU loss) だが、
    failure 起点が dynamic-obstacle proximity に戻った点で、post-fix の
    dynamic-obstacle mode candidate としては period=20 より良い。
 
-ただし citation status はまだ **pilot**。n=3 かつ seed-invariant なので、
-paper claim にはしない。次にやるなら:
+ただし citation status はまだ **regression cell / mechanism candidate**。
+n=10 でも seed-invariant で、planner 差というより deterministic
+geometry × softmax-action failure に見える。paper claim にする前に、
+まず mechanism trace を見る。
 
 ```bash
 # GPU MPPI には system python3 側の torch が必要 (.venv には torch 無し)
@@ -911,10 +913,15 @@ python scripts/run_race_simple_phase_sweep.py \
   --n 10 --period 19.8 --y-pair 5.5,34.5 --python /usr/bin/python3
 ```
 
-n=10 でも MPC ceiling / GPU env-initiated loss が維持されるなら、
-mechanism 確認 (rollout viz / final clearance trace) の後に n=30 paired
-へ進む。n=10 で GPU が deterministic 3/4-per-seed のままなら、paper
-claim より regression cell 扱いが妥当。
+次にやるなら:
+
+1. GPU seed 42 の rollout viz / final clearance trace を見る。
+   目的は、drone 3 が dynamic obstacle を見ているのに softmax 平均で
+   wrong-side に流れるのか、そもそも prediction/occupancy の時相がずれて
+   見えていないのかを切り分けること。
+2. その後に `y=5.25/34.75` と `y=5.75/34.25` を n=3 で挟み、
+   deterministic floor/ceiling ではなく partial band があるか確認する。
+3. n=30 は、partial band か mechanism figure の狙いが立ってからでよい。
 
 ---
 
