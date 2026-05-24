@@ -950,10 +950,25 @@ at t=29.2 s → drone 0/2 peer。`5.75/34.25` は両 planner ceiling。
 0.25 m bracket では seed-level partial band は見えず、hard / split /
 ceiling が離散的に切り替わる。
 
+0.125 m fine bracket sweep (n=3, seeds 42-44):
+
+| cell | MPC | GPU MPPI | read |
+|------|-----|----------|------|
+| p19.8, y=5.375/34.625 | 3/3 joint, 12/12 per | 0/3 joint, 3/12 per, env=3 peer=6, min_dyn +0.07 m | split side |
+| p19.8, y=5.625/34.375 | 3/3 joint, 12/12 per | 3/3 joint, 12/12 per | ceiling side |
+
+`5.375/34.625` は `5.50/34.50` と同じ failure mode:
+GPU は毎 seed で drone 3 env at t=29.25 s、その後 drone 2 peer at
+t=34.05 s、drone 1 peer at t=38.90 s。MPC は全機完走。
+`5.625/34.375` は両 planner ceiling。したがって hard→split の
+境界は (5.25, 5.375]、split→ceiling の境界は (5.50, 5.625] にある。
+まだ partial seed band は見えていない。
+
 次にやるなら:
 
-1. `y=5.375/34.625` と `y=5.625/34.375` を n=3 で挟み、
-   deterministic hard / split / ceiling の境界幅を詰める。
+1. 境界をさらに詰めるなら `y=5.3125/34.6875` と
+   `y=5.5625/34.4375` を n=3 で見る。ただしここまで seed-invariant なので、
+   partial band 探しより mechanism 図の優先度が上がった。
 2. GPU seed 42 の rollout viz を作るなら、t=28.7〜29.3 付近に絞る。
    full GIF より、dynamic obstacle / reference / selected visible rollout /
    actual closed-loop path の静止図の方が mechanism 図として読みやすい。
