@@ -936,10 +936,24 @@ GPU MPPI は short-horizon constant-action rollout では clean と評価した
 内側 shortcut に softmax が戻り、次 replan で dynamic obstacle 側に
 切り返す。MPC は argmin/CHOMP 的に +y/+z へ強く避けるため接触しない。
 
+0.25 m bracket sweep (n=3, seeds 42-44):
+
+| cell | MPC | GPU MPPI | read |
+|------|-----|----------|------|
+| p19.8, y=5.25/34.75 | 0/3 joint, 3/12 per, env=3 peer=6, min_dyn +0.01 m | 0/3 joint, 0/12 per, env=6 peer=6, min_dyn +0.05 m | all-planner hard side |
+| p19.8, y=5.50/34.50 | 10/10 joint, 40/40 per | 0/10 joint, 10/40 per, env=10 peer=20, min_dyn +0.03 m | deterministic split point |
+| p19.8, y=5.75/34.25 | 3/3 joint, 12/12 per | 3/3 joint, 12/12 per | all-planner easy side |
+
+`5.25/34.75` は deterministic だが failure drone が `5.50` と違う:
+MPC は drone 1 env at t=29.3 s → drone 0/3 peer、GPU は drone 1/3 env
+at t=29.2 s → drone 0/2 peer。`5.75/34.25` は両 planner ceiling。
+0.25 m bracket では seed-level partial band は見えず、hard / split /
+ceiling が離散的に切り替わる。
+
 次にやるなら:
 
-1. `y=5.25/34.75` と `y=5.75/34.25` を n=3 で挟み、
-   deterministic floor/ceiling ではなく partial band があるか確認する。
+1. `y=5.375/34.625` と `y=5.625/34.375` を n=3 で挟み、
+   deterministic hard / split / ceiling の境界幅を詰める。
 2. GPU seed 42 の rollout viz を作るなら、t=28.7〜29.3 付近に絞る。
    full GIF より、dynamic obstacle / reference / selected visible rollout /
    actual closed-loop path の静止図の方が mechanism 図として読みやすい。
