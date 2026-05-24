@@ -962,6 +962,48 @@ default output:
 clean に見える shortcut を選ぶが、replan 後の実閉ループが obstacle contact
 disk 側へ戻る」という mechanism candidate を図で固定できた。
 
+Batch mechanism metrics (2026-05-25):
+
+```bash
+python scripts/analyze_race_simple_mechanism_batch.py
+```
+
+`scripts/analyze_race_simple_mechanism_batch.py` を追加。全 `p19p8_y*`
+cell の GPU drone logs を走査し、GPU env collision があればその row、
+無ければ t=28.0〜30.5 の min-clearance row を event とする。各 event で
+`event_t - 0.15 s` 近傍の GPU replan を取り、次を JSON/table 化する:
+
+- selected visible rollout の predicted dynamic-obstacle clearance。
+- 同 replan 後の実閉ループ actual clearance。
+- `cmd_y` が nearest dynamic obstacle から逃げる向きから obstacle 側へ
+  切り返したか。
+- selected rollout の first-step `dy` と実際の `cmd_y` の符号 mismatch。
+- 同じ episode/drone/time window における paired MPC actual clearance。
+
+default run は
+`results/_race_simple_phase_sweep/mechanism_batch_summary.json` へ row-level
+JSON を出す。claim に使う主 table は GPU env-collision rows:
+
+| cell | GPU env rows | paired MPC success | differential clean→near | GPU flip | cmd mismatch | selected clear mean/min | GPU actual mean/min | MPC actual mean/min |
+|------|--------------|--------------------|--------------------------|----------|--------------|-------------------------|---------------------|---------------------|
+| p19.8, y=5.25/34.75 | 6 | 0/6 | 0/6 | 6/6 | 6/6 | -0.27/-0.81 m | +0.10/+0.05 m | +0.23/+0.01 m |
+| p19.8, y=5.375/34.625 | 3 | 3/3 | 3/3 | 3/3 | 3/3 | +0.37/+0.37 m | +0.07/+0.07 m | +0.52/+0.52 m |
+| p19.8, y=5.50/34.50 | 10 | 10/10 | 10/10 | 10/10 | 10/10 | +0.47/+0.47 m | +0.03/+0.03 m | +0.59/+0.59 m |
+| p19.8, y=5.625/34.375 | 0 | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| p19.8, y=5.75/34.25 | 0 | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+
+読み:
+
+1. split band の 2 cell では計 13/13 GPU env rows が
+   **paired MPC は success、GPU selected rollout は positive clearance、
+   しかし実閉ループは near-contact**。単発図ではなく batch metric として
+   mechanism を支持する。
+2. hard side `5.25/34.75` は GPU selected rollout 自体が negative clearance
+   平均 (-0.27 m) なので、これは clean-shortcut mechanism ではなく
+   all-planner hard geometry。
+3. easy side `5.625/34.375` 以降は GPU env collision row が 0。したがって
+   mechanism claim は split band に限定するのが正確。
+
 0.25 m bracket sweep (n=3, seeds 42-44):
 
 | cell | MPC | GPU MPPI | read |
