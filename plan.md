@@ -81,11 +81,17 @@
   race-simple の短い lookahead goal では、従来の rollout cost が goal 到達後の
   動的障害物接触を評価から外していたため、未来の衝突が clean reach 扱いに
   なっていた。post-goal collision scoring を有効にした再走
-  (`docs/data/race_hero_control_sweep_postgoal_dynbranch.json`) では
-  `p19p8_y4p5_35p5_v1p5_r1p15` が joint success、no-sweeper ghost
-  `-0.61 m`、moving clearance `+0.47 m`、path delta `5.55 m` を満たした。
-  README 先頭 GIF はこの run から再生成済み。次は n>1 / frozen /
-  wrong-velocity / no-prediction の確認で single-seed から率評価へ進める。
+  (`docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json`) では
+  `p19p8_y4p5_35p5_v1p5_r1p15` が n=10 joint success、no-sweeper ghost
+  `-0.61 m`、hero-seed moving clearance `+0.47 m`、path delta `5.55 m` を
+  満たした。controls
+  (`docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json`) では
+  `frozen_initial=10/10`、`frozen_encounter=0/10`、`wrong_velocity=10/10`、
+  `no_prediction=10/10`。結論は「速度予測が効いた」ではなく、
+  **short lookahead goal 後も衝突を採点すること + branch actions により、
+  moving sweeper のタイミングを通せた**という narrower claim。
+  README 先頭 GIF はこの run から再生成済み。次は branch-only /
+  postgoal-only ablation か、cell を増やす。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

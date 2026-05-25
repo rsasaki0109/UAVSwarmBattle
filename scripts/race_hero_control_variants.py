@@ -8,8 +8,8 @@ low-temperature moving-obstacle run, but ablate the dynamic cue:
 - frozen_encounter: obstacles are fixed at the encounter-time positions.
 - wrong_velocity: the simulator keeps true motion, but the planner sees
   reversed dynamic-obstacle velocities through the perfect sensor.
-- no_prediction: the planner sees current obstacles but does not forecast
-  their motion.
+- no_prediction: the planner sees current obstacles with zero observed
+  velocity and does not forecast their motion.
 """
 
 from __future__ import annotations
@@ -94,6 +94,8 @@ def build_variant_config(
         cfg["sensor"]["dynamic_velocity_scale"] = -1.0
     elif variant == "no_prediction":
         cfg.setdefault("planner", {})["use_prediction"] = False
+        cfg.setdefault("sensor", {})["type"] = "perfect"
+        cfg["sensor"]["dynamic_velocity_scale"] = 0.0
 
     return cfg
 

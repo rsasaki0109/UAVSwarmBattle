@@ -3058,7 +3058,22 @@ control-first survivor:
 | arm | outcome | ghost / moving clearance | path delta | report |
 |---|---:|---:|---:|---|
 | no-sweeper ghost | success | -0.61 m virtual | reference | `race_hero_control_sweep_postgoal_dynbranch.json` |
-| post-goal branch MPPI | 4/4 joint success | +0.47 m | 5.55 m max | `race_hero_control_sweep_postgoal_dynbranch.json` |
+| post-goal branch MPPI | 10/10 joint success | +0.47 m hero seed | 5.55 m max | `race_hero_control_sweep_postgoal_dynbranch_n10.json` |
+
+The n=10 controls sharpen the mechanism and avoid over-claiming:
+
+| control | joint | drone | interpretation |
+|---|---:|---:|---|
+| moving post-goal branch MPPI | 10/10 | 40/40 | positive arm |
+| frozen at t=0 | 10/10 | 40/40 | not blocked by the initial static pose |
+| frozen at encounter t=29.5 s | 0/10 | 20/40 | encounter pose blocks the line; timing matters |
+| wrong velocity | 10/10 | 40/40 | velocity direction is not the active dependency |
+| no prediction / zero observed velocity | 10/10 | 40/40 | current-obstacle branch + post-goal scoring is sufficient here |
+
+So the corrected claim is narrower than "dynamic prediction wins": the
+planner succeeds because it scores future collision beyond the short
+race lookahead goal and has branch actions available when the moving
+sweeper reaches the racing line.
 
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature

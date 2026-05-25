@@ -1,0 +1,85 @@
+{
+  "source": {
+    "moving_run": "results/_race_hero_control_sweep/p19p8_y4p5_35p5_v1p5_r1p15/moving_t0p1_argmin_dynbranch_postgoal_sm0p8_wobs500_fc3_dbr4_dbl1p2_dbs0-0p25-0p5-0p75-1",
+    "script": "scripts/race_hero_control_variants.py"
+  },
+  "freeze_encounter_t": 29.5,
+  "variants": [
+    {
+      "variant": "frozen_initial",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/frozen_initial",
+      "config": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/frozen_initial/config.yaml",
+      "summary": {
+        "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/frozen_initial",
+        "episodes": 10,
+        "n_drones": 4,
+        "joint_success": 10,
+        "drone_success": 40,
+        "drone_total": 40,
+        "env_collision": 0,
+        "peer_collision": 0,
+        "timeout": 0,
+        "missing_joint": 0,
+        "missing_drone": 0,
+        "min_dynamic_clearance_m": null
+      }
+    },
+    {
+      "variant": "frozen_encounter",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/frozen_encounter",
+      "config": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/frozen_encounter/config.yaml",
+      "summary": {
+        "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/frozen_encounter",
+        "episodes": 10,
+        "n_drones": 4,
+        "joint_success": 0,
+        "drone_success": 20,
+        "drone_total": 40,
+        "env_collision": 20,
+        "peer_collision": 0,
+        "timeout": 0,
+        "missing_joint": 0,
+        "missing_drone": 0,
+        "min_dynamic_clearance_m": -0.7999999999999998
+      }
+    },
+    {
+      "variant": "wrong_velocity",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/wrong_velocity",
+      "config": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/wrong_velocity/config.yaml",
+      "summary": {
+        "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/wrong_velocity",
+        "episodes": 10,
+        "n_drones": 4,
+        "joint_success": 10,
+        "drone_success": 40,
+        "drone_total": 40,
+        "env_collision": 0,
+        "peer_collision": 0,
+        "timeout": 0,
+        "missing_joint": 0,
+        "missing_drone": 0,
+        "min_dynamic_clearance_m": null
+      }
+    },
+    {
+      "variant": "no_prediction",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/no_prediction",
+      "config": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/no_prediction/config.yaml",
+      "summary": {
+        "run_dir": "results/_race_hero_control_variants/p19p8_y4p5_35p5_v1p5_r1p15/no_prediction",
+        "episodes": 10,
+        "n_drones": 4,
+        "joint_success": 10,
+        "drone_success": 40,
+        "drone_total": 40,
+        "env_collision": 0,
+        "peer_collision": 0,
+        "timeout": 0,
+        "missing_joint": 0,
+        "missing_drone": 0,
+        "min_dynamic_clearance_m": null
+      }
+    }
+  ]
+}

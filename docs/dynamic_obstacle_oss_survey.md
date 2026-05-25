@@ -136,8 +136,8 @@ controls; then decide whether topology-aware sampling is necessary.
 ### P0: replace weak GIF-only evidence
 
 The README GIF has been regenerated from the stronger post-goal
-dynbranch survivor. It is still a single-seed mechanism visual, but it
-now clears the control-first thresholds: no-sweeper virtual penetration
+dynbranch survivor. It now has an n=10 moving-arm check, and the hero
+seed clears the control-first thresholds: no-sweeper virtual penetration
 `-0.61 m`, moving clearance `+0.47 m`, and path delta `5.55 m`.
 
 ### P1: build the encounter report
@@ -219,13 +219,25 @@ Control-first outputs are tracked:
   success (`4/4` drones), with no-sweeper virtual clearance `-0.61 m`,
   moving clearance `+0.47 m`, and path delta `5.55 m`; it passes the
   single-seed control-first hero threshold and is now the README GIF.
+- `docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json`:
+  same moving-obstacle arm at n=10. It stays at `10/10` joint success
+  (`40/40` drones), with no env / peer collisions.
+- `docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json`:
+  n=10 controls from the same planner configuration. `frozen_initial`
+  succeeds `10/10`; `frozen_encounter` fails `0/10` joint with `20/40`
+  drone success and min dynamic clearance `-0.80 m`; `wrong_velocity`
+  and `no_prediction` both succeed `10/10`. Interpretation: this cell
+  is not strong evidence for velocity-prediction dependence. The robust
+  positive is timing/post-goal collision scoring plus branch candidates
+  avoiding a moving hazard that a frozen-at-encounter obstacle blocks.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
-complete it reliably in this seed: branch rollout seeds, and collision
-scoring beyond short race lookahead goals. The next step is not another
-GIF pass; it is expanding this cell into n>1 plus frozen /
-wrong-velocity / no-prediction controls.
+complete it reliably: branch rollout seeds, and collision scoring beyond
+short race lookahead goals. The n=10 controls narrow the claim: this is
+a race-timing / post-goal-scoring mechanism result, not a predictor-
+velocity result. The next step is either broader n/cell sweeps or a
+control that isolates branch seeding from post-goal scoring.
 
 ### P3: only then update README
 
