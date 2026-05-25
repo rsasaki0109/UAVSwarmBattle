@@ -2,10 +2,9 @@
 """Render the README race encounter as an overlay, not side-by-side.
 
 The side-by-side GIF is honest but weak: the reader has to mentally
-compare two panes. This renderer overlays the failed vanilla path and
-the low-temperature path in the same camera frame, against the same
-moving sweeper, so avoidance reads directly as path separation around
-the red safety halo.
+compare two panes. This renderer overlays the failed vanilla path, the
+low-temperature path, and optionally a no-sweeper control in the same
+camera frame, against the same moving sweeper.
 """
 
 from __future__ import annotations
@@ -30,6 +29,7 @@ INK = "#172033"
 OBSTACLE_COLOR = "#d6261f"
 FAIL_COLOR = "#ef4444"
 AVOID_COLOR = "#16a34a"
+GHOST_COLOR = "#475569"
 
 
 def load_cfg(path: Path) -> dict:
@@ -70,6 +70,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--failed-run", required=True, help="`path:label` for contact arm")
     ap.add_argument("--avoid-run", required=True, help="`path:label` for avoiding arm")
+    ap.add_argument(
+        "--ghost-run",
+        help="optional `path:label` for the no-sweeper control trajectory",
+    )
     ap.add_argument("--config", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--ep", type=int, default=0)
@@ -86,12 +90,16 @@ def main() -> int:
     ap.add_argument("--ylim", type=float, nargs=2, default=[25.0, 36.0])
     ap.add_argument(
         "--title",
-        default="Same moving sweeper: vanilla contacts, low-temp detours",
+        default="Same seed: obstacle bends low-temp away from no-sweeper ghost",
     )
     args = ap.parse_args()
 
     failed_dir, failed_label = parse_run(args.failed_run)
     avoid_dir, avoid_label = parse_run(args.avoid_run)
+    ghost_dir: Path | None = None
+    ghost_label: str | None = None
+    if args.ghost_run:
+        ghost_dir, ghost_label = parse_run(args.ghost_run)
     cfg = load_cfg(Path(args.config))
     scenario = cfg.get("scenario", {})
     world = np.asarray(scenario.get("size", [40.0, 40.0, 14.0]), dtype=float)
@@ -102,13 +110,25 @@ def main() -> int:
 
     failed_drones = load_drones(failed_dir, args.ep, n_drones=4)
     avoid_drones = load_drones(avoid_dir, args.ep, n_drones=4)
+    drone_groups = [failed_drones, avoid_drones]
+    if ghost_dir is not None:
+        ghost_drones = load_drones(ghost_dir, args.ep, n_drones=4)
+        drone_groups.append(ghost_drones)
+    else:
+        ghost_drones = None
     t_pad = max(
         max(len(d["steps"]) for d in failed_drones),
         max(len(d["steps"]) for d in avoid_drones),
+        *(max(len(d["steps"]) for d in group) for group in drone_groups[2:]),
     )
     failed_true, failed_ref, failed_coll = trajectory_arrays(failed_drones, T_pad=t_pad)
     avoid_true, avoid_ref, avoid_coll = trajectory_arrays(avoid_drones, T_pad=t_pad)
-    t_max = min(failed_true.shape[1], avoid_true.shape[1])
+    if ghost_drones is not None:
+        ghost_true, ghost_ref, ghost_coll = trajectory_arrays(ghost_drones, T_pad=t_pad)
+        t_max = min(failed_true.shape[1], avoid_true.shape[1], ghost_true.shape[1])
+    else:
+        ghost_true = ghost_ref = ghost_coll = None
+        t_max = min(failed_true.shape[1], avoid_true.shape[1])
 
     obs_traj = obstacle_trajectory(
         np.asarray(obstacle["start"], dtype=float),
@@ -148,6 +168,17 @@ def main() -> int:
     )
 
     fail_line, = ax.plot([], [], color=FAIL_COLOR, linewidth=3.0, alpha=0.92, zorder=10)
+    ghost_line = None
+    if ghost_true is not None:
+        ghost_line, = ax.plot(
+            [],
+            [],
+            color=GHOST_COLOR,
+            linewidth=2.4,
+            alpha=0.82,
+            linestyle=(0, (5, 3)),
+            zorder=10,
+        )
     avoid_line, = ax.plot([], [], color=AVOID_COLOR, linewidth=3.4, alpha=0.95, zorder=11)
     ref_line, = ax.plot(
         [],
@@ -195,6 +226,17 @@ def main() -> int:
         alpha=0.95,
         zorder=13,
     )
+    ghost_pt = None
+    if ghost_true is not None:
+        ghost_pt = Circle(
+            (0.0, 0.0),
+            drone_radius,
+            facecolor=GHOST_COLOR,
+            edgecolor="#ffffff",
+            linewidth=1.0,
+            alpha=0.96,
+            zorder=13,
+        )
     avoid_pt = Circle(
         (0.0, 0.0),
         drone_radius,
@@ -204,10 +246,24 @@ def main() -> int:
         alpha=0.98,
         zorder=14,
     )
-    for patch in [obs_halo, obs_pt, fail_pt, avoid_pt]:
+    patches = [obs_halo, obs_pt, fail_pt, avoid_pt]
+    if ghost_pt is not None:
+        patches.insert(3, ghost_pt)
+    for patch in patches:
         ax.add_patch(patch)
 
     fail_clear, = ax.plot([], [], color=FAIL_COLOR, linewidth=2.0, alpha=0.8, zorder=15)
+    ghost_clear = None
+    if ghost_true is not None:
+        ghost_clear, = ax.plot(
+            [],
+            [],
+            color=GHOST_COLOR,
+            linewidth=1.7,
+            alpha=0.75,
+            linestyle=(0, (2, 2)),
+            zorder=15,
+        )
     avoid_clear, = ax.plot([], [], color=AVOID_COLOR, linewidth=2.4, alpha=0.95, zorder=15)
     title_text = fig.suptitle("", fontsize=13.5, color=INK, fontweight="semibold")
     status_text = ax.text(
@@ -230,7 +286,11 @@ def main() -> int:
     legend_text = ax.text(
         0.97,
         0.96,
-        f"red: {failed_label}\ngreen: {avoid_label}\ndash: race line",
+        (
+            f"red: {failed_label}\ngreen: {avoid_label}\n"
+            + (f"gray: {ghost_label}\n" if ghost_label else "")
+            + "dash: race line"
+        ),
         transform=ax.transAxes,
         ha="right",
         va="top",
@@ -254,6 +314,7 @@ def main() -> int:
         k1 = min(t_max - 1, k + args.future)
         failed_k = min(k, failed_true.shape[1] - 1)
         avoid_k = min(k, avoid_true.shape[1] - 1)
+        ghost_k = min(k, ghost_true.shape[1] - 1) if ghost_true is not None else None
         obs = obs_traj[k]
 
         fail_line.set_data(
@@ -264,6 +325,11 @@ def main() -> int:
             avoid_true[fd, k0 : avoid_k + 1, 0],
             avoid_true[fd, k0 : avoid_k + 1, 1],
         )
+        if ghost_true is not None and ghost_line is not None and ghost_k is not None:
+            ghost_line.set_data(
+                ghost_true[fd, k0 : ghost_k + 1, 0],
+                ghost_true[fd, k0 : ghost_k + 1, 1],
+            )
         ref_line.set_data(
             avoid_ref[fd, k0 : avoid_k + 1, 0],
             avoid_ref[fd, k0 : avoid_k + 1, 1],
@@ -280,6 +346,17 @@ def main() -> int:
         avoid_pt.center = (float(avoid_pos[0]), float(avoid_pos[1]))
         fail_clear.set_data([fail_pos[0], obs[0]], [fail_pos[1], obs[1]])
         avoid_clear.set_data([avoid_pos[0], obs[0]], [avoid_pos[1], obs[1]])
+        ghost_c = None
+        if ghost_true is not None and ghost_pt is not None and ghost_clear is not None and ghost_k is not None:
+            ghost_pos = ghost_true[fd, ghost_k, :]
+            ghost_pt.center = (float(ghost_pos[0]), float(ghost_pos[1]))
+            ghost_clear.set_data([ghost_pos[0], obs[0]], [ghost_pos[1], obs[1]])
+            ghost_c = clearance(
+                ghost_pos,
+                obs,
+                obstacle_radius=obstacle_radius,
+                drone_radius=drone_radius,
+            )
 
         fail_c = clearance(
             fail_pos,
@@ -312,9 +389,18 @@ def main() -> int:
             avoid_pt.set_facecolor(AVOID_COLOR)
             avoid_pt.set_edgecolor("#ffffff")
 
-        status_text.set_text(f"{fail_label_now}\n{avoid_label_now}")
+        ghost_label_now = (
+            f"gray virtual clearance {ghost_c:+.2f} m"
+            if ghost_c is not None
+            else None
+        )
+        status_text.set_text(
+            "\n".join(
+                row for row in [fail_label_now, avoid_label_now, ghost_label_now] if row
+            )
+        )
         title_text.set_text(f"{args.title}   t = {k * args.dt:.2f} s")
-        return [
+        artists = [
             fail_line,
             avoid_line,
             ref_line,
@@ -330,6 +416,10 @@ def main() -> int:
             status_text,
             legend_text,
         ]
+        for artist in [ghost_line, ghost_pt, ghost_clear]:
+            if artist is not None:
+                artists.append(artist)
+        return artists
 
     anim = FuncAnimation(
         fig,

@@ -1,0 +1,112 @@
+{
+  "source": {
+    "moving_run": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1",
+    "control_run": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1",
+    "control_config": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1/config.yaml",
+    "gif": "docs/images/compare_race_temperature_avoid.gif"
+  },
+  "focus": {
+    "episode": 0,
+    "drone": 3,
+    "obstacle": 0,
+    "window_s": [
+      26.0,
+      31.6
+    ],
+    "snapshot_t": 29.3,
+    "obstacle_xy_start": [
+      20.0,
+      36.0
+    ],
+    "obstacle_xy_end": [
+      20.0,
+      27.599999999999994
+    ],
+    "obstacle_travel_m": 8.400000000000006
+  },
+  "metrics": {
+    "moving_low_temp": {
+      "run_dir": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1",
+      "outcome": "success",
+      "first_collision_t": null,
+      "window_min_clearance": {
+        "t": 29.20000000000028,
+        "clearance_m": 0.0979626184548672,
+        "collision_flag": false
+      },
+      "snapshot": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "virtual_clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      }
+    },
+    "control": {
+      "label": "no-sweeper low-temp t=0.1",
+      "run_dir": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1",
+      "config": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1/config.yaml",
+      "summary": {
+        "run_dir": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1",
+        "episodes": 1,
+        "n_drones": 4,
+        "joint_success": 1,
+        "drone_success": 4,
+        "drone_total": 4,
+        "env_collision": 0,
+        "peer_collision": 0,
+        "timeout": 0,
+        "missing_joint": 0,
+        "missing_drone": 0,
+        "min_dynamic_clearance_m": null
+      },
+      "outcome": "success",
+      "first_collision_t": null,
+      "virtual_window_min_clearance_to_original_sweeper": {
+        "t": 29.550000000000285,
+        "clearance_m": -0.0007196385879226774,
+        "collision_flag": false
+      },
+      "virtual_snapshot_against_original_sweeper": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "virtual_clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      }
+    },
+    "comparison": {
+      "trajectory_delta_m": {
+        "samples": 112,
+        "rms_delta_m": 0.2905836535713514,
+        "max_delta_m": 0.812782646506783,
+        "max_delta_t": 30.950000000000305
+      },
+      "snapshot_delta_m": 0.0,
+      "moving_minus_control_virtual_min_clearance_m": 0.09868225704278988,
+      "supports_obstacle_caused_detour": true
+    }
+  }
+}

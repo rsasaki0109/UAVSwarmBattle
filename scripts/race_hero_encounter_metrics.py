@@ -23,7 +23,7 @@ from analyze_race_simple_phase_trace import obstacle_positions
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE = (
-    ROOT / "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5"
+    ROOT / "results/_race_simple_causal_probe/p19p8_y5p0_35p0"
 )
 DEFAULT_OUT = ROOT / "docs/data/race_hero_encounter_metrics.json"
 

@@ -1,6 +1,6 @@
 {
   "source": {
-    "config": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1/config.yaml",
+    "config": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1/config.yaml",
     "gif": "docs/images/compare_race_temperature_avoid.gif"
   },
   "focus": {
@@ -14,56 +14,56 @@
     "snapshot_t": 29.3,
     "obstacle_xy_start": [
       20.0,
-      35.5
+      36.0
     ],
     "obstacle_xy_end": [
       20.0,
-      27.099999999999994
+      27.599999999999994
     ],
     "obstacle_travel_m": 8.400000000000006
   },
   "arms": [
     {
       "label": "vanilla-t1.0",
-      "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t1",
+      "run_dir": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t1",
       "episode": 0,
       "drone": 3,
       "outcome": "collision",
-      "first_collision_t": 29.25000000000028,
+      "first_collision_t": 29.15000000000028,
       "window_min_clearance": {
-        "t": 29.25000000000028,
-        "clearance_m": 0.0330090936316747,
+        "t": 29.15000000000028,
+        "clearance_m": 0.01046686521737783,
         "collision_flag": true
       },
       "snapshot": {
-        "t": 29.25000000000028,
+        "t": 29.15000000000028,
         "drone_xy": [
-          20.668253081889006,
-          31.89265029398851
+          21.182385676951263,
+          32.04399783579759
         ],
         "reference_xy": [
-          22.27703741237115,
-          31.877857302571346
+          22.778370842669492,
+          31.817693036146682
         ],
         "obstacle_xy": [
           20.0,
-          30.62499999999958
+          31.27499999999958
         ],
-        "clearance_m": 0.0330090936316747,
-        "reference_error_m": 1.6088571930804338,
+        "clearance_m": 0.01046686521737783,
+        "reference_error_m": 1.6119571113687534,
         "collision_flag": true
       }
     },
     {
       "label": "low-temp-t0.1",
-      "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1",
+      "run_dir": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1",
       "episode": 0,
       "drone": 3,
       "outcome": "success",
       "first_collision_t": null,
       "window_min_clearance": {
-        "t": 29.550000000000285,
-        "clearance_m": 0.45491959496830403,
+        "t": 29.20000000000028,
+        "clearance_m": 0.0979626184548672,
         "collision_flag": false
       },
       "snapshot": {
@@ -78,17 +78,17 @@
         ],
         "obstacle_xy": [
           20.0,
-          30.549999999999578
+          31.049999999999578
         ],
-        "clearance_m": 0.8254173707765959,
+        "clearance_m": 0.36541579072224084,
         "reference_error_m": 1.9059008263747783,
         "collision_flag": false
       }
     }
   ],
   "comparison": {
-    "low_temp_window_clearance_gain_m": 0.42191050133662933,
-    "low_temp_snapshot_clearance_gain_m": 0.7924082771449212,
+    "low_temp_window_clearance_gain_m": 0.08749575323748937,
+    "low_temp_snapshot_clearance_gain_m": 0.354948925504863,
     "vanilla_contacts_but_low_temp_does_not": true
   }
 }

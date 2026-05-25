@@ -9,11 +9,13 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > dynamic-obstacle headlines were retracted after commit `1646e11` fixed
 > a multi-runner bug that froze dynamic obstacles after total-wipeout
 > episodes. The replacement evidence is now mechanism-first: the hero
-> GIF below is a real post-fix drone race with two moving sweepers:
-> vanilla GPU MPPI collides, while the same rollout/cost stack at lower
-> softmax temperature completes cleanly. The race-simple split cell also
-> logs the exact softmax command that turns a clean escape rollout into
-> a collision. See `docs/findings.md` for the audit trail.
+> GIF below is a real post-fix drone race with moving sweepers plus a
+> no-sweeper control. Vanilla GPU MPPI collides, the same rollout/cost
+> stack at lower softmax temperature completes cleanly, and the gray
+> no-sweeper ghost shows that this hero line is not just a lucky
+> non-contact. The race-simple split cell also logs the exact softmax
+> command that turns a clean escape rollout into a collision. See
+> `docs/findings.md` for the audit trail.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -21,28 +23,27 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed drone-race encounter with overlaid trajectories: red vanilla temperature contacts a moving sweeper at 29.25 seconds while green low-temperature GPU MPPI detours outside the red safety halo" width="1080">
+<img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed drone-race encounter with overlaid trajectories: red vanilla temperature contacts a moving sweeper, green low-temperature GPU MPPI bends away, and gray no-sweeper ghost shows the uncontrolled line skimming the safety halo" width="1080">
 
-<i><b>Post-fix drone race hero, zoomed at the obstacle encounter.</b>
+<i><b>Post-fix drone race hero, zoomed at the obstacle encounter with a no-sweeper control.</b>
 Four drones run a horizontal oval while two red moving sweepers cross
 the racing line; this first-frame visual zooms into drone 3 versus the
 upper sweeper at <code>t≈29 s</code>. The translucent red disc is the
 obstacle + drone safety radius. Red is vanilla <code>t=1.0</code>;
-green is the low-temperature counterfactual; the dashed line is the
-race line. Same race cell, same seed, same GPU MPPI rollout/cost stack;
-only the softmax temperature changes. The red trajectory contacts the
-sweeper at <code>29.25 s</code>
-(aggregate baseline: <code>0/10</code> joint success,
-<code>10</code> dynamic-obstacle contacts and <code>20</code>
-follow-on peer contacts). The green trajectory lowers only the
-temperature to <code>t=0.1</code>, detours outside the safety halo,
-and keeps moving
-(fresh counterfactual: <code>3/3</code> joint success,
-<code>12/12</code> drone-episodes, no env or peer contacts). Rendered
-from real episode logs with
-<code>scripts/render_race_avoidance_overlay_gif.py</code>;
-encounter metrics are stored in
-<code>docs/data/race_hero_encounter_metrics.json</code>.
+green is the low-temperature counterfactual; gray is the same
+low-temperature controller rerun with scene sweepers removed; the
+dashed line is the race line. The adopted hero uses the tighter
+<code>y=5.0/35.0</code> phase: red contacts the sweeper at
+<code>29.15 s</code>, green keeps <code>+0.10 m</code> minimum
+clearance, and the gray no-sweeper ghost would skim slightly inside
+the original safety halo (<code>-0.0007 m</code>) before diverging by
+<code>0.81 m</code>. This is a single-seed visual control, not a
+paper-grade success-rate claim; the aggregate temperature
+counterfactual remains in the findings below. Rendered from real
+episode logs with <code>scripts/render_race_avoidance_overlay_gif.py</code>;
+encounter and no-sweeper-control metrics are stored in
+<code>docs/data/race_hero_encounter_metrics.json</code> and
+<code>docs/data/race_hero_causality_controls.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -280,7 +281,8 @@ The current hero GIF (<code>compare_race_temperature_avoid.gif</code>
 at the top of the README) is not one of the invalidated old race GIFs.
 It is rendered from the post-fix race-simple temperature
 counterfactual: the track, moving sweepers, vanilla collision, and
-low-temperature avoidance all come from real episode logs. The earlier
+low-temperature run all come from real episode logs, and the gray
+no-sweeper ghost is a matched-seed control. The earlier
 4-way intersection speed-cut (<code>compare_intersection_4way_speed.gif</code>)
 is retained as a companion coordination visual, but it is no longer
 the README hero because it is not a race. The original gates4 / chaos /
@@ -319,9 +321,9 @@ YAMLs and scripts; the current dynamic-obstacle hero is
 `compare_race_temperature_avoid.gif`, rendered from the post-fix
 race-simple temperature counterfactual. The latest post-fix
 race-simple split cell adds planner-internal provenance for a GPU MPPI
-softmax failure and a temperature-only avoidance counterfactual. The
-older race / gates4 / dyn4 / chaos
-scenarios remain retracted after the `1646e11` bug fix.
+softmax failure, a temperature-only contact counterfactual, and a
+single-seed no-sweeper visual control. The older race / gates4 / dyn4 /
+chaos scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**
 

@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-25 (README hero replaced with post-fix drone race GIF)
+> 最終更新: 2026-05-25 (README hero corrected with no-sweeper causal control)
 
 ---
 
@@ -28,18 +28,21 @@
   `docs/paper_a/section_3_headline.md` の pre-fix dynamic-obstacle claim も
   `1646e11` invalidated 扱いに整理済み。残る dynamic-obstacle 作業は
   **新しい post-fix non-floor cell の再設計**であって、旧 claim の修復ではない。
-- README 先頭 GIF は `docs/images/compare_race_temperature_avoid.gif` に
-  差し替え済み。これは temporary な 4-way intersection hero ではなく、
-  post-fix race-simple temperature counterfactual の実ログから描いた
-  2D top-down drone race。2026-05-25 の見直しで全体 oval でも
-  side-by-side でもなく、`scripts/render_race_avoidance_overlay_gif.py`
-  の t≈29s encounter overlay に切り替えた。赤は vanilla `t=1.0` の
-  `contact @ 29.25s`、緑は同じ cell の `t=0.1` が赤い safety halo
-  外へ detour する軌跡。ここでやっと
-  「image は drone race」「障害物を避けていることが読める」という
-  入口条件を満たした。裏取り数値は
-  `docs/data/race_hero_encounter_metrics.json` に固定済み
-  (sweeper travel 8.40 m、low-temp window min clearance +0.45 m)。
+- README 先頭 GIF は `docs/images/compare_race_temperature_avoid.gif`。
+  2026-05-25 の追加確認で、最初に採用した `y=5.5/34.5` overlay は
+  **no-sweeper control に落ちた**: 障害物を消しても drone-3 の軌道差
+  `0.00 m`、virtual clearance も同じ `+0.45 m` だったため、緑は
+  「障害物を見て曲がった」証拠ではなかった。
+- 現在の README hero は `y=5.0/35.0` の post-fix race-simple cell に
+  差し替え済み。赤は vanilla `t=1.0` の `contact @ 29.15s`、緑は
+  `t=0.1` moving-sweeper run、灰色は同じ seed / 同じ低温MPPIで
+  scene sweepers を消した no-sweeper ghost。緑の window min clearance
+  は `+0.10 m`、灰色 ghost は元の moving sweeper safety halo に
+  `-0.0007 m` virtual、moving vs no-sweeper の軌道差 max は `0.81 m`。
+  これは paper-grade rate ではなく single-seed visual control だが、
+  「たまたま避けた」に対する最低限の反証として README 入口に置ける。
+  裏取りは `docs/data/race_hero_encounter_metrics.json` と
+  `docs/data/race_hero_causality_controls.json`。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

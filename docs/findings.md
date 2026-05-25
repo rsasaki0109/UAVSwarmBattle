@@ -3038,28 +3038,40 @@ against the n=10 vanilla failure. Summary and plot:
 `docs/data/race_simple_temperature_counterfactual.json` and
 `docs/images/race_simple_temperature_counterfactual.png`.
 
-**README race hero (2026-05-25).** The top README GIF is now
-`docs/images/compare_race_temperature_avoid.gif`, rendered from the
-same post-fix logs with `scripts/render_race_avoidance_overlay_gif.py`.
-It overlays both trajectories in the same zoomed camera frame at the
-drone-3 / upper-sweeper encounter around t≈29 s: red vanilla `t=1.0`
-contacts the moving sweeper at 29.25 s, while green `t=0.1` detours
-outside the safety halo and completes the same oval race. This replaces
-the temporary 4-way intersection hero because the first visual should
-read as a drone race with dynamic obstacle avoidance, not merely a
-coordination/intersection cell.
+**README race hero (2026-05-25, corrected).** The top README GIF is now
+`docs/images/compare_race_temperature_avoid.gif`, rendered from a
+tighter `y=5.0/35.0` post-fix race-simple cell with
+`scripts/render_race_avoidance_overlay_gif.py`. It overlays three
+trajectories in the same zoomed camera frame at the drone-3 /
+upper-sweeper encounter around t≈29 s: red vanilla `t=1.0` contacts the
+moving sweeper at 29.15 s, green `t=0.1` completes the same oval race,
+and gray is a matched-seed no-sweeper control. This replaces the
+temporary 4-way intersection hero because the first visual should read
+as a drone race; the no-sweeper overlay prevents the green line from
+being read as a lucky non-contact.
 
-The encounter audit is fixed in
-`docs/data/race_hero_encounter_metrics.json`:
+Important correction: the earlier `y=5.5/34.5` README overlay did **not**
+pass this causal visual control. Rerunning the same low-temperature
+controller with scene sweepers removed produced an identical drone-3
+trajectory in the GIF window (`max_path_delta=0.00 m`) and the same
+virtual clearance to the original moving sweeper (`+0.45 m`). That
+version remains valid as a temperature contact counterfactual, but not
+as a visual proof that the green path bent because of the obstacle.
+
+The adopted `y=5.0/35.0` encounter audit is fixed in
+`docs/data/race_hero_encounter_metrics.json` and
+`docs/data/race_hero_causality_controls.json`:
 
 | arm | outcome | contact t | window min clearance | snapshot clearance | ref error |
 |---|---|---:|---:|---:|---:|
-| vanilla t=1.0 | collision | 29.25 s | +0.03 m + collision flag | +0.03 m | 1.61 m |
-| low-temp t=0.1 | success | none | +0.45 m | +0.83 m | 1.91 m |
+| vanilla t=1.0 | collision | 29.15 s | +0.01 m + collision flag | +0.01 m | 1.61 m |
+| low-temp t=0.1 | success | none | +0.10 m | +0.37 m | 1.91 m |
+| no-sweeper ghost | success | none | -0.0007 m virtual | +0.37 m virtual | 1.91 m |
 
 During the GIF window (26.0-31.6 s), the upper sweeper moves 8.40 m
-from `(20.0, 35.5)` to `(20.0, 27.1)`, so the obstacle is visibly
-dynamic rather than a static marker.
+from `(20.0, 36.0)` to `(20.0, 27.6)`, so the obstacle is visibly
+dynamic rather than a static marker. The moving-sweeper and no-sweeper
+low-temperature paths diverge by `0.81 m` at maximum in this window.
 
 Reproduce:
 ```bash
@@ -3076,15 +3088,24 @@ python scripts/analyze_race_simple_action_provenance.py \
 python scripts/race_simple_temperature_counterfactual.py \
   --n 3 --temperature 0.3 --temperature 0.1 --temperature 0.001 \
   --python /usr/bin/python3
+python scripts/race_simple_temperature_counterfactual.py \
+  --n 1 --y-pair 5.0,35.0 --temperature 1.0 --temperature 0.1 \
+  --no-existing-vanilla --python /usr/bin/python3 \
+  --output-root results/_race_simple_causal_probe \
+  --scratch-dir /tmp/uavnav_race_causal_probe \
+  --summary-json /tmp/race_causal_probe_5p0_summary.json \
+  --figure /tmp/race_causal_probe_5p0.png
+python scripts/race_hero_causality_controls.py --python /usr/bin/python3
 python scripts/render_race_avoidance_overlay_gif.py \
-  --failed-run results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t1:vanilla-t1.0 \
-  --avoid-run results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1:low-temp-t0.1 \
-  --config results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1/config.yaml \
+  --failed-run results/_race_simple_causal_probe/p19p8_y5p0_35p0/t1:vanilla-t1.0 \
+  --avoid-run results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1:low-temp-t0.1 \
+  --ghost-run results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1:no-sweeper-ghost \
+  --config results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1/config.yaml \
   --out docs/images/compare_race_temperature_avoid.gif \
-  --title "Same sweeper: contact vs detour" \
+  --title "Same seed: obstacle bends green away from gray ghost" \
   --fps 30 --stride 2 --trail 76 --future 52 \
   --start-step 520 --end-step 632 \
-  --xlim 14 26 --ylim 25 36 \
+  --xlim 17 22.8 --ylim 29.0 33.8 \
   --focus-drone 3 --focus-obstacle 0
 python scripts/race_hero_encounter_metrics.py
 ```
