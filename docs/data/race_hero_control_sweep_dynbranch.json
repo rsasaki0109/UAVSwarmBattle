@@ -1,0 +1,93 @@
+{
+  "source": {
+    "script": "scripts/race_hero_control_sweep.py",
+    "base_config": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1/config.yaml",
+    "no_obstacle_run": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1"
+  },
+  "focus": {
+    "episode": 0,
+    "drone": 3,
+    "obstacle": 0,
+    "window_s": [
+      26.0,
+      31.6
+    ]
+  },
+  "thresholds": {
+    "moving_min_clearance_m": 0.25,
+    "no_obstacle_max_clearance_m": -0.5,
+    "path_delta_m": 1.0
+  },
+  "planner_variant": {
+    "temperature": 0.1,
+    "safety_margin": 0.8,
+    "w_obs": 500.0,
+    "fallback_to_argmin": true,
+    "fallback_commit_steps": 3,
+    "dynamic_branch_sampling": true,
+    "dynamic_branch_extra_radius": 4.0,
+    "dynamic_branch_lateral_gain": 1.2,
+    "dynamic_branch_speeds": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "dynamic_branch_max_obstacles": null
+  },
+  "rows": [
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1p5_r1p15",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 1.15
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -0.6145691606037771,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "moving": {
+        "run_dir": "results/_race_hero_control_sweep/p19p8_y4p5_35p5_v1p5_r1p15/moving_t0p1_argmin_dynbranch_sm0p8_wobs500_fc3_dbr4_dbl1p2_dbs0-0p25-0p5-0p75-1",
+        "outcome": "collision",
+        "first_collision_t": 19.25000000000014,
+        "window_min_clearance": {
+          "t": null,
+          "clearance_m": null,
+          "collision_flag": false,
+          "first_virtual_hit_t": null,
+          "window_path_length_m": 0.0
+        },
+        "path_delta_to_no_obstacle": {
+          "samples": 0,
+          "rms_delta_m": null,
+          "max_delta_m": null,
+          "max_delta_t": null
+        },
+        "summary": {
+          "run_dir": "results/_race_hero_control_sweep/p19p8_y4p5_35p5_v1p5_r1p15/moving_t0p1_argmin_dynbranch_sm0p8_wobs500_fc3_dbr4_dbl1p2_dbs0-0p25-0p5-0p75-1",
+          "episodes": 1,
+          "n_drones": 4,
+          "joint_success": 0,
+          "drone_success": 2,
+          "drone_total": 4,
+          "env_collision": 1,
+          "peer_collision": 1,
+          "timeout": 0,
+          "missing_joint": 0,
+          "missing_drone": 0,
+          "min_dynamic_clearance_m": 0.091954589153312
+        }
+      },
+      "passes_thresholds": false
+    }
+  ],
+  "survivors": []
+}

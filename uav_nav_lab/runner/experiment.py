@@ -142,17 +142,25 @@ def _run_episode(
             )
             planner_dt_ms = (time.perf_counter() - t0) * 1000.0
             last_replan_t = t
+            meta: dict[str, Any] = {}
+            if "action_provenance" in plan.meta:
+                meta["action_provenance"] = plan.meta["action_provenance"]
+            for key in (
+                "dynamic_branch_samples",
+                "score_collision_after_goal",
+                "fallback_to_argmin",
+                "mode_aware_triggered",
+                "mode_aware_cluster_sign",
+            ):
+                if key in plan.meta:
+                    meta[key] = plan.meta[key]
             rec.log_replan(
                 t=t,
                 plan_length=int(plan.waypoints.shape[0]),
                 planner_dt_ms=planner_dt_ms,
                 rollouts=plan.meta.get("rollouts"),
                 best_rollout_idx=plan.meta.get("best_rollout_idx"),
-                planner_meta=(
-                    {"action_provenance": plan.meta["action_provenance"]}
-                    if "action_provenance" in plan.meta
-                    else None
-                ),
+                planner_meta=meta or None,
             )
 
         cmd = _follow_plan(

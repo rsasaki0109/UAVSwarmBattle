@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-25 (dynamic-obstacle full-control report added)
+> 最終更新: 2026-05-25 (post-goal dynamic-obstacle hero added)
 
 ---
 
@@ -33,16 +33,16 @@
   **no-sweeper control に落ちた**: 障害物を消しても drone-3 の軌道差
   `0.00 m`、virtual clearance も同じ `+0.45 m` だったため、緑は
   「障害物を見て曲がった」証拠ではなかった。
-- 現在の README hero は `y=5.0/35.0` の post-fix race-simple cell に
-  差し替え済み。赤は vanilla `t=1.0` の `contact @ 29.15s`、緑は
-  `t=0.1` moving-sweeper run、灰色は同じ seed / 同じ低温MPPIで
-  scene sweepers を消した no-sweeper ghost。緑の window min clearance
-  は `+0.10 m`、灰色 ghost は元の moving sweeper safety halo に
-  `-0.0007 m` virtual、moving vs no-sweeper の軌道差 max は `0.81 m`。
-  これは paper-grade rate ではなく single-seed visual control だが、
-  「たまたま避けた」に対する最低限の反証として README 入口に置ける。
-  裏取りは `docs/data/race_hero_encounter_metrics.json` と
-  `docs/data/race_hero_causality_controls.json`。
+- その後の `y=5.0/35.0` 版 README hero も control-first 基準では弱かった。
+  緑の window min clearance は `+0.10 m`、no-sweeper ghost は
+  `-0.0007 m` virtual、path delta は `0.81 m` で、採用基準
+  (`+0.25 m`, `<= -0.5 m`, `>= 1.0 m`) に届かなかった。
+- 現在の README hero は `p19p8_y4p5_35p5_v1p5_r1p15` の
+  post-goal dynbranch run。赤は同 seed の no-sweeper ghost、緑は
+  `dynamic_branch_sampling + score_collision_after_goal` の moving-sweeper
+  実走。ghost は safety halo に `-0.61 m` 入り、moving run は joint
+  success (`4/4`)、minimum clearance `+0.47 m`、path delta `5.55 m`。
+  裏取りは `docs/data/race_hero_control_sweep_postgoal_dynbranch.json`。
 - ただし、2026-05-25 の追加レビューで「このままGIFをいじるのは浅い」
   と判断。`docs/dynamic_obstacle_oss_survey.md` を追加し、MADER /
   PANTHER / Fast-Planner / Teach-Repeat-Replan / AirSim Drone Racing Lab /
@@ -50,9 +50,9 @@
   dynamic-obstacle 作業は **GIF生成ではなく control-first の encounter
   report 実装**から始める。最低条件: no-obstacle / frozen / wrong-velocity
   controls、moving-vs-control path delta、signed clearance、planner horizon
-  entry time、race progress を JSON で出すこと。現在の hero は
-  single-seed debugging visual であり、final evidence ではない。
-- `scripts/dynamic_encounter_report.py` を追加し、現在の hero cell
+  entry time、race progress を JSON で出すこと。当時の hero は
+  single-seed debugging visual であり、final evidence ではなかった。
+- `scripts/dynamic_encounter_report.py` を追加し、旧 hero candidate
   `p19p8_y5p0_35p0` へ適用済み。出力は
   `docs/data/dynamic_encounter_report_p19p8_y5p0_35p0.json`。verdict は
   `weak_dynamic_avoidance_control`: moving clearance `+0.10 m`、no-obstacle
@@ -62,7 +62,7 @@
   `frozen_initial` / `frozen_encounter` / `wrong_velocity` /
   `no_prediction` を生成・実行済み。`no_prediction` は joint collision
   (`1/4` drone success) で予測依存の材料は出たが、`wrong_velocity` は
-  success、`no_obstacle` の仮想接触は浅いまま。README 先頭も
+  success、`no_obstacle` の仮想接触は浅いまま。当時の README 先頭も
   final evidence ではなく debugging visual として明示し直した。次は
   **control-first cell sweep**: まず `moving` + `no_obstacle` で
   `<= -0.5 m` virtual conflict と `>= +0.25 m` moving clearance を満たす
@@ -77,6 +77,15 @@
   出たが episode は collision で、hero 採用不可。結論: phase/radius を
   探すだけでは足りず、次は topology-aware rollout groups / spatio-temporal
   corridor / race-progress-aware branch seeding のどれかを実装する段階。
+- GPU MPPI に `dynamic_branch_sampling` と `score_collision_after_goal` を追加。
+  race-simple の短い lookahead goal では、従来の rollout cost が goal 到達後の
+  動的障害物接触を評価から外していたため、未来の衝突が clean reach 扱いに
+  なっていた。post-goal collision scoring を有効にした再走
+  (`docs/data/race_hero_control_sweep_postgoal_dynbranch.json`) では
+  `p19p8_y4p5_35p5_v1p5_r1p15` が joint success、no-sweeper ghost
+  `-0.61 m`、moving clearance `+0.47 m`、path delta `5.55 m` を満たした。
+  README 先頭 GIF はこの run から再生成済み。次は n>1 / frozen /
+  wrong-velocity / no-prediction の確認で single-seed から率評価へ進める。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

@@ -59,6 +59,7 @@ def run_rollout(
     w_smooth: float,
     temperature: float,
     device: Any,
+    score_collision_after_goal: bool = False,
 ) -> RolloutResult:
     """Run the batched rollout and return all per-sample tensors.
 
@@ -115,14 +116,17 @@ def run_rollout(
     step_idx = torch.arange(horizon, device=device)
     pre_goal_mask = (step_idx[None, :] < first_goal_h[:, None]).float()  # [S, H]
 
-    collision_pen = (collision_mask * pre_goal_mask).sum(dim=1)  # [S]
+    collision_scope = (
+        torch.ones_like(pre_goal_mask) if score_collision_after_goal else pre_goal_mask
+    )
+    collision_pen = (collision_mask * collision_scope).sum(dim=1)  # [S]
     if pred_traj is not None and r2_arr is not None:
         pred_t = _to_tensor(pred_traj, device)  # [O, H, D]
         r2_t = _to_tensor(r2_arr, device)  # [O]
         diffs = rollouts[:, None, :, :] - pred_t[None, :, :, :]  # [S, O, H, D]
         sep2 = (diffs * diffs).sum(dim=-1)  # [S, O, H]
         dyn_collision = (sep2 <= r2_t[None, :, None]).any(dim=1).float()  # [S, H]
-        collision_pen = collision_pen + (dyn_collision * pre_goal_mask).sum(dim=1)
+        collision_pen = collision_pen + (dyn_collision * collision_scope).sum(dim=1)
 
     if ndim == 2:
         ctg_roll = ctg_t[cell_indices[:, :, 0], cell_indices[:, :, 1]]

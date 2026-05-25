@@ -34,11 +34,12 @@ same seed has at least these controls:
 4. `wrong_prediction` or `no_prediction`: planner receives stale or
    zero velocity, showing that the dynamic predictor matters.
 
-The current `race-simple` README hero only partially meets this bar. It
-now has the full single-seed control set, and `no_prediction` fails on
-the same scene, but the best no-obstacle virtual penetration is still
-only `-0.0007 m`. It is acceptable as a debugging visual, not as the
-final dynamic-obstacle hero.
+The earlier `race-simple` README hero only partially met this bar. It
+had the full single-seed control set, and `no_prediction` failed on the
+same scene, but the best no-obstacle virtual penetration was only
+`-0.0007 m`. The current README hero moves to the stronger
+`p19p8_y4p5_35p5_v1p5_r1p15` control-sweep survivor with
+`score_collision_after_goal` enabled.
 
 ## Source Patterns
 
@@ -132,12 +133,12 @@ controls; then decide whether topology-aware sampling is necessary.
 
 ## Recommended Next Work
 
-### P0: stop using the current GIF as final evidence
+### P0: replace weak GIF-only evidence
 
-Keep `docs/images/compare_race_temperature_avoid.gif` only as a
-debugging placeholder.  The README caption already calls it a
-single-seed visual control, but the next commit should probably demote
-it further unless a stronger cell is found.
+The README GIF has been regenerated from the stronger post-goal
+dynbranch survivor. It is still a single-seed mechanism visual, but it
+now clears the control-first thresholds: no-sweeper virtual penetration
+`-0.61 m`, moving clearance `+0.47 m`, and path delta `5.55 m`.
 
 ### P1: build the encounter report
 
@@ -159,7 +160,7 @@ The stronger control runs were generated with
 - `no_prediction`: joint collision `1/1` (`1/4` drones succeed),
   min dynamic clearance `+0.01 m`.
 
-Current verdict for the README race hero:
+Verdict for the previous `p19p8_y5p0_35p0` README race candidate:
 
 ```text
 weak_dynamic_avoidance_control
@@ -173,7 +174,7 @@ Reasons:
 - moving-vs-no-obstacle path delta is `0.81 m`, below the `1.0 m`
   target.
 
-Interpretation: the `no_prediction` arm is useful evidence that dynamic
+Interpretation: the `no_prediction` arm was useful evidence that dynamic
 prediction matters in this scene, but the current no-obstacle conflict
 is too shallow to carry a final README / paper-grade dynamic avoidance
 claim. The next improvement is a control-first cell sweep, not another
@@ -193,7 +194,7 @@ Replace manual GIF inspection with a sweep:
 Initial control-first sweep is now implemented as
 `scripts/race_hero_control_sweep.py`. It reuses the no-sweeper ghost to
 screen hypothetical sweeper tubes, then runs only selected moving arms.
-Two first-pass outputs are tracked:
+Control-first outputs are tracked:
 
 - `docs/data/race_hero_control_sweep_lowtemp.json`: eight
   low-temperature candidates with no-obstacle virtual clearance from
@@ -204,12 +205,27 @@ Two first-pass outputs are tracked:
   `0.8`, and obstacle weight `500`; the best local encounter reached
   `+0.30 m` focus-obstacle clearance and `1.58 m` path delta, but the
   episode still ended in collision, so it is not a valid hero.
+- `docs/data/race_hero_control_sweep_dynbranch.json`: first
+  topology-lite branch-sampling attempt. GPU MPPI now injects stop,
+  slow, and lateral branch actions around near dynamic obstacles and
+  logs `dynamic_branch_samples` per replan. The best tested candidate
+  improved from `0/4` drone success to `2/4`, but joint outcome still
+  collided, so it remains a planner-development result rather than a
+  README hero.
+- `docs/data/race_hero_control_sweep_postgoal_dynbranch.json`:
+  same candidate with `score_collision_after_goal` enabled. This fixes
+  the race-lookahead scoring hole where reaching the short dynamic goal
+  masked a later collision inside the MPPI horizon. The run is joint
+  success (`4/4` drones), with no-sweeper virtual clearance `-0.61 m`,
+  moving clearance `+0.47 m`, and path delta `5.55 m`; it passes the
+  single-seed control-first hero threshold and is now the README GIF.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
-counterfactual, but the current local MPPI controller does not complete
-those cells reliably. The next step should be planner capability
-(topology/mode-aware rollout groups, spatio-temporal corridor, or race
-progress-aware branch seeding), not another GIF pass.
+counterfactual, but the local MPPI controller needed two changes to
+complete it reliably in this seed: branch rollout seeds, and collision
+scoring beyond short race lookahead goals. The next step is not another
+GIF pass; it is expanding this cell into n>1 plus frozen /
+wrong-velocity / no-prediction controls.
 
 ### P3: only then update README
 

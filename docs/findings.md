@@ -3038,17 +3038,27 @@ against the n=10 vanilla failure. Summary and plot:
 `docs/data/race_simple_temperature_counterfactual.json` and
 `docs/images/race_simple_temperature_counterfactual.png`.
 
-**README race hero (2026-05-25, corrected).** The top README GIF is now
-`docs/images/compare_race_temperature_avoid.gif`, rendered from a
-tighter `y=5.0/35.0` post-fix race-simple cell with
-`scripts/render_race_avoidance_overlay_gif.py`. It overlays three
-trajectories in the same zoomed camera frame at the drone-3 /
-upper-sweeper encounter around t≈29 s: red vanilla `t=1.0` contacts the
-moving sweeper at 29.15 s, green `t=0.1` completes the same oval race,
-and gray is a matched-seed no-sweeper control. This replaces the
-temporary 4-way intersection hero because the first visual should read
-as a drone race; the no-sweeper overlay prevents the green line from
-being read as a lucky non-contact.
+**README race hero (2026-05-25, post-goal control sweep).** The top
+README GIF is now `docs/images/compare_race_temperature_avoid.gif`,
+rendered from the `p19p8_y4p5_35p5_v1p5_r1p15` post-fix race-simple
+cell with `scripts/render_race_avoidance_overlay_gif.py`. It overlays
+two trajectories in the same zoomed camera frame at the drone-3 /
+upper-sweeper encounter around t≈29.5 s: red is the matched no-sweeper
+ghost, and green is GPU MPPI with dynamic branch rollout seeds plus
+post-goal collision scoring. This replaces the temporary 4-way
+intersection hero because the first visual should read as a drone race.
+
+The decisive implementation detail is `planner.score_collision_after_goal`.
+Race-simple uses a short moving lookahead goal; before this option, a
+rollout that reached that local goal could hide a later dynamic-obstacle
+contact inside the MPPI horizon and receive the clean-reach reward. With
+post-goal collision scoring enabled, the same candidate becomes a
+control-first survivor:
+
+| arm | outcome | ghost / moving clearance | path delta | report |
+|---|---:|---:|---:|---|
+| no-sweeper ghost | success | -0.61 m virtual | reference | `race_hero_control_sweep_postgoal_dynbranch.json` |
+| post-goal branch MPPI | 4/4 joint success | +0.47 m | 5.55 m max | `race_hero_control_sweep_postgoal_dynbranch.json` |
 
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
@@ -3058,7 +3068,7 @@ virtual clearance to the original moving sweeper (`+0.45 m`). That
 version remains valid as a temperature contact counterfactual, but not
 as a visual proof that the green path bent because of the obstacle.
 
-The adopted `y=5.0/35.0` encounter audit is fixed in
+The superseded `y=5.0/35.0` encounter audit is fixed in
 `docs/data/race_hero_encounter_metrics.json` and
 `docs/data/race_hero_causality_controls.json`:
 
@@ -3097,17 +3107,27 @@ python scripts/race_simple_temperature_counterfactual.py \
   --figure /tmp/race_causal_probe_5p0.png
 python scripts/race_hero_causality_controls.py --python /usr/bin/python3
 python scripts/render_race_avoidance_overlay_gif.py \
-  --failed-run results/_race_simple_causal_probe/p19p8_y5p0_35p0/t1:vanilla-t1.0 \
-  --avoid-run results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1:low-temp-t0.1 \
-  --ghost-run results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1:no-sweeper-ghost \
-  --config results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1/config.yaml \
+python3 scripts/race_hero_control_sweep.py --rerun-existing \
+  --candidate 19.8,4.5,35.5,1.5,1.15 --top-moving 1 \
+  --safety-margin 0.8 --w-obs 500 \
+  --fallback-to-argmin --fallback-commit-steps 3 \
+  --dynamic-branch-sampling \
+  --dynamic-branch-extra-radius 4.0 \
+  --dynamic-branch-lateral-gain 1.2 \
+  --dynamic-branch-speeds 0,0.25,0.5,0.75,1.0 \
+  --score-collision-after-goal \
+  --out docs/data/race_hero_control_sweep_postgoal_dynbranch.json \
+  --python python3
+python scripts/render_race_avoidance_overlay_gif.py \
+  --failed-run results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1:no-sweeper-ghost \
+  --avoid-run results/_race_hero_control_sweep/p19p8_y4p5_35p5_v1p5_r1p15/moving_t0p1_argmin_dynbranch_postgoal_sm0p8_wobs500_fc3_dbr4_dbl1p2_dbs0-0p25-0p5-0p75-1:post-goal-branch-MPPI \
+  --config results/_race_hero_control_sweep/p19p8_y4p5_35p5_v1p5_r1p15/moving_t0p1_argmin_dynbranch_postgoal_sm0p8_wobs500_fc3_dbr4_dbl1p2_dbs0-0p25-0p5-0p75-1/config.yaml \
   --out docs/images/compare_race_temperature_avoid.gif \
-  --title "Same seed: obstacle bends green away from gray ghost" \
+  --title "Dynamic sweeper forces MPPI off the ghost racing line" \
   --fps 30 --stride 2 --trail 76 --future 52 \
   --start-step 520 --end-step 632 \
-  --xlim 17 22.8 --ylim 29.0 33.8 \
+  --xlim 14 26 --ylim 25 36 \
   --focus-drone 3 --focus-obstacle 0
-python scripts/race_hero_encounter_metrics.py
 ```
 
 

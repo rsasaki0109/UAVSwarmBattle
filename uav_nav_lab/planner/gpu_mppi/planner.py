@@ -65,6 +65,12 @@ class GPUMPPIPlanner(Planner):
         mode_aware_cost_ratio: float = 1.0,
         mode_aware_lateral_threshold: float = 0.0,
         mode_aware_lateral_ratio: float = 0.5,
+        dynamic_branch_sampling: bool = False,
+        dynamic_branch_max_obstacles: int = 2,
+        dynamic_branch_lateral_gain: float = 1.2,
+        dynamic_branch_speeds: tuple[float, ...] = (0.0, 0.35, 0.7, 1.0),
+        dynamic_branch_extra_radius: float = 2.0,
+        score_collision_after_goal: bool = False,
         ctg_cache_tolerance: int = 0,
         viz_rollouts: int = 24,
         log_action_provenance: bool = False,
@@ -98,6 +104,13 @@ class GPUMPPIPlanner(Planner):
         self.mode_aware_cost_ratio = max(1.0, float(mode_aware_cost_ratio))
         self.mode_aware_lateral_threshold = max(0.0, float(mode_aware_lateral_threshold))
         self.mode_aware_lateral_ratio = max(0.0, float(mode_aware_lateral_ratio))
+        self.dynamic_branch_sampling = bool(dynamic_branch_sampling)
+        self.dynamic_branch_max_obstacles = max(1, int(dynamic_branch_max_obstacles))
+        self.dynamic_branch_lateral_gain = max(0.0, float(dynamic_branch_lateral_gain))
+        speeds = tuple(float(v) for v in dynamic_branch_speeds)
+        self.dynamic_branch_speeds = speeds or (0.0, 0.35, 0.7, 1.0)
+        self.dynamic_branch_extra_radius = max(0.0, float(dynamic_branch_extra_radius))
+        self.score_collision_after_goal = bool(score_collision_after_goal)
         self.ctg_cache_tolerance = max(0, int(ctg_cache_tolerance))
         self.viz_rollouts = int(viz_rollouts)
         self.log_action_provenance = bool(log_action_provenance)
@@ -150,6 +163,12 @@ class GPUMPPIPlanner(Planner):
             mode_aware_cost_ratio=float(cfg.get("mode_aware_cost_ratio", 1.0)),
             mode_aware_lateral_threshold=float(cfg.get("mode_aware_lateral_threshold", 0.0)),
             mode_aware_lateral_ratio=float(cfg.get("mode_aware_lateral_ratio", 0.5)),
+            dynamic_branch_sampling=bool(cfg.get("dynamic_branch_sampling", False)),
+            dynamic_branch_max_obstacles=int(cfg.get("dynamic_branch_max_obstacles", 2)),
+            dynamic_branch_lateral_gain=float(cfg.get("dynamic_branch_lateral_gain", 1.2)),
+            dynamic_branch_speeds=tuple(cfg.get("dynamic_branch_speeds", (0.0, 0.35, 0.7, 1.0))),
+            dynamic_branch_extra_radius=float(cfg.get("dynamic_branch_extra_radius", 2.0)),
+            score_collision_after_goal=bool(cfg.get("score_collision_after_goal", False)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             log_action_provenance=bool(cfg.get("log_action_provenance", False)),
@@ -216,6 +235,88 @@ class GPUMPPIPlanner(Planner):
         bias_perp = bias_perp / bn
         biased = base + self.asymmetric_bias * bias_perp
         return biased / float(np.linalg.norm(biased))
+
+    def _dynamic_branch_actions(
+        self,
+        *,
+        obs: np.ndarray,
+        base: np.ndarray,
+        dynamic_obstacles: list[dict] | None,
+        ndim: int,
+    ) -> np.ndarray:
+        if not self.dynamic_branch_sampling or not dynamic_obstacles:
+            return np.zeros((0, ndim), dtype=float)
+        lookahead_t = float(self.horizon * self.dt_plan)
+        threats: list[tuple[float, np.ndarray]] = []
+        for obstacle in dynamic_obstacles:
+            pos = np.asarray(obstacle.get("position", ()), dtype=float)[:ndim]
+            if pos.size != ndim:
+                continue
+            vel = np.asarray(obstacle.get("velocity", np.zeros(ndim)), dtype=float)[:ndim]
+            rel = pos - obs
+            vv = float(vel @ vel)
+            t_star = 0.0
+            if vv > 1e-9:
+                t_star = float(np.clip(-(rel @ vel) / vv, 0.0, lookahead_t))
+            closest = rel + vel * t_star
+            radius = float(obstacle.get("radius", 0.5)) + self.safety_margin
+            signed_clearance = float(np.linalg.norm(closest)) - radius
+            if signed_clearance > self.dynamic_branch_extra_radius:
+                continue
+            threats.append((signed_clearance, rel))
+        threats.sort(key=lambda row: row[0])
+        if not threats:
+            return np.zeros((0, ndim), dtype=float)
+
+        speed_fracs = [
+            float(np.clip(v, 0.0, 1.0)) for v in self.dynamic_branch_speeds
+        ]
+        actions: list[np.ndarray] = []
+        if any(v <= 1e-9 for v in speed_fracs):
+            actions.append(np.zeros(ndim, dtype=float))
+        for speed_frac in speed_fracs:
+            if speed_frac <= 1e-9:
+                continue
+            actions.append(base * (self.max_speed * speed_frac))
+
+        for _, rel in threats[: self.dynamic_branch_max_obstacles]:
+            lateral = rel - float(rel @ base) * base
+            ln = float(np.linalg.norm(lateral))
+            if ln <= 1e-9:
+                lateral = self._fallback_lateral_axis(base, ndim)
+            else:
+                lateral = lateral / ln
+            for sign in (-1.0, 1.0):
+                branch = base + sign * self.dynamic_branch_lateral_gain * lateral
+                bn = float(np.linalg.norm(branch))
+                if bn <= 1e-9:
+                    continue
+                branch = branch / bn
+                for speed_frac in speed_fracs:
+                    if speed_frac <= 1e-9:
+                        continue
+                    actions.append(branch * (self.max_speed * speed_frac))
+        if not actions:
+            return np.zeros((0, ndim), dtype=float)
+        return np.asarray(actions, dtype=float)
+
+    @staticmethod
+    def _fallback_lateral_axis(base: np.ndarray, ndim: int) -> np.ndarray:
+        if ndim == 2:
+            return np.asarray([-base[1], base[0]], dtype=float)
+        axes = [
+            np.asarray([0.0, 0.0, 1.0], dtype=float),
+            np.asarray([0.0, 1.0, 0.0], dtype=float),
+            np.asarray([1.0, 0.0, 0.0], dtype=float),
+        ]
+        for axis in axes:
+            lateral = axis - float(axis @ base) * base
+            ln = float(np.linalg.norm(lateral))
+            if ln > 1e-9:
+                return lateral / ln
+        out = np.zeros(ndim, dtype=float)
+        out[0] = 1.0
+        return out
 
     def _build_action_provenance(
         self,
@@ -337,6 +438,15 @@ class GPUMPPIPlanner(Planner):
             base = self._apply_asymmetric_bias(base, obs, ndim)
         directions = sample_unit_directions(ndim, self.n_samples, base)
         actions_np = directions * self.max_speed
+        branch_actions = self._dynamic_branch_actions(
+            obs=obs,
+            base=base,
+            dynamic_obstacles=dynamic_obstacles,
+            ndim=ndim,
+        )
+        branch_count = min(max(0, self.n_samples - 1), branch_actions.shape[0])
+        if branch_count > 0:
+            actions_np[1 : 1 + branch_count] = branch_actions[:branch_count]
 
         wind_step = None
         if self._wind is not None and self._wind.size > 0:
@@ -364,6 +474,7 @@ class GPUMPPIPlanner(Planner):
             w_smooth=self.w_smooth,
             temperature=self.temperature,
             device=self._device,
+            score_collision_after_goal=self.score_collision_after_goal,
         )
 
         agg = self._aggregator.select(
@@ -418,6 +529,8 @@ class GPUMPPIPlanner(Planner):
             "fallback_to_argmin": bool(agg.fallback_triggered),
             "mode_aware_triggered": bool(agg.mode_aware_triggered),
             "mode_aware_cluster_sign": int(agg.mode_aware_cluster_sign),
+            "dynamic_branch_samples": int(branch_count),
+            "score_collision_after_goal": bool(self.score_collision_after_goal),
         }
         if self.log_action_provenance:
             meta["action_provenance"] = self._build_action_provenance(

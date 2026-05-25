@@ -112,6 +112,12 @@ def candidate_config(
     w_obs: float | None,
     fallback_to_argmin: bool,
     fallback_commit_steps: int | None,
+    dynamic_branch_sampling: bool,
+    dynamic_branch_extra_radius: float | None,
+    dynamic_branch_lateral_gain: float | None,
+    dynamic_branch_speeds: tuple[float, ...] | None,
+    dynamic_branch_max_obstacles: int | None,
+    score_collision_after_goal: bool,
     n: int,
     seed: int,
     output_root: Path,
@@ -142,6 +148,16 @@ def candidate_config(
     planner["fallback_to_argmin"] = bool(fallback_to_argmin)
     if fallback_commit_steps is not None:
         planner["fallback_commit_steps"] = int(fallback_commit_steps)
+    planner["dynamic_branch_sampling"] = bool(dynamic_branch_sampling)
+    if dynamic_branch_extra_radius is not None:
+        planner["dynamic_branch_extra_radius"] = float(dynamic_branch_extra_radius)
+    if dynamic_branch_lateral_gain is not None:
+        planner["dynamic_branch_lateral_gain"] = float(dynamic_branch_lateral_gain)
+    if dynamic_branch_speeds is not None:
+        planner["dynamic_branch_speeds"] = [float(v) for v in dynamic_branch_speeds]
+    if dynamic_branch_max_obstacles is not None:
+        planner["dynamic_branch_max_obstacles"] = int(dynamic_branch_max_obstacles)
+    planner["score_collision_after_goal"] = bool(score_collision_after_goal)
     planner["mode_aware_sampling"] = False
     planner["log_action_provenance"] = True
     cfg.setdefault("output", {})["dir"] = str(
@@ -153,6 +169,12 @@ def candidate_config(
             w_obs=w_obs,
             fallback_to_argmin=fallback_to_argmin,
             fallback_commit_steps=fallback_commit_steps,
+            dynamic_branch_sampling=dynamic_branch_sampling,
+            dynamic_branch_extra_radius=dynamic_branch_extra_radius,
+            dynamic_branch_lateral_gain=dynamic_branch_lateral_gain,
+            dynamic_branch_speeds=dynamic_branch_speeds,
+            dynamic_branch_max_obstacles=dynamic_branch_max_obstacles,
+            score_collision_after_goal=score_collision_after_goal,
         )
     )
     return cfg
@@ -165,16 +187,35 @@ def planner_variant_tag(
     w_obs: float | None,
     fallback_to_argmin: bool,
     fallback_commit_steps: int | None,
+    dynamic_branch_sampling: bool,
+    dynamic_branch_extra_radius: float | None,
+    dynamic_branch_lateral_gain: float | None,
+    dynamic_branch_speeds: tuple[float, ...] | None,
+    dynamic_branch_max_obstacles: int | None,
+    score_collision_after_goal: bool,
 ) -> str:
     parts = [f"moving_{temp_tag(temperature)}"]
     if fallback_to_argmin:
         parts.append("argmin")
+    if dynamic_branch_sampling:
+        parts.append("dynbranch")
+    if score_collision_after_goal:
+        parts.append("postgoal")
     if safety_margin is not None:
         parts.append(f"sm{tag_float(safety_margin)}")
     if w_obs is not None:
         parts.append(f"wobs{tag_float(w_obs)}")
     if fallback_commit_steps is not None:
         parts.append(f"fc{int(fallback_commit_steps)}")
+    if dynamic_branch_extra_radius is not None:
+        parts.append(f"dbr{tag_float(dynamic_branch_extra_radius)}")
+    if dynamic_branch_lateral_gain is not None:
+        parts.append(f"dbl{tag_float(dynamic_branch_lateral_gain)}")
+    if dynamic_branch_max_obstacles is not None:
+        parts.append(f"dbo{int(dynamic_branch_max_obstacles)}")
+    if dynamic_branch_speeds is not None:
+        speed_tag = "-".join(tag_float(v) for v in dynamic_branch_speeds)
+        parts.append(f"dbs{speed_tag}")
     return "_".join(parts)
 
 
@@ -287,6 +328,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--w-obs", type=float)
     p.add_argument("--fallback-to-argmin", action="store_true")
     p.add_argument("--fallback-commit-steps", type=int)
+    p.add_argument("--dynamic-branch-sampling", action="store_true")
+    p.add_argument("--dynamic-branch-extra-radius", type=float)
+    p.add_argument("--dynamic-branch-lateral-gain", type=float)
+    p.add_argument("--dynamic-branch-speeds", type=parse_float_list)
+    p.add_argument("--dynamic-branch-max-obstacles", type=int)
+    p.add_argument("--score-collision-after-goal", action="store_true")
     p.add_argument("--n", type=int, default=1)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--episode", type=int, default=0)
@@ -326,6 +373,16 @@ def main(argv: list[str]) -> int:
             w_obs=args.w_obs,
             fallback_to_argmin=args.fallback_to_argmin,
             fallback_commit_steps=args.fallback_commit_steps,
+            dynamic_branch_sampling=args.dynamic_branch_sampling,
+            dynamic_branch_extra_radius=args.dynamic_branch_extra_radius,
+            dynamic_branch_lateral_gain=args.dynamic_branch_lateral_gain,
+            dynamic_branch_speeds=(
+                tuple(args.dynamic_branch_speeds)
+                if args.dynamic_branch_speeds is not None
+                else None
+            ),
+            dynamic_branch_max_obstacles=args.dynamic_branch_max_obstacles,
+            score_collision_after_goal=args.score_collision_after_goal,
             n=args.n,
             seed=args.seed,
             output_root=args.output_root,
@@ -421,6 +478,12 @@ def main(argv: list[str]) -> int:
             "w_obs": args.w_obs,
             "fallback_to_argmin": args.fallback_to_argmin,
             "fallback_commit_steps": args.fallback_commit_steps,
+            "dynamic_branch_sampling": args.dynamic_branch_sampling,
+            "dynamic_branch_extra_radius": args.dynamic_branch_extra_radius,
+            "dynamic_branch_lateral_gain": args.dynamic_branch_lateral_gain,
+            "dynamic_branch_speeds": args.dynamic_branch_speeds,
+            "dynamic_branch_max_obstacles": args.dynamic_branch_max_obstacles,
+            "score_collision_after_goal": args.score_collision_after_goal,
         },
         "rows": public_rows,
         "survivors": [

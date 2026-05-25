@@ -115,16 +115,24 @@ def run_episode_multi(
                 )
                 planner_dt_ms = (time.perf_counter() - t0) * 1000.0
                 last_replan_t[i] = t
+                meta: dict[str, Any] = {}
+                if "action_provenance" in plans[i].meta:
+                    meta["action_provenance"] = plans[i].meta["action_provenance"]
+                for key in (
+                    "dynamic_branch_samples",
+                    "score_collision_after_goal",
+                    "fallback_to_argmin",
+                    "mode_aware_triggered",
+                    "mode_aware_cluster_sign",
+                ):
+                    if key in plans[i].meta:
+                        meta[key] = plans[i].meta[key]
                 recorders[i].log_replan(
                     t=t, plan_length=int(plans[i].waypoints.shape[0]),
                     planner_dt_ms=planner_dt_ms,
                     rollouts=plans[i].meta.get("rollouts"),
                     best_rollout_idx=plans[i].meta.get("best_rollout_idx"),
-                    planner_meta=(
-                        {"action_provenance": plans[i].meta["action_provenance"]}
-                        if "action_provenance" in plans[i].meta
-                        else None
-                    ),
+                    planner_meta=meta or None,
                 )
 
         # 2. step each drone's sim.

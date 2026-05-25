@@ -13,6 +13,7 @@ torch = pytest.importorskip("torch")
 
 from uav_nav_lab.planner.gpu_mppi import GPUMPPIPlanner
 from uav_nav_lab.planner.gpu_mppi import ctg_cache as ctg_cache_mod
+from uav_nav_lab.planner.gpu_mppi.rollout import run_rollout
 
 
 def _free_grid(shape: tuple[int, ...] = (20, 20)) -> np.ndarray:
@@ -54,6 +55,8 @@ def test_gpu_mppi_plan_returns_required_meta_keys() -> None:
         "fallback_to_argmin",
         "mode_aware_triggered",
         "mode_aware_cluster_sign",
+        "dynamic_branch_samples",
+        "score_collision_after_goal",
     ):
         assert key in plan.meta, f"missing meta key: {key}"
     assert plan.meta["planner"] == "gpu_mppi"
@@ -62,6 +65,8 @@ def test_gpu_mppi_plan_returns_required_meta_keys() -> None:
     assert plan.meta["fallback_to_argmin"] is False
     assert plan.meta["mode_aware_triggered"] is False
     assert plan.meta["mode_aware_cluster_sign"] == 0
+    assert plan.meta["dynamic_branch_samples"] == 0
+    assert plan.meta["score_collision_after_goal"] is False
 
 
 def test_gpu_mppi_from_config_roundtrip_preserves_knobs() -> None:
@@ -85,6 +90,12 @@ def test_gpu_mppi_from_config_roundtrip_preserves_knobs() -> None:
         "mode_aware_cost_ratio": 1.5,
         "mode_aware_lateral_threshold": 0.6,
         "mode_aware_lateral_ratio": 0.7,
+        "dynamic_branch_sampling": True,
+        "dynamic_branch_max_obstacles": 3,
+        "dynamic_branch_lateral_gain": 1.4,
+        "dynamic_branch_speeds": (0.0, 0.25, 0.5, 1.0),
+        "dynamic_branch_extra_radius": 3.0,
+        "score_collision_after_goal": True,
         "ctg_cache_tolerance": 3,
         "viz_rollouts": 16,
         "log_action_provenance": True,
@@ -197,6 +208,85 @@ def test_gpu_mppi_mode_aware_sampling_meta_flag_fires_when_enabled() -> None:
     plan = planner.plan(np.array([5.0, 5.0]), np.array([15.0, 15.0]), _free_grid())
     assert plan.meta["mode_aware_triggered"] is True
     assert plan.meta["mode_aware_cluster_sign"] in (-1, 1)
+
+
+def test_gpu_mppi_dynamic_branch_sampling_injects_slow_and_lateral_actions() -> None:
+    planner = _basic_planner(
+        dynamic_branch_sampling=True,
+        dynamic_branch_speeds=(0.0, 0.5, 1.0),
+        dynamic_branch_lateral_gain=1.0,
+        dynamic_branch_extra_radius=3.0,
+        n_samples=16,
+    )
+    obs = np.array([5.0, 5.0])
+    goal = np.array([15.0, 5.0])
+    plan = planner.plan(
+        obs,
+        goal,
+        _free_grid(),
+        dynamic_obstacles=[
+            {
+                "position": [9.0, 5.0],
+                "velocity": [0.0, 0.0],
+                "radius": 1.0,
+            }
+        ],
+    )
+
+    assert plan.meta["dynamic_branch_samples"] > 0
+    branch_actions = planner._dynamic_branch_actions(
+        obs=obs,
+        base=np.array([1.0, 0.0]),
+        dynamic_obstacles=[
+            {
+                "position": [9.0, 5.0],
+                "velocity": [0.0, 0.0],
+                "radius": 1.0,
+            }
+        ],
+        ndim=2,
+    )
+    speeds = np.linalg.norm(branch_actions, axis=1)
+    assert np.any(np.isclose(speeds, 0.0))
+    assert np.any(np.isclose(speeds, 2.5))
+    assert np.any(np.abs(branch_actions[:, 1]) > 0.1)
+
+
+def test_gpu_mppi_rollout_can_score_post_goal_dynamic_collision() -> None:
+    obs = np.array([1.0, 5.0])
+    goal = np.array([5.0, 5.0])
+    actions = np.array([[10.0, 0.0]], dtype=float)
+    occ = np.zeros((12, 12), dtype=bool)
+    ctg = np.zeros_like(occ, dtype=float)
+    pred = np.array([[[7.0, 5.0]] * 10], dtype=float)
+    r2 = np.array([0.25], dtype=float)
+
+    base_kwargs = dict(
+        obs=obs,
+        gl=goal,
+        actions_np=actions,
+        occ=occ,
+        ctg_np=ctg,
+        pred_traj=pred,
+        r2_arr=r2,
+        wind_step=None,
+        prev_action=None,
+        horizon=10,
+        dt_plan=0.1,
+        resolution=1.0,
+        goal_radius=0.5,
+        n_samples=1,
+        w_goal=1.0,
+        w_obs=100.0,
+        w_smooth=0.0,
+        temperature=1.0,
+        device=torch.device("cpu"),
+    )
+    scoped = run_rollout(**base_kwargs, score_collision_after_goal=False)
+    post_goal = run_rollout(**base_kwargs, score_collision_after_goal=True)
+
+    assert float(scoped.costs[0].item()) < -999_999.0
+    assert float(post_goal.costs[0].item()) > 0.0
 
 
 def test_gpu_mppi_short_circuits_when_at_goal() -> None:
