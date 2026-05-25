@@ -8,14 +8,14 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > **Post-fix status (2026-05-25)**: the old race / gates / dyn4 / chaos
 > dynamic-obstacle headlines were retracted after commit `1646e11` fixed
 > a multi-runner bug that froze dynamic obstacles after total-wipeout
-> episodes. The replacement evidence is now mechanism-first: the hero
-> GIF below is a real post-fix drone race with moving sweepers plus a
-> no-sweeper control. Vanilla GPU MPPI collides, the same rollout/cost
-> stack at lower softmax temperature completes cleanly, and the gray
-> no-sweeper ghost shows that this hero line is not just a lucky
-> non-contact. The race-simple split cell also logs the exact softmax
-> command that turns a clean escape rollout into a collision. See
-> `docs/findings.md` for the audit trail.
+> episodes. The replacement work is now mechanism-first: the hero GIF
+> below is kept as a post-fix race-simple debugging visual, not as final
+> dynamic-avoidance evidence. A control-first report currently classifies
+> this cell as `weak_dynamic_avoidance_control`: prediction matters, but
+> the no-sweeper conflict is only a grazing `-0.0007 m` virtual contact
+> and the moving run keeps just `+0.10 m` clearance. See
+> `docs/dynamic_obstacle_oss_survey.md` and `docs/findings.md` for the
+> audit trail.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -25,7 +25,7 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 
 <img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed drone-race encounter with overlaid trajectories: red vanilla temperature contacts a moving sweeper, green low-temperature GPU MPPI bends away, and gray no-sweeper ghost shows the uncontrolled line skimming the safety halo" width="1080">
 
-<i><b>Post-fix drone race hero, zoomed at the obstacle encounter with a no-sweeper control.</b>
+<i><b>Post-fix drone race debug visual, zoomed at the obstacle encounter with controls.</b>
 Four drones run a horizontal oval while two red moving sweepers cross
 the racing line; this first-frame visual zooms into drone 3 versus the
 upper sweeper at <code>t≈29 s</code>. The translucent red disc is the
@@ -41,9 +41,9 @@ the original safety halo (<code>-0.0007 m</code>) before diverging by
 paper-grade success-rate claim; the aggregate temperature
 counterfactual remains in the findings below. Rendered from real
 episode logs with <code>scripts/render_race_avoidance_overlay_gif.py</code>;
-encounter and no-sweeper-control metrics are stored in
+encounter, no-sweeper, and full-control metrics are stored in
 <code>docs/data/race_hero_encounter_metrics.json</code> and
-<code>docs/data/race_hero_causality_controls.json</code>.
+<code>docs/data/dynamic_encounter_report_p19p8_y5p0_35p0.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 

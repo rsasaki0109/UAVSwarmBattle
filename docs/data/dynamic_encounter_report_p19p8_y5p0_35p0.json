@@ -1,0 +1,535 @@
+{
+  "source": {
+    "reference_config": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1/config.yaml",
+    "script": "scripts/dynamic_encounter_report.py"
+  },
+  "focus": {
+    "episode": 0,
+    "drone": 3,
+    "obstacle": 0,
+    "window_s": [
+      26.0,
+      31.6
+    ],
+    "snapshot_t": 29.3,
+    "obstacle_xy_start": [
+      20.0,
+      36.0
+    ],
+    "obstacle_xy_end": [
+      20.0,
+      27.599999999999994
+    ],
+    "obstacle_travel_m": 8.400000000000006,
+    "obstacle_speed_mps": 1.5000000000000007,
+    "obstacle_radius_m": 1.0
+  },
+  "thresholds": {
+    "moving_min_clearance_m": 0.25,
+    "no_obstacle_max_clearance_m": -0.5,
+    "path_delta_m": 1.0,
+    "obstacle_travel_m": 4.0,
+    "horizon_lead_replans": 2.0
+  },
+  "rollout_horizon": {
+    "threshold_m": 1.0,
+    "first_any_rollout_t": 26.100000000000236,
+    "first_selected_rollout_t": 28.50000000000027,
+    "lead_before_closest_any": {
+      "seconds": 3.100000000000044,
+      "replans": 15.50000000000022
+    },
+    "lead_before_closest_selected": {
+      "seconds": 0.70000000000001,
+      "replans": 3.5000000000000497
+    },
+    "samples": [
+      {
+        "t": 26.100000000000236,
+        "rollout_count": 24,
+        "min_clearance_m": -0.820703199871576,
+        "selected_clearance_m": 10.27278198442912
+      },
+      {
+        "t": 26.30000000000024,
+        "rollout_count": 24,
+        "min_clearance_m": -0.06390299200097682,
+        "selected_clearance_m": 12.42853797231907
+      },
+      {
+        "t": 26.50000000000024,
+        "rollout_count": 24,
+        "min_clearance_m": -0.4466858892607568,
+        "selected_clearance_m": 3.7817502756890486
+      },
+      {
+        "t": 26.700000000000244,
+        "rollout_count": 24,
+        "min_clearance_m": -0.5775525027618358,
+        "selected_clearance_m": 12.372483006116976
+      },
+      {
+        "t": 26.900000000000247,
+        "rollout_count": 24,
+        "min_clearance_m": 0.5313697338672156,
+        "selected_clearance_m": 11.067472672105415
+      },
+      {
+        "t": 27.10000000000025,
+        "rollout_count": 24,
+        "min_clearance_m": 0.9152655734856965,
+        "selected_clearance_m": 5.919468153313083
+      },
+      {
+        "t": 27.300000000000253,
+        "rollout_count": 24,
+        "min_clearance_m": 0.19731544086205255,
+        "selected_clearance_m": 9.266063889030725
+      },
+      {
+        "t": 27.500000000000256,
+        "rollout_count": 24,
+        "min_clearance_m": 0.5967202552007964,
+        "selected_clearance_m": 8.26433314886795
+      },
+      {
+        "t": 27.70000000000026,
+        "rollout_count": 24,
+        "min_clearance_m": 0.5496106190715098,
+        "selected_clearance_m": 3.4516728385323145
+      },
+      {
+        "t": 27.90000000000026,
+        "rollout_count": 24,
+        "min_clearance_m": -0.45727010027953285,
+        "selected_clearance_m": 5.478681505670474
+      },
+      {
+        "t": 28.100000000000264,
+        "rollout_count": 24,
+        "min_clearance_m": 0.4501327144584031,
+        "selected_clearance_m": 5.328984462486973
+      },
+      {
+        "t": 28.300000000000267,
+        "rollout_count": 24,
+        "min_clearance_m": 0.6391495484220604,
+        "selected_clearance_m": 4.385629548644323
+      },
+      {
+        "t": 28.50000000000027,
+        "rollout_count": 24,
+        "min_clearance_m": 0.1643436150765476,
+        "selected_clearance_m": 0.9398173185623988
+      },
+      {
+        "t": 28.700000000000273,
+        "rollout_count": 24,
+        "min_clearance_m": -0.2214531210112458,
+        "selected_clearance_m": 0.680779469413717
+      },
+      {
+        "t": 28.900000000000276,
+        "rollout_count": 24,
+        "min_clearance_m": -0.5333392744858074,
+        "selected_clearance_m": 0.48160315084473204
+      },
+      {
+        "t": 29.10000000000028,
+        "rollout_count": 24,
+        "min_clearance_m": -0.6845045396419107,
+        "selected_clearance_m": 0.20055661144251657
+      },
+      {
+        "t": 29.30000000000028,
+        "rollout_count": 24,
+        "min_clearance_m": -0.41324347168338893,
+        "selected_clearance_m": 0.06903597152689733
+      },
+      {
+        "t": 29.500000000000284,
+        "rollout_count": 24,
+        "min_clearance_m": 0.06880605567567488,
+        "selected_clearance_m": 0.06880605567567488
+      },
+      {
+        "t": 29.700000000000287,
+        "rollout_count": 24,
+        "min_clearance_m": -0.01736724867188144,
+        "selected_clearance_m": 0.06083021994505211
+      },
+      {
+        "t": 29.90000000000029,
+        "rollout_count": 24,
+        "min_clearance_m": 0.7336739217274961,
+        "selected_clearance_m": 1.3175902471703358
+      },
+      {
+        "t": 30.100000000000293,
+        "rollout_count": 24,
+        "min_clearance_m": 1.323626291545252,
+        "selected_clearance_m": 3.2381081255196507
+      },
+      {
+        "t": 30.300000000000296,
+        "rollout_count": 24,
+        "min_clearance_m": 2.0891816820714406,
+        "selected_clearance_m": 2.978530600496471
+      },
+      {
+        "t": 30.5000000000003,
+        "rollout_count": 24,
+        "min_clearance_m": 2.200801635404157,
+        "selected_clearance_m": 2.200801635404157
+      },
+      {
+        "t": 30.7000000000003,
+        "rollout_count": 24,
+        "min_clearance_m": 2.8272399876942145,
+        "selected_clearance_m": 3.4093750622808012
+      },
+      {
+        "t": 30.900000000000304,
+        "rollout_count": 24,
+        "min_clearance_m": 3.4193435212094605,
+        "selected_clearance_m": 6.347609389525028
+      },
+      {
+        "t": 31.100000000000307,
+        "rollout_count": 24,
+        "min_clearance_m": 3.522880043042528,
+        "selected_clearance_m": 6.007034648119587
+      },
+      {
+        "t": 31.30000000000031,
+        "rollout_count": 24,
+        "min_clearance_m": 3.9293039150041618,
+        "selected_clearance_m": 7.70416204766121
+      },
+      {
+        "t": 31.500000000000313,
+        "rollout_count": 24,
+        "min_clearance_m": 4.768513180367119,
+        "selected_clearance_m": 6.527955973663758
+      }
+    ]
+  },
+  "arms": [
+    {
+      "role": "moving",
+      "label": "low-temp-t0.1",
+      "run_dir": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1",
+      "outcome": "success",
+      "first_collision_t": null,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": 29.20000000000028,
+        "clearance_m": 0.0979626184548672,
+        "collision_flag": false,
+        "first_virtual_hit_t": null
+      },
+      "snapshot": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      },
+      "reference_tracking": {
+        "samples": 112,
+        "mean_error_m": 1.6858691804223305,
+        "max_error_m": 2.1923054135544637,
+        "end_error_m": 1.8643102803846612,
+        "path_length_m": 35.94829552773889
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 0.0,
+        "max_delta_m": 0.0,
+        "max_delta_t": 26.000000000000234
+      }
+    },
+    {
+      "role": "no_obstacle",
+      "label": "no-sweeper-ghost",
+      "run_dir": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1",
+      "outcome": "success",
+      "first_collision_t": null,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -0.0007196385879226774,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.550000000000285
+      },
+      "snapshot": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      },
+      "reference_tracking": {
+        "samples": 112,
+        "mean_error_m": 1.6238687160678997,
+        "max_error_m": 1.9523234044874536,
+        "end_error_m": 1.671714382116909,
+        "path_length_m": 36.706153931849585
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 0.2905836535713514,
+        "max_delta_m": 0.812782646506783,
+        "max_delta_t": 30.950000000000305
+      }
+    },
+    {
+      "role": "frozen_initial",
+      "label": "frozen-at-start",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y5p0_35p0/frozen_initial",
+      "outcome": "success",
+      "first_collision_t": null,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -0.0007196385879226774,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.550000000000285
+      },
+      "snapshot": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      },
+      "reference_tracking": {
+        "samples": 112,
+        "mean_error_m": 1.6238687160678997,
+        "max_error_m": 1.9523234044874536,
+        "end_error_m": 1.671714382116909,
+        "path_length_m": 36.706153931849585
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 0.2905836535713514,
+        "max_delta_m": 0.812782646506783,
+        "max_delta_t": 30.950000000000305
+      }
+    },
+    {
+      "role": "frozen_encounter",
+      "label": "frozen-at-29.30s",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y5p0_35p0/frozen_encounter",
+      "outcome": "collision",
+      "first_collision_t": 0.0,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": null,
+        "clearance_m": null,
+        "collision_flag": false,
+        "first_virtual_hit_t": null
+      },
+      "snapshot": {
+        "t": 0.0,
+        "drone_xy": [
+          19.999999999999996,
+          8.0
+        ],
+        "reference_xy": [
+          19.999999999999996,
+          8.0
+        ],
+        "obstacle_xy": [
+          20.0,
+          5.0
+        ],
+        "clearance_m": 1.6,
+        "reference_error_m": 0.0,
+        "collision_flag": true
+      },
+      "reference_tracking": {
+        "samples": 0,
+        "mean_error_m": null,
+        "max_error_m": null,
+        "end_error_m": null,
+        "path_length_m": null
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 23.739392651668428,
+        "max_delta_m": 24.688310446302147,
+        "max_delta_t": 29.350000000000282
+      }
+    },
+    {
+      "role": "wrong_velocity",
+      "label": "planner-reversed-velocity",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y5p0_35p0/wrong_velocity",
+      "outcome": "success",
+      "first_collision_t": null,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": 29.20000000000028,
+        "clearance_m": 0.0979626184548672,
+        "collision_flag": false,
+        "first_virtual_hit_t": null
+      },
+      "snapshot": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      },
+      "reference_tracking": {
+        "samples": 112,
+        "mean_error_m": 1.5294581739418265,
+        "max_error_m": 2.5111249536216484,
+        "end_error_m": 2.0668968249267365,
+        "path_length_m": 36.82687678091656
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 1.563976193267912,
+        "max_delta_m": 4.216357091636237,
+        "max_delta_t": 29.85000000000029
+      }
+    },
+    {
+      "role": "no_prediction",
+      "label": "current-obstacle-only",
+      "run_dir": "results/_race_hero_control_variants/p19p8_y5p0_35p0/no_prediction",
+      "outcome": "collision",
+      "first_collision_t": 29.500000000000284,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": 0.005822460320772382,
+        "collision_flag": true,
+        "first_virtual_hit_t": null
+      },
+      "snapshot": {
+        "t": 29.30000000000028,
+        "drone_xy": [
+          20.397037519686975,
+          32.63578956002236
+        ],
+        "reference_xy": [
+          22.02547925717858,
+          31.90345775396968
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.049999999999578
+        ],
+        "clearance_m": 0.36541579072224084,
+        "reference_error_m": 1.9059008263747783,
+        "collision_flag": false
+      },
+      "reference_tracking": {
+        "samples": 71,
+        "mean_error_m": 1.6391546817897902,
+        "max_error_m": 1.9523234044874536,
+        "end_error_m": 1.405310389583006,
+        "path_length_m": 22.568964626293692
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 3.8126208579485956,
+        "max_delta_m": 10.578084154881948,
+        "max_delta_t": 31.550000000000313
+      }
+    },
+    {
+      "role": "comparator",
+      "label": "vanilla-t1.0",
+      "run_dir": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t1",
+      "outcome": "collision",
+      "first_collision_t": 29.15000000000028,
+      "window_min_clearance_to_reference_obstacle": {
+        "t": 29.15000000000028,
+        "clearance_m": 0.01046686521737783,
+        "collision_flag": true,
+        "first_virtual_hit_t": null
+      },
+      "snapshot": {
+        "t": 29.15000000000028,
+        "drone_xy": [
+          21.182385676951263,
+          32.04399783579759
+        ],
+        "reference_xy": [
+          22.778370842669492,
+          31.817693036146682
+        ],
+        "obstacle_xy": [
+          20.0,
+          31.27499999999958
+        ],
+        "clearance_m": 0.01046686521737783,
+        "reference_error_m": 1.6119571113687534,
+        "collision_flag": true
+      },
+      "reference_tracking": {
+        "samples": 64,
+        "mean_error_m": 1.494643003986853,
+        "max_error_m": 1.660537081655678,
+        "end_error_m": 1.6119571113687534,
+        "path_length_m": 16.221792143393177
+      },
+      "path_delta_to_moving": {
+        "samples": 112,
+        "rms_delta_m": 4.681354429163185,
+        "max_delta_m": 12.081619695250772,
+        "max_delta_t": 31.550000000000313
+      }
+    }
+  ],
+  "verdict": {
+    "class": "weak_dynamic_avoidance_control",
+    "reasons": [
+      "moving arm clearance below target",
+      "no_obstacle virtual penetration is too small",
+      "moving-vs-no_obstacle path delta below target"
+    ]
+  }
+}

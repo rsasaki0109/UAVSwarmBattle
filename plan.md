@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-25 (README hero corrected with no-sweeper causal control)
+> 最終更新: 2026-05-25 (dynamic-obstacle full-control report added)
 
 ---
 
@@ -43,6 +43,40 @@
   「たまたま避けた」に対する最低限の反証として README 入口に置ける。
   裏取りは `docs/data/race_hero_encounter_metrics.json` と
   `docs/data/race_hero_causality_controls.json`。
+- ただし、2026-05-25 の追加レビューで「このままGIFをいじるのは浅い」
+  と判断。`docs/dynamic_obstacle_oss_survey.md` を追加し、MADER /
+  PANTHER / Fast-Planner / Teach-Repeat-Replan / AirSim Drone Racing Lab /
+  Nav2 MPPI / dynamic drone racing 論文から基準を整理した。次の
+  dynamic-obstacle 作業は **GIF生成ではなく control-first の encounter
+  report 実装**から始める。最低条件: no-obstacle / frozen / wrong-velocity
+  controls、moving-vs-control path delta、signed clearance、planner horizon
+  entry time、race progress を JSON で出すこと。現在の hero は
+  single-seed debugging visual であり、final evidence ではない。
+- `scripts/dynamic_encounter_report.py` を追加し、現在の hero cell
+  `p19p8_y5p0_35p0` へ適用済み。出力は
+  `docs/data/dynamic_encounter_report_p19p8_y5p0_35p0.json`。verdict は
+  `weak_dynamic_avoidance_control`: moving clearance `+0.10 m`、no-obstacle
+  virtual penetration `-0.0007 m`、path delta `0.81 m` で、採用基準
+  (`+0.25 m`, `<= -0.5 m`, `>= 1.0 m`) に届かない。
+- `scripts/race_hero_control_variants.py` を追加し、同じ cell で
+  `frozen_initial` / `frozen_encounter` / `wrong_velocity` /
+  `no_prediction` を生成・実行済み。`no_prediction` は joint collision
+  (`1/4` drone success) で予測依存の材料は出たが、`wrong_velocity` は
+  success、`no_obstacle` の仮想接触は浅いまま。README 先頭も
+  final evidence ではなく debugging visual として明示し直した。次は
+  **control-first cell sweep**: まず `moving` + `no_obstacle` で
+  `<= -0.5 m` virtual conflict と `>= +0.25 m` moving clearance を満たす
+  cell を探し、survivor だけ frozen / wrong-velocity / no-prediction に進める。
+- `scripts/race_hero_control_sweep.py` を追加し、p19.8 近傍の
+  control-first sweep を開始。`docs/data/race_hero_control_sweep_lowtemp.json`
+  は no-obstacle virtual clearance `-1.02 m`〜`-0.50 m` の 8 候補を
+  moving run まで回したが全て collision。さらに
+  `docs/data/race_hero_control_sweep_argmin_safety.json` で argmin fallback +
+  safety margin `0.8` + `w_obs=500` の強め controller も試した。最良の
+  局所 encounter は focus clearance `+0.30 m`、path delta `1.58 m` まで
+  出たが episode は collision で、hero 採用不可。結論: phase/radius を
+  探すだけでは足りず、次は topology-aware rollout groups / spatio-temporal
+  corridor / race-progress-aware branch seeding のどれかを実装する段階。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 
