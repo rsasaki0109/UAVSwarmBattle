@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-24 (post-fix race-simple phase pilot added)
+> 最終更新: 2026-05-25 (README hero replaced with post-fix drone race GIF)
 
 ---
 
@@ -13,7 +13,7 @@
 
 このドキュメントを引き継いだ codex への TL;DR。
 
-### 0.1 リポジトリの今の状態 (2026-05-24)
+### 0.1 リポジトリの今の状態 (2026-05-25)
 
 - **v0.2.0 タグ済み** (2026-05-17)。`CHANGELOG.md` に差分要約あり。
 - v0.1.0 → v0.2.0 で **88 commit**。中身は §1 を参照。
@@ -28,6 +28,12 @@
   `docs/paper_a/section_3_headline.md` の pre-fix dynamic-obstacle claim も
   `1646e11` invalidated 扱いに整理済み。残る dynamic-obstacle 作業は
   **新しい post-fix non-floor cell の再設計**であって、旧 claim の修復ではない。
+- README 先頭 GIF は `docs/images/compare_race_temperature_avoid.gif` に
+  差し替え済み。これは temporary な 4-way intersection hero ではなく、
+  post-fix race-simple temperature counterfactual の実ログから
+  `scripts/render_race_hero_gif.py` で描いた 2D top-down drone race。
+  左は vanilla `t=1.0` の接触、右は同じ cell の `t=0.1` 回避完走。
+  ここでやっと「image は drone race」という入口条件を満たした。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

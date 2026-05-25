@@ -3038,6 +3038,15 @@ against the n=10 vanilla failure. Summary and plot:
 `docs/data/race_simple_temperature_counterfactual.json` and
 `docs/images/race_simple_temperature_counterfactual.png`.
 
+**README race hero (2026-05-25).** The top README GIF is now
+`docs/images/compare_race_temperature_avoid.gif`, rendered from the
+same post-fix logs with `scripts/render_race_hero_gif.py`. It is a
+2-pane speed-cut of the shown seed: vanilla `t=1.0` collides while
+the `t=0.1` counterfactual completes the same oval race with the same
+two moving sweepers. This replaces the temporary 4-way intersection
+hero because the first visual should read as a drone race, not merely
+a coordination/intersection cell.
+
 Reproduce:
 ```bash
 python scripts/run_race_simple_phase_sweep.py \
@@ -3053,17 +3062,24 @@ python scripts/analyze_race_simple_action_provenance.py \
 python scripts/race_simple_temperature_counterfactual.py \
   --n 3 --temperature 0.3 --temperature 0.1 --temperature 0.001 \
   --python /usr/bin/python3
+python scripts/render_race_hero_gif.py \
+  --runs results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t1:vanilla-t1.0 \
+         results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1:low-temp-t0.1 \
+  --config results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1/config.yaml \
+  --out docs/images/compare_race_temperature_avoid.gif \
+  --fps 30 --stride 8 --trail 140 --future 100
 ```
 
 
 ### Intersection coordination: visible MPC stop vs MPPI swerve under a dynamic intruder
 
-**Status (2026-05-22; README hero promoted 2026-05-25).** First
+**Status (2026-05-22; temporary README hero 2026-05-25, later demoted
+to companion visual).** First
 post-`1646e11` dynamic-obstacle cell where both planners (a) succeed
 deterministically and (b) produce *visibly* different avoidance
 strategies driven purely by the cost aggregator. The 2-drone clip is
-`docs/images/compare_intersection_avoid.gif`; the current README hero
-is the faster 4-drone extension,
+`docs/images/compare_intersection_avoid.gif`; the faster 4-drone
+extension is
 `docs/images/compare_intersection_4way_speed.gif`.
 
 **Scenario** (`examples/exp_intersection_v1_{mpc,mppi}.yaml`,

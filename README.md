@@ -9,12 +9,11 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > dynamic-obstacle headlines were retracted after commit `1646e11` fixed
 > a multi-runner bug that froze dynamic obstacles after total-wipeout
 > episodes. The replacement evidence is now mechanism-first: the hero
-> GIF below shows four drones avoiding a slow intruder, and the
-> latest race-simple split cell logs GPU MPPI action provenance showing
-> the exact softmax command that turns a clean escape rollout into a
-> collision; lowering the temperature on the same cell flips the
-> closed-loop result back to clean completion. See `docs/findings.md`
-> for the audit trail.
+> GIF below is a real post-fix drone race with two moving sweepers:
+> vanilla GPU MPPI collides, while the same rollout/cost stack at lower
+> softmax temperature completes cleanly. The race-simple split cell also
+> logs the exact softmax command that turns a clean escape rollout into
+> a collision. See `docs/findings.md` for the audit trail.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -22,26 +21,28 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_intersection_4way_speed.gif" alt="4 drones approach a 4-way intersection in two head-on pairs while a slow dynamic intruder crosses the centre; MPC waits, MPPI braids around the obstacle" width="1080">
+<img src="docs/images/compare_race_temperature_avoid.gif" alt="Two-panel top-down drone race on an oval track with moving sweeper obstacles: vanilla temperature collides while low-temperature GPU MPPI avoids and completes the race" width="1080">
 
-<i>Four drones enter a 4-way intersection as two head-on pairs
-(N↔S + E↔W); a slow dynamic intruder sits at the centre and drifts
-E-W. Same stack, same seed, only the rollout aggregator changes —
-MPC argmin on the left, MPPI softmax on the right. Both planners stay
-collision-free across 5 paired episodes / 20 drone-episodes, but their
-<b>behavioral fingerprints</b> separate cleanly: <b>MPC yields by
-stopping the S→N drone</b>, while <b>MPPI keeps all four drones moving
-and braids both head-on pairs around the intruder</b>. This is the
-56-frame / 30 fps README speed-cut of the 4-way ablation; reproduce
-with <code>examples/exp_intersection_4way_{mpc,mppi}.yaml</code> and
-<code>scripts/render_race_gif.py</code>.
+<i><b>Post-fix drone race hero.</b> Four drones run a horizontal oval
+while two red moving sweepers cross the racing line. Same race cell,
+same seed, same GPU MPPI rollout/cost stack; only the softmax
+temperature changes. The left pane is vanilla <code>t=1.0</code> and
+collides in the shown seed (aggregate baseline: <code>0/10</code>
+joint success, <code>10</code> dynamic-obstacle contacts and
+<code>20</code> follow-on peer contacts). The right pane lowers only
+the temperature to <code>t=0.1</code> and completes cleanly
+(fresh counterfactual: <code>3/3</code> joint success,
+<code>12/12</code> drone-episodes, no env or peer contacts). Rendered
+from real episode logs with <code>scripts/render_race_hero_gif.py</code>;
+generate the logs with
+<code>scripts/race_simple_temperature_counterfactual.py</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
 </div>
 
 <details>
-<summary><b>🔬 Behind the hero</b> — 4-panel fingerprint figure + predictor-fidelity sweep (E1-E5)</summary>
+<summary><b>🔬 Mechanism figures</b> — 4-panel fingerprint figure + predictor-fidelity sweep (E1-E5)</summary>
 
 <br>
 
@@ -268,18 +269,16 @@ for the path-intersecting intruders. The "MPC vs softmax" contrast
 on those scenarios was an artifact of the bug, not a real
 planner-level finding.
 
-The current hero GIF (<code>compare_intersection_4way_speed.gif</code>
-at the top of the README) is the 4-drone extension of the first
-re-tuned intersection cell where both planners visibly avoid a dynamic
-intruder while coordinating with peers — MPC stops & waits, MPPI
-braids around the intruder (n=5 / 20 drone-episodes / 0 collisions
-for both). An earlier re-tune attempt on the oval-race scenario
-(<code>compare_race_avoid.gif</code>) succeeded
-statistically but did not show visible avoidance — drones at
-period=19.8 mostly slipped past the bouncing intruders without an
-obvious detour. The original gates4 / chaos / dyn4 scenarios still
-need further re-tuning (wider gaps, slower gates) before their GIFs
-go back up.
+The current hero GIF (<code>compare_race_temperature_avoid.gif</code>
+at the top of the README) is not one of the invalidated old race GIFs.
+It is rendered from the post-fix race-simple temperature
+counterfactual: the track, moving sweepers, vanilla collision, and
+low-temperature avoidance all come from real episode logs. The earlier
+4-way intersection speed-cut (<code>compare_intersection_4way_speed.gif</code>)
+is retained as a companion coordination visual, but it is no longer
+the README hero because it is not a race. The original gates4 / chaos /
+dyn4 scenarios still need further re-tuning (wider gaps, slower gates)
+before their GIFs go back up.
 
 The replacement race-simple phase cell is now a mechanism result rather
 than a headline win/loss table: GPU MPPI's selected visible rollout is
@@ -309,12 +308,12 @@ back toward the obstacle. That provenance is logged under
 v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
 stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 5 scenario families. Stable ablations are reproducible from the example
-YAMLs and scripts; the re-tuned dynamic-obstacle hero is the
-`compare_intersection_4way_speed.gif` 4-drone intersection speed-cut
-(both planners 0/20 collisions, visibly different avoidance
-strategies). The latest post-fix race-simple split cell adds
-planner-internal provenance for a GPU MPPI softmax failure. The older
-race / gates4 / dyn4 / chaos
+YAMLs and scripts; the current dynamic-obstacle hero is
+`compare_race_temperature_avoid.gif`, rendered from the post-fix
+race-simple temperature counterfactual. The latest post-fix
+race-simple split cell adds planner-internal provenance for a GPU MPPI
+softmax failure and a temperature-only avoidance counterfactual. The
+older race / gates4 / dyn4 / chaos
 scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**
