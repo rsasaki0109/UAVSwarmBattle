@@ -1055,6 +1055,38 @@ wording:
 > averages enough lower-weight toward-obstacle samples to emit a toward-obstacle
 > target velocity. MPC/argmin would have taken the escape sample.
 
+Temperature counterfactual check (2026-05-25):
+
+```bash
+python scripts/race_simple_temperature_counterfactual.py \
+  --n 3 \
+  --temperature 0.3 --temperature 0.1 --temperature 0.001 \
+  --python /usr/bin/python3
+```
+
+`scripts/race_simple_temperature_counterfactual.py` を追加。既存の
+`p19p8_y5p5_34p5` vanilla baseline (`t=1.0`, n=10) を参照し、同じ
+split cell で GPU MPPI の temperature だけを下げた fresh rerun を行う。
+出力は `docs/data/race_simple_temperature_counterfactual.json` と
+`docs/images/race_simple_temperature_counterfactual.png`。
+
+| arm | source | joint | per-drone | env | peer | probe chosen_y | probe argmin_y | window min |
+|-----|--------|-------|-----------|-----|------|----------------|----------------|------------|
+| t=1.0 | existing n=10 baseline | 0/10 | 10/40 | 10 | 20 | -1.51 m/s | +3.61 m/s | +0.03 m |
+| t=0.3 | fresh n=3 | 3/3 | 12/12 | 0 | 0 | +0.08 m/s | -0.48 m/s | +0.10 m |
+| t=0.1 | fresh n=3 | 3/3 | 12/12 | 0 | 0 | +2.82 m/s | +4.39 m/s | +0.46 m |
+| t=0.001 | fresh n=3 | 3/3 | 12/12 | 0 | 0 | -4.25 m/s | -4.25 m/s | +0.08 m |
+
+読み:
+
+1. 同じ post-fix split cell で `t=1.0` だけが deterministic contact。
+   `t=0.3/0.1/0.001` はすべて seed 42-44 で clean completion。
+2. したがって race-simple の failure は "GPU MPPI cannot handle moving
+   obstacles" ではなく、vanilla temperature の softmax aggregation valley。
+3. 低温側は n=3 なので paper-grade rate claim ではない。ただし既存 n=10
+   baseline と同じ seed prefix を温度だけ変えて救っており、mechanism
+   counterfactual としては README に出せる。
+
 0.25 m bracket sweep (n=3, seeds 42-44):
 
 | cell | MPC | GPU MPPI | read |

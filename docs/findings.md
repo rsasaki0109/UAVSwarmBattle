@@ -17,15 +17,13 @@ sections are retained below as historical debugging notes, but their
 numbers must not be cited as planner evidence until the scenarios are
 re-tuned and rerun: the dummy_3d moving-obstacle speed sweep, Smart
 MPPI v1-v5 dynamic cells, and the race / gates / chaos / dyn4
-dynamic-obstacle scenarios. The first re-tuned cell that *visibly*
-shows planner-level avoidance behaviour is documented in
+dynamic-obstacle scenarios. Post-fix replacement evidence now has two
+tracks: the [race-simple phase cell](#race-simple-phase-cell-softmax-provenance-and-temperature-counterfactual)
+isolates a GPU MPPI softmax aggregation failure with action provenance
+and a temperature-only counterfactual, while
 [Intersection coordination](#intersection-coordination-visible-mpc-stop-vs-mppi-swerve-under-a-dynamic-intruder)
-(MPC stops & waits, MPPI swerves around; n=5 / 10 drone-episodes / 0
-collisions). An earlier attempt that re-tuned the oval race scenario
-to non-zero success (`exp_race_simple_retuned_v2_{mpc,mppi}.yaml`)
-hit the success-rate target but did *not* show visible avoidance —
-drones at period=19.8 mostly slipped past the bouncing intruders
-without an obvious detour.
+is the visible avoidance demo where both planners succeed and choose
+different strategies.
 
 ## Contents
 
@@ -67,6 +65,7 @@ without an obvious detour.
 - [invalidated: dyn4 path-intersecting intruders](#dyn4-path-intersecting-intruders-controlled-dynamic-avoidance-harness)
 - [Cost-to-go cache tolerance: 4-5x speedup on moving-goal scenarios](#cost-to-go-cache-tolerance-4-5x-speedup-on-moving-goal-scenarios)
 - [invalidated: Smart MPPI v5 (mode-aware switcher)](#smart-mppi-v5-mode-aware-switcher-lateral-cancellation-gate-dominates-v4-on-45-cells)
+- [Race-simple phase cell: softmax provenance and temperature counterfactual](#race-simple-phase-cell-softmax-provenance-and-temperature-counterfactual)
 - [Intersection coordination: visible MPC stop vs MPPI swerve under a dynamic intruder](#intersection-coordination-visible-mpc-stop-vs-mppi-swerve-under-a-dynamic-intruder)
 - [Aerobatic synchronized loop: GPU MPPI's softmax delivers 85 % tighter phase sync](#aerobatic-synchronized-loop-gpu-mppis-softmax-delivers-85--tighter-phase-sync)
 - [Bridge fix: pause-after-reset eliminates a stale-t=0 collision flag](#bridge-fix-pause-after-reset-eliminates-a-stale-t0-collision-flag)
@@ -2989,6 +2988,71 @@ python3 scripts/render_race_gif.py \
   --title "Drone race + 4 path-intersecting intruders — dynamic-obstacle avoidance" \
   --out docs/images/compare_race_dyn4.gif \
   --ep 1 --fps 10 --stride 12 --trail 30
+```
+
+
+### Race-simple phase cell: softmax provenance and temperature counterfactual
+
+**Status (2026-05-25).** Post-`1646e11` replacement mechanism study for
+the old race-family dynamic-obstacle claims. This is not a revival of
+the invalidated pre-fix headline table; it is a narrow split cell that
+lets us inspect the action aggregator.
+
+**Scenario.** `scripts/run_race_simple_phase_sweep.py` generates the
+cell from `examples/exp_race_simple_retuned_n5_{mpc,gpu_mppi}.yaml`:
+period 19.8 s, oval 16 x 12 m, two y-bouncing intruders at
+`y=5.5/34.5`, GPU MPPI `n_samples=64`, `horizon=40`, `temperature=1.0`.
+
+**Vanilla result.** In `p19p8_y5p5_34p5`, MPC clears 10/10 paired
+episodes while vanilla GPU MPPI is 0/10 joint, 10/40 per-drone, with
+10 dynamic-obstacle env contacts and 20 follow-on peer contacts. The
+failure is deterministic over seeds 42-51: drone 3 contacts the moving
+obstacle around t=29.3 s, then later drones collide with peers.
+
+**Action provenance.** Enabling `planner.log_action_provenance` shows
+the pre-contact command is exactly the vanilla softmax action:
+`cmd_vs_chosen=0`, `chosen_vs_softmax=0`. At the same replan, the
+highest-weight/argmin rollout points away from the obstacle
+(`y=+3.61 m/s`) and its visible rollout clearance is positive
+(+0.47 m), but the emitted softmax command points back toward the
+obstacle (`y=-1.51 m/s`) because 61.9 % of the weight mass lies on
+negative-y actions. The figure is
+`docs/images/race_simple_phase_mechanism.png`.
+
+**Temperature counterfactual.** Keeping the same GPU MPPI rollout/cost
+stack and lowering only the softmax temperature flips the closed-loop
+outcome:
+
+| arm | source | joint | per-drone | env | peer | probe chosen_y | window min |
+|---|---|---:|---:|---:|---:|---:|---:|
+| t=1.0 | existing n=10 baseline | 0/10 | 10/40 | 10 | 20 | -1.51 m/s | +0.03 m |
+| t=0.3 | fresh n=3 | 3/3 | 12/12 | 0 | 0 | +0.08 m/s | +0.10 m |
+| t=0.1 | fresh n=3 | 3/3 | 12/12 | 0 | 0 | +2.82 m/s | +0.46 m |
+| t=0.001 | fresh n=3 | 3/3 | 12/12 | 0 | 0 | -4.25 m/s | +0.08 m |
+
+Interpretation: this is not "GPU MPPI cannot handle moving obstacles";
+it is a vanilla-temperature softmax aggregation valley in a narrow
+phase band. The low-temperature arms are n=3, so they are not a
+paper-grade success-rate claim, but they are a targeted counterfactual
+against the n=10 vanilla failure. Summary and plot:
+`docs/data/race_simple_temperature_counterfactual.json` and
+`docs/images/race_simple_temperature_counterfactual.png`.
+
+Reproduce:
+```bash
+python scripts/run_race_simple_phase_sweep.py \
+  --n 10 --period 19.8 --y-pair 5.5,34.5 \
+  --python /usr/bin/python3
+python scripts/run_race_simple_phase_sweep.py \
+  --n 1 --period 19.8 --y-pair 5.5,34.5 \
+  --planner gpu_mppi \
+  --output-root results/_race_simple_action_provenance \
+  --gpu-log-action-provenance --python /usr/bin/python3
+python scripts/analyze_race_simple_action_provenance.py \
+  --run-dir results/_race_simple_action_provenance/p19p8_y5p5_34p5/gpu_mppi
+python scripts/race_simple_temperature_counterfactual.py \
+  --n 3 --temperature 0.3 --temperature 0.1 --temperature 0.001 \
+  --python /usr/bin/python3
 ```
 
 

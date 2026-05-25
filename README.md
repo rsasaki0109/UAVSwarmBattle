@@ -12,7 +12,9 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > GIF below shows MPC vs MPPI visibly avoiding a slow intruder, and the
 > latest race-simple split cell logs GPU MPPI action provenance showing
 > the exact softmax command that turns a clean escape rollout into a
-> collision. See `docs/findings.md` for the audit trail.
+> collision; lowering the temperature on the same cell flips the
+> closed-loop result back to clean completion. See `docs/findings.md`
+> for the audit trail.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -184,12 +186,14 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: GPU MPPI softmax provenance in a moving-obstacle race** —
+- **Latest: GPU MPPI softmax provenance and temperature counterfactual in a
+  moving-obstacle race** —
   after the `1646e11` dynamic-obstacle fix, a re-tuned race-simple
   split cell now has planner-internal provenance. GPU MPPI sees a
   clean escape rollout, but the vanilla softmax average emits the
-  actual velocity command back toward the moving obstacle; MPC clears
-  the same window.
+  actual velocity command back toward the moving obstacle. Lowering
+  the same GPU MPPI controller's temperature flips the closed-loop
+  outcome from deterministic contact to clean completion.
 - **Static multi-drone coordination** — MPC argmin and GPU MPPI softmax
   can tie on joint success while producing different failure clustering
   (`Δ` over the independent-drone baseline). The sign depends on the
@@ -223,6 +227,18 @@ obstacle (<code>y=-1.51 m/s</code>) because 61.9 % of the weight mass
 lies on negative-y actions. Reproduce with
 <code>scripts/run_race_simple_phase_sweep.py --gpu-log-action-provenance</code>
 and <code>scripts/analyze_race_simple_action_provenance.py</code>.</i>
+
+<img src="docs/images/race_simple_temperature_counterfactual.png" alt="Race-simple temperature counterfactual: vanilla GPU MPPI at t=1 fails in all ten baseline episodes, while lower-temperature t=0.3, t=0.1, and t=0.001 runs complete all three counterfactual seeds" width="900"><br>
+<i><b>Race-simple temperature counterfactual</b> — same split cell,
+same GPU MPPI rollout/cost stack, only the softmax temperature changes.
+The existing vanilla baseline is <code>t=1.0</code>, 0/10 joint
+success, 10 dynamic-obstacle env contacts, and 20 follow-on peer
+contacts. Fresh low-temperature reruns at <code>t=0.3</code>,
+<code>t=0.1</code>, and <code>t=0.001</code> are each 3/3 joint
+success and 12/12 drone-episodes, with no env or peer collisions.
+This is a targeted counterfactual, not yet an n=30 paper-grade rate
+claim; reproduce with
+<code>scripts/race_simple_temperature_counterfactual.py</code>.</i>
 
 <details>
 <summary><b>Companion hero GIFs</b> — 4-way intersection ablation, multi-drone Δ-flip, single-drone 3D MPPI</summary>

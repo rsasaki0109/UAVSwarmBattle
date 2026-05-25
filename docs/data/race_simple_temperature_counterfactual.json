@@ -1,0 +1,212 @@
+{
+  "arms": [
+    {
+      "config": "results/_race_simple_phase_sweep/p19p8_y5p5_34p5/gpu_mppi/config.yaml",
+      "label": "t=1",
+      "probe": {
+        "action_source": "softmax",
+        "actual_window_min": {
+          "clearance_m": 0.0330090936316747,
+          "t": 29.25000000000028
+        },
+        "argmax_weight_y_mps": 3.612903118133545,
+        "argmin_y_mps": 3.612903118133545,
+        "chosen_y_mps": -1.5134754180908203,
+        "cmd_y_mps": -1.5134754180908203,
+        "drone": 3,
+        "env_collision_t": 29.25000000000028,
+        "episode": 0,
+        "outcome": "collision",
+        "probe_t": 29.1,
+        "replan_t": 29.10000000000028,
+        "selected_visible_rollout_clearance_m": 0.47053790896631464,
+        "softmax_y_mps": -1.5134754180908203,
+        "weight_entropy": 3.129507064819336,
+        "weight_mass_by_action_y_sign": {
+          "near_zero": 0.0,
+          "negative": 0.6188932657241821,
+          "positive": 0.38110679388046265
+        },
+        "weight_max": 0.05342009663581848
+      },
+      "run_dir": "results/_race_simple_phase_sweep/p19p8_y5p5_34p5/gpu_mppi",
+      "source": "existing_phase_sweep_baseline",
+      "summary": {
+        "drone_success": 10,
+        "drone_total": 40,
+        "env_collision": 10,
+        "episodes": 10,
+        "joint_success": 0,
+        "min_dynamic_clearance_m": 0.0330090936316747,
+        "missing_drone": 0,
+        "missing_joint": 0,
+        "n_drones": 4,
+        "peer_collision": 20,
+        "run_dir": "results/_race_simple_phase_sweep/p19p8_y5p5_34p5/gpu_mppi",
+        "timeout": 0
+      },
+      "tag": "t1",
+      "temperature": 1.0
+    },
+    {
+      "config": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p3/config.yaml",
+      "label": "t=0.3",
+      "probe": {
+        "action_source": "softmax",
+        "actual_window_min": {
+          "clearance_m": 0.10471447580560156,
+          "t": 29.30000000000028
+        },
+        "argmax_weight_y_mps": -0.4791873097419739,
+        "argmin_y_mps": -0.4791873097419739,
+        "chosen_y_mps": 0.08014136552810669,
+        "cmd_y_mps": 0.08014136552810669,
+        "drone": 3,
+        "env_collision_t": null,
+        "episode": 0,
+        "outcome": "success",
+        "probe_t": 29.1,
+        "replan_t": 29.10000000000028,
+        "selected_visible_rollout_clearance_m": -0.09327098194570405,
+        "softmax_y_mps": 0.08014136552810669,
+        "weight_entropy": 3.4095990657806396,
+        "weight_mass_by_action_y_sign": {
+          "near_zero": 0.0,
+          "negative": 0.5063812732696533,
+          "positive": 0.4936187267303467
+        },
+        "weight_max": 0.058892372995615005
+      },
+      "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p3",
+      "source": "fresh_run",
+      "summary": {
+        "drone_success": 12,
+        "drone_total": 12,
+        "env_collision": 0,
+        "episodes": 3,
+        "joint_success": 3,
+        "min_dynamic_clearance_m": null,
+        "missing_drone": 0,
+        "missing_joint": 0,
+        "n_drones": 4,
+        "peer_collision": 0,
+        "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p3",
+        "timeout": 0
+      },
+      "tag": "t0p3",
+      "temperature": 0.3
+    },
+    {
+      "config": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1/config.yaml",
+      "label": "t=0.1",
+      "probe": {
+        "action_source": "softmax",
+        "actual_window_min": {
+          "clearance_m": 0.45512814779980904,
+          "t": 29.15000000000028
+        },
+        "argmax_weight_y_mps": 4.387096881866455,
+        "argmin_y_mps": 4.387096881866455,
+        "chosen_y_mps": 2.8225531578063965,
+        "cmd_y_mps": 2.8225531578063965,
+        "drone": 3,
+        "env_collision_t": null,
+        "episode": 0,
+        "outcome": "success",
+        "probe_t": 29.1,
+        "replan_t": 29.10000000000028,
+        "selected_visible_rollout_clearance_m": 0.47956926234192854,
+        "softmax_y_mps": 2.8225531578063965,
+        "weight_entropy": 2.1534271240234375,
+        "weight_mass_by_action_y_sign": {
+          "near_zero": 0.0,
+          "negative": 0.1478339582681656,
+          "positive": 0.8521660566329956
+        },
+        "weight_max": 0.32388824224472046
+      },
+      "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1",
+      "source": "fresh_run",
+      "summary": {
+        "drone_success": 12,
+        "drone_total": 12,
+        "env_collision": 0,
+        "episodes": 3,
+        "joint_success": 3,
+        "min_dynamic_clearance_m": null,
+        "missing_drone": 0,
+        "missing_joint": 0,
+        "n_drones": 4,
+        "peer_collision": 0,
+        "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1",
+        "timeout": 0
+      },
+      "tag": "t0p1",
+      "temperature": 0.1
+    },
+    {
+      "config": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p001/config.yaml",
+      "label": "t=0.001",
+      "probe": {
+        "action_source": "softmax",
+        "actual_window_min": {
+          "clearance_m": 0.08449807383899866,
+          "t": 29.400000000000283
+        },
+        "argmax_weight_y_mps": -4.253332138061523,
+        "argmin_y_mps": -4.253332138061523,
+        "chosen_y_mps": -4.253332138061523,
+        "cmd_y_mps": -4.253332105663655,
+        "drone": 3,
+        "env_collision_t": null,
+        "episode": 0,
+        "outcome": "success",
+        "probe_t": 29.1,
+        "replan_t": 29.10000000000028,
+        "selected_visible_rollout_clearance_m": -0.29719983645482784,
+        "softmax_y_mps": -4.253332138061523,
+        "weight_entropy": 1.986057631325401e-26,
+        "weight_mass_by_action_y_sign": {
+          "near_zero": 0.0,
+          "negative": 1.0,
+          "positive": 0.0
+        },
+        "weight_max": 1.0
+      },
+      "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p001",
+      "source": "fresh_run",
+      "summary": {
+        "drone_success": 12,
+        "drone_total": 12,
+        "env_collision": 0,
+        "episodes": 3,
+        "joint_success": 3,
+        "min_dynamic_clearance_m": null,
+        "missing_drone": 0,
+        "missing_joint": 0,
+        "n_drones": 4,
+        "peer_collision": 0,
+        "run_dir": "results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p001",
+        "timeout": 0
+      },
+      "tag": "t0p001",
+      "temperature": 0.001
+    }
+  ],
+  "cell": "p19p8_y5p5_34p5",
+  "params": {
+    "follow": 0.35,
+    "n": 3,
+    "period": 19.8,
+    "probe_drone": 3,
+    "probe_episode": 0,
+    "probe_t": 29.1,
+    "radius": 1.0,
+    "seed": 42,
+    "speed": 1.5,
+    "y_pair": [
+      5.5,
+      34.5
+    ]
+  }
+}
