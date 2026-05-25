@@ -87,11 +87,14 @@
   満たした。controls
   (`docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json`) では
   `frozen_initial=10/10`、`frozen_encounter=0/10`、`wrong_velocity=10/10`、
-  `no_prediction=10/10`。結論は「速度予測が効いた」ではなく、
-  **short lookahead goal 後も衝突を採点すること + branch actions により、
-  moving sweeper のタイミングを通せた**という narrower claim。
-  README 先頭 GIF はこの run から再生成済み。次は branch-only /
-  postgoal-only ablation か、cell を増やす。
+  `no_prediction=10/10`。さらに postgoal-only / dynbranch-only ablation
+  (`docs/data/race_hero_control_sweep_postgoal_only_n10.json`,
+  `docs/data/race_hero_control_sweep_dynbranch_n10.json`) で
+  `postgoal-only=10/10`、`dynbranch-only=0/10` と確定。結論は
+  「速度予測が効いた」でも「branch が効いた」でもなく、
+  **short lookahead goal 後も衝突を採点することが主因**。README 先頭 GIF は
+  postgoal+dynbranch run から再生成済みだが、この cell では branch は不要。
+  次は cell を増やし、branch が必要になる条件を探す。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

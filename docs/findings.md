@@ -3070,10 +3070,18 @@ The n=10 controls sharpen the mechanism and avoid over-claiming:
 | wrong velocity | 10/10 | 40/40 | velocity direction is not the active dependency |
 | no prediction / zero observed velocity | 10/10 | 40/40 | current-obstacle branch + post-goal scoring is sufficient here |
 
-So the corrected claim is narrower than "dynamic prediction wins": the
-planner succeeds because it scores future collision beyond the short
-race lookahead goal and has branch actions available when the moving
-sweeper reaches the racing line.
+A direct scoring-vs-branch ablation isolates the active ingredient:
+
+| ablation | joint | drone | hero-seed clearance / delta | interpretation |
+|---|---:|---:|---:|---|
+| post-goal scoring only | 10/10 | 40/40 | +0.59 m / 6.35 m | scoring fix is sufficient |
+| dynamic branch only | 0/10 | 20/40 | n/a | branch seeds do not fix the masked post-goal collision |
+
+So the corrected claim is narrower than "dynamic prediction wins" and
+narrower than "branch sampling wins": the planner succeeds because it
+scores future collision beyond the short race lookahead goal. Branch
+seeds are useful instrumentation and may matter in harder cells, but
+they are not required for this one.
 
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature

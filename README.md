@@ -13,7 +13,9 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > moving sweeper safety radius by `-0.61 m`, while the post-goal
 > collision-scored GPU MPPI run finishes `10/10` seeds (`40/40` drones)
 > with `+0.47 m` focus-clearance and a `5.55 m` path delta in the hero
-> seed. This is a mechanism result, not a broad benchmark claim. See
+> seed. Post-goal scoring alone also finishes `10/10`; dynamic branch
+> sampling without post-goal scoring fails `0/10`. This is a mechanism
+> result, not a broad benchmark claim. See
 > `docs/dynamic_obstacle_oss_survey.md` and `docs/findings.md` for the
 > audit trail.
 
@@ -40,11 +42,17 @@ drones) with <code>+0.47 m</code> hero-seed focus clearance and
 <code>0/10</code>; wrong-velocity and current-obstacle-only controls still
 succeed <code>10/10</code>, so the strongest evidence is timing /
 post-goal collision scoring rather than velocity-prediction dependence.
+Ablations confirm the split: post-goal scoring without branch sampling
+succeeds <code>10/10</code>, while branch sampling without post-goal scoring
+fails <code>0/10</code>.
 This is a mechanism result, not a broad benchmark claim.
 Rendered from real episode logs with
 <code>scripts/render_race_avoidance_overlay_gif.py</code>; the control-first
 reports are <code>docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json</code>
-and <code>docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json</code>.
+and <code>docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json</code>;
+the scoring/branch ablations are
+<code>docs/data/race_hero_control_sweep_postgoal_only_n10.json</code> and
+<code>docs/data/race_hero_control_sweep_dynbranch_n10.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -281,8 +289,8 @@ planner-level finding.
 The current hero GIF (<code>compare_race_temperature_avoid.gif</code>
 at the top of the README) is not one of the invalidated old race GIFs.
 It is rendered from the post-fix race-simple control sweep: the track,
-moving sweepers, no-sweeper ghost, and post-goal branch GPU MPPI run all
-come from real episode logs. The decisive change is planner scoring:
+moving sweepers, no-sweeper ghost, and post-goal GPU MPPI run all come
+from real episode logs. The decisive change is planner scoring:
 race lookahead goals no longer mask collisions later in the MPPI horizon,
 so the chosen action moves around the sweeper instead of treating an
 imminent post-goal contact as a clean reach. The earlier
@@ -324,9 +332,9 @@ stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 YAMLs and scripts; the current dynamic-obstacle hero is
 `compare_race_temperature_avoid.gif`, rendered from the post-fix
 race-simple control sweep. The latest post-fix race-simple cell adds
-dynamic branch rollout seeds, post-goal collision scoring for short
-race lookahead goals, planner-internal provenance, and an n=10
-control-first check. The older race / gates4 / dyn4 / chaos
+post-goal collision scoring for short race lookahead goals, planner-
+internal provenance, an n=10 control-first check, and scoring-vs-branch
+ablations. The older race / gates4 / dyn4 / chaos
 scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**

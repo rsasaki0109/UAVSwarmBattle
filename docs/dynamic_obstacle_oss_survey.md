@@ -230,14 +230,22 @@ Control-first outputs are tracked:
   is not strong evidence for velocity-prediction dependence. The robust
   positive is timing/post-goal collision scoring plus branch candidates
   avoiding a moving hazard that a frozen-at-encounter obstacle blocks.
+- `docs/data/race_hero_control_sweep_postgoal_only_n10.json` and
+  `docs/data/race_hero_control_sweep_dynbranch_n10.json`: direct
+  scoring-vs-branch ablation. Post-goal scoring without dynamic branch
+  sampling succeeds `10/10` (`40/40` drones, hero-seed clearance
+  `+0.59 m`, path delta `6.35 m`). Dynamic branch sampling without
+  post-goal scoring fails `0/10` (`20/40` drones, env collision `10`,
+  peer collision `10`). This makes post-goal collision scoring the
+  active fix for this cell; branch samples are not required here.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
-complete it reliably: branch rollout seeds, and collision scoring beyond
-short race lookahead goals. The n=10 controls narrow the claim: this is
-a race-timing / post-goal-scoring mechanism result, not a predictor-
-velocity result. The next step is either broader n/cell sweeps or a
-control that isolates branch seeding from post-goal scoring.
+complete it reliably in the first implementation: branch rollout seeds,
+and collision scoring beyond short race lookahead goals. The ablation
+now narrows the claim further: this cell is a post-goal-scoring result,
+not a branch-seeding or predictor-velocity result. The next step is a
+broader cell sweep to see when branch seeds become necessary.
 
 ### P3: only then update README
 
