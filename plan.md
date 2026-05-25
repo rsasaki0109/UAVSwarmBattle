@@ -36,7 +36,9 @@
   切り替えた。左は vanilla `t=1.0` の `contact @ 29.25s`、右は同じ
   cell の `t=0.1` が赤い safety halo 外へ逃げる。ここでやっと
   「image は drone race」「障害物を避けていることが読める」という
-  入口条件を満たした。
+  入口条件を満たした。裏取り数値は
+  `docs/data/race_hero_encounter_metrics.json` に固定済み
+  (sweeper travel 8.40 m、low-temp window min clearance +0.45 m)。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

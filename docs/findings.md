@@ -3050,6 +3050,18 @@ same oval race. This replaces the temporary 4-way intersection hero
 because the first visual should read as a drone race with dynamic
 obstacle avoidance, not merely a coordination/intersection cell.
 
+The encounter audit is fixed in
+`docs/data/race_hero_encounter_metrics.json`:
+
+| arm | outcome | contact t | window min clearance | snapshot clearance | ref error |
+|---|---|---:|---:|---:|---:|
+| vanilla t=1.0 | collision | 29.25 s | +0.03 m + collision flag | +0.03 m | 1.61 m |
+| low-temp t=0.1 | success | none | +0.45 m | +0.83 m | 1.91 m |
+
+During the GIF window (26.0-31.6 s), the upper sweeper moves 8.40 m
+from `(20.0, 35.5)` to `(20.0, 27.1)`, so the obstacle is visibly
+dynamic rather than a static marker.
+
 Reproduce:
 ```bash
 python scripts/run_race_simple_phase_sweep.py \
@@ -3075,6 +3087,7 @@ python scripts/render_race_hero_gif.py \
   --start-step 520 --end-step 632 \
   --xlim 14 26 --ylim 25 36 \
   --focus-drone 3 --focus-obstacle 0
+python scripts/race_hero_encounter_metrics.py
 ```
 
 

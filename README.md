@@ -37,7 +37,9 @@ follow-on peer contacts). The right pane lowers only the temperature to
 <code>t=0.1</code> and stays outside the safety halo
 (fresh counterfactual: <code>3/3</code> joint success,
 <code>12/12</code> drone-episodes, no env or peer contacts). Rendered
-from real episode logs with <code>scripts/render_race_hero_gif.py</code>.
+from real episode logs with <code>scripts/render_race_hero_gif.py</code>;
+encounter metrics are stored in
+<code>docs/data/race_hero_encounter_metrics.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
