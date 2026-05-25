@@ -3058,11 +3058,13 @@ python scripts/race_simple_temperature_counterfactual.py \
 
 ### Intersection coordination: visible MPC stop vs MPPI swerve under a dynamic intruder
 
-**Status (2026-05-22).** First post-`1646e11` dynamic-obstacle cell
-where both planners (a) succeed deterministically and (b) produce
-*visibly* different avoidance strategies driven purely by the cost
-aggregator. This is the current README hero
-(`docs/images/compare_intersection_avoid.gif`).
+**Status (2026-05-22; README hero promoted 2026-05-25).** First
+post-`1646e11` dynamic-obstacle cell where both planners (a) succeed
+deterministically and (b) produce *visibly* different avoidance
+strategies driven purely by the cost aggregator. The 2-drone clip is
+`docs/images/compare_intersection_avoid.gif`; the current README hero
+is the faster 4-drone extension,
+`docs/images/compare_intersection_4way_speed.gif`.
 
 **Scenario** (`examples/exp_intersection_v1_{mpc,mppi}.yaml`,
 `multi_drone_voxel`, world 40×40×12): two drones approach a 4-way
@@ -3110,10 +3112,11 @@ with the same intruder) preserves the visible-strategy contrast:
   then re-aligning) so the four trajectories braid around the
   intruder without anyone stopping.
 
-Rendered side-by-side in `docs/images/compare_intersection_4way.gif`.
-This confirms the softmax-vs-argmin avoidance signature is not an
-artifact of the 2-drone geometry — it scales to 4 drones with mutual
-peer prediction.
+Rendered side-by-side in `docs/images/compare_intersection_4way.gif`;
+the README uses the faster 56-frame / 30 fps cut at
+`docs/images/compare_intersection_4way_speed.gif`. This confirms the
+softmax-vs-argmin avoidance signature is not an artifact of the
+2-drone geometry — it scales to 4 drones with mutual peer prediction.
 
 **Intruder-velocity sweep** (2-drone cell, n=5 each, 5 velocities ×
 2 planners = 50 episodes). Success rate is flat at **10/10

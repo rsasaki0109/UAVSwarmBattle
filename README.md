@@ -9,7 +9,7 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > dynamic-obstacle headlines were retracted after commit `1646e11` fixed
 > a multi-runner bug that froze dynamic obstacles after total-wipeout
 > episodes. The replacement evidence is now mechanism-first: the hero
-> GIF below shows MPC vs MPPI visibly avoiding a slow intruder, and the
+> GIF below shows four drones avoiding a slow intruder, and the
 > latest race-simple split cell logs GPU MPPI action provenance showing
 > the exact softmax command that turns a clean escape rollout into a
 > collision; lowering the temperature on the same cell flips the
@@ -22,23 +22,19 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_intersection_avoid.gif" alt="2 drones approach a 4-way intersection from N and E while a slow dynamic intruder sits at the centre; MPC stops and waits, MPPI swerves around — both succeed in all 10 drone-episodes" width="1080">
+<img src="docs/images/compare_intersection_4way_speed.gif" alt="4 drones approach a 4-way intersection in two head-on pairs while a slow dynamic intruder crosses the centre; MPC waits, MPPI braids around the obstacle" width="1080">
 
-<i>Two drones enter a 4-way intersection from N (red) and E (green); a
-slow dynamic intruder (large red square, 0.5 m/s) sits at the centre
-and drifts E-W. Same stack, same seed, only the rollout aggregator
-changes — MPC argmin on the left, MPPI softmax on the right. Both
-planners stay collision-free in all 10 drone-episodes (scales to
-4 drones × 20/20 in the 4-way ablation below), but their
+<i>Four drones enter a 4-way intersection as two head-on pairs
+(N↔S + E↔W); a slow dynamic intruder sits at the centre and drifts
+E-W. Same stack, same seed, only the rollout aggregator changes —
+MPC argmin on the left, MPPI softmax on the right. Both planners stay
+collision-free across 5 paired episodes / 20 drone-episodes, but their
 <b>behavioral fingerprints</b> separate cleanly: <b>MPC yields by
-stopping the N drone</b>, <b>MPPI preserves progress by lateral
-swerving</b>, and quantitatively MPC's command-jump (max |Δcmd|
-~6 m/s) is <b>2.4× larger</b> than MPPI's (~2.5 m/s) at <b>4× lower
-plan-time cost</b> (~9 vs ~38 ms). Binary success rate saturates,
-the time-derivative of control does not. <code>uav-nav-lab</code>
-records this as a behavioral fingerprint, not just a success rate.
-Reproduce with <code>examples/exp_intersection_v1_{mpc,mppi}.yaml</code>;
-metrics from <code>scripts/intersection_fingerprint.py</code>.
+stopping the S→N drone</b>, while <b>MPPI keeps all four drones moving
+and braids both head-on pairs around the intruder</b>. This is the
+56-frame / 30 fps README speed-cut of the 4-way ablation; reproduce
+with <code>examples/exp_intersection_4way_{mpc,mppi}.yaml</code> and
+<code>scripts/render_race_gif.py</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -241,21 +237,7 @@ claim; reproduce with
 <code>scripts/race_simple_temperature_counterfactual.py</code>.</i>
 
 <details>
-<summary><b>Companion hero GIFs</b> — 4-way intersection ablation, multi-drone Δ-flip, single-drone 3D MPPI</summary>
-
-<img src="docs/images/compare_intersection_4way_speed.gif" width="720"><br>
-<i><b>Intersection 4-way ablation speed-cut</b> — extend the 2-drone hero to a
-4-drone 4-way crossing (two head-on pairs N↔S + E↔W) with the same
-slow centre intruder. <b>Both planners 5/5 episodes / 20/20 drone-
-episodes / 0 collisions.</b> MPC has the S→N drone stop & wait while
-the other three detour around the intruder; MPPI has all four drones
-swerve simultaneously, each head-on pair offsetting in opposite
-directions to braid around the intruder without anyone stopping.
-Confirms the softmax-vs-argmin avoidance signature scales with peer
-count. This README cut is 56 frames at 30 fps (1.68 s); reproduce with
-<code>examples/exp_intersection_4way_{mpc,mppi}.yaml</code>.</i>
-
-<br><br>
+<summary><b>Companion hero GIFs</b> — multi-drone Δ-flip and single-drone 3D MPPI</summary>
 
 <img src="docs/images/compare_multi_drone_3d_mpc_vs_gpu_mppi.gif" width="720"><br>
 <i><b>§3 mode 1 multi-drone Δ-flip</b> (N=4 paired n=100, dummy_3d):
@@ -286,12 +268,13 @@ for the path-intersecting intruders. The "MPC vs softmax" contrast
 on those scenarios was an artifact of the bug, not a real
 planner-level finding.
 
-The current hero GIF (<code>compare_intersection_avoid.gif</code> at
-the top of the README) is the first re-tuned cell where both planners
-visibly avoid a dynamic intruder while also coordinating with another
-drone — MPC stops & waits, MPPI swerves around (n=5 / 10 drone-
-episodes / 0 collisions for both). An earlier re-tune attempt on the
-oval-race scenario (<code>compare_race_avoid.gif</code>) succeeded
+The current hero GIF (<code>compare_intersection_4way_speed.gif</code>
+at the top of the README) is the 4-drone extension of the first
+re-tuned intersection cell where both planners visibly avoid a dynamic
+intruder while coordinating with peers — MPC stops & waits, MPPI
+braids around the intruder (n=5 / 20 drone-episodes / 0 collisions
+for both). An earlier re-tune attempt on the oval-race scenario
+(<code>compare_race_avoid.gif</code>) succeeded
 statistically but did not show visible avoidance — drones at
 period=19.8 mostly slipped past the bouncing intruders without an
 obvious detour. The original gates4 / chaos / dyn4 scenarios still
@@ -327,10 +310,11 @@ v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
 stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 5 scenario families. Stable ablations are reproducible from the example
 YAMLs and scripts; the re-tuned dynamic-obstacle hero is the
-`compare_intersection_avoid.gif` 2-drone intersection (both planners
-0/10 collisions, visibly different avoidance strategies). The latest
-post-fix race-simple split cell adds planner-internal provenance for a
-GPU MPPI softmax failure. The older race / gates4 / dyn4 / chaos
+`compare_intersection_4way_speed.gif` 4-drone intersection speed-cut
+(both planners 0/20 collisions, visibly different avoidance
+strategies). The latest post-fix race-simple split cell adds
+planner-internal provenance for a GPU MPPI softmax failure. The older
+race / gates4 / dyn4 / chaos
 scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**
