@@ -3040,15 +3040,14 @@ against the n=10 vanilla failure. Summary and plot:
 
 **README race hero (2026-05-25).** The top README GIF is now
 `docs/images/compare_race_temperature_avoid.gif`, rendered from the
-same post-fix logs with `scripts/render_race_hero_gif.py`. It is a
-2-pane speed-cut of the shown seed, zoomed to the drone-3 / upper-
-sweeper encounter at t≈29 s. The renderer highlights the obstacle +
-drone safety radius and overlays a live clearance segment: vanilla
-`t=1.0` contacts the moving sweeper at 29.25 s, while the `t=0.1`
-counterfactual is already outside the safety halo and completes the
-same oval race. This replaces the temporary 4-way intersection hero
-because the first visual should read as a drone race with dynamic
-obstacle avoidance, not merely a coordination/intersection cell.
+same post-fix logs with `scripts/render_race_avoidance_overlay_gif.py`.
+It overlays both trajectories in the same zoomed camera frame at the
+drone-3 / upper-sweeper encounter around t≈29 s: red vanilla `t=1.0`
+contacts the moving sweeper at 29.25 s, while green `t=0.1` detours
+outside the safety halo and completes the same oval race. This replaces
+the temporary 4-way intersection hero because the first visual should
+read as a drone race with dynamic obstacle avoidance, not merely a
+coordination/intersection cell.
 
 The encounter audit is fixed in
 `docs/data/race_hero_encounter_metrics.json`:
@@ -3077,13 +3076,13 @@ python scripts/analyze_race_simple_action_provenance.py \
 python scripts/race_simple_temperature_counterfactual.py \
   --n 3 --temperature 0.3 --temperature 0.1 --temperature 0.001 \
   --python /usr/bin/python3
-python scripts/render_race_hero_gif.py \
-  --runs results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t1:vanilla-t1.0 \
-         results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1:low-temp-t0.1 \
+python scripts/render_race_avoidance_overlay_gif.py \
+  --failed-run results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t1:vanilla-t1.0 \
+  --avoid-run results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1:low-temp-t0.1 \
   --config results/_race_simple_temperature_counterfactual/p19p8_y5p5_34p5/t0p1/config.yaml \
   --out docs/images/compare_race_temperature_avoid.gif \
-  --title "Zoomed drone-race encounter: clearance to the moving sweeper" \
-  --fps 30 --stride 2 --trail 72 --future 56 \
+  --title "Same sweeper: contact vs detour" \
+  --fps 30 --stride 2 --trail 76 --future 52 \
   --start-step 520 --end-step 632 \
   --xlim 14 26 --ylim 25 36 \
   --focus-drone 3 --focus-obstacle 0

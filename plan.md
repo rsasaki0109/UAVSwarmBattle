@@ -30,11 +30,12 @@
   **新しい post-fix non-floor cell の再設計**であって、旧 claim の修復ではない。
 - README 先頭 GIF は `docs/images/compare_race_temperature_avoid.gif` に
   差し替え済み。これは temporary な 4-way intersection hero ではなく、
-  post-fix race-simple temperature counterfactual の実ログから
-  `scripts/render_race_hero_gif.py` で描いた 2D top-down drone race。
-  2026-05-25 の見直しで全体 oval ではなく t≈29s の encounter zoom に
-  切り替えた。左は vanilla `t=1.0` の `contact @ 29.25s`、右は同じ
-  cell の `t=0.1` が赤い safety halo 外へ逃げる。ここでやっと
+  post-fix race-simple temperature counterfactual の実ログから描いた
+  2D top-down drone race。2026-05-25 の見直しで全体 oval でも
+  side-by-side でもなく、`scripts/render_race_avoidance_overlay_gif.py`
+  の t≈29s encounter overlay に切り替えた。赤は vanilla `t=1.0` の
+  `contact @ 29.25s`、緑は同じ cell の `t=0.1` が赤い safety halo
+  外へ detour する軌跡。ここでやっと
   「image は drone race」「障害物を避けていることが読める」という
   入口条件を満たした。裏取り数値は
   `docs/data/race_hero_encounter_metrics.json` に固定済み

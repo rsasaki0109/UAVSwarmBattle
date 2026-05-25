@@ -21,23 +21,26 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed two-panel drone-race encounter: vanilla temperature contacts a moving sweeper at 29.25 seconds while low-temperature GPU MPPI stays outside the red safety halo" width="1080">
+<img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed drone-race encounter with overlaid trajectories: red vanilla temperature contacts a moving sweeper at 29.25 seconds while green low-temperature GPU MPPI detours outside the red safety halo" width="1080">
 
 <i><b>Post-fix drone race hero, zoomed at the obstacle encounter.</b>
 Four drones run a horizontal oval while two red moving sweepers cross
 the racing line; this first-frame visual zooms into drone 3 versus the
 upper sweeper at <code>t≈29 s</code>. The translucent red disc is the
-obstacle + drone safety radius, and the green/red segment is live
-clearance. Same race cell, same seed, same GPU MPPI rollout/cost stack;
-only the softmax temperature changes. The left pane is vanilla
-<code>t=1.0</code> and contacts the sweeper at <code>29.25 s</code>
+obstacle + drone safety radius. Red is vanilla <code>t=1.0</code>;
+green is the low-temperature counterfactual; the dashed line is the
+race line. Same race cell, same seed, same GPU MPPI rollout/cost stack;
+only the softmax temperature changes. The red trajectory contacts the
+sweeper at <code>29.25 s</code>
 (aggregate baseline: <code>0/10</code> joint success,
 <code>10</code> dynamic-obstacle contacts and <code>20</code>
-follow-on peer contacts). The right pane lowers only the temperature to
-<code>t=0.1</code> and stays outside the safety halo
+follow-on peer contacts). The green trajectory lowers only the
+temperature to <code>t=0.1</code>, detours outside the safety halo,
+and keeps moving
 (fresh counterfactual: <code>3/3</code> joint success,
 <code>12/12</code> drone-episodes, no env or peer contacts). Rendered
-from real episode logs with <code>scripts/render_race_hero_gif.py</code>;
+from real episode logs with
+<code>scripts/render_race_avoidance_overlay_gif.py</code>;
 encounter metrics are stored in
 <code>docs/data/race_hero_encounter_metrics.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
