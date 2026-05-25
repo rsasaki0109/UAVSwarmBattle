@@ -5,16 +5,14 @@
 **Python research framework for UAV motion planning.**
 YAML-driven ablations with Wilson 95 % CIs by default.
 
-> ⚠️ **Heads-up (2026-05-22)**: a critical multi-runner bug was found
-> that froze dynamic obstacles in any episode following a total-wipeout
-> episode (see commit `1646e11`). The old race / gates / dyn4 / chaos
-> headline numbers ("MPC 51.7 % vs softmax 3.3 %") were artifacts of
-> frozen obstacles. The hero GIF below shows the first re-tuned cell
-> where MPC and CPU MPPI **visibly** avoid a dynamic intruder while also
-> coordinating with each other — MPC stops & waits, MPPI swerves around
-> (n=5 / 10 drone-episodes / 0 collisions for both planners). The old
-> findings are being rewritten; see `docs/findings.md` for the current
-> state of each result.
+> **Post-fix status (2026-05-25)**: the old race / gates / dyn4 / chaos
+> dynamic-obstacle headlines were retracted after commit `1646e11` fixed
+> a multi-runner bug that froze dynamic obstacles after total-wipeout
+> episodes. The replacement evidence is now mechanism-first: the hero
+> GIF below shows MPC vs MPPI visibly avoiding a slow intruder, and the
+> latest race-simple split cell logs GPU MPPI action provenance showing
+> the exact softmax command that turns a clean escape rollout into a
+> collision. See `docs/findings.md` for the audit trail.
 
 [![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
@@ -186,6 +184,12 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
+- **Latest: GPU MPPI softmax provenance in a moving-obstacle race** —
+  after the `1646e11` dynamic-obstacle fix, a re-tuned race-simple
+  split cell now has planner-internal provenance. GPU MPPI sees a
+  clean escape rollout, but the vanilla softmax average emits the
+  actual velocity command back toward the moving obstacle; MPC clears
+  the same window.
 - **Static multi-drone coordination** — MPC argmin and GPU MPPI softmax
   can tie on joint success while producing different failure clustering
   (`Δ` over the independent-drone baseline). The sign depends on the
@@ -198,12 +202,27 @@ active findings are grouped this way:
 - **Planner / sim framework** — YAML-driven paired runs cover CPU MPC,
   GPU MPPI, sampling planners, CHOMP variants, AirSim, ROS 2, and
   AirSim-over-ROS-2 parity checks.
-- **Dynamic-obstacle race studies** — currently under repair after the
-  `1646e11` multi-runner fix. Old race / gates / dyn4 / chaos numbers
-  should not be cited until the scenarios are re-tuned and re-run.
+- **Dynamic-obstacle race studies** — old race / gates / dyn4 / chaos
+  numbers remain retracted after the `1646e11` multi-runner fix. The
+  new race-simple phase cell is a replacement mechanism study, not a
+  revival of the old headline table.
 - **Methodology** — Wilson 95 % CIs by default, McNemar paired tests
   for matched-seed comparisons, and Pareto-cell re-validation before
   making ablation claims.
+
+<img src="docs/images/race_simple_phase_mechanism.png" alt="Top-down race-simple mechanism trace: GPU MPPI actual path cuts back into a moving obstacle while MPC escapes; the selected GPU rollout is drawn separately from the softmax command" width="900"><br>
+<i><b>Race-simple phase mechanism (post-fix)</b> — in the split band
+<code>p19.8, y=5.375/34.625</code> and
+<code>p19.8, y=5.50/34.50</code>, paired MPC succeeds while GPU MPPI
+collides. Action provenance at the pre-contact replan shows the
+step command is exactly the vanilla softmax action
+(<code>cmd_vs_chosen=0</code>, <code>chosen_vs_softmax=0</code>).
+The highest-weight / argmin rollout escapes
+(<code>y=+3.61 m/s</code>), but the softmax command points toward the
+obstacle (<code>y=-1.51 m/s</code>) because 61.9 % of the weight mass
+lies on negative-y actions. Reproduce with
+<code>scripts/run_race_simple_phase_sweep.py --gpu-log-action-provenance</code>
+and <code>scripts/analyze_race_simple_action_provenance.py</code>.</i>
 
 <details>
 <summary><b>Companion hero GIFs</b> — 4-way intersection ablation, multi-drone Δ-flip, single-drone 3D MPPI</summary>
@@ -239,7 +258,7 @@ algorithmic signature of each aggregator.</i>
 </details>
 
 <details>
-<summary>⚠️ <b>Dynamic-obstacle hero GIFs (under repair)</b></summary>
+<summary>⚠️ <b>Retracted dynamic-obstacle GIFs and the replacement race-simple cell</b></summary>
 
 The original race / gates / dyn4 / chaos GIFs were rendered against
 the frozen-obstacle bug (fixed in <code>1646e11</code>). Re-runs with
@@ -261,6 +280,13 @@ period=19.8 mostly slipped past the bouncing intruders without an
 obvious detour. The original gates4 / chaos / dyn4 scenarios still
 need further re-tuning (wider gaps, slower gates) before their GIFs
 go back up.
+
+The replacement race-simple phase cell is now a mechanism result rather
+than a headline win/loss table: GPU MPPI's selected visible rollout is
+clean, but its actual command is the softmax weighted action and points
+back toward the obstacle. That provenance is logged under
+<code>replans[].planner_meta.action_provenance</code> when
+<code>planner.log_action_provenance</code> is enabled.
 
 </details>
 
@@ -285,9 +311,10 @@ stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 5 scenario families. Stable ablations are reproducible from the example
 YAMLs and scripts; the re-tuned dynamic-obstacle hero is the
 `compare_intersection_avoid.gif` 2-drone intersection (both planners
-0/10 collisions, visibly different avoidance strategies). The older
-race / gates4 / dyn4 / chaos scenarios remain marked under repair
-after the `1646e11` bug fix.
+0/10 collisions, visibly different avoidance strategies). The latest
+post-fix race-simple split cell adds planner-internal provenance for a
+GPU MPPI softmax failure. The older race / gates4 / dyn4 / chaos
+scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**
 
