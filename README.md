@@ -227,8 +227,8 @@ and <code>scripts/analyze_race_simple_action_provenance.py</code>.</i>
 <details>
 <summary><b>Companion hero GIFs</b> — 4-way intersection ablation, multi-drone Δ-flip, single-drone 3D MPPI</summary>
 
-<img src="docs/images/compare_intersection_4way.gif" width="720"><br>
-<i><b>Intersection 4-way ablation</b> — extend the 2-drone hero to a
+<img src="docs/images/compare_intersection_4way_speed.gif" width="720"><br>
+<i><b>Intersection 4-way ablation speed-cut</b> — extend the 2-drone hero to a
 4-drone 4-way crossing (two head-on pairs N↔S + E↔W) with the same
 slow centre intruder. <b>Both planners 5/5 episodes / 20/20 drone-
 episodes / 0 collisions.</b> MPC has the S→N drone stop & wait while
@@ -236,7 +236,8 @@ the other three detour around the intruder; MPPI has all four drones
 swerve simultaneously, each head-on pair offsetting in opposite
 directions to braid around the intruder without anyone stopping.
 Confirms the softmax-vs-argmin avoidance signature scales with peer
-count. Reproduce with <code>examples/exp_intersection_4way_{mpc,mppi}.yaml</code>.</i>
+count. This README cut is 56 frames at 30 fps (1.68 s); reproduce with
+<code>examples/exp_intersection_4way_{mpc,mppi}.yaml</code>.</i>
 
 <br><br>
 
