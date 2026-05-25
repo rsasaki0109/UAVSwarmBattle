@@ -21,21 +21,23 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_temperature_avoid.gif" alt="Two-panel top-down drone race on an oval track with moving sweeper obstacles: vanilla temperature collides while low-temperature GPU MPPI avoids and completes the race" width="1080">
+<img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed two-panel drone-race encounter: vanilla temperature contacts a moving sweeper at 29.25 seconds while low-temperature GPU MPPI stays outside the red safety halo" width="1080">
 
-<i><b>Post-fix drone race hero.</b> Four drones run a horizontal oval
-while two red moving sweepers cross the racing line. Same race cell,
-same seed, same GPU MPPI rollout/cost stack; only the softmax
-temperature changes. The left pane is vanilla <code>t=1.0</code> and
-collides in the shown seed (aggregate baseline: <code>0/10</code>
-joint success, <code>10</code> dynamic-obstacle contacts and
-<code>20</code> follow-on peer contacts). The right pane lowers only
-the temperature to <code>t=0.1</code> and completes cleanly
+<i><b>Post-fix drone race hero, zoomed at the obstacle encounter.</b>
+Four drones run a horizontal oval while two red moving sweepers cross
+the racing line; this first-frame visual zooms into drone 3 versus the
+upper sweeper at <code>t≈29 s</code>. The translucent red disc is the
+obstacle + drone safety radius, and the green/red segment is live
+clearance. Same race cell, same seed, same GPU MPPI rollout/cost stack;
+only the softmax temperature changes. The left pane is vanilla
+<code>t=1.0</code> and contacts the sweeper at <code>29.25 s</code>
+(aggregate baseline: <code>0/10</code> joint success,
+<code>10</code> dynamic-obstacle contacts and <code>20</code>
+follow-on peer contacts). The right pane lowers only the temperature to
+<code>t=0.1</code> and stays outside the safety halo
 (fresh counterfactual: <code>3/3</code> joint success,
 <code>12/12</code> drone-episodes, no env or peer contacts). Rendered
-from real episode logs with <code>scripts/render_race_hero_gif.py</code>;
-generate the logs with
-<code>scripts/race_simple_temperature_counterfactual.py</code>.
+from real episode logs with <code>scripts/render_race_hero_gif.py</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 

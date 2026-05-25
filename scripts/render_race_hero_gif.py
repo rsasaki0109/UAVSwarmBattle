@@ -162,6 +162,13 @@ def draw_track(ax, center: np.ndarray, rx: float, ry: float, world: np.ndarray) 
     draw_checkered_start(ax, float(center[0] + rx), float(center[1]), height=gate_w)
 
 
+def set_limits(ax, xlim: list[float] | None, ylim: list[float] | None) -> None:
+    if xlim is not None:
+        ax.set_xlim(float(xlim[0]), float(xlim[1]))
+    if ylim is not None:
+        ax.set_ylim(float(ylim[0]), float(ylim[1]))
+
+
 def pane_outcomes(drones: list[dict]) -> tuple[int, int]:
     outcomes = [d.get("outcome", "?") for d in drones]
     return sum(o == "collision" for o in outcomes), len(outcomes)
@@ -183,6 +190,20 @@ def main() -> int:
     ap.add_argument("--future", type=int, default=90)
     ap.add_argument("--start-step", type=int, default=0)
     ap.add_argument("--end-step", type=int, default=None)
+    ap.add_argument("--xlim", type=float, nargs=2, default=None)
+    ap.add_argument("--ylim", type=float, nargs=2, default=None)
+    ap.add_argument(
+        "--focus-drone",
+        type=int,
+        default=None,
+        help="Highlight one drone and dim the others.",
+    )
+    ap.add_argument(
+        "--focus-obstacle",
+        type=int,
+        default=None,
+        help="Draw live clearance to this obstacle.",
+    )
     ap.add_argument("--dt", type=float, default=0.05)
     ap.add_argument("--n-drones", type=int, default=4)
     ap.add_argument(
@@ -268,10 +289,13 @@ def main() -> int:
     obs_future_lines: list[list] = []
     obs_pts: list[list[Circle]] = []
     obs_halos: list[list[Circle]] = []
+    clearance_lines: list = []
+    clearance_texts: list = []
     pane_titles: list = []
 
     for pane, ax in enumerate(axes):
         draw_track(ax, center, rx, ry, world)
+        set_limits(ax, args.xlim, args.ylim)
         for otraj in obs_trajs:
             ax.plot(
                 otraj[:, 0],
@@ -288,15 +312,32 @@ def main() -> int:
         pane_ref_pts = []
         for i in range(args.n_drones):
             c = DRONE_COLORS[i % len(DRONE_COLORS)]
-            ln, = ax.plot([], [], color=c, linewidth=2.6, alpha=0.92, zorder=9)
-            ref_ln, = ax.plot([], [], color=c, linewidth=1.2, alpha=0.45, zorder=8)
+            is_focus = args.focus_drone is None or i == args.focus_drone
+            trail_alpha = 0.94 if is_focus else 0.18
+            marker_alpha = 0.98 if is_focus else 0.28
+            ln, = ax.plot(
+                [],
+                [],
+                color=c,
+                linewidth=3.4 if is_focus else 1.0,
+                alpha=trail_alpha,
+                zorder=9 if is_focus else 6,
+            )
+            ref_ln, = ax.plot(
+                [],
+                [],
+                color=c,
+                linewidth=1.4 if is_focus else 0.8,
+                alpha=0.56 if is_focus else 0.12,
+                zorder=8 if is_focus else 5,
+            )
             ref_pt = Circle(
                 (0.0, 0.0),
                 0.34,
                 facecolor="none",
                 edgecolor=c,
                 linewidth=1.3,
-                alpha=0.58,
+                alpha=0.58 if is_focus else 0.14,
                 zorder=10,
             )
             pt = Circle(
@@ -305,8 +346,8 @@ def main() -> int:
                 facecolor=c,
                 edgecolor="#ffffff",
                 linewidth=1.0,
-                alpha=0.98,
-                zorder=12,
+                alpha=marker_alpha,
+                zorder=12 if is_focus else 7,
             )
             ax.add_patch(ref_pt)
             ax.add_patch(pt)
@@ -368,6 +409,34 @@ def main() -> int:
         obs_future_lines.append(pane_obs_future)
         obs_halos.append(pane_obs_halos)
         obs_pts.append(pane_obs_pts)
+
+        clearance_ln, = ax.plot(
+            [],
+            [],
+            color="#16a34a",
+            linewidth=2.3,
+            alpha=0.95,
+            zorder=13,
+        )
+        clearance_txt = ax.text(
+            0.03,
+            0.965,
+            "",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=11,
+            color=INK,
+            bbox={
+                "boxstyle": "round,pad=0.22",
+                "facecolor": "#ffffff",
+                "edgecolor": "#cbd5e1",
+                "alpha": 0.88,
+            },
+            zorder=14,
+        )
+        clearance_lines.append(clearance_ln)
+        clearance_texts.append(clearance_txt)
 
         title = ax.set_title("", fontsize=11, color=INK, pad=8)
         pane_titles.append(title)
@@ -448,6 +517,33 @@ def main() -> int:
                         obs_pts[pane][o_idx],
                     ]
                 )
+            if args.focus_drone is not None and args.focus_obstacle is not None:
+                fd = int(args.focus_drone)
+                fo = int(args.focus_obstacle)
+                if 0 <= fd < args.n_drones and 0 <= fo < len(obs_trajs):
+                    q = tp[fd, k, :]
+                    o = obs_trajs[fo][k]
+                    radius = float(obstacles[fo]["radius"]) + drone_radius
+                    clearance = float(np.linalg.norm(q - o) - radius)
+                    collided = int(coll_steps[fd]) <= k
+                    color = (
+                        "#16a34a"
+                        if clearance > 0.0 and not collided
+                        else "#dc2626"
+                    )
+                    status = "clear" if clearance > 0.0 and not collided else "contact"
+                    clearance_lines[pane].set_data([q[0], o[0]], [q[1], o[1]])
+                    clearance_lines[pane].set_color(color)
+                    if collided:
+                        hit_t = int(coll_steps[fd]) * args.dt
+                        clearance_texts[pane].set_text(f"{status} @ {hit_t:.2f}s")
+                    else:
+                        clearance_texts[pane].set_text(f"{status} {clearance:+.2f} m")
+                    clearance_texts[pane].set_color(color)
+                else:
+                    clearance_lines[pane].set_data([], [])
+                    clearance_texts[pane].set_text("")
+                artists.extend([clearance_lines[pane], clearance_texts[pane]])
         title_text.set_text(f"{args.title}   t = {t_s:.2f} s")
         return artists
 

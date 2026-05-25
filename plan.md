@@ -32,8 +32,11 @@
   差し替え済み。これは temporary な 4-way intersection hero ではなく、
   post-fix race-simple temperature counterfactual の実ログから
   `scripts/render_race_hero_gif.py` で描いた 2D top-down drone race。
-  左は vanilla `t=1.0` の接触、右は同じ cell の `t=0.1` 回避完走。
-  ここでやっと「image は drone race」という入口条件を満たした。
+  2026-05-25 の見直しで全体 oval ではなく t≈29s の encounter zoom に
+  切り替えた。左は vanilla `t=1.0` の `contact @ 29.25s`、右は同じ
+  cell の `t=0.1` が赤い safety halo 外へ逃げる。ここでやっと
+  「image は drone race」「障害物を避けていることが読める」という
+  入口条件を満たした。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 
