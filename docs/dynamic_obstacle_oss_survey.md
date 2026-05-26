@@ -238,14 +238,36 @@ Control-first outputs are tracked:
   post-goal scoring fails `0/10` (`20/40` drones, env collision `10`,
   peer collision `10`). This makes post-goal collision scoring the
   active fix for this cell; branch samples are not required here.
+- `docs/data/race_hero_postgoal_generalization_n3.json`: fixed
+  six-cell post-goal-only follow-up at n=3 per cell. Every moving arm
+  succeeds (`18/18` joint, `72/72` drones, no env / peer collisions).
+  Three cells pass the full control-first threshold (`-1.17`, `-1.03`,
+  and `-0.61 m` no-obstacle virtual clearance with positive moving
+  clearance and >1 m path delta); the other three still finish but are
+  rejected as causal evidence because the ghost conflict is too shallow
+  or absent.
+- `docs/data/race_hero_postgoal_adversarial_screen.json` and
+  `docs/data/race_hero_postgoal_adversarial_n1_top4.json`: broad
+  radius/period screen looking for post-goal-only failures. The selected
+  `r=1.75` cells have no-obstacle ghost clearance around `-1.77 m`, but
+  the first four moving arms still succeed (`4/4` joint).
+- `docs/data/race_hero_postgoal_extreme_radius_screen.json` and
+  `docs/data/race_hero_postgoal_extreme_radius_n1_top2.json`: stricter
+  `r=2.5` screen. The ghost clearance reaches `-2.52 m`, but the first
+  two moving arms still succeed (`2/2` joint).
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
 complete it reliably in the first implementation: branch rollout seeds,
 and collision scoring beyond short race lookahead goals. The ablation
 now narrows the claim further: this cell is a post-goal-scoring result,
-not a branch-seeding or predictor-velocity result. The next step is a
-broader cell sweep to see when branch seeds become necessary.
+not a branch-seeding or predictor-velocity result. The six-cell
+follow-up shows that the scoring fix is not only a single hand-picked
+cell. The next step is a broader adversarial sweep to find cells where
+post-goal scoring alone fails and branch/corridor/topology sampling
+becomes necessary. The first adversarial probes show that deeper ghost
+penetration alone is not enough; the next design should narrow or
+topologically split the available escape route.
 
 ### P3: only then update README
 

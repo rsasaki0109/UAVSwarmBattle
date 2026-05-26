@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-25 (post-goal dynamic-obstacle hero added)
+> 最終更新: 2026-05-26 (post-goal-only fixed-cell follow-up added)
 
 ---
 
@@ -94,7 +94,18 @@
   「速度予測が効いた」でも「branch が効いた」でもなく、
   **short lookahead goal 後も衝突を採点することが主因**。README 先頭 GIF は
   postgoal+dynbranch run から再生成済みだが、この cell では branch は不要。
-  次は cell を増やし、branch が必要になる条件を探す。
+  追加で fixed 6-cell の postgoal-only n=3 follow-up
+  (`docs/data/race_hero_postgoal_generalization_n3.json`) を回し、moving は
+  `18/18` joint success (`72/72` drones, collision 0)。そのうち
+  `3/6` cell は no-obstacle ghost が十分深く入る control-first 基準も通過。
+  さらに `r=1.75` broad adversarial probe
+  (`docs/data/race_hero_postgoal_adversarial_n1_top4.json`) は `4/4`
+  joint success、`r=2.5` extreme-radius probe
+  (`docs/data/race_hero_postgoal_extreme_radius_n1_top2.json`) も `2/2`
+  joint success。単に no-obstacle ghost を深く刺すだけでは postgoal-only
+  は壊れない。次はランダム/格子ではなく、paired sweeper / offset gate /
+  corridor pinch で逃げ道の topology を制限し、post-goal scoring だけでは
+  落ちて branch/corridor/topology sampling が必要になる条件を探す。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

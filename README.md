@@ -15,7 +15,10 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > with `+0.47 m` focus-clearance and a `5.55 m` path delta in the hero
 > seed. Post-goal scoring alone also finishes `10/10`; dynamic branch
 > sampling without post-goal scoring fails `0/10`. This is a mechanism
-> result, not a broad benchmark claim. See
+> result, not a broad benchmark claim. A fixed six-cell n=3 follow-up
+> keeps post-goal-only moving arms at `18/18` joint success (`72/72`
+> drones, no collisions), with `3/6` cells also passing the stricter
+> no-obstacle-penetration threshold. See
 > `docs/dynamic_obstacle_oss_survey.md` and `docs/findings.md` for the
 > audit trail.
 
@@ -45,6 +48,9 @@ post-goal collision scoring rather than velocity-prediction dependence.
 Ablations confirm the split: post-goal scoring without branch sampling
 succeeds <code>10/10</code>, while branch sampling without post-goal scoring
 fails <code>0/10</code>.
+A fixed six-cell post-goal-only follow-up keeps moving arms at
+<code>18/18</code> joint success (<code>72/72</code> drones), with
+<code>3/6</code> cells passing the stricter no-obstacle conflict threshold.
 This is a mechanism result, not a broad benchmark claim.
 Rendered from real episode logs with
 <code>scripts/render_race_avoidance_overlay_gif.py</code>; the control-first
@@ -52,7 +58,9 @@ reports are <code>docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json<
 and <code>docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json</code>;
 the scoring/branch ablations are
 <code>docs/data/race_hero_control_sweep_postgoal_only_n10.json</code> and
-<code>docs/data/race_hero_control_sweep_dynbranch_n10.json</code>.
+<code>docs/data/race_hero_control_sweep_dynbranch_n10.json</code>; the
+six-cell follow-up is
+<code>docs/data/race_hero_postgoal_generalization_n3.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 

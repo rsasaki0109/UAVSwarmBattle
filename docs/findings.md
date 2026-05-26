@@ -3083,6 +3083,47 @@ scores future collision beyond the short race lookahead goal. Branch
 seeds are useful instrumentation and may matter in harder cells, but
 they are not required for this one.
 
+Fixed-candidate generalization check (2026-05-26): rerun post-goal
+scoring without branch sampling over six preselected cells at n=3 each
+(`docs/data/race_hero_postgoal_generalization_n3.json`). All moving
+arms finished (`18/18` joint success, `72/72` drones, no env / peer
+collisions). Three cells also pass the stricter screen requiring a
+meaningful no-obstacle virtual hit, positive moving clearance, and path
+delta:
+
+| cell | no-obstacle ghost | moving clearance | max path delta | threshold pass |
+|---|---:|---:|---:|---:|
+| `p19p8_y3p5_36p5_v1p5_r1p15` | -1.17 m | +0.58 m | 4.41 m | yes |
+| `p19p8_y4_36_v1p5_r1p15` | -1.03 m | +0.46 m | 5.26 m | yes |
+| `p19p8_y4p5_35p5_v1p5_r1p15` | -0.61 m | +0.59 m | 6.35 m | yes |
+| `p19p8_y4p5_35p5_v1_r1p15` | -0.15 m | +1.21 m | 3.65 m | no: ghost hit too shallow |
+| `p19p8_y5_35_v1p5_r1p15` | -0.15 m | +0.68 m | 6.15 m | no: ghost hit too shallow |
+| `p19p8_y4p5_35p5_v2_r1p15` | +10.99 m | +11.04 m | 4.48 m | no: no ghost conflict |
+
+This does not make a broad benchmark claim, but it removes the
+single-cell concern for the active post-goal-scoring fix. The next
+meaningful test is to search for cells where post-goal scoring alone
+fails and branch/corridor/topology sampling becomes necessary.
+
+Adversarial follow-up (2026-05-26): two cheap boundary probes tried to
+break post-goal-only by making the no-obstacle ghost conflict deeper.
+The broad screen
+(`docs/data/race_hero_postgoal_adversarial_screen.json`) selected
+`r=1.75` cells with ghost clearance around `-1.77 m`; the first four
+completed moving arms all succeeded
+(`docs/data/race_hero_postgoal_adversarial_n1_top4.json`, `4/4` joint).
+The extreme-radius screen
+(`docs/data/race_hero_postgoal_extreme_radius_screen.json`) pushed the
+ghost conflict to `-2.52 m`; the first two completed moving arms still
+succeeded
+(`docs/data/race_hero_postgoal_extreme_radius_n1_top2.json`, `2/2`
+joint). This is useful negative evidence: simply enlarging the moving
+sweeper and making the ghost penetration deeper does not expose a
+post-goal-only failure. The next adversarial design should constrain
+the escape topology itself: paired sweepers, offset gates, corridor
+pinch, or race-progress constraints that make "large early detour"
+expensive or impossible.
+
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
 controller with scene sweepers removed produced an identical drone-3

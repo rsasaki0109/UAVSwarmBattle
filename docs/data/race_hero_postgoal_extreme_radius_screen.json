@@ -1,0 +1,3628 @@
+{
+  "source": {
+    "script": "scripts/race_hero_control_sweep.py",
+    "base_config": "results/_race_simple_causal_probe/p19p8_y5p0_35p0/t0p1/config.yaml",
+    "no_obstacle_run": "results/_race_hero_causality_controls/p19p8_y5p0_35p0/no_sweeper_t0p1"
+  },
+  "focus": {
+    "episode": 0,
+    "drone": 3,
+    "obstacle": 0,
+    "window_s": [
+      26.0,
+      31.6
+    ]
+  },
+  "thresholds": {
+    "moving_min_clearance_m": 0.25,
+    "no_obstacle_max_clearance_m": -0.5,
+    "path_delta_m": 1.0
+  },
+  "planner_variant": {
+    "temperature": 0.1,
+    "safety_margin": 0.8,
+    "w_obs": 500.0,
+    "fallback_to_argmin": true,
+    "fallback_commit_steps": 3,
+    "dynamic_branch_sampling": false,
+    "dynamic_branch_extra_radius": null,
+    "dynamic_branch_lateral_gain": null,
+    "dynamic_branch_speeds": null,
+    "dynamic_branch_max_obstacles": null,
+    "score_collision_after_goal": true
+  },
+  "rows": [
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.519257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.519257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.519257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v1_r2p5",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.508922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v1_r2p5",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.508922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v1_r2p5",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.508922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v1_r2p5",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.4989148093320828,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v1_r2p5",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.4989148093320828,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v1_r2p5",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.4989148093320828,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.3768127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.3768127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": true,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.3768127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.3285626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.3285626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.3285626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.269257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.269257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.269257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v1_r2p25",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.258922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v1_r2p25",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.258922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v1_r2p25",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.258922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v1_r2p25",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.2489148093320828,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v1_r2p25",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.2489148093320828,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v1_r2p25",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.2489148093320828,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v1_r2p5",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.226021295215167,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v1_r2p5",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.226021295215167,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v1_r2p5",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.226021295215167,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v1_r2p5",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -2.217821995372171,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v1_r2p5",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -2.217821995372171,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v1_r2p5",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -2.217821995372171,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.1268127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.1268127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.1268127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.0785626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.0785626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.0785626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v1p5_r2",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.019257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v1p5_r2",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.019257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v1p5_r2",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -2.019257784586761,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v1_r2",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.008922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v1_r2",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.008922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v1_r2",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -2.008922821101352,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v1_r2",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -1.9989148093320825,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v1_r2",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -1.9989148093320825,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v1_r2",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -1.9989148093320825,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v1_r2p25",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.9760212952151668,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v1_r2p25",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.9760212952151668,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v1_r2p25",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.9760212952151668,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v1_r2p25",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.9678219953721712,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v1_r2p25",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.9678219953721712,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v1_r2p25",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.9678219953721712,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.9645691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.9645691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.9645691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.9271157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.9271157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.9271157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v1_r2p5",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.8968223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v1_r2p5",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.8968223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v1_r2p5",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.8968223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v1p5_r2",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.8768127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v1p5_r2",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.8768127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v1p5_r2",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.8768127288965313,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v1p5_r2",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -1.8285626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v1p5_r2",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -1.8285626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v1p5_r2",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.450000000000284,
+        "clearance_m": -1.8285626897433804,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v1_r2",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.7260212952151668,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v1_r2",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.7260212952151668,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v1_r2",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.7260212952151668,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v1_r2",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.7178219953721712,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v1_r2",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.7178219953721712,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v1_r2",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.7178219953721712,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.7145691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.7145691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.7145691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.6771157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.6771157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.6771157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v1_r2p25",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.6468223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v1_r2p25",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.6468223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v1_r2p25",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.6468223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v1_r2p5",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.5023909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v1_r2p5",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.5023909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1_r2p5",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.5023909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.5007196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.5007196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.5007196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.850000000000275,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v1p5_r2p5",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.494636237976022,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v1p5_r2p5",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.494636237976022,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v1p5_r2p5",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.494636237976022,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v1p5_r2",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.4645691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v1p5_r2",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.4645691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1p5_r2",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.500000000000284,
+        "clearance_m": -1.4645691606037772,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v1p5_r2",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.4271157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v1p5_r2",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.4271157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v1p5_r2",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.4271157292051178,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v1_r2",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.3968223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v1_r2",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.3968223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v1_r2",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.3968223008203737,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.000000000000277,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v1_r2p25",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.2523909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v1_r2p25",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.2523909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1_r2p25",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.2523909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.2507196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.2507196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.2507196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.900000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v1p5_r2p25",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.244636237976022,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v1p5_r2p25",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.244636237976022,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v1p5_r2p25",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -1.244636237976022,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v1_r2p5",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -1.0638189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v1_r2p5",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -1.0638189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v1_r2p5",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -1.0638189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v1_r2",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.0023909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v1_r2",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.0023909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v1_r2",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.350000000000282,
+        "clearance_m": -1.0023909452556363,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.050000000000278,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v1p5_r2",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.0007196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v1p5_r2",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.0007196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v1p5_r2",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.550000000000285,
+        "clearance_m": -1.0007196385879227,
+        "collision_flag": false,
+        "first_virtual_hit_t": 28.950000000000276,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v1p5_r2",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -0.9946362379760221,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.15000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v1p5_r2",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -0.9946362379760221,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.15000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v1p5_r2",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 1.5,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.400000000000283,
+        "clearance_m": -0.9946362379760221,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.15000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v1_r2p25",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -0.8138189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v1_r2p25",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -0.8138189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v1_r2p25",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -0.8138189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.10000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v1_r2",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -0.5638189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.15000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v1_r2",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -0.5638189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.15000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v1_r2",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 1.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 29.30000000000028,
+        "clearance_m": -0.5638189702576455,
+        "collision_flag": false,
+        "first_virtual_hit_t": 29.15000000000028,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v2_r2p5",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 7.820517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v2_r2p5",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 7.820517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v2_r2p5",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 7.820517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v2_r2p25",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.070517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v2_r2p25",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.070517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v2_r2p25",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.070517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v2_r2p5",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.23565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v2_r2p5",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.23565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v2_r2p5",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.23565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2_38_v2_r2",
+        "period": 16.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.320517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2_38_v2_r2",
+        "period": 18.0,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.320517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2_38_v2_r2",
+        "period": 19.8,
+        "y_low": 2.0,
+        "y_high": 38.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.320517018730861,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v2_r2p25",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.48565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v2_r2p25",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.48565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v2_r2p25",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.48565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v2_r2p5",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.657516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v2_r2p5",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.657516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v2_r2p5",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.657516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y2p5_37p5_v2_r2",
+        "period": 16.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.73565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y2p5_37p5_v2_r2",
+        "period": 18.0,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.73565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y2p5_37p5_v2_r2",
+        "period": 19.8,
+        "y_low": 2.5,
+        "y_high": 37.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.73565584206391,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v2_r2p25",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.907516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v2_r2p25",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.907516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v2_r2p25",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 8.907516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v2_r2p5",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 8.989975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v2_r2p5",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 8.989975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v2_r2p5",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 8.989975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3_37_v2_r2",
+        "period": 16.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 9.157516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3_37_v2_r2",
+        "period": 18.0,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 9.157516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3_37_v2_r2",
+        "period": 19.8,
+        "y_low": 3.0,
+        "y_high": 37.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 28.150000000000265,
+        "clearance_m": 9.157516035761585,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v2_r2p25",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.239975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v2_r2p25",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.239975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v2_r2p25",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.239975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v2_r2p5",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.307959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v2_r2p5",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.307959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v2_r2p5",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.307959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y3p5_36p5_v2_r2",
+        "period": 16.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.489975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y3p5_36p5_v2_r2",
+        "period": 18.0,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.489975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y3p5_36p5_v2_r2",
+        "period": 19.8,
+        "y_low": 3.5,
+        "y_high": 36.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.489975459278124,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v2_r2p25",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.557959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v2_r2p25",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.557959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v2_r2p25",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.557959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v2_r2p5",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.637823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v2_r2p5",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.637823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v2_r2p5",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.637823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4_36_v2_r2",
+        "period": 16.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.807959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4_36_v2_r2",
+        "period": 18.0,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.807959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4_36_v2_r2",
+        "period": 19.8,
+        "y_low": 4.0,
+        "y_high": 36.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.807959006039734,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v2_r2p25",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.887823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v2_r2p25",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.887823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v2_r2p25",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.887823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v2_r2p5",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.978655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v2_r2p5",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.978655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v2_r2p5",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.5
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 9.978655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y4p5_35p5_v2_r2",
+        "period": 16.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.137823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y4p5_35p5_v2_r2",
+        "period": 18.0,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.137823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y4p5_35p5_v2_r2",
+        "period": 19.8,
+        "y_low": 4.5,
+        "y_high": 35.5,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.137823166884164,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v2_r2p25",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.228655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v2_r2p25",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.228655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v2_r2p25",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.25
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.228655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p16_y5_35_v2_r2",
+        "period": 16.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.478655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p18_y5_35_v2_r2",
+        "period": 18.0,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.478655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    },
+    {
+      "candidate": {
+        "tag": "p19p8_y5_35_v2_r2",
+        "period": 19.8,
+        "y_low": 5.0,
+        "y_high": 35.0,
+        "speed": 2.0,
+        "radius": 2.0
+      },
+      "screen_selected": false,
+      "no_obstacle": {
+        "t": 27.350000000000254,
+        "clearance_m": 10.478655070890277,
+        "collision_flag": false,
+        "first_virtual_hit_t": null,
+        "window_path_length_m": 36.706153931849585
+      },
+      "passes_thresholds": false
+    }
+  ],
+  "survivors": []
+}
