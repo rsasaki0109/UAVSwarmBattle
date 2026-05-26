@@ -167,6 +167,48 @@
   `+0.54 / +0.47 / +0.51 m`、path delta は `7.34 / 5.42 / 5.14 m`。
   結論: 手置きの二段 gate でもまだ破れない。次は second-row `(x, center_y,
   phase)` の grid driver にするか、短い slot/wall 制約を併用する。
+- `race_hero_dynamic_gate_sweep.py` を second-row grid 対応に拡張。
+  hardest single gate (`gap0p8_vy0p64_t28p5`) で `x={27,29}`,
+  `center_y={25.5,28.0,29.7}`, `t={28.0,28.5}` の top4 を n=1 実走。
+  全部 joint success、moving clearance は `+0.51/+0.50/+0.45/+0.75 m`。
+  結論: 小さい second-row grid でもまだ破れない。次は短い slot/wall で
+  alternate line を構造的に制限する。
+- slot/wall boundary も実施。最初の wall `(center=25.5,27.5,7; size=8,2,14)`
+  は通常周回側まで潰して全機 early collision なので不採用。trimmed wall
+  `(center=24.0,27.5,7; size=5,2,14)` は hardest single dynamic gate の下側
+  escape だけを狙い、n=3 で `0/3` joint、`9/12` drones success。
+  drone3 が全 seed で `t=29.80 s`, `(27.69,26.43,7.02)` 付近の env collision。
+  動的障害物 clearance はまだ `+0.35 m`。追加 control として同じ trimmed
+  wall を extra dynamic gate なしの base paired-sweeper scene に入れると
+  n=3 で `3/3` joint success (`12/12` drones)、moving clearance `+0.37 m`,
+  path delta `6.17 m`。hardest dynamic gate 単体も n=3 success なので、
+  これは壁単体の失敗ではなく、dynamic gate が下側 escape に押し出し、
+  trimmed wall がその topology を塞いだ composition boundary と扱う。
+- `scripts/race_hero_slot_wall_sweep.py` を追加し、slot wall variant ごとに
+  `base_wall` と `gate_wall` を同じ JSON で比較できるようにした。最初の
+  y sweep (`docs/data/race_hero_slot_wall_y_sweep_n1.json`) では
+  `center_y=26.5/27.5` が `base_wall=1/1`, `gate_wall=0/1` の
+  `gate_wall_boundary`。`center_y=28.5` は `base_wall=0/1` なので
+  `wall_too_blunt` と分類。続く x sweep
+  (`docs/data/race_hero_slot_wall_x_sweep_n1.json`) では
+  `center_x=23.0/24.0` が `gate_wall_boundary`、`center_x=25.0` は
+  `wall_too_blunt`。現時点の useful patch は概ね `x=23-24`,
+  `y=26.5-27.5`, `size=(5,2,14)`。size_x sweep
+  (`docs/data/race_hero_slot_wall_sizex_sweep_n1.json`) では
+  `size_x=5.0/6.0` が `gate_wall_boundary`、`size_x=4.0` は
+  `base_wall_failure`。短くすれば安全という単調関係ではなく、短い壁は
+  base 側の経路を別に壊し、extra dynamic gate 側は逆に通る。次は
+  useful patch (`x=23/24`, `y=26.5/27.5`, `size_x=5/6`) の候補を
+  n>=3 に上げる。
+- useful patch の端2点を n=3 に上げた。
+  `docs/data/race_hero_slot_wall_x23_y27p5_sx5_n3.json` は
+  `base_wall=3/3`, `gate_wall=0/3` (`9/12` drones), moving clearance
+  `+1.46 m`, path delta `10.55 m`。
+  `docs/data/race_hero_slot_wall_x24_y26p5_sx5_n3.json` も
+  `base_wall=3/3`, `gate_wall=0/3` (`9/12` drones), moving clearance
+  `+1.14 m`, path delta `5.93 m`。中心点
+  `x=24,y=27.5,size_x=5` の n=3 と合わせて、composition boundary は
+  1 seed / 1 wall placement の偶然ではない。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

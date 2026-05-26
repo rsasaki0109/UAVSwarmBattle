@@ -46,39 +46,61 @@ class GateVariant:
     z: float
     radius: float
     encounter_t: float
+    second_x: float | None = None
+    second_center_y: float | None = None
+    second_separation: float | None = None
+    second_gate_speed: float | None = None
+    second_z: float | None = None
+    second_radius: float | None = None
+    second_encounter_t: float | None = None
 
     @property
     def tag(self) -> str:
-        return (
+        tag = (
             f"gap{tag_float(self.separation)}"
             f"_vy{tag_float(self.gate_speed)}"
             f"_t{tag_float(self.encounter_t)}"
         )
+        if self.second_x is not None:
+            tag += (
+                f"_2x{tag_float(self.second_x)}"
+                f"y{tag_float(self.second_center_y or 0.0)}"
+                f"g{tag_float(self.second_separation or self.separation)}"
+                f"v{tag_float(self.second_gate_speed or self.gate_speed)}"
+                f"t{tag_float(self.second_encounter_t or self.encounter_t)}"
+            )
+        return tag
 
-    def extra_obstacles(self) -> tuple[ExtraObstacle, ExtraObstacle]:
-        lower_y = self.center_y - 0.5 * self.separation
-        upper_y = self.center_y + 0.5 * self.separation
-        lower_start = lower_y - self.gate_speed * self.encounter_t
-        upper_start = upper_y + self.gate_speed * self.encounter_t
-        return (
-            ExtraObstacle(
-                start=(self.x, lower_start, self.z),
-                velocity=(0.0, self.gate_speed, 0.0),
+    def extra_obstacles(self) -> tuple[ExtraObstacle, ...]:
+        obstacles = list(
+            gate_obstacles(
+                x=self.x,
+                center_y=self.center_y,
+                separation=self.separation,
+                gate_speed=self.gate_speed,
+                z=self.z,
                 radius=self.radius,
-                reflect=False,
-            ),
-            ExtraObstacle(
-                start=(self.x, upper_start, self.z),
-                velocity=(0.0, -self.gate_speed, 0.0),
-                radius=self.radius,
-                reflect=False,
-            ),
+                encounter_t=self.encounter_t,
+            )
         )
+        if self.second_x is not None:
+            obstacles.extend(
+                gate_obstacles(
+                    x=self.second_x,
+                    center_y=self.second_center_y or self.center_y,
+                    separation=self.second_separation or self.separation,
+                    gate_speed=self.second_gate_speed or self.gate_speed,
+                    z=self.second_z or self.z,
+                    radius=self.second_radius or self.radius,
+                    encounter_t=self.second_encounter_t or self.encounter_t,
+                )
+            )
+        return tuple(obstacles)
 
     def to_dict(self) -> dict[str, Any]:
         lower_y = self.center_y - 0.5 * self.separation
         upper_y = self.center_y + 0.5 * self.separation
-        return {
+        out = {
             "tag": self.tag,
             "separation_m": self.separation,
             "gate_speed_mps": self.gate_speed,
@@ -98,6 +120,52 @@ class GateVariant:
                 for extra in self.extra_obstacles()
             ],
         }
+        if self.second_x is not None:
+            second_separation = self.second_separation or self.separation
+            second_center_y = self.second_center_y or self.center_y
+            second_lower_y = second_center_y - 0.5 * second_separation
+            second_upper_y = second_center_y + 0.5 * second_separation
+            out["second_row"] = {
+                "separation_m": second_separation,
+                "gate_speed_mps": self.second_gate_speed or self.gate_speed,
+                "center_y": second_center_y,
+                "x": self.second_x,
+                "z": self.second_z or self.z,
+                "radius_m": self.second_radius or self.radius,
+                "encounter_t": self.second_encounter_t or self.encounter_t,
+                "target_y_at_encounter": [second_lower_y, second_upper_y],
+            }
+        return out
+
+
+def gate_obstacles(
+    *,
+    x: float,
+    center_y: float,
+    separation: float,
+    gate_speed: float,
+    z: float,
+    radius: float,
+    encounter_t: float,
+) -> tuple[ExtraObstacle, ExtraObstacle]:
+    lower_y = center_y - 0.5 * separation
+    upper_y = center_y + 0.5 * separation
+    lower_start = lower_y - gate_speed * encounter_t
+    upper_start = upper_y + gate_speed * encounter_t
+    return (
+        ExtraObstacle(
+            start=(x, lower_start, z),
+            velocity=(0.0, gate_speed, 0.0),
+            radius=radius,
+            reflect=False,
+        ),
+        ExtraObstacle(
+            start=(x, upper_start, z),
+            velocity=(0.0, -gate_speed, 0.0),
+            radius=radius,
+            reflect=False,
+        ),
+    )
 
 
 def parse_candidate(raw: str) -> Candidate:
@@ -125,6 +193,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--z", type=float, default=7.0)
     p.add_argument("--gate-radius", type=float, default=1.75)
     p.add_argument("--encounter-t", type=parse_float_list, default=[28.5])
+    p.add_argument("--second-row-x", type=parse_float_list)
+    p.add_argument("--second-row-center-y", type=parse_float_list)
+    p.add_argument("--second-row-separation", type=parse_float_list)
+    p.add_argument("--second-row-gate-speed", type=parse_float_list)
+    p.add_argument("--second-row-z", type=float)
+    p.add_argument("--second-row-gate-radius", type=float)
+    p.add_argument("--second-row-encounter-t", type=parse_float_list)
     p.add_argument("--temperature", type=float, default=0.1)
     p.add_argument("--safety-margin", type=float, default=0.8)
     p.add_argument("--w-obs", type=float, default=500.0)
@@ -162,20 +237,7 @@ def main(argv: list[str]) -> int:
         args.no_obstacle_run
         / f"episode_{args.episode:03d}_drone_{args.focus_drone:02d}.json"
     )
-    variants = [
-        GateVariant(
-            separation=float(separation),
-            gate_speed=float(gate_speed),
-            center_y=float(args.center_y),
-            x=float(args.x),
-            z=float(args.z),
-            radius=float(args.gate_radius),
-            encounter_t=float(encounter_t),
-        )
-        for encounter_t in args.encounter_t
-        for separation in args.separation
-        for gate_speed in args.gate_speed
-    ]
+    variants = build_variants(args)
 
     rows: list[dict[str, Any]] = []
     for variant in variants:
@@ -347,6 +409,83 @@ def sort_key(row: dict[str, Any]) -> tuple[float, float, float]:
     if ghost is None:
         ghost = math.inf
     return (gate_conflict, float(ghost), float(row["gate"]["separation_m"]))
+
+
+def build_variants(args: argparse.Namespace) -> list[GateVariant]:
+    variants: list[GateVariant] = []
+    use_second_row = any(
+        value is not None
+        for value in (
+            args.second_row_x,
+            args.second_row_center_y,
+            args.second_row_encounter_t,
+            args.second_row_separation,
+            args.second_row_gate_speed,
+        )
+    )
+    if use_second_row and not (
+        args.second_row_x
+        and args.second_row_center_y
+        and args.second_row_encounter_t
+    ):
+        raise SystemExit(
+            "--second-row-x, --second-row-center-y, and "
+            "--second-row-encounter-t are required together"
+        )
+
+    second_separations = args.second_row_separation or args.separation
+    second_speeds = args.second_row_gate_speed or args.gate_speed
+    second_z = args.second_row_z if args.second_row_z is not None else args.z
+    second_radius = (
+        args.second_row_gate_radius
+        if args.second_row_gate_radius is not None
+        else args.gate_radius
+    )
+    for encounter_t in args.encounter_t:
+        for separation in args.separation:
+            for gate_speed in args.gate_speed:
+                if not use_second_row:
+                    variants.append(
+                        GateVariant(
+                            separation=float(separation),
+                            gate_speed=float(gate_speed),
+                            center_y=float(args.center_y),
+                            x=float(args.x),
+                            z=float(args.z),
+                            radius=float(args.gate_radius),
+                            encounter_t=float(encounter_t),
+                        )
+                    )
+                    continue
+                assert args.second_row_x is not None
+                assert args.second_row_center_y is not None
+                assert args.second_row_encounter_t is not None
+                for second_x in args.second_row_x:
+                    for second_center_y in args.second_row_center_y:
+                        for second_encounter_t in args.second_row_encounter_t:
+                            for second_separation in second_separations:
+                                for second_gate_speed in second_speeds:
+                                    variants.append(
+                                        GateVariant(
+                                            separation=float(separation),
+                                            gate_speed=float(gate_speed),
+                                            center_y=float(args.center_y),
+                                            x=float(args.x),
+                                            z=float(args.z),
+                                            radius=float(args.gate_radius),
+                                            encounter_t=float(encounter_t),
+                                            second_x=float(second_x),
+                                            second_center_y=float(second_center_y),
+                                            second_separation=float(second_separation),
+                                            second_gate_speed=float(second_gate_speed),
+                                            second_z=float(second_z),
+                                            second_radius=float(second_radius),
+                                            second_encounter_t=float(
+                                                second_encounter_t
+                                            ),
+                                        )
+                                    )
+    return variants
 
 
 if __name__ == "__main__":

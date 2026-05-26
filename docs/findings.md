@@ -3307,6 +3307,106 @@ expose a failure. The next useful step is to make the second-row search
 systematic over `(x, center_y, phase)` or add a short wall/slot
 constraint, rather than continuing one-off manual placement.
 
+Second-row grid follow-up (2026-05-26): the dynamic-gate sweep driver now
+supports optional `--second-row-x`, `--second-row-center-y`, and
+`--second-row-encounter-t` grids. A small grid on the hardest single
+gate (`gap0p8_vy0p64_t28p5`) over `x={27,29}`,
+`center_y={25.5,28.0,29.7}`, and `t={28.0,28.5}` selected the deepest
+top-4 ghost conflicts. All four still succeeded at n=1:
+
+| second-row grid cell | outcome | moving clearance | max path delta | report |
+|---|---:|---:|---:|---|
+| `2x29y29p7g1v0p64t28` | 1/1 joint | +0.51 m | 5.14 m | `race_hero_dynamic_gate_second_row_grid_n1_top4.json` |
+| `2x29y29p7g1v0p64t28p5` | 1/1 joint | +0.50 m | 6.42 m | same |
+| `2x27y29p7g1v0p64t28` | 1/1 joint | +0.45 m | 6.22 m | same |
+| `2x27y29p7g1v0p64t28p5` | 1/1 joint | +0.75 m | 6.28 m | same |
+
+Interpretation: the negative result is now systematic for a small
+second-row grid, not just hand placement. The controller still finds a
+valid line with `+0.45 m` or more clearance. The next boundary search
+needs a structural constraint, such as a short slot/wall that limits the
+alternate line, or a larger multi-row grid with a dedicated failure
+objective.
+
+Slot/wall boundary probe (2026-05-26): adding one short static wall to
+the hardest single-gate cell finally exposes the intended structural
+limit. The first wall, centered at `(25.5, 27.5, 7)` with size
+`(8, 2, 14)`, was too blunt and collided with all drones early on the
+normal repeated oval. Trimming it to center `(24.0, 27.5, 7)`, size
+`(5, 2, 14)` avoids that global wipeout and targets the lower escape
+used by drone 3. A control split shows this is a combination boundary,
+not just a bad static obstacle: the hardest dynamic gate alone succeeds
+at n=3, and the same trimmed wall without the extra dynamic gate also
+succeeds at n=3. Only the gate+wall composition fails:
+
+| cell | outcome | dynamic clearance | max path delta | failure | report |
+|---|---:|---:|---:|---|---|
+| hardest dynamic gate only | 3/3 joint, 12/12 drones | +0.42 m | 4.63 m | none | `race_hero_dynamic_gate_width_speed_gap0p8_vy0p64_n3.json` |
+| base paired sweepers + trimmed wall | 3/3 joint, 12/12 drones | +0.37 m | 6.17 m | none | `race_hero_base_pair_slot_wall_x24_y27p5_n3.json` |
+| hardest dynamic gate + trimmed wall | 0/3 joint, 9/12 drones | +0.35 m | 10.89 m | drone 3 env collision at t=29.80 s in all three seeds | `race_hero_dynamic_gate_slot_wall_x24_y27p5_n3.json` |
+
+This is not a better hero, but it is the first clean boundary result in
+this line: the controller clears the moving blockers and also survives
+the trimmed static wall in the base paired-sweeper scene, but the added
+dynamic gate pushes drone 3 into the lower escape route that the wall
+removes. It supports the current read that plain moving gates are easy
+for this controller until the available topology is also constrained.
+
+Slot-wall y sweep (2026-05-26): `scripts/race_hero_slot_wall_sweep.py`
+now runs the above split directly, comparing `base_wall` against
+`gate_wall` for each static wall variant. A first n=1 y sweep at
+`x=24.0`, `size=(5,2,14)` gives:
+
+| wall center y | base wall | gate + wall | class | report |
+|---:|---:|---:|---|---|
+| 26.5 | 1/1 joint, 4/4 drones | 0/1 joint, 3/4 drones | gate_wall_boundary | `race_hero_slot_wall_y_sweep_n1.json` |
+| 27.5 | 1/1 joint, 4/4 drones | 0/1 joint, 3/4 drones | gate_wall_boundary | same |
+| 28.5 | 0/1 joint, 0/4 drones | 0/1 joint, 1/4 drones | wall_too_blunt | same |
+
+The y sweep sharpens the boundary: lower wall positions at 26.5-27.5 m
+are useful composition failures, while 28.5 m is rejected because the
+wall alone destroys the base scene.
+
+Slot-wall x sweep (2026-05-26): keeping `y=27.5` and `size=(5,2,14)`,
+the same split over `x={23,24,25}` shows the useful boundary extends
+backward but not forward:
+
+| wall center x | base wall | gate + wall | class | report |
+|---:|---:|---:|---|---|
+| 23.0 | 1/1 joint, 4/4 drones | 0/1 joint, 3/4 drones | gate_wall_boundary | `race_hero_slot_wall_x_sweep_n1.json` |
+| 24.0 | 1/1 joint, 4/4 drones | 0/1 joint, 3/4 drones | gate_wall_boundary | same |
+| 25.0 | 0/1 joint, 0/4 drones | 0/1 joint, 0/4 drones | wall_too_blunt | same |
+
+This gives a small but real composition-boundary patch:
+`x=23-24`, `y=26.5-27.5`, `size=(5,2,14)` are useful probes; moving the
+wall to `x=25` or `y=28.5` makes it too blunt for the base scene.
+
+Slot-wall size-x sweep (2026-05-26): holding `x=24.0`, `y=27.5`, and
+`size_y=2`, wall length is not monotonic:
+
+| wall size x | base wall | gate + wall | class | report |
+|---:|---:|---:|---|---|
+| 4.0 | 0/1 joint, 3/4 drones | 1/1 joint, 4/4 drones | base_wall_failure | `race_hero_slot_wall_sizex_sweep_n1.json` |
+| 5.0 | 1/1 joint, 4/4 drones | 0/1 joint, 3/4 drones | gate_wall_boundary | same |
+| 6.0 | 1/1 joint, 4/4 drones | 0/1 joint, 3/4 drones | gate_wall_boundary | same |
+
+The `size_x=4` result is not a useful dynamic-gate boundary because the
+base scene already fails, and the added dynamic gate actually changes
+the route enough to survive. The useful band for this `(x,y,size_y)` is
+`size_x=5-6`.
+
+Slot-wall n=3 edge validation (2026-05-26): after the n=1 map, two
+edge cells from the useful patch were promoted to n=3:
+
+| wall | base wall | gate + wall | moving clearance | max path delta | report |
+|---|---:|---:|---:|---:|---|
+| `x=23.0, y=27.5, size=(5,2,14)` | 3/3 joint, 12/12 drones | 0/3 joint, 9/12 drones | +1.46 m | 10.55 m | `race_hero_slot_wall_x23_y27p5_sx5_n3.json` |
+| `x=24.0, y=26.5, size=(5,2,14)` | 3/3 joint, 12/12 drones | 0/3 joint, 9/12 drones | +1.14 m | 5.93 m | `race_hero_slot_wall_x24_y26p5_sx5_n3.json` |
+
+Together with the center cell `x=24.0, y=27.5, size=(5,2,14)` already
+validated at n=3, this shows the composition-boundary patch is not a
+single seed or single wall placement artifact.
+
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
 controller with scene sweepers removed produced an identical drone-3

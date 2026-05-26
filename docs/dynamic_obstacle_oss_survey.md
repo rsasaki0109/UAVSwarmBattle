@@ -321,6 +321,54 @@ Control-first outputs are tracked:
   success, with moving clearances `+0.54 m`, `+0.47 m`, and `+0.51 m`.
   Manual second-row placement is still not enough; the next test should
   sweep second-row `(x, center_y, phase)` or add a slot/wall constraint.
+- `docs/data/race_hero_dynamic_gate_second_row_grid_screen.json` and
+  `docs/data/race_hero_dynamic_gate_second_row_grid_n1_top4.json`:
+  second-row grid support in `scripts/race_hero_dynamic_gate_sweep.py`.
+  On the hardest single gate (`gap0p8_vy0p64_t28p5`), a small grid over
+  `x={27,29}`, `center_y={25.5,28.0,29.7}`, and `t={28.0,28.5}` still
+  leaves all top-4 cells at `1/1` joint success. The closest moving
+  clearance among the top-4 is `+0.45 m`.
+- `docs/data/race_hero_dynamic_gate_slot_wall_x24_y27p5_n3.json`:
+  structural slot/wall boundary. A short static box at center
+  `(24.0, 27.5, 7)`, size `(5, 2, 14)` targets the lower escape route
+  used by drone 3 after the hardest single dynamic gate. The dynamic
+  blockers are still cleared (`+0.35 m` moving clearance), but the run
+  fails `0/3` joint (`9/12` drones) by repeatable drone-3 environment
+  collision at `t=29.80 s`. This is the first useful failure boundary:
+  moving gates alone did not break the controller, but constraining the
+  escape topology does.
+- `docs/data/race_hero_base_pair_slot_wall_x24_y27p5_n3.json`: control
+  split for the trimmed slot wall. The same wall without the extra
+  dynamic gate succeeds `3/3` joint (`12/12` drones), with `+0.37 m`
+  moving clearance and `6.17 m` path delta. Together with the hardest
+  dynamic-gate-only n=3 success, this pins the failure on the
+  gate+wall composition rather than on the static wall by itself.
+- `scripts/race_hero_slot_wall_sweep.py` and
+  `docs/data/race_hero_slot_wall_y_sweep_n1.json`: systematic split for
+  slot-wall variants. At `x=24.0`, size `(5,2,14)`, wall centers
+  `y=26.5` and `y=27.5` are `gate_wall_boundary` cases: base wall
+  succeeds `1/1`, but gate+wall fails `0/1`. At `y=28.5`, the base wall
+  already fails `0/1`, so that position is classified as
+  `wall_too_blunt` and should not be used as evidence for dynamic-gate
+  pressure.
+- `docs/data/race_hero_slot_wall_x_sweep_n1.json`: x-axis follow-up at
+  `y=27.5`, size `(5,2,14)`. `x=23.0` and `x=24.0` are
+  `gate_wall_boundary` cases, while `x=25.0` is `wall_too_blunt`. The
+  useful composition-boundary patch is therefore roughly `x=23-24`,
+  `y=26.5-27.5` for this wall size.
+- `docs/data/race_hero_slot_wall_sizex_sweep_n1.json`: size-x follow-up
+  at `x=24.0`, `y=27.5`, `size_y=2`. `size_x=5.0` and `6.0` are
+  `gate_wall_boundary` cases. `size_x=4.0` is now labeled
+  `base_wall_failure`: the base wall fails `0/1` while gate+wall
+  succeeds `1/1`, so it is not valid evidence that the dynamic gate made
+  the scene harder.
+- `docs/data/race_hero_slot_wall_x23_y27p5_sx5_n3.json` and
+  `docs/data/race_hero_slot_wall_x24_y26p5_sx5_n3.json`: n=3 edge
+  validation for the useful patch. Both keep `base_wall=3/3` joint
+  success and `gate_wall=0/3` joint success (`9/12` drones), with
+  positive moving clearances of `+1.46 m` and `+1.14 m`. This confirms
+  the composition boundary is not isolated to the center
+  `x=24.0,y=27.5` wall.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
@@ -339,10 +387,21 @@ too easy for post-goal-only. The offset-gate and third-blocker probes
 are stronger because multiple hazards conflict with the ghost, but they
 are also solved by post-goal-only. The first static corridor wall probe
 was too blunt for the periodic oval, so the current useful direction is
-progress-weighted control plus systematic second-row gate follow-ups. The
-single-gate width/speed sweep did not break the controller down to
-`gap=0.8 m`, `|v_y|=0.64 m/s`, and the first three hand-placed second
-rows also stayed collision-free.
+progress-weighted control plus slot/wall follow-ups. The single-gate
+width/speed sweep did not break the controller down to `gap=0.8 m`,
+`|v_y|=0.64 m/s`, and the first three hand-placed second rows plus a
+small second-row grid also stayed collision-free. A trimmed static slot
+wall finally gives a repeatable `0/3` joint boundary, and the wall-only
+control split still succeeds `3/3`, so the boundary is the composition
+of dynamic gate pressure plus constrained escape topology. The first
+slot-wall y sweep confirms that `y=26.5-27.5` are useful composition
+failures, while `y=28.5` is too blunt because it breaks the base scene.
+The x sweep adds the same split along x: `x=23-24` are useful, `x=25`
+is too blunt. The size-x sweep shows the useful band starts at
+`size_x=5`; `size_x=4` perturbs the base scene instead of producing a
+clean dynamic-gate boundary. Two edge cells from the useful patch now
+also pass the n=3 split, so the slot-wall result is no longer just a
+single center-cell observation.
 
 ### P3: only then update README
 
