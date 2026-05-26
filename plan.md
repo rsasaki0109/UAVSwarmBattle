@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-26 (third-blocker progress-weighted hero added)
+> 最終更新: 2026-05-26 (third-blocker progress-weighted n=10 confirmed)
 
 ---
 
@@ -137,13 +137,14 @@
 - 代わりに GPU MPPI に progress tie-break を追加。`w_reach_time` は clean reach
   の到達ステップ、`w_clean_ctg` は clean reach 後の平均 cost-to-go を罰する
   (default 0 で既存挙動は不変)。third-blocker r=3.0 で
-  `w_reach_time=1000,w_clean_ctg=100` が n=3 で `3/3` joint success
-  (`12/12` drones) のまま all-obstacle clearance `+0.48 m`、path delta
+  `w_reach_time=1000,w_clean_ctg=100` が n=10 で `10/10` joint success
+  (`40/40` drones) のまま all-obstacle clearance `+0.48 m`、path delta
   `6.19 m`、max reference error `5.73 m` まで改善。強すぎる
   `w_clean_ctg=500` は delta `10.37 m` へ悪化。
   README 先頭 GIF は
-  `docs/images/race_hero_third_blocker_progress_allobs.gif` に更新。次はこの
-  progress-weighted cell を n=10 に広げるか、固定ゲートを動的 blocker として作る。
+  `docs/images/race_hero_third_blocker_progress_allobs.gif` に更新。次は固定ゲートを
+  動的 blocker として作るか、別 seed/phase の小さな grid で stress cell の
+  外挿限界を見る。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

@@ -11,10 +11,10 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > episodes. The replacement race-simple mechanism is backed by a
 > control-first n=10 check: post-goal collision scoring finishes `10/10`
 > seeds, while branch sampling without post-goal scoring fails `0/10`.
-> The hero below is a newer `n=3` stress visual with three moving
+> The hero below is a newer `n=10` stress/control visual with three moving
 > blockers: the matched no-sweeper ghost penetrates all three safety
 > halos (`-1.77 / -1.32 / -1.87 m`), while progress-weighted GPU MPPI
-> finishes `3/3` seeds (`12/12` drones), clears the closest halo by
+> finishes `10/10` seeds (`40/40` drones), clears the closest halo by
 > `+0.48 m`, and has a `6.19 m` max path delta in the rendered seed.
 > This is a mechanism/stress result, not a broad benchmark claim. See
 > `docs/dynamic_obstacle_oss_survey.md` and `docs/findings.md` for the
@@ -37,16 +37,16 @@ dashed line is the race line. In this
 <code>p19.8, y=3.5/13, v=1.5, r=1.75</code> cell with an extra
 <code>r=3.0 m</code> blocker, the ghost enters all three safety halos
 by <code>-1.77 / -1.32 / -1.87 m</code>. The moving-obstacle run finishes
-the <code>n=3</code> check with <code>3/3</code> joint success
-(<code>12/12</code> drones), <code>+0.48 m</code> rendered-seed minimum
+the <code>n=10</code> check with <code>10/10</code> joint success
+(<code>40/40</code> drones), <code>+0.48 m</code> rendered-seed minimum
 all-obstacle clearance, and a reduced <code>6.19 m</code> max path delta
 versus <code>8.20 m</code> before progress weighting. This remains a
-small stress/control visual; the broader n=10 mechanism check remains
-the post-goal-scoring ablation.
+small stress/control visual; the broader mechanism check remains the
+post-goal-scoring ablation.
 Rendered from real episode logs with
 <code>scripts/render_race_avoidance_overlay_gif.py</code>; the stress report is
-<code>docs/data/race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n3.json</code>.
-The supporting n=10 reports are
+<code>docs/data/race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n10.json</code>.
+The other supporting n=10 reports are
 <code>docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json</code>,
 <code>docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json</code>,
 <code>docs/data/race_hero_control_sweep_postgoal_only_n10.json</code>, and

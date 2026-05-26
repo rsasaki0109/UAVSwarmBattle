@@ -284,13 +284,13 @@ Control-first outputs are tracked:
   all-obstacle clearance `+0.49 m`; post-goal plus branch also succeeds
   with `+1.00 m`. The no-obstacle ghost enters all three safety halos.
   The GIF is `docs/images/race_hero_third_blocker_allobs_postgoal.gif`.
-- `docs/data/race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n3.json`:
+- `docs/data/race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n10.json`:
   progress-weighted follow-up on the same r=3.0 third-blocker cell.
   GPU MPPI now has zero-default clean-reach tie-breaks:
   `w_reach_time` penalizes late local-goal arrival and `w_clean_ctg`
   penalizes clean rollouts that drift away after reaching the short
   race goal. The best tested arm (`w_reach_time=1000`,
-  `w_clean_ctg=100`) keeps `3/3` joint success (`12/12` drones),
+  `w_clean_ctg=100`) keeps `10/10` joint success (`40/40` drones),
   preserves all-obstacle clearance (`+0.48 m` in the rendered seed),
   and reduces max path delta from `8.20 m` to `6.19 m`. The updated README hero is
   `docs/images/race_hero_third_blocker_progress_allobs.gif`.

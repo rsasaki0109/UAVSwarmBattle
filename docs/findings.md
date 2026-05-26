@@ -3223,7 +3223,7 @@ unchanged. On the r=3.0 third-blocker cell:
 |---|---:|---:|---:|---:|---|
 | postgoal-only baseline | 4/4 drones success | +0.49 m | 8.20 m | 6.75 m | `race_hero_third_blocker_r3_postgoal_allobs_n1.json` |
 | `w_reach_time=1000` | 4/4 drones success | +0.29 m | 7.75 m | 6.34 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_allobs_n1.json` |
-| `w_reach_time=1000, w_clean_ctg=100` | 3/3 joint, 12/12 drones | +0.48 m | 6.19 m | 5.73 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n3.json` |
+| `w_reach_time=1000, w_clean_ctg=100` | 10/10 joint, 40/40 drones | +0.48 m | 6.19 m | 5.73 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n10.json` |
 | `w_reach_time=1000, w_clean_ctg=500` | 4/4 drones success | +0.49 m | 10.37 m | 9.20 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean500_allobs_n1.json` |
 
 The README hero has been updated to the `w_clean_ctg=100` stress visual:
@@ -3232,10 +3232,11 @@ a small stress/control visual, not a success-rate benchmark, but it
 directly addresses the "it only looks like a big detour" concern: the
 no-sweeper ghost enters all three moving safety halos, the moving run
 clears all three, and the progress-weighted planner reduces both path
-delta and reference-error peak versus the r=3.0 baseline. The n=3
-confirmation is deterministic in this cell: episodes 0-2 all report
-`+0.484 m` all-obstacle clearance for drone 3 in the encounter window,
-with `5.73 m` max reference error.
+delta and reference-error peak versus the r=3.0 baseline. The n=10
+confirmation is seed-robust in this cell: episodes 0-9 all finish joint
+success (`40/40` drones, no env / peer / timeout failures). The rendered
+seed reports `+0.484 m` all-obstacle clearance for drone 3 in the
+encounter window, with `5.73 m` max reference error.
 
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
