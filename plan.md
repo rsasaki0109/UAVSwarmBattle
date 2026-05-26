@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-26 (post-goal-only fixed-cell follow-up added)
+> 最終更新: 2026-05-26 (third-blocker progress-weighted hero added)
 
 ---
 
@@ -28,7 +28,8 @@
   `docs/paper_a/section_3_headline.md` の pre-fix dynamic-obstacle claim も
   `1646e11` invalidated 扱いに整理済み。残る dynamic-obstacle 作業は
   **新しい post-fix non-floor cell の再設計**であって、旧 claim の修復ではない。
-- README 先頭 GIF は `docs/images/compare_race_temperature_avoid.gif`。
+- 2026-05-25 時点の README 先頭 GIF は
+  `docs/images/compare_race_temperature_avoid.gif`。
   2026-05-25 の追加確認で、最初に採用した `y=5.5/34.5` overlay は
   **no-sweeper control に落ちた**: 障害物を消しても drone-3 の軌道差
   `0.00 m`、virtual clearance も同じ `+0.45 m` だったため、緑は
@@ -37,7 +38,7 @@
   緑の window min clearance は `+0.10 m`、no-sweeper ghost は
   `-0.0007 m` virtual、path delta は `0.81 m` で、採用基準
   (`+0.25 m`, `<= -0.5 m`, `>= 1.0 m`) に届かなかった。
-- 現在の README hero は `p19p8_y4p5_35p5_v1p5_r1p15` の
+- その後の README hero は `p19p8_y4p5_35p5_v1p5_r1p15` の
   post-goal dynbranch run。赤は同 seed の no-sweeper ghost、緑は
   `dynamic_branch_sampling + score_collision_after_goal` の moving-sweeper
   実走。ghost は safety halo に `-0.61 m` 入り、moving run は joint
@@ -92,8 +93,8 @@
   `docs/data/race_hero_control_sweep_dynbranch_n10.json`) で
   `postgoal-only=10/10`、`dynbranch-only=0/10` と確定。結論は
   「速度予測が効いた」でも「branch が効いた」でもなく、
-  **short lookahead goal 後も衝突を採点することが主因**。README 先頭 GIF は
-  postgoal+dynbranch run から再生成済みだが、この cell では branch は不要。
+  **short lookahead goal 後も衝突を採点することが主因**。当時の README 先頭 GIF は
+  postgoal+dynbranch run から再生成したが、この cell では branch は不要。
   追加で fixed 6-cell の postgoal-only n=3 follow-up
   (`docs/data/race_hero_postgoal_generalization_n3.json`) を回し、moving は
   `18/18` joint success (`72/72` drones, collision 0)。そのうち
@@ -103,9 +104,46 @@
   joint success、`r=2.5` extreme-radius probe
   (`docs/data/race_hero_postgoal_extreme_radius_n1_top2.json`) も `2/2`
   joint success。単に no-obstacle ghost を深く刺すだけでは postgoal-only
-  は壊れない。次はランダム/格子ではなく、paired sweeper / offset gate /
-  corridor pinch で逃げ道の topology を制限し、post-goal scoring だけでは
-  落ちて branch/corridor/topology sampling が必要になる条件を探す。
+  は壊れない。既存 race-simple は元から mirrored paired sweeper なので、
+  `--focus-obstacle -1` の all-obstacle 判定を追加し、2個のうち最小 clearance
+  で再評価した。`docs/data/race_hero_paired_sweeper_postgoal_allobs_n1_top4.json`
+  は postgoal-only `4/4`、最小 all-obstacle clearance `+0.39 m`、
+  `docs/data/race_hero_paired_sweeper_postgoal_dynbranch_allobs_n1_top4.json`
+  は postgoal+branch `4/4`、最小 `+0.41 m`。GIF も
+  `docs/images/race_hero_paired_sweeper_allobs_postgoal.gif` として2障害物表示で
+  生成済み。結論: mirrored pair でもまだ branch 必須ではない。次は
+  ランダム/格子ではなく offset gate / corridor pinch で逃げ道の topology を
+  制限し、post-goal scoring だけでは落ちて branch/corridor/topology sampling
+  が必要になる条件を探す。offset gate については
+  `--min-conflicting-obstacles 2` を追加し、ghost が2個両方の safety halo に
+  入る条件で `docs/data/race_hero_offset_gate_postgoal_valid_allobs_n1.json`
+  を回した。valid `y_high={11,13,14}` は postgoal-only で `3/3` success、
+  最小 all-obstacle clearance `+0.37 m`、最大 path delta `6.68 m`。GIF は
+  `docs/images/race_hero_offset_gate_allobs_postgoal.gif`。結論:
+  offset gate でもまだ branch 必須ではない。次は static corridor wall /
+  race-progress penalty / 3rd blocker で、大きな早期迂回を安く済ませられない
+  条件を作る。3rd blocker については `--extra-obstacle` を追加し、逃げ道側に
+  `(34.5,30,7)+(-0.35,0,0)t` の追加 blocker を置いた。r=1.25 / 2.0 / 3.0
+  の postgoal-only は全部成功し、r=3.0 でも all-obstacle clearance `+0.49 m`,
+  path delta `8.20 m`。r=3.0 の postgoal+branch も成功 (`+1.00 m`,
+  delta `16.80 m`)。GIF は
+  `docs/images/race_hero_third_blocker_allobs_postgoal.gif`。結論:
+  3rd blocker 単体でもまだ branch 必須ではない。次は本当に corridor wall か
+  race-progress penalty を入れて、大きな迂回をコストで潰す。
+- corridor wall の初回 probe は negative: 静的 box
+  `(center=26.5,25.5,7; size=9,3,14)` は後半 escape だけでなく通常の周回ラインも
+  潰し、postgoal-only は全機 collision、postgoal+branch も joint collision。
+  periodic oval では static wall は早い lap にも効くので、hero には使わない。
+- 代わりに GPU MPPI に progress tie-break を追加。`w_reach_time` は clean reach
+  の到達ステップ、`w_clean_ctg` は clean reach 後の平均 cost-to-go を罰する
+  (default 0 で既存挙動は不変)。third-blocker r=3.0 で
+  `w_reach_time=1000,w_clean_ctg=100` が n=3 で `3/3` joint success
+  (`12/12` drones) のまま all-obstacle clearance `+0.48 m`、path delta
+  `6.19 m`、max reference error `5.73 m` まで改善。強すぎる
+  `w_clean_ctg=500` は delta `10.37 m` へ悪化。
+  README 先頭 GIF は
+  `docs/images/race_hero_third_blocker_progress_allobs.gif` に更新。次はこの
+  progress-weighted cell を n=10 に広げるか、固定ゲートを動的 blocker として作る。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

@@ -104,8 +104,12 @@ def main() -> int:
     scenario = cfg.get("scenario", {})
     world = np.asarray(scenario.get("size", [40.0, 40.0, 14.0]), dtype=float)
     obstacles = scenario.get("dynamic_obstacles", []) or []
-    obstacle = obstacles[args.focus_obstacle]
-    obstacle_radius = float(obstacle.get("radius", 0.5))
+    if args.focus_obstacle < 0:
+        selected_obstacles = list(enumerate(obstacles))
+    else:
+        selected_obstacles = [(args.focus_obstacle, obstacles[args.focus_obstacle])]
+    if not selected_obstacles:
+        raise SystemExit("no dynamic obstacles to render")
     drone_radius = float(scenario.get("drone_radius", 0.4))
 
     failed_drones = load_drones(failed_dir, args.ep, n_drones=4)
@@ -130,13 +134,20 @@ def main() -> int:
         ghost_true = ghost_ref = ghost_coll = None
         t_max = min(failed_true.shape[1], avoid_true.shape[1])
 
-    obs_traj = obstacle_trajectory(
-        np.asarray(obstacle["start"], dtype=float),
-        np.asarray(obstacle["velocity"], dtype=float),
-        args.dt,
-        t_max,
-        world,
-    )
+    obs_trajs = [
+        (
+            idx,
+            float(obstacle.get("radius", 0.5)),
+            obstacle_trajectory(
+                np.asarray(obstacle["start"], dtype=float),
+                np.asarray(obstacle["velocity"], dtype=float),
+                args.dt,
+                t_max,
+                world,
+            ),
+        )
+        for idx, obstacle in selected_obstacles
+    ]
     ref0 = avoid_ref[0]
     center = np.array(
         [float(ref0[:, 0].mean()), float(ref0[:, 1].mean()), float(ref0[:, 2].mean())]
@@ -158,14 +169,15 @@ def main() -> int:
     fig.subplots_adjust(left=0.07, right=0.98, bottom=0.08, top=0.83)
     draw_track(ax, center, rx, ry, world)
     set_limits(ax, args.xlim, args.ylim)
-    ax.plot(
-        obs_traj[:, 0],
-        obs_traj[:, 1],
-        color=OBSTACLE_COLOR,
-        linewidth=4.0,
-        alpha=0.12,
-        zorder=5,
-    )
+    for _, _, obs_traj in obs_trajs:
+        ax.plot(
+            obs_traj[:, 0],
+            obs_traj[:, 1],
+            color=OBSTACLE_COLOR,
+            linewidth=4.0,
+            alpha=0.12,
+            zorder=5,
+        )
 
     fail_line, = ax.plot([], [], color=FAIL_COLOR, linewidth=3.0, alpha=0.92, zorder=10)
     ghost_line = None
@@ -189,34 +201,51 @@ def main() -> int:
         linestyle=(0, (3, 3)),
         zorder=8,
     )
-    obs_past, = ax.plot([], [], color=OBSTACLE_COLOR, linewidth=2.0, alpha=0.75, zorder=9)
-    obs_future, = ax.plot(
-        [],
-        [],
-        color=OBSTACLE_COLOR,
-        linewidth=1.4,
-        alpha=0.35,
-        linestyle=(0, (3, 3)),
-        zorder=9,
-    )
-    radius_sum = obstacle_radius + drone_radius
-    obs_halo = Circle(
-        (0.0, 0.0),
-        radius_sum,
-        facecolor=OBSTACLE_COLOR,
-        edgecolor="none",
-        alpha=0.14,
-        zorder=7,
-    )
-    obs_pt = Circle(
-        (0.0, 0.0),
-        obstacle_radius,
-        facecolor=OBSTACLE_COLOR,
-        edgecolor="#111827",
-        linewidth=1.1,
-        alpha=0.95,
-        zorder=12,
-    )
+    obs_artists = []
+    for _, obstacle_radius, _ in obs_trajs:
+        obs_past, = ax.plot(
+            [],
+            [],
+            color=OBSTACLE_COLOR,
+            linewidth=2.0,
+            alpha=0.75,
+            zorder=9,
+        )
+        obs_future, = ax.plot(
+            [],
+            [],
+            color=OBSTACLE_COLOR,
+            linewidth=1.4,
+            alpha=0.35,
+            linestyle=(0, (3, 3)),
+            zorder=9,
+        )
+        obs_halo = Circle(
+            (0.0, 0.0),
+            obstacle_radius + drone_radius,
+            facecolor=OBSTACLE_COLOR,
+            edgecolor="none",
+            alpha=0.14,
+            zorder=7,
+        )
+        obs_pt = Circle(
+            (0.0, 0.0),
+            obstacle_radius,
+            facecolor=OBSTACLE_COLOR,
+            edgecolor="#111827",
+            linewidth=1.1,
+            alpha=0.95,
+            zorder=12,
+        )
+        obs_artists.append(
+            {
+                "past": obs_past,
+                "future": obs_future,
+                "halo": obs_halo,
+                "point": obs_pt,
+                "radius": obstacle_radius,
+            }
+        )
     fail_pt = Circle(
         (0.0, 0.0),
         drone_radius,
@@ -246,7 +275,11 @@ def main() -> int:
         alpha=0.98,
         zorder=14,
     )
-    patches = [obs_halo, obs_pt, fail_pt, avoid_pt]
+    patches = [
+        patch
+        for row in obs_artists
+        for patch in (row["halo"], row["point"])
+    ] + [fail_pt, avoid_pt]
     if ghost_pt is not None:
         patches.insert(3, ghost_pt)
     for patch in patches:
@@ -315,7 +348,20 @@ def main() -> int:
         failed_k = min(k, failed_true.shape[1] - 1)
         avoid_k = min(k, avoid_true.shape[1] - 1)
         ghost_k = min(k, ghost_true.shape[1] - 1) if ghost_true is not None else None
-        obs = obs_traj[k]
+        def closest_obstacle(pos: np.ndarray):
+            best = None
+            for (idx, radius, obs_traj), _artist in zip(obs_trajs, obs_artists):
+                obs = obs_traj[k]
+                c = clearance(
+                    pos,
+                    obs,
+                    obstacle_radius=radius,
+                    drone_radius=drone_radius,
+                )
+                if best is None or c < best[0]:
+                    best = (c, idx, radius, obs)
+            assert best is not None
+            return best
 
         fail_line.set_data(
             failed_true[fd, k0 : failed_k + 1, 0],
@@ -334,42 +380,28 @@ def main() -> int:
             avoid_ref[fd, k0 : avoid_k + 1, 0],
             avoid_ref[fd, k0 : avoid_k + 1, 1],
         )
-        obs_past.set_data(obs_traj[k0 : k + 1, 0], obs_traj[k0 : k + 1, 1])
-        obs_future.set_data(obs_traj[k : k1 + 1, 0], obs_traj[k : k1 + 1, 1])
-
-        obs_xy = (float(obs[0]), float(obs[1]))
-        obs_halo.center = obs_xy
-        obs_pt.center = obs_xy
+        for (_idx, _radius, obs_traj), artist in zip(obs_trajs, obs_artists):
+            artist["past"].set_data(obs_traj[k0 : k + 1, 0], obs_traj[k0 : k + 1, 1])
+            artist["future"].set_data(obs_traj[k : k1 + 1, 0], obs_traj[k : k1 + 1, 1])
+            obs = obs_traj[k]
+            obs_xy = (float(obs[0]), float(obs[1]))
+            artist["halo"].center = obs_xy
+            artist["point"].center = obs_xy
         fail_pos = failed_true[fd, failed_k, :]
         avoid_pos = avoid_true[fd, avoid_k, :]
+        fail_c, fail_obs_idx, _fail_radius, fail_obs = closest_obstacle(fail_pos)
+        avoid_c, avoid_obs_idx, _avoid_radius, avoid_obs = closest_obstacle(avoid_pos)
         fail_pt.center = (float(fail_pos[0]), float(fail_pos[1]))
         avoid_pt.center = (float(avoid_pos[0]), float(avoid_pos[1]))
-        fail_clear.set_data([fail_pos[0], obs[0]], [fail_pos[1], obs[1]])
-        avoid_clear.set_data([avoid_pos[0], obs[0]], [avoid_pos[1], obs[1]])
+        fail_clear.set_data([fail_pos[0], fail_obs[0]], [fail_pos[1], fail_obs[1]])
+        avoid_clear.set_data([avoid_pos[0], avoid_obs[0]], [avoid_pos[1], avoid_obs[1]])
         ghost_c = None
+        ghost_obs_idx = None
         if ghost_true is not None and ghost_pt is not None and ghost_clear is not None and ghost_k is not None:
             ghost_pos = ghost_true[fd, ghost_k, :]
+            ghost_c, ghost_obs_idx, _ghost_radius, ghost_obs = closest_obstacle(ghost_pos)
             ghost_pt.center = (float(ghost_pos[0]), float(ghost_pos[1]))
-            ghost_clear.set_data([ghost_pos[0], obs[0]], [ghost_pos[1], obs[1]])
-            ghost_c = clearance(
-                ghost_pos,
-                obs,
-                obstacle_radius=obstacle_radius,
-                drone_radius=drone_radius,
-            )
-
-        fail_c = clearance(
-            fail_pos,
-            obs,
-            obstacle_radius=obstacle_radius,
-            drone_radius=drone_radius,
-        )
-        avoid_c = clearance(
-            avoid_pos,
-            obs,
-            obstacle_radius=obstacle_radius,
-            drone_radius=drone_radius,
-        )
+            ghost_clear.set_data([ghost_pos[0], ghost_obs[0]], [ghost_pos[1], ghost_obs[1]])
         failed_collided = failed_hit_step <= k
         avoid_collided = avoid_hit_step <= k
         if failed_collided:
@@ -379,18 +411,18 @@ def main() -> int:
         else:
             fail_pt.set_facecolor(FAIL_COLOR)
             fail_pt.set_edgecolor("#ffffff")
-            fail_label_now = f"red clearance {fail_c:+.2f} m"
+            fail_label_now = f"red min clearance {fail_c:+.2f} m (obs {fail_obs_idx})"
         if avoid_collided:
             avoid_label_now = f"green contact @ {avoid_hit_step * args.dt:.2f}s"
             avoid_pt.set_facecolor("#ffffff")
             avoid_pt.set_edgecolor(AVOID_COLOR)
         else:
-            avoid_label_now = f"green clearance {avoid_c:+.2f} m"
+            avoid_label_now = f"green min clearance {avoid_c:+.2f} m (obs {avoid_obs_idx})"
             avoid_pt.set_facecolor(AVOID_COLOR)
             avoid_pt.set_edgecolor("#ffffff")
 
         ghost_label_now = (
-            f"gray virtual clearance {ghost_c:+.2f} m"
+            f"gray virtual min clearance {ghost_c:+.2f} m (obs {ghost_obs_idx})"
             if ghost_c is not None
             else None
         )
@@ -404,10 +436,6 @@ def main() -> int:
             fail_line,
             avoid_line,
             ref_line,
-            obs_past,
-            obs_future,
-            obs_halo,
-            obs_pt,
             fail_pt,
             avoid_pt,
             fail_clear,
@@ -416,6 +444,8 @@ def main() -> int:
             status_text,
             legend_text,
         ]
+        for row in obs_artists:
+            artists.extend([row["past"], row["future"], row["halo"], row["point"]])
         for artist in [ghost_line, ghost_pt, ghost_clear]:
             if artist is not None:
                 artists.append(artist)

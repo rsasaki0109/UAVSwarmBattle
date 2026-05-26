@@ -3038,15 +3038,17 @@ against the n=10 vanilla failure. Summary and plot:
 `docs/data/race_simple_temperature_counterfactual.json` and
 `docs/images/race_simple_temperature_counterfactual.png`.
 
-**README race hero (2026-05-25, post-goal control sweep).** The top
-README GIF is now `docs/images/compare_race_temperature_avoid.gif`,
+**Previous README race hero (2026-05-25, post-goal control sweep).** The top
+README GIF was `docs/images/compare_race_temperature_avoid.gif`,
 rendered from the `p19p8_y4p5_35p5_v1p5_r1p15` post-fix race-simple
 cell with `scripts/render_race_avoidance_overlay_gif.py`. It overlays
 two trajectories in the same zoomed camera frame at the drone-3 /
 upper-sweeper encounter around t≈29.5 s: red is the matched no-sweeper
 ghost, and green is GPU MPPI with dynamic branch rollout seeds plus
-post-goal collision scoring. This replaces the temporary 4-way
-intersection hero because the first visual should read as a drone race.
+post-goal collision scoring. This replaced the temporary 4-way
+intersection hero because the first visual should read as a drone race;
+it was later superseded by the 2026-05-26 three-blocker progress-weighted
+stress visual below.
 
 The decisive implementation detail is `planner.score_collision_after_goal`.
 Race-simple uses a short moving lookahead goal; before this option, a
@@ -3123,6 +3125,117 @@ post-goal-only failure. The next adversarial design should constrain
 the escape topology itself: paired sweepers, offset gates, corridor
 pinch, or race-progress constraints that make "large early detour"
 expensive or impossible.
+
+Paired-sweeper all-obstacle check (2026-05-26): the race-simple scene
+already has two mirrored sweepers, but the earlier control sweep scored
+only one focus obstacle. `scripts/race_hero_control_sweep.py` now accepts
+`--focus-obstacle -1`, which scores the closest clearance across all
+dynamic obstacles and records the obstacle index that determines the
+minimum. Re-scoring the `r=1.75` adversarial top four with this stricter
+paired-sweeper criterion gives:
+
+| cell | ghost min clearance | postgoal-only all-obstacle clearance / delta | postgoal+branch all-obstacle clearance / delta |
+|---|---:|---:|---:|
+| `p16_y3p5_36p5_v1p5_r1p75` | -1.77 m | +0.93 m / 24.64 m | +1.04 m / 25.38 m |
+| `p18_y3p5_36p5_v1p5_r1p75` | -1.77 m | +2.38 m / 13.45 m | +1.82 m / 13.72 m |
+| `p19p8_y3p5_36p5_v1p5_r1p75` | -1.77 m | +0.39 m / 4.78 m | +0.41 m / 6.39 m |
+| `p22_y3p5_36p5_v1p5_r1p75` | -1.77 m | +3.26 m / 16.44 m | +3.16 m / 17.65 m |
+
+Both arms finish `4/4` joint success in this n=1 boundary probe, so
+paired sweepers still do **not** show branch necessity. The useful point
+is that the visual/control claim is no longer based on one hand-picked
+obstacle: the all-obstacle metric requires the green run to clear both
+sweeper safety halos. The p19.8 paired-sweeper GIF is
+`docs/images/race_hero_paired_sweeper_allobs_postgoal.gif`, rendered
+with both obstacle halos and min-clearance labels from
+`scripts/render_race_avoidance_overlay_gif.py --focus-obstacle -1`.
+The next real adversarial step is not another mirrored-pair sweep; it is
+an offset gate or corridor pinch where the early large detour is blocked
+or made expensive.
+
+Offset-gate check (2026-05-26): add `--min-conflicting-obstacles 2` so
+the no-obstacle ghost must enter both sweeper safety halos, not just the
+closest one. The screen
+(`docs/data/race_hero_offset_gate_screen.json`) found valid upper-track
+offsets at `p19.8, y_low=3.5, v=1.5, r=1.75`. The first attempted
+`y_high=10` placement was rejected because it overlapped drone 3 at
+`t=0`, so it is not evidence about dynamic avoidance. The valid starts
+`y_high={11,13,14}` all pass under post-goal-only control
+(`docs/data/race_hero_offset_gate_postgoal_valid_allobs_n1.json`):
+
+| cell | ghost obs0 / obs1 clearance | moving all-obstacle clearance | max path delta |
+|---|---:|---:|---:|
+| `p19p8_y3p5_11_v1p5_r1p75` | -1.77 m / -1.35 m | +0.44 m | 4.41 m |
+| `p19p8_y3p5_13_v1p5_r1p75` | -1.77 m / -1.32 m | +0.37 m | 5.74 m |
+| `p19p8_y3p5_14_v1p5_r1p75` | -1.77 m / -0.58 m | +0.43 m | 6.68 m |
+
+This is a stronger visual/control result than the mirrored-pair check:
+both moving hazards are in the ghost path, and the green run still
+clears the closest safety halo. The offset-gate GIF is
+`docs/images/race_hero_offset_gate_allobs_postgoal.gif`. It still does
+not prove branch necessity; it instead shows post-goal scoring plus
+argmin fallback can make a large early detour through this gate. The
+next failure search must make that early detour expensive: static
+corridor walls, a race-progress penalty, or a third moving blocker.
+
+Third-blocker check (2026-05-26): `scripts/race_hero_control_sweep.py`
+now accepts `--extra-obstacle X,Y,Z,VX,VY,VZ,RADIUS[,REFLECT]` to add
+additional dynamic blockers after the two race sweepers. A blocker was
+placed on the lower/east escape side used by the offset-gate run:
+start `(34.5, 30.0, 7.0)`, velocity `(-0.35, 0, 0)`, no reflection, so
+it crosses near `(24.2, 30.0)` around the encounter. The strongest
+tested radius was `3.0 m`.
+
+| arm | extra blocker r | ghost obs0 / obs1 / obs2 clearance | moving clearance | max path delta | report |
+|---|---:|---:|---:|---:|---|
+| postgoal-only | 1.25 | -1.77 / -1.32 / -0.12 m | +0.47 m | 6.95 m | `race_hero_third_blocker_postgoal_allobs_n1.json` |
+| postgoal-only | 2.0 | -1.77 / -1.32 / -0.87 m | +0.62 m | 5.51 m | `race_hero_third_blocker_r2_postgoal_allobs_n1.json` |
+| postgoal-only | 3.0 | -1.77 / -1.32 / -1.87 m | +0.49 m | 8.20 m | `race_hero_third_blocker_r3_postgoal_allobs_n1.json` |
+| postgoal+branch | 3.0 | -1.77 / -1.32 / -1.87 m | +1.00 m | 16.80 m | `race_hero_third_blocker_r3_postgoal_dynbranch_allobs_n1.json` |
+
+The r=3.0 GIF is `docs/images/race_hero_third_blocker_allobs_postgoal.gif`.
+This is again a real all-obstacle avoidance result: the no-obstacle
+ghost enters all three safety halos, and the moving run clears the
+closest halo. It is **not** a branch-necessity result, because
+postgoal-only succeeds before branch sampling is added. The pattern is
+now clear: adding moving blockers makes the evidence visually stronger,
+but the planner still solves the scene by paying for a larger early
+detour. The next experiment must add an actual corridor wall, progress
+penalty, or fixed gate so that this detour is no longer free.
+
+Corridor/progress follow-up (2026-05-26): the first static corridor wall
+probe deliberately failed. A box wall at center `(26.5, 25.5, 7)`, size
+`(9, 3, 14)` blocked the normal repeated race line as well as the late
+escape route: postgoal-only collided on all four drones, and
+postgoal+branch still ended in joint collision
+(`race_hero_corridor_wall_postgoal_raw_n1.json`,
+`race_hero_corridor_wall_dynbranch_raw_n1.json`). That is useful
+negative evidence, not a hero candidate; a static wall in this periodic
+oval affects earlier laps and must be treated carefully.
+
+The more targeted fix is a race-progress tie-break inside GPU MPPI:
+`w_reach_time` penalizes late clean reaches, and `w_clean_ctg` penalizes
+clean-reach rollouts whose average cost-to-go drifts away after reaching
+the short local race goal. Defaults are zero, so existing behavior is
+unchanged. On the r=3.0 third-blocker cell:
+
+| arm | outcome | moving clearance | max path delta | max reference error | report |
+|---|---:|---:|---:|---:|---|
+| postgoal-only baseline | 4/4 drones success | +0.49 m | 8.20 m | 6.75 m | `race_hero_third_blocker_r3_postgoal_allobs_n1.json` |
+| `w_reach_time=1000` | 4/4 drones success | +0.29 m | 7.75 m | 6.34 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_allobs_n1.json` |
+| `w_reach_time=1000, w_clean_ctg=100` | 3/3 joint, 12/12 drones | +0.48 m | 6.19 m | 5.73 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n3.json` |
+| `w_reach_time=1000, w_clean_ctg=500` | 4/4 drones success | +0.49 m | 10.37 m | 9.20 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean500_allobs_n1.json` |
+
+The README hero has been updated to the `w_clean_ctg=100` stress visual:
+`docs/images/race_hero_third_blocker_progress_allobs.gif`. This is still
+a small stress/control visual, not a success-rate benchmark, but it
+directly addresses the "it only looks like a big detour" concern: the
+no-sweeper ghost enters all three moving safety halos, the moving run
+clears all three, and the progress-weighted planner reduces both path
+delta and reference-error peak versus the r=3.0 baseline. The n=3
+confirmation is deterministic in this cell: episodes 0-2 all report
+`+0.484 m` all-obstacle clearance for drone 3 in the encounter window,
+with `5.73 m` max reference error.
 
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature

@@ -59,6 +59,8 @@ def run_rollout(
     w_smooth: float,
     temperature: float,
     device: Any,
+    w_reach_time: float = 0.0,
+    w_clean_ctg: float = 0.0,
     score_collision_after_goal: bool = False,
 ) -> RolloutResult:
     """Run the batched rollout and return all per-sample tensors.
@@ -144,6 +146,7 @@ def run_rollout(
     if prev_action is not None:
         prev_t = _to_tensor(prev_action, device)
         smooth_pen = torch.norm(actions_t - prev_t[None, :], dim=1)
+    reach_time_pen = first_goal_h.float()
 
     no_coll = collision_pen == 0
     clean_reach = reaches_goal_any & no_coll
@@ -151,7 +154,12 @@ def run_rollout(
     neither = ~reaches_goal_any
 
     costs = torch.empty(n_samples, device=device)
-    costs[clean_reach] = -1e6 + w_smooth * smooth_pen[clean_reach]
+    costs[clean_reach] = (
+        -1e6
+        + w_reach_time * reach_time_pen[clean_reach]
+        + w_clean_ctg * ctg_avg[clean_reach]
+        + w_smooth * smooth_pen[clean_reach]
+    )
     costs[dirty_reach] = (
         w_goal * ctg_avg[dirty_reach]
         + w_obs * collision_pen[dirty_reach]

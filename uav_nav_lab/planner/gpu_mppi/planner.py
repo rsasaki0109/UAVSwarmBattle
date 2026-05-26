@@ -54,6 +54,8 @@ class GPUMPPIPlanner(Planner):
         w_goal: float = 1.0,
         w_obs: float = 100.0,
         w_smooth: float = 0.05,
+        w_reach_time: float = 0.0,
+        w_clean_ctg: float = 0.0,
         temperature: float = 1.0,
         fallback_to_argmin: bool = False,
         fallback_lateral_threshold: float = 0.5,
@@ -90,6 +92,8 @@ class GPUMPPIPlanner(Planner):
         self.w_goal = float(w_goal)
         self.w_obs = float(w_obs)
         self.w_smooth = float(w_smooth)
+        self.w_reach_time = max(0.0, float(w_reach_time))
+        self.w_clean_ctg = max(0.0, float(w_clean_ctg))
         if temperature <= 0:
             raise ValueError(f"temperature must be > 0; got {temperature!r}")
         self.temperature = float(temperature)
@@ -152,6 +156,8 @@ class GPUMPPIPlanner(Planner):
             w_goal=float(cfg.get("w_goal", 1.0)),
             w_obs=float(cfg.get("w_obs", 100.0)),
             w_smooth=float(cfg.get("w_smooth", 0.05)),
+            w_reach_time=float(cfg.get("w_reach_time", 0.0)),
+            w_clean_ctg=float(cfg.get("w_clean_ctg", 0.0)),
             temperature=float(cfg.get("temperature", 1.0)),
             fallback_to_argmin=bool(cfg.get("fallback_to_argmin", False)),
             fallback_lateral_threshold=float(cfg.get("fallback_lateral_threshold", 0.5)),
@@ -472,6 +478,8 @@ class GPUMPPIPlanner(Planner):
             w_goal=self.w_goal,
             w_obs=self.w_obs,
             w_smooth=self.w_smooth,
+            w_reach_time=self.w_reach_time,
+            w_clean_ctg=self.w_clean_ctg,
             temperature=self.temperature,
             device=self._device,
             score_collision_after_goal=self.score_collision_after_goal,
@@ -531,6 +539,8 @@ class GPUMPPIPlanner(Planner):
             "mode_aware_cluster_sign": int(agg.mode_aware_cluster_sign),
             "dynamic_branch_samples": int(branch_count),
             "score_collision_after_goal": bool(self.score_collision_after_goal),
+            "w_reach_time": float(self.w_reach_time),
+            "w_clean_ctg": float(self.w_clean_ctg),
         }
         if self.log_action_provenance:
             meta["action_provenance"] = self._build_action_provenance(

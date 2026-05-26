@@ -255,6 +255,45 @@ Control-first outputs are tracked:
   `docs/data/race_hero_postgoal_extreme_radius_n1_top2.json`: stricter
   `r=2.5` screen. The ghost clearance reaches `-2.52 m`, but the first
   two moving arms still succeed (`2/2` joint).
+- `docs/data/race_hero_paired_sweeper_postgoal_allobs_n1_top4.json` and
+  `docs/data/race_hero_paired_sweeper_postgoal_dynbranch_allobs_n1_top4.json`:
+  all-obstacle paired-sweeper re-score using
+  `scripts/race_hero_control_sweep.py --focus-obstacle -1`. The closest
+  clearance is taken over both moving sweepers. Post-goal-only succeeds
+  `4/4` with minimum all-obstacle clearance `+0.39 m`; post-goal plus
+  branch also succeeds `4/4` with minimum all-obstacle clearance
+  `+0.41 m`. The paired-sweeper GIF is
+  `docs/images/race_hero_paired_sweeper_allobs_postgoal.gif`, rendered
+  with both obstacle halos.
+- `docs/data/race_hero_offset_gate_screen.json` and
+  `docs/data/race_hero_offset_gate_postgoal_valid_allobs_n1.json`:
+  offset-gate probe requiring the no-obstacle ghost to enter both
+  sweeper safety halos (`--min-conflicting-obstacles 2`). Valid starts
+  `y_high={11,13,14}` all succeed with post-goal-only control; the
+  tightest moving all-obstacle clearance is `+0.37 m` and the largest
+  path delta is `6.68 m`. The attempted `y_high=10` placement was
+  rejected because it collides at `t=0`, not in the dynamic encounter.
+  The offset-gate GIF is `docs/images/race_hero_offset_gate_allobs_postgoal.gif`.
+- `docs/data/race_hero_third_blocker_postgoal_allobs_n1.json`,
+  `docs/data/race_hero_third_blocker_r2_postgoal_allobs_n1.json`,
+  `docs/data/race_hero_third_blocker_r3_postgoal_allobs_n1.json`, and
+  `docs/data/race_hero_third_blocker_r3_postgoal_dynbranch_allobs_n1.json`:
+  third-blocker probe using the new `--extra-obstacle` option. The
+  blocker crosses the lower/east escape side used by the offset-gate
+  solution. Even at radius `3.0 m`, post-goal-only succeeds with
+  all-obstacle clearance `+0.49 m`; post-goal plus branch also succeeds
+  with `+1.00 m`. The no-obstacle ghost enters all three safety halos.
+  The GIF is `docs/images/race_hero_third_blocker_allobs_postgoal.gif`.
+- `docs/data/race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n3.json`:
+  progress-weighted follow-up on the same r=3.0 third-blocker cell.
+  GPU MPPI now has zero-default clean-reach tie-breaks:
+  `w_reach_time` penalizes late local-goal arrival and `w_clean_ctg`
+  penalizes clean rollouts that drift away after reaching the short
+  race goal. The best tested arm (`w_reach_time=1000`,
+  `w_clean_ctg=100`) keeps `3/3` joint success (`12/12` drones),
+  preserves all-obstacle clearance (`+0.48 m` in the rendered seed),
+  and reduces max path delta from `8.20 m` to `6.19 m`. The updated README hero is
+  `docs/images/race_hero_third_blocker_progress_allobs.gif`.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
@@ -267,7 +306,14 @@ cell. The next step is a broader adversarial sweep to find cells where
 post-goal scoring alone fails and branch/corridor/topology sampling
 becomes necessary. The first adversarial probes show that deeper ghost
 penetration alone is not enough; the next design should narrow or
-topologically split the available escape route.
+topologically split the available escape route. The all-obstacle
+paired-sweeper check also shows that the existing mirrored pair is still
+too easy for post-goal-only. The offset-gate and third-blocker probes
+are stronger because multiple hazards conflict with the ghost, but they
+are also solved by post-goal-only. The first static corridor wall probe
+was too blunt for the periodic oval, so the current useful direction is
+progress-weighted control plus either n=3/10 confirmation or a dynamic
+fixed-gate probe.
 
 ### P3: only then update README
 

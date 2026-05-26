@@ -5,20 +5,18 @@
 **Python research framework for UAV motion planning.**
 YAML-driven ablations with Wilson 95 % CIs by default.
 
-> **Post-fix status (2026-05-25)**: the old race / gates / dyn4 / chaos
+> **Post-fix status (2026-05-26)**: the old race / gates / dyn4 / chaos
 > dynamic-obstacle headlines were retracted after commit `1646e11` fixed
 > a multi-runner bug that froze dynamic obstacles after total-wipeout
-> episodes. The replacement race-simple hero below is now backed by a
-> control-first n=10 check: the matched no-sweeper ghost penetrates the
-> moving sweeper safety radius by `-0.61 m`, while the post-goal
-> collision-scored GPU MPPI run finishes `10/10` seeds (`40/40` drones)
-> with `+0.47 m` focus-clearance and a `5.55 m` path delta in the hero
-> seed. Post-goal scoring alone also finishes `10/10`; dynamic branch
-> sampling without post-goal scoring fails `0/10`. This is a mechanism
-> result, not a broad benchmark claim. A fixed six-cell n=3 follow-up
-> keeps post-goal-only moving arms at `18/18` joint success (`72/72`
-> drones, no collisions), with `3/6` cells also passing the stricter
-> no-obstacle-penetration threshold. See
+> episodes. The replacement race-simple mechanism is backed by a
+> control-first n=10 check: post-goal collision scoring finishes `10/10`
+> seeds, while branch sampling without post-goal scoring fails `0/10`.
+> The hero below is a newer `n=3` stress visual with three moving
+> blockers: the matched no-sweeper ghost penetrates all three safety
+> halos (`-1.77 / -1.32 / -1.87 m`), while progress-weighted GPU MPPI
+> finishes `3/3` seeds (`12/12` drones), clears the closest halo by
+> `+0.48 m`, and has a `6.19 m` max path delta in the rendered seed.
+> This is a mechanism/stress result, not a broad benchmark claim. See
 > `docs/dynamic_obstacle_oss_survey.md` and `docs/findings.md` for the
 > audit trail.
 
@@ -28,39 +26,31 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/compare_race_temperature_avoid.gif" alt="Zoomed drone-race encounter with overlaid trajectories: the red no-sweeper ghost enters a moving sweeper safety halo, while green post-goal branch GPU MPPI bends around it and finishes the race" width="1080">
+<img src="docs/images/race_hero_third_blocker_progress_allobs.gif" alt="Drone-race encounter with three moving blockers: the red no-sweeper ghost enters the blocker safety halos while green progress-weighted GPU MPPI bends around them and keeps racing" width="1080">
 
-<i><b>Post-fix drone race dynamic-obstacle control, zoomed at the obstacle encounter.</b>
-Four drones run a horizontal oval while two red moving sweepers cross
-the racing line; this first-frame visual zooms into drone 3 versus the
-upper sweeper at <code>t≈29.5 s</code>. The translucent red disc is the
-obstacle + drone safety radius. Red is the matched no-sweeper ghost;
-green is GPU MPPI with dynamic branch rollout seeds and post-goal
-collision scoring; the dashed line is the race line. In this
-<code>p19.8, y=4.5/35.5, v=1.5, r=1.15</code> cell, the ghost would
-enter the moving sweeper safety halo by <code>-0.61 m</code>, while the
-moving-obstacle run finishes <code>10/10</code> seeds (<code>40/40</code>
-drones) with <code>+0.47 m</code> hero-seed focus clearance and
-<code>5.55 m</code> max path delta. Frozen-at-encounter controls fail
-<code>0/10</code>; wrong-velocity and current-obstacle-only controls still
-succeed <code>10/10</code>, so the strongest evidence is timing /
-post-goal collision scoring rather than velocity-prediction dependence.
-Ablations confirm the split: post-goal scoring without branch sampling
-succeeds <code>10/10</code>, while branch sampling without post-goal scoring
-fails <code>0/10</code>.
-A fixed six-cell post-goal-only follow-up keeps moving arms at
-<code>18/18</code> joint success (<code>72/72</code> drones), with
-<code>3/6</code> cells passing the stricter no-obstacle conflict threshold.
-This is a mechanism result, not a broad benchmark claim.
+<i><b>Post-fix drone race dynamic-obstacle stress visual, zoomed at the obstacle encounter.</b>
+Four drones run a horizontal oval while three red moving blockers cross
+the racing line. Red is the matched no-sweeper ghost; green is GPU MPPI
+with post-goal collision scoring plus clean-reach progress weighting
+(<code>w_reach_time=1000</code>, <code>w_clean_ctg=100</code>); the
+dashed line is the race line. In this
+<code>p19.8, y=3.5/13, v=1.5, r=1.75</code> cell with an extra
+<code>r=3.0 m</code> blocker, the ghost enters all three safety halos
+by <code>-1.77 / -1.32 / -1.87 m</code>. The moving-obstacle run finishes
+the <code>n=3</code> check with <code>3/3</code> joint success
+(<code>12/12</code> drones), <code>+0.48 m</code> rendered-seed minimum
+all-obstacle clearance, and a reduced <code>6.19 m</code> max path delta
+versus <code>8.20 m</code> before progress weighting. This remains a
+small stress/control visual; the broader n=10 mechanism check remains
+the post-goal-scoring ablation.
 Rendered from real episode logs with
-<code>scripts/render_race_avoidance_overlay_gif.py</code>; the control-first
-reports are <code>docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json</code>
-and <code>docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json</code>;
-the scoring/branch ablations are
-<code>docs/data/race_hero_control_sweep_postgoal_only_n10.json</code> and
-<code>docs/data/race_hero_control_sweep_dynbranch_n10.json</code>; the
-six-cell follow-up is
-<code>docs/data/race_hero_postgoal_generalization_n3.json</code>.
+<code>scripts/render_race_avoidance_overlay_gif.py</code>; the stress report is
+<code>docs/data/race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n3.json</code>.
+The supporting n=10 reports are
+<code>docs/data/race_hero_control_sweep_postgoal_dynbranch_n10.json</code>,
+<code>docs/data/race_hero_control_variants_postgoal_dynbranch_n10.json</code>,
+<code>docs/data/race_hero_control_sweep_postgoal_only_n10.json</code>, and
+<code>docs/data/race_hero_control_sweep_dynbranch_n10.json</code>.
 &nbsp;<a href="docs/findings.md">Findings</a>
 &middot; <a href="docs/paper_a/section_3_headline.md">§3 4-mode framework</a></i>
 
@@ -294,14 +284,15 @@ for the path-intersecting intruders. The "MPC vs softmax" contrast
 on those scenarios was an artifact of the bug, not a real
 planner-level finding.
 
-The current hero GIF (<code>compare_race_temperature_avoid.gif</code>
+The current hero GIF (<code>race_hero_third_blocker_progress_allobs.gif</code>
 at the top of the README) is not one of the invalidated old race GIFs.
 It is rendered from the post-fix race-simple control sweep: the track,
-moving sweepers, no-sweeper ghost, and post-goal GPU MPPI run all come
-from real episode logs. The decisive change is planner scoring:
-race lookahead goals no longer mask collisions later in the MPPI horizon,
-so the chosen action moves around the sweeper instead of treating an
-imminent post-goal contact as a clean reach. The earlier
+three moving blockers, no-sweeper ghost, and progress-weighted GPU MPPI
+run all come from real episode logs. The decisive scoring change remains
+post-goal collision scoring: race lookahead goals no longer mask
+collisions later in the MPPI horizon. The newer hero also adds
+clean-reach progress weighting so the avoiding trajectory stays closer
+to the race line. The earlier
 4-way intersection speed-cut (<code>compare_intersection_4way_speed.gif</code>)
 is retained as a companion coordination visual, but it is no longer
 the README hero because it is not a race. The original gates4 / chaos /
@@ -309,10 +300,11 @@ dyn4 scenarios still need further re-tuning (wider gaps, slower gates)
 before their GIFs go back up.
 
 The replacement race-simple phase cell is now a mechanism result rather
-than a headline win/loss table: the matched no-sweeper ghost enters the
-sweeper halo by <code>-0.61 m</code>, while the moving-obstacle run succeeds
-jointly with <code>+0.47 m</code> minimum clearance. Branch samples and
-action provenance are logged under
+than a headline win/loss table. The latest hero stress cell has the
+matched no-sweeper ghost enter all three safety halos by
+<code>-1.77 / -1.32 / -1.87 m</code>, while the moving-obstacle run succeeds
+jointly with <code>+0.48 m</code> minimum all-obstacle clearance. Branch
+samples and action provenance are logged under
 <code>replans[].planner_meta</code> when
 <code>planner.log_action_provenance</code> is enabled.
 
@@ -338,11 +330,12 @@ v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
 stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
 5 scenario families. Stable ablations are reproducible from the example
 YAMLs and scripts; the current dynamic-obstacle hero is
-`compare_race_temperature_avoid.gif`, rendered from the post-fix
-race-simple control sweep. The latest post-fix race-simple cell adds
-post-goal collision scoring for short race lookahead goals, planner-
-internal provenance, an n=10 control-first check, and scoring-vs-branch
-ablations. The older race / gates4 / dyn4 / chaos
+`race_hero_third_blocker_progress_allobs.gif`, rendered from the
+post-fix race-simple control sweep. The latest post-fix race-simple work
+adds post-goal collision scoring for short race lookahead goals,
+clean-reach progress weighting, planner-internal provenance, an n=10
+control-first check, and scoring-vs-branch ablations. The older race /
+gates4 / dyn4 / chaos
 scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**

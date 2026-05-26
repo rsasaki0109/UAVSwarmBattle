@@ -57,6 +57,8 @@ def test_gpu_mppi_plan_returns_required_meta_keys() -> None:
         "mode_aware_cluster_sign",
         "dynamic_branch_samples",
         "score_collision_after_goal",
+        "w_reach_time",
+        "w_clean_ctg",
     ):
         assert key in plan.meta, f"missing meta key: {key}"
     assert plan.meta["planner"] == "gpu_mppi"
@@ -67,6 +69,8 @@ def test_gpu_mppi_plan_returns_required_meta_keys() -> None:
     assert plan.meta["mode_aware_cluster_sign"] == 0
     assert plan.meta["dynamic_branch_samples"] == 0
     assert plan.meta["score_collision_after_goal"] is False
+    assert plan.meta["w_reach_time"] == 0.0
+    assert plan.meta["w_clean_ctg"] == 0.0
 
 
 def test_gpu_mppi_from_config_roundtrip_preserves_knobs() -> None:
@@ -102,6 +106,8 @@ def test_gpu_mppi_from_config_roundtrip_preserves_knobs() -> None:
         "w_goal": 0.5,
         "w_obs": 50.0,
         "w_smooth": 0.1,
+        "w_reach_time": 7.0,
+        "w_clean_ctg": 3.0,
         "device": "cpu",
     }
     p = GPUMPPIPlanner.from_config(cfg)
@@ -287,6 +293,77 @@ def test_gpu_mppi_rollout_can_score_post_goal_dynamic_collision() -> None:
 
     assert float(scoped.costs[0].item()) < -999_999.0
     assert float(post_goal.costs[0].item()) > 0.0
+
+
+def test_gpu_mppi_reach_time_penalty_prefers_faster_clean_reach() -> None:
+    obs = np.array([0.0, 0.0])
+    goal = np.array([5.0, 0.0])
+    actions = np.array([[5.0, 0.0], [10.0, 0.0]], dtype=float)
+    occ = np.zeros((20, 20), dtype=bool)
+    ctg = np.zeros_like(occ, dtype=float)
+
+    result = run_rollout(
+        obs=obs,
+        gl=goal,
+        actions_np=actions,
+        occ=occ,
+        ctg_np=ctg,
+        pred_traj=None,
+        r2_arr=None,
+        wind_step=None,
+        prev_action=None,
+        horizon=20,
+        dt_plan=0.1,
+        resolution=1.0,
+        goal_radius=0.5,
+        n_samples=2,
+        w_goal=1.0,
+        w_obs=100.0,
+        w_smooth=0.0,
+        temperature=1.0,
+        device=torch.device("cpu"),
+        w_reach_time=10.0,
+    )
+
+    assert result.reaches_goal_any.tolist() == [True, True]
+    assert result.argmin_idx == 1
+
+
+def test_gpu_mppi_clean_ctg_penalty_breaks_clean_reach_ties() -> None:
+    obs = np.array([0.0, 0.0])
+    goal = np.array([5.0, 0.0])
+    actions = np.array([[10.0, 1.0], [10.0, 0.0]], dtype=float)
+    occ = np.zeros((30, 30), dtype=bool)
+    ctg = np.zeros_like(occ, dtype=float)
+    for x in range(ctg.shape[0]):
+        for y in range(ctg.shape[1]):
+            ctg[x, y] = abs(x - 5) + abs(y)
+
+    result = run_rollout(
+        obs=obs,
+        gl=goal,
+        actions_np=actions,
+        occ=occ,
+        ctg_np=ctg,
+        pred_traj=None,
+        r2_arr=None,
+        wind_step=None,
+        prev_action=None,
+        horizon=10,
+        dt_plan=0.1,
+        resolution=1.0,
+        goal_radius=1.0,
+        n_samples=2,
+        w_goal=1.0,
+        w_obs=100.0,
+        w_smooth=0.0,
+        temperature=1.0,
+        device=torch.device("cpu"),
+        w_clean_ctg=10.0,
+    )
+
+    assert result.reaches_goal_any.tolist() == [True, True]
+    assert result.argmin_idx == 1
 
 
 def test_gpu_mppi_short_circuits_when_at_goal() -> None:
