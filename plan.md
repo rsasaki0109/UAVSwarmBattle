@@ -152,6 +152,21 @@
   `docs/images/race_hero_dynamic_gate_progress_allobs.gif`。次は別 seed/phase の
   小さな grid で stress cell の外挿限界を見るか、gate 速度/幅を少し詰めて
   視覚的な「閉じる」感を強める。
+- gate width/speed sweep を追加。`scripts/race_hero_dynamic_gate_sweep.py`
+  は gate separation / `|v_y|` / encounter phase を振る薄い driver。
+  初回 top4 (`gap=1.6/2.0`, `|v_y|=0.32/0.48`) は n=1 全成功。
+  harder top4 (`gap=0.8/1.2`, `|v_y|=0.48/0.64`) も n=1 全成功。
+  最硬 `gap0p8_vy0p64_t28p5` は n=3 でも `3/3` joint success (`12/12`
+  drones)、ghost は4 halo に `-1.77/-1.32/-1.36/-1.54 m` 入り、moving は
+  `+0.42 m` clearance、path delta `4.63 m`。結論: 単一 gate の
+  width/speed だけではまだ境界が出ない。次は phase/x をずらすか、二段 gate
+  で下側逃げ道を時間差で潰す。
+- 二段 gate の手置き probe も3本実施。hardest single gate の逃げ道を見て、
+  `x=27, center_y=28.0`、`x=27, center_y=25.5`、`x=29, center_y=29.7, t=28.0`
+  を置いたが、全部 n=1 joint success。moving clearance はそれぞれ
+  `+0.54 / +0.47 / +0.51 m`、path delta は `7.34 / 5.42 / 5.14 m`。
+  結論: 手置きの二段 gate でもまだ破れない。次は second-row `(x, center_y,
+  phase)` の grid driver にするか、短い slot/wall 制約を併用する。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

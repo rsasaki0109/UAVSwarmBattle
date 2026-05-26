@@ -3258,6 +3258,55 @@ visual control is that the red ghost passes through the closing gate
 halo, while the green trajectory drops under the gate and then returns
 toward the racing line.
 
+Width/speed limit sweep (2026-05-26): `scripts/race_hero_dynamic_gate_sweep.py`
+now sweeps the dynamic gate pair directly. The first width/speed top-4
+all succeeded at n=1:
+
+| gate | outcome | moving clearance | max path delta | report |
+|---|---:|---:|---:|---|
+| `gap1p6_vy0p32_t28p5` | 1/1 joint | +0.49 m | 5.50 m | `race_hero_dynamic_gate_width_speed_n1_top4.json` |
+| `gap1p6_vy0p48_t28p5` | 1/1 joint | +0.39 m | 4.51 m | same |
+| `gap2_vy0p48_t28p5` | 1/1 joint | +0.46 m | 6.27 m | same |
+| `gap2_vy0p32_t28p5` | 1/1 joint | +0.34 m | 5.97 m | same |
+
+Pushing harder to `gap={0.8,1.2}` and `|v_y|={0.48,0.64}` also did not
+find a failure at n=1:
+
+| gate | outcome | moving clearance | max path delta | report |
+|---|---:|---:|---:|---|
+| `gap0p8_vy0p48_t28p5` | 1/1 joint | +0.42 m | 7.75 m | `race_hero_dynamic_gate_width_speed_harder_n1_top4.json` |
+| `gap0p8_vy0p64_t28p5` | 1/1 joint | +0.42 m | 4.63 m | same |
+| `gap1p2_vy0p48_t28p5` | 1/1 joint | +0.57 m | 6.69 m | same |
+| `gap1p2_vy0p64_t28p5` | 1/1 joint | +0.57 m | 6.46 m | same |
+
+The hardest tested cell, `gap0p8_vy0p64_t28p5`, was then confirmed at
+n=3 (`3/3` joint, `12/12` drones, no env / peer / timeout failures) in
+`race_hero_dynamic_gate_width_speed_gap0p8_vy0p64_n3.json`. Its ghost
+enters all four halos by `-1.77 / -1.32 / -1.36 / -1.54 m`, while the
+moving run keeps `+0.42 m` closest clearance and `4.63 m` max path
+delta. Interpretation: within this one-gate family, simply narrowing the
+gap and increasing vertical gate speed is still not enough to break the
+post-goal-scoring + progress-weighted controller. The next boundary
+probe should shift phase/x or add a second gate row, not keep shrinking
+the same gate.
+
+Two-stage gate probes (2026-05-26): after the hardest single gate, the
+green trajectory escaped below the gate around `(x≈27, y≈28)` at
+`t≈28.5 s`. Three hand-placed second-row probes tried to block that
+escape or the earlier lead-in. All remained n=1 successes:
+
+| second row | outcome | moving clearance | max path delta | report |
+|---|---:|---:|---:|---|
+| `x=27, center_y=28.0, gap=1.0, t=28.5` | 1/1 joint | +0.54 m | 7.34 m | `race_hero_dynamic_gate_two_stage_x27_center28_gap1p0_n1.json` |
+| `x=27, center_y=25.5, gap=1.0, t=28.5` | 1/1 joint | +0.47 m | 5.42 m | `race_hero_dynamic_gate_two_stage_x27_center25p5_gap1p0_n1.json` |
+| `x=29, center_y=29.7, gap=1.0, t=28.0` | 1/1 joint | +0.51 m | 5.14 m | `race_hero_dynamic_gate_two_stage_x29_center29p7_t28_gap1p0_n1.json` |
+
+These are not benchmark claims, but they are useful negative evidence:
+single-row narrowing and a few hand-placed second rows still do not
+expose a failure. The next useful step is to make the second-row search
+systematic over `(x, center_y, phase)` or add a short wall/slot
+constraint, rather than continuing one-off manual placement.
+
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
 controller with scene sweepers removed produced an identical drone-3

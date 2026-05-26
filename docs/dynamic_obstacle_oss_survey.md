@@ -302,6 +302,25 @@ Control-first outputs are tracked:
   clears the closest halo by `+0.77 m` in the rendered seed, and has a
   `6.28 m` max path delta. The current README hero is
   `docs/images/race_hero_dynamic_gate_progress_allobs.gif`.
+- `docs/data/race_hero_dynamic_gate_width_speed_n1_top4.json`,
+  `docs/data/race_hero_dynamic_gate_width_speed_harder_n1_top4.json`,
+  and `docs/data/race_hero_dynamic_gate_width_speed_gap0p8_vy0p64_n3.json`:
+  width/speed limit sweep using
+  `scripts/race_hero_dynamic_gate_sweep.py`. The first top-4
+  (`gap=1.6/2.0`, `|v_y|=0.32/0.48`) all succeed at n=1. The harder
+  top-4 (`gap=0.8/1.2`, `|v_y|=0.48/0.64`) also all succeed at n=1.
+  The hardest tested cell, `gap0p8_vy0p64_t28p5`, remains `3/3` joint
+  success (`12/12` drones), with ghost clearances
+  `-1.77 / -1.32 / -1.36 / -1.54 m`, moving clearance `+0.42 m`, and
+  max path delta `4.63 m`. Width/speed alone still does not expose a
+  failure boundary.
+- `docs/data/race_hero_dynamic_gate_two_stage_x27_center28_gap1p0_n1.json`,
+  `docs/data/race_hero_dynamic_gate_two_stage_x27_center25p5_gap1p0_n1.json`,
+  and `docs/data/race_hero_dynamic_gate_two_stage_x29_center29p7_t28_gap1p0_n1.json`:
+  hand-placed second-row gate probes. All three remain `1/1` joint
+  success, with moving clearances `+0.54 m`, `+0.47 m`, and `+0.51 m`.
+  Manual second-row placement is still not enough; the next test should
+  sweep second-row `(x, center_y, phase)` or add a slot/wall constraint.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
@@ -320,9 +339,10 @@ too easy for post-goal-only. The offset-gate and third-blocker probes
 are stronger because multiple hazards conflict with the ghost, but they
 are also solved by post-goal-only. The first static corridor wall probe
 was too blunt for the periodic oval, so the current useful direction is
-progress-weighted control plus small phase / gate-width follow-ups that
-test how far the dynamic-gate visual generalizes beyond the seed-42
-render.
+progress-weighted control plus systematic second-row gate follow-ups. The
+single-gate width/speed sweep did not break the controller down to
+`gap=0.8 m`, `|v_y|=0.64 m/s`, and the first three hand-placed second
+rows also stayed collision-free.
 
 ### P3: only then update README
 
