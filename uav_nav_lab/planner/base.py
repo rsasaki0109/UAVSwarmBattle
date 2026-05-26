@@ -72,5 +72,17 @@ class Planner(ABC):
     def reset(self) -> None:
         """Called once at the start of each episode. Default: no-op."""
 
+    def set_current_state(
+        self,
+        position: np.ndarray,
+        velocity: np.ndarray | None = None,
+    ) -> None:
+        """Optional runner hook for planners that model plant dynamics.
+
+        The main planner input stays observation/goal/map. Planners that need
+        the current plant velocity for rollout consistency can cache it here;
+        existing planners ignore it by default.
+        """
+
 
 PLANNER_REGISTRY: Registry[Planner] = Registry("planner")

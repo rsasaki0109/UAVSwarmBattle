@@ -62,6 +62,10 @@ def _replan_one_drone(
         sims[drone_idx].set_goal(cur_goal)
     else:
         cur_goal = sims[drone_idx].goal
+    planners[drone_idx].set_current_state(
+        states[drone_idx].position,
+        states[drone_idx].velocity,
+    )
     return planners[drone_idx].plan(
         obs_i,
         cur_goal,

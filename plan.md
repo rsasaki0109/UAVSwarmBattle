@@ -209,6 +209,45 @@
   `+1.14 m`, path delta `5.93 m`。中心点
   `x=24,y=27.5,size_x=5` の n=3 と合わせて、composition boundary は
   1 seed / 1 wall placement の偶然ではない。
+- `scripts/race_hero_slot_wall_failure_report.py` を追加し、中心点 +
+  n=3 edge 2点の失敗機構を `docs/data/race_hero_slot_wall_failure_mechanism.json`
+  に出した。3ケースすべてで `gate_wall` は `3/3` collision、最初の
+  1 m path split は `25.7-26.1 s`、collision は `28.95-29.95 s`。
+  collision 時の `gate_wall` projected wall clearance は
+  `-0.15/-0.00/-0.02 m`、同時刻の `base_wall` clearance は
+  `+0.91/+2.69/+1.04 m`。extra dynamic gate への clearance は
+  `+1.46/+1.14/+0.35 m` で正。つまり moving obstacle に当たったのではなく、
+  dynamic gate が早い時刻に経路を変え、その後 static wall topology に
+  詰まっている。
+- `scripts/race_hero_slot_wall_rollout_horizon_report.py` を追加し、同じ3ケースで
+  collision 前の logged visible rollouts を audit。実 collision は
+  `27.10-28.10 s` の時点で 2 s horizon 内に入り、visible wall-hit rollout も
+  `25.10-26.10 s` から存在する。一方で最終 replan の best-visible rollout は
+  3ケースとも wall clearance 正 (`+0.18/+0.24/+0.90 m`) で、visible set の
+  最小 clearance は負 (`-1.66/-1.85/-1.88 m`)。単純な horizon不足ではなく、
+  constrained topology 近傍で「wall-hit候補は見えているが、選ばれた局所 rollout
+  は安全に見え、実行軌道が次ステップで壁をclipする」タイプの
+  rollout/scoring/commit mismatch と読む。さらに episode log は pre-step
+  state に post-step collision flag を付けているため、report 側で
+  dummy simulator の `max_accel` 付き command-limited post-step 位置を復元。
+  実clip時刻では実行軌道 clearance が `-0.15/-0.00/-0.02 m` なのに、
+  同時刻の best-visible rollout は `+0.44/+0.32/+1.30 m` clear。
+  これを受けて GPU MPPI に opt-in `rollout_max_accel` を追加し、runner から
+  現在速度を渡して加速度制限付き rollout を積分できるようにした。ただし
+  x24/y26.5 の n=1 probe では `rollout_max_accel=80` 単体は gate_wall を
+  救う一方で base_wall の早い lap を壊し、commit length 調整だけでは両立
+  しなかった。より効いたのは静的 map 側: slot-wall sweep に `--inflate` を
+  通し、`inflate=1` にすると同じ x24/y26.5/sx5 cell が
+  base_wall `3/3`, gate_wall `3/3` の `still_solved`
+  (`docs/data/race_hero_slot_wall_x24_y26p5_sx5_inflate1_n3.json`) へ反転。
+  さらに残り2 edge cell も `inflate=1` で n=3 確認し、
+  x23/y27.5 は base/gate `3/3 + 3/3` (`+1.38 m`, delta `13.36 m`)、
+  x24/y27.5 も base/gate `3/3 + 3/3` (`+0.46 m`, delta `11.93 m`)。
+  主要因は「dynamic obstacleを見ていない」ではなく、静的壁に対して
+  planner occupancy (`inflate=0`) が機体半径 `0.4 m` を持っておらず、
+  gateで選ばれたラインが voxel wall 境界をかすめたこと。次は
+  README/GIF候補を、`inflate=1` 後も本当に dynamic obstacle で経路が変わる
+  場面から選ぶ。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

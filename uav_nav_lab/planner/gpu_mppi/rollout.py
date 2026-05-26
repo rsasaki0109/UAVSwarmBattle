@@ -59,6 +59,8 @@ def run_rollout(
     w_smooth: float,
     temperature: float,
     device: Any,
+    rollout_initial_velocity: np.ndarray | None = None,
+    rollout_max_accel: float = 0.0,
     w_reach_time: float = 0.0,
     w_clean_ctg: float = 0.0,
     score_collision_after_goal: bool = False,
@@ -80,12 +82,38 @@ def run_rollout(
     max_finite = float(ctg_np[ctg_np < np.inf].max()) if np.any(ctg_np < np.inf) else 1e6
     unreachable_penalty = max_finite + 100.0
 
-    # Rollout positions for every sample × horizon step.
-    h = torch.arange(1, horizon + 1, dtype=torch.float32, device=device) * dt_plan  # [H]
-    rollouts = obs_t[None, None, :] + actions_t[:, None, :] * h[None, :, None]  # [S, H, D]
-    if wind_step is not None:
-        ws_t = _to_tensor(wind_step, device)
-        rollouts = rollouts + ws_t[None, None, :] * h[None, :, None]
+    # Rollout positions for every sample × horizon step. The default remains
+    # the original constant-action model; `rollout_max_accel` opts into the
+    # dummy simulator's velocity-setpoint acceleration clamp.
+    max_accel = max(0.0, float(rollout_max_accel))
+    initial_velocity = rollout_initial_velocity
+    if initial_velocity is None:
+        initial_velocity = prev_action
+    if max_accel > 0.0 and initial_velocity is not None:
+        wind_t = _to_tensor(wind_step, device) if wind_step is not None else None
+        vel_t = _to_tensor(np.asarray(initial_velocity, dtype=float)[:ndim], device)
+        vel = vel_t[None, :].expand(actions_t.shape[0], ndim)
+        pos = obs_t[None, :].expand(actions_t.shape[0], ndim)
+        max_dv = max_accel * dt_plan
+        points = []
+        for _ in range(horizon):
+            dv = actions_t - vel
+            dv_norm = torch.norm(dv, dim=1, keepdim=True)
+            scale = torch.clamp(
+                max_dv / torch.clamp(dv_norm, min=1e-12),
+                max=1.0,
+            )
+            vel = vel + dv * scale
+            step_vel = vel if wind_t is None else vel + wind_t[None, :]
+            pos = pos + step_vel * dt_plan
+            points.append(pos)
+        rollouts = torch.stack(points, dim=1)  # [S, H, D]
+    else:
+        h = torch.arange(1, horizon + 1, dtype=torch.float32, device=device) * dt_plan
+        rollouts = obs_t[None, None, :] + actions_t[:, None, :] * h[None, :, None]
+        if wind_step is not None:
+            ws_t = _to_tensor(wind_step, device)
+            rollouts = rollouts + ws_t[None, None, :] * h[None, :, None]
 
     # Cell indices for occupancy + OOB.
     shape_t = torch.tensor(list(occ.shape), dtype=torch.long, device=device)

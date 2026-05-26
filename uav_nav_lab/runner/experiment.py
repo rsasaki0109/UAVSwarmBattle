@@ -134,6 +134,7 @@ def _run_episode(
             perceived_dyn = sensor.observe_dynamics(
                 t, state.position, sim.scenario.dynamic_obstacles
             )
+            planner.set_current_state(state.position, state.velocity)
             plan = planner.plan(
                 observation,
                 sim.goal,
@@ -151,6 +152,7 @@ def _run_episode(
                 "fallback_to_argmin",
                 "mode_aware_triggered",
                 "mode_aware_cluster_sign",
+                "rollout_max_accel",
             ):
                 if key in plan.meta:
                     meta[key] = plan.meta[key]

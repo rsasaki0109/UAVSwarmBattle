@@ -73,6 +73,7 @@ class GPUMPPIPlanner(Planner):
         dynamic_branch_speeds: tuple[float, ...] = (0.0, 0.35, 0.7, 1.0),
         dynamic_branch_extra_radius: float = 2.0,
         score_collision_after_goal: bool = False,
+        rollout_max_accel: float = 0.0,
         ctg_cache_tolerance: int = 0,
         viz_rollouts: int = 24,
         log_action_provenance: bool = False,
@@ -115,6 +116,7 @@ class GPUMPPIPlanner(Planner):
         self.dynamic_branch_speeds = speeds or (0.0, 0.35, 0.7, 1.0)
         self.dynamic_branch_extra_radius = max(0.0, float(dynamic_branch_extra_radius))
         self.score_collision_after_goal = bool(score_collision_after_goal)
+        self.rollout_max_accel = max(0.0, float(rollout_max_accel))
         self.ctg_cache_tolerance = max(0, int(ctg_cache_tolerance))
         self.viz_rollouts = int(viz_rollouts)
         self.log_action_provenance = bool(log_action_provenance)
@@ -122,6 +124,7 @@ class GPUMPPIPlanner(Planner):
             predictor if predictor is not None else build_predictor(None)
         )
         self._prev_action: np.ndarray | None = None
+        self._current_velocity: np.ndarray | None = None
         self._bias_vec: np.ndarray | None = None
         self._static_occ_inflated: np.ndarray | None = None
         self._ctg_cache = CTGCache(tolerance=self.ctg_cache_tolerance)
@@ -175,6 +178,7 @@ class GPUMPPIPlanner(Planner):
             dynamic_branch_speeds=tuple(cfg.get("dynamic_branch_speeds", (0.0, 0.35, 0.7, 1.0))),
             dynamic_branch_extra_radius=float(cfg.get("dynamic_branch_extra_radius", 2.0)),
             score_collision_after_goal=bool(cfg.get("score_collision_after_goal", False)),
+            rollout_max_accel=float(cfg.get("rollout_max_accel", 0.0)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             viz_rollouts=int(cfg.get("viz_rollouts", 24)),
             log_action_provenance=bool(cfg.get("log_action_provenance", False)),
@@ -184,11 +188,22 @@ class GPUMPPIPlanner(Planner):
 
     def reset(self) -> None:
         self._prev_action = None
+        self._current_velocity = None
         self._predictor.reset()
         self._static_occ_inflated = None
         self._ctg_cache.reset()
         self._bias_vec = None
         self._aggregator.reset()
+
+    def set_current_state(
+        self,
+        position: np.ndarray,
+        velocity: np.ndarray | None = None,
+    ) -> None:
+        if velocity is None:
+            self._current_velocity = None
+            return
+        self._current_velocity = np.asarray(velocity, dtype=float).copy()
 
     def _cell(self, p: np.ndarray, shape: tuple[int, ...]) -> tuple[int, ...]:
         return tuple(
@@ -470,6 +485,8 @@ class GPUMPPIPlanner(Planner):
             r2_arr=r2_arr,
             wind_step=wind_step,
             prev_action=self._prev_action,
+            rollout_initial_velocity=self._current_velocity,
+            rollout_max_accel=self.rollout_max_accel,
             horizon=self.horizon,
             dt_plan=self.dt_plan,
             resolution=self.resolution,
@@ -539,6 +556,7 @@ class GPUMPPIPlanner(Planner):
             "mode_aware_cluster_sign": int(agg.mode_aware_cluster_sign),
             "dynamic_branch_samples": int(branch_count),
             "score_collision_after_goal": bool(self.score_collision_after_goal),
+            "rollout_max_accel": float(self.rollout_max_accel),
             "w_reach_time": float(self.w_reach_time),
             "w_clean_ctg": float(self.w_clean_ctg),
         }

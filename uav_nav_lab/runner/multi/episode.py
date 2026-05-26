@@ -124,6 +124,7 @@ def run_episode_multi(
                     "fallback_to_argmin",
                     "mode_aware_triggered",
                     "mode_aware_cluster_sign",
+                    "rollout_max_accel",
                 ):
                     if key in plans[i].meta:
                         meta[key] = plans[i].meta[key]

@@ -164,6 +164,7 @@ def candidate_config(
     w_obs: float | None,
     w_reach_time: float | None,
     w_clean_ctg: float | None,
+    inflate: int | None,
     fallback_to_argmin: bool,
     fallback_commit_steps: int | None,
     dynamic_branch_sampling: bool,
@@ -172,6 +173,7 @@ def candidate_config(
     dynamic_branch_speeds: tuple[float, ...] | None,
     dynamic_branch_max_obstacles: int | None,
     score_collision_after_goal: bool,
+    rollout_max_accel: float | None,
     n: int,
     seed: int,
     output_root: Path,
@@ -199,6 +201,8 @@ def candidate_config(
     planner = cfg.setdefault("planner", {})
     planner["type"] = "gpu_mppi"
     planner["temperature"] = float(temperature)
+    if inflate is not None:
+        planner["inflate"] = int(inflate)
     if safety_margin is not None:
         planner["safety_margin"] = float(safety_margin)
     if w_obs is not None:
@@ -220,6 +224,8 @@ def candidate_config(
     if dynamic_branch_max_obstacles is not None:
         planner["dynamic_branch_max_obstacles"] = int(dynamic_branch_max_obstacles)
     planner["score_collision_after_goal"] = bool(score_collision_after_goal)
+    if rollout_max_accel is not None:
+        planner["rollout_max_accel"] = float(rollout_max_accel)
     planner["mode_aware_sampling"] = False
     planner["log_action_provenance"] = True
     cfg.setdefault("output", {})["dir"] = str(
@@ -231,6 +237,7 @@ def candidate_config(
             w_obs=w_obs,
             w_reach_time=w_reach_time,
             w_clean_ctg=w_clean_ctg,
+            inflate=inflate,
             fallback_to_argmin=fallback_to_argmin,
             fallback_commit_steps=fallback_commit_steps,
             dynamic_branch_sampling=dynamic_branch_sampling,
@@ -239,6 +246,7 @@ def candidate_config(
             dynamic_branch_speeds=dynamic_branch_speeds,
             dynamic_branch_max_obstacles=dynamic_branch_max_obstacles,
             score_collision_after_goal=score_collision_after_goal,
+            rollout_max_accel=rollout_max_accel,
             extra_obstacles=extra_obstacles,
             static_boxes=static_boxes,
         )
@@ -318,6 +326,7 @@ def planner_variant_tag(
     w_obs: float | None,
     w_reach_time: float | None,
     w_clean_ctg: float | None,
+    inflate: int | None,
     fallback_to_argmin: bool,
     fallback_commit_steps: int | None,
     dynamic_branch_sampling: bool,
@@ -326,6 +335,7 @@ def planner_variant_tag(
     dynamic_branch_speeds: tuple[float, ...] | None,
     dynamic_branch_max_obstacles: int | None,
     score_collision_after_goal: bool,
+    rollout_max_accel: float | None,
     extra_obstacles: tuple[ExtraObstacle, ...] = (),
     static_boxes: tuple[StaticBox, ...] = (),
 ) -> str:
@@ -336,6 +346,8 @@ def planner_variant_tag(
         parts.append("dynbranch")
     if score_collision_after_goal:
         parts.append("postgoal")
+    if rollout_max_accel is not None:
+        parts.append(f"rma{tag_float(rollout_max_accel)}")
     if safety_margin is not None:
         parts.append(f"sm{tag_float(safety_margin)}")
     if w_obs is not None:
@@ -344,6 +356,8 @@ def planner_variant_tag(
         parts.append(f"wrt{tag_float(w_reach_time)}")
     if w_clean_ctg is not None:
         parts.append(f"wclean{tag_float(w_clean_ctg)}")
+    if inflate is not None:
+        parts.append(f"inf{int(inflate)}")
     if fallback_commit_steps is not None:
         parts.append(f"fc{int(fallback_commit_steps)}")
     if dynamic_branch_extra_radius is not None:
@@ -587,6 +601,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         type=float,
         help="Clean-reach tie-break penalty for average cost-to-go after reaching the short race goal.",
     )
+    p.add_argument(
+        "--inflate",
+        type=int,
+        help="Override the GPU MPPI static obstacle inflation in grid cells.",
+    )
     p.add_argument("--fallback-to-argmin", action="store_true")
     p.add_argument("--fallback-commit-steps", type=int)
     p.add_argument("--dynamic-branch-sampling", action="store_true")
@@ -607,6 +626,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Append a static box as CENTER_X,CENTER_Y,CENTER_Z,SIZE_X,SIZE_Y,SIZE_Z.",
     )
     p.add_argument("--score-collision-after-goal", action="store_true")
+    p.add_argument(
+        "--rollout-max-accel",
+        type=float,
+        help="Opt into acceleration-limited GPU MPPI rollout dynamics.",
+    )
     p.add_argument("--n", type=int, default=1)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--episode", type=int, default=0)
@@ -662,6 +686,7 @@ def main(argv: list[str]) -> int:
             w_obs=args.w_obs,
             w_reach_time=args.w_reach_time,
             w_clean_ctg=args.w_clean_ctg,
+            inflate=args.inflate,
             fallback_to_argmin=args.fallback_to_argmin,
             fallback_commit_steps=args.fallback_commit_steps,
             dynamic_branch_sampling=args.dynamic_branch_sampling,
@@ -674,6 +699,7 @@ def main(argv: list[str]) -> int:
             ),
             dynamic_branch_max_obstacles=args.dynamic_branch_max_obstacles,
             score_collision_after_goal=args.score_collision_after_goal,
+            rollout_max_accel=args.rollout_max_accel,
             n=args.n,
             seed=args.seed,
             output_root=args.output_root,
@@ -773,6 +799,7 @@ def main(argv: list[str]) -> int:
             "w_obs": args.w_obs,
             "w_reach_time": args.w_reach_time,
             "w_clean_ctg": args.w_clean_ctg,
+            "inflate": args.inflate,
             "fallback_to_argmin": args.fallback_to_argmin,
             "fallback_commit_steps": args.fallback_commit_steps,
             "dynamic_branch_sampling": args.dynamic_branch_sampling,
@@ -780,6 +807,7 @@ def main(argv: list[str]) -> int:
             "dynamic_branch_lateral_gain": args.dynamic_branch_lateral_gain,
             "dynamic_branch_speeds": args.dynamic_branch_speeds,
             "dynamic_branch_max_obstacles": args.dynamic_branch_max_obstacles,
+            "rollout_max_accel": args.rollout_max_accel,
             "extra_obstacles": [
                 {
                     "start": [float(v) for v in extra.start],

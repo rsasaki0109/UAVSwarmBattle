@@ -1,0 +1,1974 @@
+{
+  "source": {
+    "script": "scripts/race_hero_slot_wall_rollout_horizon_report.py",
+    "mechanism_report": "/media/sasaki/aiueo/ai_coding_ws/uav-nav-lab/docs/data/race_hero_slot_wall_failure_mechanism.json"
+  },
+  "focus": {
+    "drone": 3,
+    "pre_window_s": 4.0
+  },
+  "cases": [
+    {
+      "label": "x23_y27p5_sx5_sy2",
+      "gate_run": "results/_race_hero_slot_wall_x23_y27p5_sx5_n3/x23_y27p5_sx5_sy2/gate_wall/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_extrax24p5y12p86z7v0_0p64_0r1p75lin-x24p5y50p14z7v0_m0p64_0r1p75lin_boxc23_27p5_7s5_2_14",
+      "episodes": 3,
+      "episode_rows": [
+        {
+          "episode": 0,
+          "gate_first_collision_t": 29.95000000000029,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 28.100000000000264,
+            "horizon_end_t": 30.100000000000264,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 2.6219993591308595,
+              "min_wall_t": 28.100000000000264,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                29.02199935913086,
+                27.09000015258789,
+                7.560999870300293
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                28.863972729916522,
+                26.820451793704276,
+                7.566338869937633
+              ],
+              "best_rollout_next_pos": [
+                29.156999588012695,
+                26.90999984741211,
+                7.890999794006348
+              ],
+              "actual_next_wall_clearance_m": 2.4639727299165224,
+              "best_rollout_next_wall_clearance_m": 2.7569995880126954,
+              "actual_vs_best_rollout_next_delta_m": 0.44641719176766415
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.300000000000267,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.300000000000267,
+                "post_t": 28.350000000000268,
+                "actual_next_wall_clearance_m": 1.9228266838051025,
+                "best_rollout_wall_clearance_m": 3.294999694824219,
+                "actual_vs_best_rollout_delta_m": 2.168313028975739,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 2.4639727299165224,
+                "best_rollout_wall_clearance_m": 2.7569995880126954,
+                "actual_vs_best_rollout_delta_m": 0.44641719176766415,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.300000000000267,
+                "post_t": 28.350000000000268,
+                "actual_next_wall_clearance_m": 1.9228266838051025,
+                "best_rollout_wall_clearance_m": 3.294999694824219,
+                "actual_vs_best_rollout_delta_m": 2.168313028975739,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 6,
+            "visible_rollout_min_wall_clearance_m": -1.4580005645751952,
+            "earliest_visible_rollout_wall_hit_t": 28.500000000000263
+          },
+          "first_visible_wall_hit": {
+            "t": 26.100000000000236,
+            "horizon_end_t": 28.100000000000236,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 15,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 6.5639532386311545,
+              "min_wall_t": 26.100000000000236,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                32.91899871826172,
+                25.209999084472656,
+                7.127999782562256
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                32.65435611536692,
+                25.36024490339277,
+                7.216889631929017
+              ],
+              "best_rollout_next_pos": [
+                33.27199935913086,
+                25.236000061035156,
+                7.314000129699707
+              ],
+              "actual_next_wall_clearance_m": 6.285038660602951,
+              "best_rollout_next_wall_clearance_m": 6.912022332155305,
+              "actual_vs_best_rollout_next_delta_m": 0.6374561994341073
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 26.30000000000024,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 26.30000000000024,
+                "post_t": 26.35000000000024,
+                "actual_next_wall_clearance_m": 5.365610479807325,
+                "best_rollout_wall_clearance_m": 8.311115335372996,
+                "actual_vs_best_rollout_delta_m": 3.0539239015499318,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.285038660602951,
+                "best_rollout_wall_clearance_m": 6.912022332155305,
+                "actual_vs_best_rollout_delta_m": 0.6374561994341073,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 26.30000000000024,
+                "post_t": 26.35000000000024,
+                "actual_next_wall_clearance_m": 5.365610479807325,
+                "best_rollout_wall_clearance_m": 8.311115335372996,
+                "actual_vs_best_rollout_delta_m": 3.0539239015499318,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 2,
+            "visible_rollout_min_wall_clearance_m": -1.866999053955078,
+            "earliest_visible_rollout_wall_hit_t": 27.000000000000234
+          },
+          "first_best_wall_hit": null,
+          "last_replan_before_collision": {
+            "t": 29.90000000000029,
+            "horizon_end_t": 31.90000000000029,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.17600021362304685,
+              "min_wall_t": 29.90000000000029,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                26.576000213623047,
+                27.356000900268555,
+                5.710000038146973
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                26.412227432853747,
+                26.996769995597244,
+                5.673693504199756
+              ],
+              "best_rollout_next_pos": [
+                26.711000442504883,
+                27.176000595092773,
+                6.040999889373779
+              ],
+              "actual_next_wall_clearance_m": 0.012227432853747167,
+              "best_rollout_next_wall_clearance_m": 0.3110004425048828,
+              "actual_vs_best_rollout_next_delta_m": 0.5062636661672774
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 29.95000000000029,
+              "samples": 2,
+              "actual_min": {
+                "step_t": 29.95000000000029,
+                "post_t": 30.00000000000029,
+                "actual_next_wall_clearance_m": -0.15187128292841978,
+                "best_rollout_wall_clearance_m": 0.44499931335449217,
+                "actual_vs_best_rollout_delta_m": 1.0114872167157465,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 29.90000000000029,
+                "post_t": 29.95000000000029,
+                "actual_next_wall_clearance_m": 0.012227432853747167,
+                "best_rollout_wall_clearance_m": 0.3110004425048828,
+                "actual_vs_best_rollout_delta_m": 0.5062636661672774,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 29.95000000000029,
+                "post_t": 30.00000000000029,
+                "actual_next_wall_clearance_m": -0.15187128292841978,
+                "best_rollout_wall_clearance_m": 0.44499931335449217,
+                "actual_vs_best_rollout_delta_m": 1.0114872167157465,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 13,
+            "visible_rollout_min_wall_clearance_m": -1.656000518798828,
+            "earliest_visible_rollout_wall_hit_t": 29.95000000000029
+          }
+        },
+        {
+          "episode": 1,
+          "gate_first_collision_t": 29.95000000000029,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 28.100000000000264,
+            "horizon_end_t": 30.100000000000264,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 2.6219993591308595,
+              "min_wall_t": 28.100000000000264,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                29.02199935913086,
+                27.09000015258789,
+                7.560999870300293
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                28.863972729916522,
+                26.820451793704276,
+                7.566338869937633
+              ],
+              "best_rollout_next_pos": [
+                29.156999588012695,
+                26.90999984741211,
+                7.890999794006348
+              ],
+              "actual_next_wall_clearance_m": 2.4639727299165224,
+              "best_rollout_next_wall_clearance_m": 2.7569995880126954,
+              "actual_vs_best_rollout_next_delta_m": 0.44641719176766415
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.300000000000267,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.300000000000267,
+                "post_t": 28.350000000000268,
+                "actual_next_wall_clearance_m": 1.9228266838051025,
+                "best_rollout_wall_clearance_m": 3.294999694824219,
+                "actual_vs_best_rollout_delta_m": 2.168313028975739,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 2.4639727299165224,
+                "best_rollout_wall_clearance_m": 2.7569995880126954,
+                "actual_vs_best_rollout_delta_m": 0.44641719176766415,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.300000000000267,
+                "post_t": 28.350000000000268,
+                "actual_next_wall_clearance_m": 1.9228266838051025,
+                "best_rollout_wall_clearance_m": 3.294999694824219,
+                "actual_vs_best_rollout_delta_m": 2.168313028975739,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 6,
+            "visible_rollout_min_wall_clearance_m": -1.4580005645751952,
+            "earliest_visible_rollout_wall_hit_t": 28.500000000000263
+          },
+          "first_visible_wall_hit": {
+            "t": 26.100000000000236,
+            "horizon_end_t": 28.100000000000236,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 15,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 6.5639532386311545,
+              "min_wall_t": 26.100000000000236,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                32.91899871826172,
+                25.209999084472656,
+                7.127999782562256
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                32.65435611536692,
+                25.36024490339277,
+                7.216889631929017
+              ],
+              "best_rollout_next_pos": [
+                33.27199935913086,
+                25.236000061035156,
+                7.314000129699707
+              ],
+              "actual_next_wall_clearance_m": 6.285038660602951,
+              "best_rollout_next_wall_clearance_m": 6.912022332155305,
+              "actual_vs_best_rollout_next_delta_m": 0.6374561994341073
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 26.30000000000024,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 26.30000000000024,
+                "post_t": 26.35000000000024,
+                "actual_next_wall_clearance_m": 5.365610479807325,
+                "best_rollout_wall_clearance_m": 8.311115335372996,
+                "actual_vs_best_rollout_delta_m": 3.0539239015499318,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.285038660602951,
+                "best_rollout_wall_clearance_m": 6.912022332155305,
+                "actual_vs_best_rollout_delta_m": 0.6374561994341073,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 26.30000000000024,
+                "post_t": 26.35000000000024,
+                "actual_next_wall_clearance_m": 5.365610479807325,
+                "best_rollout_wall_clearance_m": 8.311115335372996,
+                "actual_vs_best_rollout_delta_m": 3.0539239015499318,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 2,
+            "visible_rollout_min_wall_clearance_m": -1.866999053955078,
+            "earliest_visible_rollout_wall_hit_t": 27.000000000000234
+          },
+          "first_best_wall_hit": null,
+          "last_replan_before_collision": {
+            "t": 29.90000000000029,
+            "horizon_end_t": 31.90000000000029,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.17600021362304685,
+              "min_wall_t": 29.90000000000029,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                26.576000213623047,
+                27.356000900268555,
+                5.710000038146973
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                26.412227432853747,
+                26.996769995597244,
+                5.673693504199756
+              ],
+              "best_rollout_next_pos": [
+                26.711000442504883,
+                27.176000595092773,
+                6.040999889373779
+              ],
+              "actual_next_wall_clearance_m": 0.012227432853747167,
+              "best_rollout_next_wall_clearance_m": 0.3110004425048828,
+              "actual_vs_best_rollout_next_delta_m": 0.5062636661672774
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 29.95000000000029,
+              "samples": 2,
+              "actual_min": {
+                "step_t": 29.95000000000029,
+                "post_t": 30.00000000000029,
+                "actual_next_wall_clearance_m": -0.15187128292841978,
+                "best_rollout_wall_clearance_m": 0.44499931335449217,
+                "actual_vs_best_rollout_delta_m": 1.0114872167157465,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 29.90000000000029,
+                "post_t": 29.95000000000029,
+                "actual_next_wall_clearance_m": 0.012227432853747167,
+                "best_rollout_wall_clearance_m": 0.3110004425048828,
+                "actual_vs_best_rollout_delta_m": 0.5062636661672774,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 29.95000000000029,
+                "post_t": 30.00000000000029,
+                "actual_next_wall_clearance_m": -0.15187128292841978,
+                "best_rollout_wall_clearance_m": 0.44499931335449217,
+                "actual_vs_best_rollout_delta_m": 1.0114872167157465,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 13,
+            "visible_rollout_min_wall_clearance_m": -1.656000518798828,
+            "earliest_visible_rollout_wall_hit_t": 29.95000000000029
+          }
+        },
+        {
+          "episode": 2,
+          "gate_first_collision_t": 29.95000000000029,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 28.100000000000264,
+            "horizon_end_t": 30.100000000000264,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 2.6219993591308595,
+              "min_wall_t": 28.100000000000264,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                29.02199935913086,
+                27.09000015258789,
+                7.560999870300293
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                28.863972729916522,
+                26.820451793704276,
+                7.566338869937633
+              ],
+              "best_rollout_next_pos": [
+                29.156999588012695,
+                26.90999984741211,
+                7.890999794006348
+              ],
+              "actual_next_wall_clearance_m": 2.4639727299165224,
+              "best_rollout_next_wall_clearance_m": 2.7569995880126954,
+              "actual_vs_best_rollout_next_delta_m": 0.44641719176766415
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.300000000000267,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.300000000000267,
+                "post_t": 28.350000000000268,
+                "actual_next_wall_clearance_m": 1.9228266838051025,
+                "best_rollout_wall_clearance_m": 3.294999694824219,
+                "actual_vs_best_rollout_delta_m": 2.168313028975739,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 2.4639727299165224,
+                "best_rollout_wall_clearance_m": 2.7569995880126954,
+                "actual_vs_best_rollout_delta_m": 0.44641719176766415,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.300000000000267,
+                "post_t": 28.350000000000268,
+                "actual_next_wall_clearance_m": 1.9228266838051025,
+                "best_rollout_wall_clearance_m": 3.294999694824219,
+                "actual_vs_best_rollout_delta_m": 2.168313028975739,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 6,
+            "visible_rollout_min_wall_clearance_m": -1.4580005645751952,
+            "earliest_visible_rollout_wall_hit_t": 28.500000000000263
+          },
+          "first_visible_wall_hit": {
+            "t": 26.100000000000236,
+            "horizon_end_t": 28.100000000000236,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 15,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 6.5639532386311545,
+              "min_wall_t": 26.100000000000236,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                32.91899871826172,
+                25.209999084472656,
+                7.127999782562256
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                32.65435611536692,
+                25.36024490339277,
+                7.216889631929017
+              ],
+              "best_rollout_next_pos": [
+                33.27199935913086,
+                25.236000061035156,
+                7.314000129699707
+              ],
+              "actual_next_wall_clearance_m": 6.285038660602951,
+              "best_rollout_next_wall_clearance_m": 6.912022332155305,
+              "actual_vs_best_rollout_next_delta_m": 0.6374561994341073
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 26.30000000000024,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 26.30000000000024,
+                "post_t": 26.35000000000024,
+                "actual_next_wall_clearance_m": 5.365610479807325,
+                "best_rollout_wall_clearance_m": 8.311115335372996,
+                "actual_vs_best_rollout_delta_m": 3.0539239015499318,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.285038660602951,
+                "best_rollout_wall_clearance_m": 6.912022332155305,
+                "actual_vs_best_rollout_delta_m": 0.6374561994341073,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 26.30000000000024,
+                "post_t": 26.35000000000024,
+                "actual_next_wall_clearance_m": 5.365610479807325,
+                "best_rollout_wall_clearance_m": 8.311115335372996,
+                "actual_vs_best_rollout_delta_m": 3.0539239015499318,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 2,
+            "visible_rollout_min_wall_clearance_m": -1.866999053955078,
+            "earliest_visible_rollout_wall_hit_t": 27.000000000000234
+          },
+          "first_best_wall_hit": null,
+          "last_replan_before_collision": {
+            "t": 29.90000000000029,
+            "horizon_end_t": 31.90000000000029,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.17600021362304685,
+              "min_wall_t": 29.90000000000029,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                26.576000213623047,
+                27.356000900268555,
+                5.710000038146973
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                26.412227432853747,
+                26.996769995597244,
+                5.673693504199756
+              ],
+              "best_rollout_next_pos": [
+                26.711000442504883,
+                27.176000595092773,
+                6.040999889373779
+              ],
+              "actual_next_wall_clearance_m": 0.012227432853747167,
+              "best_rollout_next_wall_clearance_m": 0.3110004425048828,
+              "actual_vs_best_rollout_next_delta_m": 0.5062636661672774
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 29.95000000000029,
+              "samples": 2,
+              "actual_min": {
+                "step_t": 29.95000000000029,
+                "post_t": 30.00000000000029,
+                "actual_next_wall_clearance_m": -0.15187128292841978,
+                "best_rollout_wall_clearance_m": 0.44499931335449217,
+                "actual_vs_best_rollout_delta_m": 1.0114872167157465,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 29.90000000000029,
+                "post_t": 29.95000000000029,
+                "actual_next_wall_clearance_m": 0.012227432853747167,
+                "best_rollout_wall_clearance_m": 0.3110004425048828,
+                "actual_vs_best_rollout_delta_m": 0.5062636661672774,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 29.95000000000029,
+                "post_t": 30.00000000000029,
+                "actual_next_wall_clearance_m": -0.15187128292841978,
+                "best_rollout_wall_clearance_m": 0.44499931335449217,
+                "actual_vs_best_rollout_delta_m": 1.0114872167157465,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 13,
+            "visible_rollout_min_wall_clearance_m": -1.656000518798828,
+            "earliest_visible_rollout_wall_hit_t": 29.95000000000029
+          }
+        }
+      ]
+    },
+    {
+      "label": "x24_y26p5_sx5_sy2",
+      "gate_run": "results/_race_hero_slot_wall_x24_y26p5_sx5_n3/x24_y26p5_sx5_sy2/gate_wall/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_extrax24p5y12p86z7v0_0p64_0r1p75lin-x24p5y50p14z7v0_m0p64_0r1p75lin_boxc24_26p5_7s5_2_14",
+      "episodes": 3,
+      "episode_rows": [
+        {
+          "episode": 0,
+          "gate_first_collision_t": 28.950000000000276,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 27.10000000000025,
+            "horizon_end_t": 29.10000000000025,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 6,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 3.2459252554325335,
+              "min_wall_t": 27.10000000000025,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                30.621999740600586,
+                28.41699981689453,
+                7.210999965667725
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                30.63466875971735,
+                28.22191643060575,
+                7.290663620612261
+              ],
+              "best_rollout_next_pos": [
+                30.714000701904297,
+                28.676000595092773,
+                7.502999782562256
+              ],
+              "actual_next_wall_clearance_m": 3.241437064544444,
+              "best_rollout_next_wall_clearance_m": 3.3750202672716068,
+              "actual_vs_best_rollout_next_delta_m": 0.5075161388179563
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 27.300000000000253,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 27.300000000000253,
+                "post_t": 27.350000000000254,
+                "actual_next_wall_clearance_m": 2.5209954754618384,
+                "best_rollout_wall_clearance_m": 4.023083087952308,
+                "actual_vs_best_rollout_delta_m": 2.3758735580817043,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 27.10000000000025,
+                "post_t": 27.15000000000025,
+                "actual_next_wall_clearance_m": 3.241437064544444,
+                "best_rollout_wall_clearance_m": 3.3750202672716068,
+                "actual_vs_best_rollout_delta_m": 0.5075161388179563,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 27.300000000000253,
+                "post_t": 27.350000000000254,
+                "actual_next_wall_clearance_m": 2.5209954754618384,
+                "best_rollout_wall_clearance_m": 4.023083087952308,
+                "actual_vs_best_rollout_delta_m": 2.3758735580817043,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 4,
+            "visible_rollout_min_wall_clearance_m": -1.494999313354492,
+            "earliest_visible_rollout_wall_hit_t": 27.60000000000025
+          },
+          "first_visible_wall_hit": {
+            "t": 25.10000000000022,
+            "horizon_end_t": 27.10000000000022,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 0,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 8.41988417052613,
+              "min_wall_t": 25.400000000000222,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                35.53799819946289,
+                22.788000106811523,
+                7.014999866485596
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                35.05694009824153,
+                20.96285216771034,
+                7.675037841501822
+              ],
+              "best_rollout_next_pos": [
+                35.05699920654297,
+                20.96299934387207,
+                7.675000190734863
+              ],
+              "actual_next_wall_clearance_m": 8.611817040220766,
+              "best_rollout_next_wall_clearance_m": 8.611803954359601,
+              "actual_vs_best_rollout_next_delta_m": 0.0001630097976577022
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 25.300000000000225,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 1,
+            "visible_rollout_min_wall_clearance_m": -1.8409999847412108,
+            "earliest_visible_rollout_wall_hit_t": 26.25000000000022
+          },
+          "first_best_wall_hit": null,
+          "last_replan_before_collision": {
+            "t": 28.900000000000276,
+            "horizon_end_t": 30.900000000000276,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 13,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.23999938964843748,
+              "min_wall_t": 28.950000000000276,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                26.9950008392334,
+                28.639999389648438,
+                6.172999858856201
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                27.190592863773276,
+                28.410111362805306,
+                6.330593515065271
+              ],
+              "best_rollout_next_pos": [
+                26.9950008392334,
+                28.639999389648438,
+                6.172999858856201
+              ],
+              "actual_next_wall_clearance_m": 0.05223552450390717,
+              "best_rollout_next_wall_clearance_m": 0.23999938964843748,
+              "actual_vs_best_rollout_next_delta_m": 0.34050037507582653
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.950000000000276,
+              "samples": 2,
+              "actual_min": {
+                "step_t": 28.950000000000276,
+                "post_t": 29.000000000000277,
+                "actual_next_wall_clearance_m": -0.004319523173771267,
+                "best_rollout_wall_clearance_m": 0.3169990539550781,
+                "actual_vs_best_rollout_delta_m": 0.4950802895402899,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 0.05223552450390717,
+                "best_rollout_wall_clearance_m": 0.23999938964843748,
+                "actual_vs_best_rollout_delta_m": 0.34050037507582653,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.950000000000276,
+                "post_t": 29.000000000000277,
+                "actual_next_wall_clearance_m": -0.004319523173771267,
+                "best_rollout_wall_clearance_m": 0.3169990539550781,
+                "actual_vs_best_rollout_delta_m": 0.4950802895402899,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 4,
+            "visible_rollout_min_wall_clearance_m": -1.850000762939453,
+            "earliest_visible_rollout_wall_hit_t": 29.000000000000277
+          }
+        },
+        {
+          "episode": 1,
+          "gate_first_collision_t": 28.950000000000276,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 27.10000000000025,
+            "horizon_end_t": 29.10000000000025,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 6,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 3.2459252554325335,
+              "min_wall_t": 27.10000000000025,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                30.621999740600586,
+                28.41699981689453,
+                7.210999965667725
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                30.63466875971735,
+                28.22191643060575,
+                7.290663620612261
+              ],
+              "best_rollout_next_pos": [
+                30.714000701904297,
+                28.676000595092773,
+                7.502999782562256
+              ],
+              "actual_next_wall_clearance_m": 3.241437064544444,
+              "best_rollout_next_wall_clearance_m": 3.3750202672716068,
+              "actual_vs_best_rollout_next_delta_m": 0.5075161388179563
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 27.300000000000253,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 27.300000000000253,
+                "post_t": 27.350000000000254,
+                "actual_next_wall_clearance_m": 2.5209954754618384,
+                "best_rollout_wall_clearance_m": 4.023083087952308,
+                "actual_vs_best_rollout_delta_m": 2.3758735580817043,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 27.10000000000025,
+                "post_t": 27.15000000000025,
+                "actual_next_wall_clearance_m": 3.241437064544444,
+                "best_rollout_wall_clearance_m": 3.3750202672716068,
+                "actual_vs_best_rollout_delta_m": 0.5075161388179563,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 27.300000000000253,
+                "post_t": 27.350000000000254,
+                "actual_next_wall_clearance_m": 2.5209954754618384,
+                "best_rollout_wall_clearance_m": 4.023083087952308,
+                "actual_vs_best_rollout_delta_m": 2.3758735580817043,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 4,
+            "visible_rollout_min_wall_clearance_m": -1.494999313354492,
+            "earliest_visible_rollout_wall_hit_t": 27.60000000000025
+          },
+          "first_visible_wall_hit": {
+            "t": 25.10000000000022,
+            "horizon_end_t": 27.10000000000022,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 0,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 8.41988417052613,
+              "min_wall_t": 25.400000000000222,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                35.53799819946289,
+                22.788000106811523,
+                7.014999866485596
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                35.05694009824153,
+                20.96285216771034,
+                7.675037841501822
+              ],
+              "best_rollout_next_pos": [
+                35.05699920654297,
+                20.96299934387207,
+                7.675000190734863
+              ],
+              "actual_next_wall_clearance_m": 8.611817040220766,
+              "best_rollout_next_wall_clearance_m": 8.611803954359601,
+              "actual_vs_best_rollout_next_delta_m": 0.0001630097976577022
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 25.300000000000225,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 1,
+            "visible_rollout_min_wall_clearance_m": -1.8409999847412108,
+            "earliest_visible_rollout_wall_hit_t": 26.25000000000022
+          },
+          "first_best_wall_hit": null,
+          "last_replan_before_collision": {
+            "t": 28.900000000000276,
+            "horizon_end_t": 30.900000000000276,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 13,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.23999938964843748,
+              "min_wall_t": 28.950000000000276,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                26.9950008392334,
+                28.639999389648438,
+                6.172999858856201
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                27.190592863773276,
+                28.410111362805306,
+                6.330593515065271
+              ],
+              "best_rollout_next_pos": [
+                26.9950008392334,
+                28.639999389648438,
+                6.172999858856201
+              ],
+              "actual_next_wall_clearance_m": 0.05223552450390717,
+              "best_rollout_next_wall_clearance_m": 0.23999938964843748,
+              "actual_vs_best_rollout_next_delta_m": 0.34050037507582653
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.950000000000276,
+              "samples": 2,
+              "actual_min": {
+                "step_t": 28.950000000000276,
+                "post_t": 29.000000000000277,
+                "actual_next_wall_clearance_m": -0.004319523173771267,
+                "best_rollout_wall_clearance_m": 0.3169990539550781,
+                "actual_vs_best_rollout_delta_m": 0.4950802895402899,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 0.05223552450390717,
+                "best_rollout_wall_clearance_m": 0.23999938964843748,
+                "actual_vs_best_rollout_delta_m": 0.34050037507582653,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.950000000000276,
+                "post_t": 29.000000000000277,
+                "actual_next_wall_clearance_m": -0.004319523173771267,
+                "best_rollout_wall_clearance_m": 0.3169990539550781,
+                "actual_vs_best_rollout_delta_m": 0.4950802895402899,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 4,
+            "visible_rollout_min_wall_clearance_m": -1.850000762939453,
+            "earliest_visible_rollout_wall_hit_t": 29.000000000000277
+          }
+        },
+        {
+          "episode": 2,
+          "gate_first_collision_t": 28.950000000000276,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 27.10000000000025,
+            "horizon_end_t": 29.10000000000025,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 6,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 3.2459252554325335,
+              "min_wall_t": 27.10000000000025,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                30.621999740600586,
+                28.41699981689453,
+                7.210999965667725
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                30.63466875971735,
+                28.22191643060575,
+                7.290663620612261
+              ],
+              "best_rollout_next_pos": [
+                30.714000701904297,
+                28.676000595092773,
+                7.502999782562256
+              ],
+              "actual_next_wall_clearance_m": 3.241437064544444,
+              "best_rollout_next_wall_clearance_m": 3.3750202672716068,
+              "actual_vs_best_rollout_next_delta_m": 0.5075161388179563
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 27.300000000000253,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 27.300000000000253,
+                "post_t": 27.350000000000254,
+                "actual_next_wall_clearance_m": 2.5209954754618384,
+                "best_rollout_wall_clearance_m": 4.023083087952308,
+                "actual_vs_best_rollout_delta_m": 2.3758735580817043,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 27.10000000000025,
+                "post_t": 27.15000000000025,
+                "actual_next_wall_clearance_m": 3.241437064544444,
+                "best_rollout_wall_clearance_m": 3.3750202672716068,
+                "actual_vs_best_rollout_delta_m": 0.5075161388179563,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 27.300000000000253,
+                "post_t": 27.350000000000254,
+                "actual_next_wall_clearance_m": 2.5209954754618384,
+                "best_rollout_wall_clearance_m": 4.023083087952308,
+                "actual_vs_best_rollout_delta_m": 2.3758735580817043,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 4,
+            "visible_rollout_min_wall_clearance_m": -1.494999313354492,
+            "earliest_visible_rollout_wall_hit_t": 27.60000000000025
+          },
+          "first_visible_wall_hit": {
+            "t": 25.10000000000022,
+            "horizon_end_t": 27.10000000000022,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 0,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 8.41988417052613,
+              "min_wall_t": 25.400000000000222,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                35.53799819946289,
+                22.788000106811523,
+                7.014999866485596
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                35.05694009824153,
+                20.96285216771034,
+                7.675037841501822
+              ],
+              "best_rollout_next_pos": [
+                35.05699920654297,
+                20.96299934387207,
+                7.675000190734863
+              ],
+              "actual_next_wall_clearance_m": 8.611817040220766,
+              "best_rollout_next_wall_clearance_m": 8.611803954359601,
+              "actual_vs_best_rollout_next_delta_m": 0.0001630097976577022
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 25.300000000000225,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 25.300000000000225,
+                "post_t": 25.350000000000225,
+                "actual_next_wall_clearance_m": 8.32422147086979,
+                "best_rollout_wall_clearance_m": 8.426568639127272,
+                "actual_vs_best_rollout_delta_m": 0.16701438271435498,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 1,
+            "visible_rollout_min_wall_clearance_m": -1.8409999847412108,
+            "earliest_visible_rollout_wall_hit_t": 26.25000000000022
+          },
+          "first_best_wall_hit": null,
+          "last_replan_before_collision": {
+            "t": 28.900000000000276,
+            "horizon_end_t": 30.900000000000276,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 13,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.23999938964843748,
+              "min_wall_t": 28.950000000000276,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                26.9950008392334,
+                28.639999389648438,
+                6.172999858856201
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                27.190592863773276,
+                28.410111362805306,
+                6.330593515065271
+              ],
+              "best_rollout_next_pos": [
+                26.9950008392334,
+                28.639999389648438,
+                6.172999858856201
+              ],
+              "actual_next_wall_clearance_m": 0.05223552450390717,
+              "best_rollout_next_wall_clearance_m": 0.23999938964843748,
+              "actual_vs_best_rollout_next_delta_m": 0.34050037507582653
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.950000000000276,
+              "samples": 2,
+              "actual_min": {
+                "step_t": 28.950000000000276,
+                "post_t": 29.000000000000277,
+                "actual_next_wall_clearance_m": -0.004319523173771267,
+                "best_rollout_wall_clearance_m": 0.3169990539550781,
+                "actual_vs_best_rollout_delta_m": 0.4950802895402899,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 0.05223552450390717,
+                "best_rollout_wall_clearance_m": 0.23999938964843748,
+                "actual_vs_best_rollout_delta_m": 0.34050037507582653,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.950000000000276,
+                "post_t": 29.000000000000277,
+                "actual_next_wall_clearance_m": -0.004319523173771267,
+                "best_rollout_wall_clearance_m": 0.3169990539550781,
+                "actual_vs_best_rollout_delta_m": 0.4950802895402899,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 4,
+            "visible_rollout_min_wall_clearance_m": -1.850000762939453,
+            "earliest_visible_rollout_wall_hit_t": 29.000000000000277
+          }
+        }
+      ]
+    },
+    {
+      "label": "x24_y27p5_sx5_sy2",
+      "gate_run": "results/_race_hero_dynamic_gate_slot_wall_x24_y27p5_n3/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_extrax24p5y12p86z7v0_0p64_0r1p75lin-x24p5y50p14z7v0_m0p64_0r1p75lin_boxc24_27p5_7s5_2_14",
+      "episodes": 3,
+      "episode_rows": [
+        {
+          "episode": 0,
+          "gate_first_collision_t": 29.80000000000029,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 27.90000000000026,
+            "horizon_end_t": 29.90000000000026,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 6,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 1.902999496459961,
+              "min_wall_t": 27.90000000000026,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                29.30299949645996,
+                27.64299964904785,
+                6.5879998207092285
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                29.06409688509456,
+                27.891555024835604,
+                6.446027328466574
+              ],
+              "best_rollout_next_pos": [
+                29.395000457763672,
+                27.900999069213867,
+                6.880000114440918
+              ],
+              "actual_next_wall_clearance_m": 1.6640968850945606,
+              "best_rollout_next_wall_clearance_m": 1.995000457763672,
+              "actual_vs_best_rollout_next_delta_m": 0.5458193321473089
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.100000000000264,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 0.6729008249138978,
+                "best_rollout_wall_clearance_m": 2.3609996795654298,
+                "actual_vs_best_rollout_delta_m": 2.7615012099769563,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 27.90000000000026,
+                "post_t": 27.950000000000262,
+                "actual_next_wall_clearance_m": 1.6640968850945606,
+                "best_rollout_wall_clearance_m": 1.995000457763672,
+                "actual_vs_best_rollout_delta_m": 0.5458193321473089,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 0.6729008249138978,
+                "best_rollout_wall_clearance_m": 2.3609996795654298,
+                "actual_vs_best_rollout_delta_m": 2.7615012099769563,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 7,
+            "visible_rollout_min_wall_clearance_m": -1.7330001831054687,
+            "earliest_visible_rollout_wall_hit_t": 28.200000000000262
+          },
+          "first_visible_wall_hit": {
+            "t": 25.900000000000233,
+            "horizon_end_t": 27.900000000000233,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 0,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 3.9089404564827883,
+              "min_wall_t": 26.850000000000232,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                30.5939998626709,
+                31.37700080871582,
+                6.895999908447266
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                34.363755534233064,
+                25.243375136333537,
+                7.007700013603763
+              ],
+              "best_rollout_next_pos": [
+                34.36399841308594,
+                25.243000030517578,
+                7.007999897003174
+              ],
+              "actual_next_wall_clearance_m": 7.00252502544006,
+              "best_rollout_next_wall_clearance_m": 7.002804980662978,
+              "actual_vs_best_rollout_next_delta_m": 0.0005381677838565486
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 26.100000000000236,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 2,
+            "visible_rollout_min_wall_clearance_m": -1.7799991607666015,
+            "earliest_visible_rollout_wall_hit_t": 26.900000000000233
+          },
+          "first_best_wall_hit": {
+            "t": 28.700000000000273,
+            "horizon_end_t": 30.700000000000273,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 21,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": -0.3009990692138672,
+              "min_wall_t": 29.400000000000272,
+              "first_wall_hit_t": 29.300000000000274,
+              "min_wall_pos": [
+                22.402000427246094,
+                29.099000930786133,
+                0.12999999523162842
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                25.17837740880045,
+                30.917226124322053,
+                4.619389284971537
+              ],
+              "best_rollout_next_pos": [
+                25.023000717163086,
+                30.775999069213867,
+                4.296000003814697
+              ],
+              "actual_next_wall_clearance_m": 1.5172261243220526,
+              "best_rollout_next_wall_clearance_m": 1.3759990692138673,
+              "actual_vs_best_rollout_next_delta_m": 0.3855744085981857
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.900000000000276,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 3,
+            "visible_rollout_min_wall_clearance_m": -0.5609992980957031,
+            "earliest_visible_rollout_wall_hit_t": 29.150000000000272
+          },
+          "last_replan_before_collision": {
+            "t": 29.700000000000287,
+            "horizon_end_t": 31.700000000000287,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.8950000762939453,
+              "min_wall_t": 29.700000000000287,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                28.295000076293945,
+                26.900999069213867,
+                7.085000038146973
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                28.000183527253547,
+                26.660387612797336,
+                7.058172235790171
+              ],
+              "best_rollout_next_pos": [
+                28.429000854492188,
+                26.72100067138672,
+                7.415999889373779
+              ],
+              "actual_next_wall_clearance_m": 0.6001835272535473,
+              "best_rollout_next_wall_clearance_m": 1.0290008544921876,
+              "actual_vs_best_rollout_next_delta_m": 0.5617818728659741
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 29.80000000000029,
+              "samples": 3,
+              "actual_min": {
+                "step_t": 29.80000000000029,
+                "post_t": 29.85000000000029,
+                "actual_next_wall_clearance_m": -0.016564901091180695,
+                "best_rollout_wall_clearance_m": 1.2989994049072267,
+                "actual_vs_best_rollout_delta_m": 1.7169896025101887,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 29.700000000000287,
+                "post_t": 29.750000000000288,
+                "actual_next_wall_clearance_m": 0.6001835272535473,
+                "best_rollout_wall_clearance_m": 1.0290008544921876,
+                "actual_vs_best_rollout_delta_m": 0.5617818728659741,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 29.80000000000029,
+                "post_t": 29.85000000000029,
+                "actual_next_wall_clearance_m": -0.016564901091180695,
+                "best_rollout_wall_clearance_m": 1.2989994049072267,
+                "actual_vs_best_rollout_delta_m": 1.7169896025101887,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 9,
+            "visible_rollout_min_wall_clearance_m": -1.8790000915527343,
+            "earliest_visible_rollout_wall_hit_t": 29.850000000000286
+          }
+        },
+        {
+          "episode": 1,
+          "gate_first_collision_t": 29.80000000000029,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 27.90000000000026,
+            "horizon_end_t": 29.90000000000026,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 6,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 1.902999496459961,
+              "min_wall_t": 27.90000000000026,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                29.30299949645996,
+                27.64299964904785,
+                6.5879998207092285
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                29.06409688509456,
+                27.891555024835604,
+                6.446027328466574
+              ],
+              "best_rollout_next_pos": [
+                29.395000457763672,
+                27.900999069213867,
+                6.880000114440918
+              ],
+              "actual_next_wall_clearance_m": 1.6640968850945606,
+              "best_rollout_next_wall_clearance_m": 1.995000457763672,
+              "actual_vs_best_rollout_next_delta_m": 0.5458193321473089
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.100000000000264,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 0.6729008249138978,
+                "best_rollout_wall_clearance_m": 2.3609996795654298,
+                "actual_vs_best_rollout_delta_m": 2.7615012099769563,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 27.90000000000026,
+                "post_t": 27.950000000000262,
+                "actual_next_wall_clearance_m": 1.6640968850945606,
+                "best_rollout_wall_clearance_m": 1.995000457763672,
+                "actual_vs_best_rollout_delta_m": 0.5458193321473089,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 0.6729008249138978,
+                "best_rollout_wall_clearance_m": 2.3609996795654298,
+                "actual_vs_best_rollout_delta_m": 2.7615012099769563,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 7,
+            "visible_rollout_min_wall_clearance_m": -1.7330001831054687,
+            "earliest_visible_rollout_wall_hit_t": 28.200000000000262
+          },
+          "first_visible_wall_hit": {
+            "t": 25.900000000000233,
+            "horizon_end_t": 27.900000000000233,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 0,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 3.9089404564827883,
+              "min_wall_t": 26.850000000000232,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                30.5939998626709,
+                31.37700080871582,
+                6.895999908447266
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                34.363755534233064,
+                25.243375136333537,
+                7.007700013603763
+              ],
+              "best_rollout_next_pos": [
+                34.36399841308594,
+                25.243000030517578,
+                7.007999897003174
+              ],
+              "actual_next_wall_clearance_m": 7.00252502544006,
+              "best_rollout_next_wall_clearance_m": 7.002804980662978,
+              "actual_vs_best_rollout_next_delta_m": 0.0005381677838565486
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 26.100000000000236,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 2,
+            "visible_rollout_min_wall_clearance_m": -1.7799991607666015,
+            "earliest_visible_rollout_wall_hit_t": 26.900000000000233
+          },
+          "first_best_wall_hit": {
+            "t": 28.700000000000273,
+            "horizon_end_t": 30.700000000000273,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 21,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": -0.3009990692138672,
+              "min_wall_t": 29.400000000000272,
+              "first_wall_hit_t": 29.300000000000274,
+              "min_wall_pos": [
+                22.402000427246094,
+                29.099000930786133,
+                0.12999999523162842
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                25.17837740880045,
+                30.917226124322053,
+                4.619389284971537
+              ],
+              "best_rollout_next_pos": [
+                25.023000717163086,
+                30.775999069213867,
+                4.296000003814697
+              ],
+              "actual_next_wall_clearance_m": 1.5172261243220526,
+              "best_rollout_next_wall_clearance_m": 1.3759990692138673,
+              "actual_vs_best_rollout_next_delta_m": 0.3855744085981857
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.900000000000276,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 3,
+            "visible_rollout_min_wall_clearance_m": -0.5609992980957031,
+            "earliest_visible_rollout_wall_hit_t": 29.150000000000272
+          },
+          "last_replan_before_collision": {
+            "t": 29.700000000000287,
+            "horizon_end_t": 31.700000000000287,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.8950000762939453,
+              "min_wall_t": 29.700000000000287,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                28.295000076293945,
+                26.900999069213867,
+                7.085000038146973
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                28.000183527253547,
+                26.660387612797336,
+                7.058172235790171
+              ],
+              "best_rollout_next_pos": [
+                28.429000854492188,
+                26.72100067138672,
+                7.415999889373779
+              ],
+              "actual_next_wall_clearance_m": 0.6001835272535473,
+              "best_rollout_next_wall_clearance_m": 1.0290008544921876,
+              "actual_vs_best_rollout_next_delta_m": 0.5617818728659741
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 29.80000000000029,
+              "samples": 3,
+              "actual_min": {
+                "step_t": 29.80000000000029,
+                "post_t": 29.85000000000029,
+                "actual_next_wall_clearance_m": -0.016564901091180695,
+                "best_rollout_wall_clearance_m": 1.2989994049072267,
+                "actual_vs_best_rollout_delta_m": 1.7169896025101887,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 29.700000000000287,
+                "post_t": 29.750000000000288,
+                "actual_next_wall_clearance_m": 0.6001835272535473,
+                "best_rollout_wall_clearance_m": 1.0290008544921876,
+                "actual_vs_best_rollout_delta_m": 0.5617818728659741,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 29.80000000000029,
+                "post_t": 29.85000000000029,
+                "actual_next_wall_clearance_m": -0.016564901091180695,
+                "best_rollout_wall_clearance_m": 1.2989994049072267,
+                "actual_vs_best_rollout_delta_m": 1.7169896025101887,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 9,
+            "visible_rollout_min_wall_clearance_m": -1.8790000915527343,
+            "earliest_visible_rollout_wall_hit_t": 29.850000000000286
+          }
+        },
+        {
+          "episode": 2,
+          "gate_first_collision_t": 29.80000000000029,
+          "replans_analyzed": 20,
+          "first_collision_in_horizon": {
+            "t": 27.90000000000026,
+            "horizon_end_t": 29.90000000000026,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 6,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 1.902999496459961,
+              "min_wall_t": 27.90000000000026,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                29.30299949645996,
+                27.64299964904785,
+                6.5879998207092285
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                29.06409688509456,
+                27.891555024835604,
+                6.446027328466574
+              ],
+              "best_rollout_next_pos": [
+                29.395000457763672,
+                27.900999069213867,
+                6.880000114440918
+              ],
+              "actual_next_wall_clearance_m": 1.6640968850945606,
+              "best_rollout_next_wall_clearance_m": 1.995000457763672,
+              "actual_vs_best_rollout_next_delta_m": 0.5458193321473089
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.100000000000264,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 0.6729008249138978,
+                "best_rollout_wall_clearance_m": 2.3609996795654298,
+                "actual_vs_best_rollout_delta_m": 2.7615012099769563,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 27.90000000000026,
+                "post_t": 27.950000000000262,
+                "actual_next_wall_clearance_m": 1.6640968850945606,
+                "best_rollout_wall_clearance_m": 1.995000457763672,
+                "actual_vs_best_rollout_delta_m": 0.5458193321473089,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.100000000000264,
+                "post_t": 28.150000000000265,
+                "actual_next_wall_clearance_m": 0.6729008249138978,
+                "best_rollout_wall_clearance_m": 2.3609996795654298,
+                "actual_vs_best_rollout_delta_m": 2.7615012099769563,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 7,
+            "visible_rollout_min_wall_clearance_m": -1.7330001831054687,
+            "earliest_visible_rollout_wall_hit_t": 28.200000000000262
+          },
+          "first_visible_wall_hit": {
+            "t": 25.900000000000233,
+            "horizon_end_t": 27.900000000000233,
+            "collision_in_horizon": false,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 0,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 3.9089404564827883,
+              "min_wall_t": 26.850000000000232,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                30.5939998626709,
+                31.37700080871582,
+                6.895999908447266
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                34.363755534233064,
+                25.243375136333537,
+                7.007700013603763
+              ],
+              "best_rollout_next_pos": [
+                34.36399841308594,
+                25.243000030517578,
+                7.007999897003174
+              ],
+              "actual_next_wall_clearance_m": 7.00252502544006,
+              "best_rollout_next_wall_clearance_m": 7.002804980662978,
+              "actual_vs_best_rollout_next_delta_m": 0.0005381677838565486
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 26.100000000000236,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 26.100000000000236,
+                "post_t": 26.150000000000237,
+                "actual_next_wall_clearance_m": 6.075029061378457,
+                "best_rollout_wall_clearance_m": 6.1260009765625,
+                "actual_vs_best_rollout_delta_m": 0.1367846089686483,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 2,
+            "visible_rollout_min_wall_clearance_m": -1.7799991607666015,
+            "earliest_visible_rollout_wall_hit_t": 26.900000000000233
+          },
+          "first_best_wall_hit": {
+            "t": 28.700000000000273,
+            "horizon_end_t": 30.700000000000273,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 21,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": -0.3009990692138672,
+              "min_wall_t": 29.400000000000272,
+              "first_wall_hit_t": 29.300000000000274,
+              "min_wall_pos": [
+                22.402000427246094,
+                29.099000930786133,
+                0.12999999523162842
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                25.17837740880045,
+                30.917226124322053,
+                4.619389284971537
+              ],
+              "best_rollout_next_pos": [
+                25.023000717163086,
+                30.775999069213867,
+                4.296000003814697
+              ],
+              "actual_next_wall_clearance_m": 1.5172261243220526,
+              "best_rollout_next_wall_clearance_m": 1.3759990692138673,
+              "actual_vs_best_rollout_next_delta_m": 0.3855744085981857
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 28.900000000000276,
+              "samples": 5,
+              "actual_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              },
+              "best_rollout_min": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 28.900000000000276,
+                "post_t": 28.950000000000276,
+                "actual_next_wall_clearance_m": 1.1164700854902017,
+                "best_rollout_wall_clearance_m": 0.8600002288818359,
+                "actual_vs_best_rollout_delta_m": 2.8757950517794155,
+                "collision_flag": false
+              }
+            },
+            "visible_rollout_wall_hits": 3,
+            "visible_rollout_min_wall_clearance_m": -0.5609992980957031,
+            "earliest_visible_rollout_wall_hit_t": 29.150000000000272
+          },
+          "last_replan_before_collision": {
+            "t": 29.700000000000287,
+            "horizon_end_t": 31.700000000000287,
+            "collision_in_horizon": true,
+            "rollouts_logged": 24,
+            "best_rollout_idx": 23,
+            "best_rollout_wall": {
+              "min_wall_clearance_m": 0.8950000762939453,
+              "min_wall_t": 29.700000000000287,
+              "first_wall_hit_t": null,
+              "min_wall_pos": [
+                28.295000076293945,
+                26.900999069213867,
+                7.085000038146973
+              ]
+            },
+            "execution_next_vs_best_rollout": {
+              "actual_next_pos": [
+                28.000183527253547,
+                26.660387612797336,
+                7.058172235790171
+              ],
+              "best_rollout_next_pos": [
+                28.429000854492188,
+                26.72100067138672,
+                7.415999889373779
+              ],
+              "actual_next_wall_clearance_m": 0.6001835272535473,
+              "best_rollout_next_wall_clearance_m": 1.0290008544921876,
+              "actual_vs_best_rollout_next_delta_m": 0.5617818728659741
+            },
+            "execution_segment_vs_best_rollout": {
+              "segment_end_t": 29.80000000000029,
+              "samples": 3,
+              "actual_min": {
+                "step_t": 29.80000000000029,
+                "post_t": 29.85000000000029,
+                "actual_next_wall_clearance_m": -0.016564901091180695,
+                "best_rollout_wall_clearance_m": 1.2989994049072267,
+                "actual_vs_best_rollout_delta_m": 1.7169896025101887,
+                "collision_flag": true
+              },
+              "best_rollout_min": {
+                "step_t": 29.700000000000287,
+                "post_t": 29.750000000000288,
+                "actual_next_wall_clearance_m": 0.6001835272535473,
+                "best_rollout_wall_clearance_m": 1.0290008544921876,
+                "actual_vs_best_rollout_delta_m": 0.5617818728659741,
+                "collision_flag": false
+              },
+              "max_actual_vs_best_rollout_delta": {
+                "step_t": 29.80000000000029,
+                "post_t": 29.85000000000029,
+                "actual_next_wall_clearance_m": -0.016564901091180695,
+                "best_rollout_wall_clearance_m": 1.2989994049072267,
+                "actual_vs_best_rollout_delta_m": 1.7169896025101887,
+                "collision_flag": true
+              }
+            },
+            "visible_rollout_wall_hits": 9,
+            "visible_rollout_min_wall_clearance_m": -1.8790000915527343,
+            "earliest_visible_rollout_wall_hit_t": 29.850000000000286
+          }
+        }
+      ]
+    }
+  ]
+}

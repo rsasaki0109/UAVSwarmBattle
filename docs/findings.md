@@ -3407,6 +3407,91 @@ Together with the center cell `x=24.0, y=27.5, size=(5,2,14)` already
 validated at n=3, this shows the composition-boundary patch is not a
 single seed or single wall placement artifact.
 
+Slot-wall failure mechanism report (2026-05-26):
+`scripts/race_hero_slot_wall_failure_report.py` compares the successful
+`base_wall` trajectory against the failing `gate_wall` trajectory for
+the focus drone at matching times. The report
+`docs/data/race_hero_slot_wall_failure_mechanism.json` covers the
+center cell plus the two n=3 edge cells above:
+
+| wall | gate collisions | first 1 m path split | collision t | gate/base delta at hit | gate projected wall clearance | base wall clearance at same t | extra-gate clearance |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `x=23,y=27.5,sx=5` | 3/3 | 26.10 s | 29.95 s | 3.60 m | -0.15 m | +0.91 m | +1.46 m |
+| `x=24,y=26.5,sx=5` | 3/3 | 25.70 s | 28.95 s | 3.59 m | -0.00 m | +2.69 m | +1.14 m |
+| `x=24,y=27.5,sx=5` | 3/3 | 25.90 s | 29.80 s | 7.61 m | -0.02 m | +1.04 m | +0.35 m |
+
+Interpretation: the extra dynamic gate does not hit the drone; its
+minimum clearance stays positive. Instead it changes the chosen line
+several seconds before collision. The base-wall arm remains clear of
+the wall at the gate-wall collision time, while the gate-wall arm steps
+into the voxelized wall boundary. This pins the failure mechanism on
+early dynamic-gate-induced route selection followed by a static
+topology constraint, not on a direct moving-obstacle contact.
+
+Rollout horizon audit (2026-05-27):
+`scripts/race_hero_slot_wall_rollout_horizon_report.py` checks the
+logged visible MPPI rollouts before each gate-wall collision
+(`docs/data/race_hero_slot_wall_rollout_horizon_report.json`):
+
+| wall | collision t | first replan where collision is in horizon | first visible wall-hit rollout | first best-visible wall-hit rollout | last best-visible wall clearance | last visible min wall clearance |
+|---|---:|---:|---:|---:|---:|---:|
+| `x=23,y=27.5,sx=5` | 29.95 s | 28.10 s | 26.10 s | none | +0.18 m | -1.66 m |
+| `x=24,y=26.5,sx=5` | 28.95 s | 27.10 s | 25.10 s | none | +0.24 m | -1.85 m |
+| `x=24,y=27.5,sx=5` | 29.80 s | 27.90 s | 25.90 s | 28.70 s | +0.90 m | -1.88 m |
+
+This rules out the simple "wall collision was entirely beyond the
+planner horizon" explanation: the collision time is inside the 2 s
+rollout horizon 1.85-1.90 s before impact, and the logged visible
+rollout set already contains wall-hitting candidates. But it is also
+not a clean "the best rollout visibly entered the wall and was still
+selected" story: in the two edge cells, the logged best-visible rollout
+never enters the wall, and in the center cell it enters once earlier but
+the last best-visible rollout is clear. The likely failure mode is a
+closed-loop rollout/commit/scoring mismatch near the constrained
+topology: wall-hit candidates exist, but the selected local rollout
+looks clear while the executed trajectory still clips the voxelized
+wall boundary on the next step.
+
+Follow-up correction: episode logs store the pre-step state together
+with the post-step collision flag. The reports now reconstruct the
+command-limited post-step position using the dummy simulator's
+`max_accel` rule. In the last committed interval before collision, the
+actual executed segment clips the wall while the logged best-visible
+rollout remains clear at the same post-step time:
+
+| wall | post-step collision time | executed wall clearance | best rollout wall clearance at same time | executed-vs-best delta |
+|---|---:|---:|---:|---:|
+| `x=23,y=27.5,sx=5` | 30.00 s | -0.15 m | +0.44 m | 1.01 m |
+| `x=24,y=26.5,sx=5` | 29.00 s | -0.00 m | +0.32 m | 0.50 m |
+| `x=24,y=27.5,sx=5` | 29.85 s | -0.02 m | +1.30 m | 1.72 m |
+
+This makes the mismatch more specific: the rollout score sees a
+constant-velocity sample, but the plant executes an acceleration-limited
+velocity update while following the committed plan. Near the narrow wall
+topology, that sub-meter model gap is enough to turn a rollout that
+looks clear into a real wall contact.
+
+Implementation follow-up (2026-05-27): GPU MPPI now has opt-in
+`rollout_max_accel`, and the runner passes the current plant velocity to
+planners that want to model execution dynamics. However, the cleaner
+first fix was static-map inflation. With `inflate=1`, all three earlier
+slot-wall boundary cells flip from gate-wall `0/3` to base-wall `3/3`
+and gate-wall `3/3`:
+
+| wall | inflate=1 base | inflate=1 gate | gate dynamic clearance | path delta |
+|---|---:|---:|---:|---:|
+| `x=23,y=27.5,sx=5` | 3/3 | 3/3 | +1.38 m | 13.36 m |
+| `x=24,y=26.5,sx=5` | 3/3 | 3/3 | +0.64 m | 4.96 m |
+| `x=24,y=27.5,sx=5` | 3/3 | 3/3 | +0.46 m | 11.93 m |
+
+Reports:
+`docs/data/race_hero_slot_wall_x23_y27p5_sx5_inflate1_n3.json`,
+`docs/data/race_hero_slot_wall_x24_y26p5_sx5_inflate1_n3.json`, and
+`docs/data/race_hero_slot_wall_x24_y27p5_sx5_inflate1_n3.json`. This
+points to a static occupancy/swept-radius mismatch as the dominant
+local bug: the planner had been scoring wall cells with `inflate=0`,
+while the sim collision check uses a `0.4 m` drone radius.
+
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
 controller with scene sweepers removed produced an identical drone-3

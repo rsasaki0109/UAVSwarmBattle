@@ -369,6 +369,45 @@ Control-first outputs are tracked:
   positive moving clearances of `+1.46 m` and `+1.14 m`. This confirms
   the composition boundary is not isolated to the center
   `x=24.0,y=27.5` wall.
+- `scripts/race_hero_slot_wall_failure_report.py` and
+  `docs/data/race_hero_slot_wall_failure_mechanism.json`: mechanism
+  report for the center cell plus the two n=3 edge cells. In all three,
+  gate-wall collisions are `3/3`, the first 1 m path split occurs around
+  `25.7-26.1 s`, and collision happens at `28.95-29.95 s`. The
+  gate-wall arm has negative projected wall clearance at collision
+  (`-0.15/-0.00/-0.02 m`), while the base-wall arm is still clear of the
+  wall at the same time (`+0.91/+2.69/+1.04 m`). Extra dynamic-gate
+  clearance stays positive (`+1.46/+1.14/+0.35 m`).
+- `scripts/race_hero_slot_wall_rollout_horizon_report.py` and
+  `docs/data/race_hero_slot_wall_rollout_horizon_report.json`: rollout
+  horizon audit for the same three cells. The collision time enters the
+  logged 2 s horizon at `27.10-28.10 s`, and visible wall-hit rollouts
+  exist earlier (`25.10-26.10 s`). However, the logged best-visible
+  rollout is clear at the final replan before impact in all three cases
+  (`+0.18/+0.24/+0.90 m`), while other visible rollouts are deeply
+  wall-hitting (`-1.66/-1.85/-1.88 m`). So the current bug is not merely
+  horizon length; it is a closed-loop rollout/scoring mismatch near the
+  constrained wall topology.
+- The rollout-horizon report also reconstructs the command-limited
+  post-step execution segment. At the actual wall clip time, the
+  executed trajectory has wall clearance `-0.15/-0.00/-0.02 m`, while
+  the logged best-visible rollout at the same time is still clear
+  (`+0.44/+0.32/+1.30 m`). This points to a dynamics-model mismatch
+  between constant-velocity MPPI rollouts and acceleration-limited
+  simulator execution, amplified by the narrow wall topology.
+- Implementation follow-up: GPU MPPI now has opt-in `rollout_max_accel`
+  and the runner exposes current plant velocity through `set_current_state`.
+  The stronger immediate fix for the slot-wall cell was static map
+  inflation, not acceleration rollout alone. Passing `--inflate 1` through
+  the sweep makes all three earlier boundary cells solve base-wall `3/3`
+  and gate-wall `3/3`: x23/y27.5 gate clearance `+1.38 m`, x24/y26.5
+  `+0.64 m`, and x24/y27.5 `+0.46 m`
+  (`docs/data/race_hero_slot_wall_x23_y27p5_sx5_inflate1_n3.json`,
+  `docs/data/race_hero_slot_wall_x24_y26p5_sx5_inflate1_n3.json`,
+  `docs/data/race_hero_slot_wall_x24_y27p5_sx5_inflate1_n3.json`).
+  The local root cause is therefore a swept-radius mismatch: planner
+  occupancy used `inflate=0`, while the simulator checks collisions with a
+  `0.4 m` drone radius.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
@@ -401,7 +440,14 @@ is too blunt. The size-x sweep shows the useful band starts at
 `size_x=5`; `size_x=4` perturbs the base scene instead of producing a
 clean dynamic-gate boundary. Two edge cells from the useful patch now
 also pass the n=3 split, so the slot-wall result is no longer just a
-single center-cell observation.
+single center-cell observation. The mechanism report shows the same
+pattern across those cells: dynamic gate pressure causes early route
+divergence, then the static wall blocks the selected line. The rollout
+horizon audit further narrows the next fix: extend-only horizon tuning
+is unlikely to be sufficient because wall-hit candidates are already
+inside the visible rollout set. The immediate fix target is static
+constraint modeling first, rollout/execution model mismatch second, not
+another GIF pass.
 
 ### P3: only then update README
 

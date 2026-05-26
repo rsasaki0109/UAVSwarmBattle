@@ -57,6 +57,7 @@ def test_gpu_mppi_plan_returns_required_meta_keys() -> None:
         "mode_aware_cluster_sign",
         "dynamic_branch_samples",
         "score_collision_after_goal",
+        "rollout_max_accel",
         "w_reach_time",
         "w_clean_ctg",
     ):
@@ -69,6 +70,7 @@ def test_gpu_mppi_plan_returns_required_meta_keys() -> None:
     assert plan.meta["mode_aware_cluster_sign"] == 0
     assert plan.meta["dynamic_branch_samples"] == 0
     assert plan.meta["score_collision_after_goal"] is False
+    assert plan.meta["rollout_max_accel"] == 0.0
     assert plan.meta["w_reach_time"] == 0.0
     assert plan.meta["w_clean_ctg"] == 0.0
 
@@ -100,6 +102,7 @@ def test_gpu_mppi_from_config_roundtrip_preserves_knobs() -> None:
         "dynamic_branch_speeds": (0.0, 0.25, 0.5, 1.0),
         "dynamic_branch_extra_radius": 3.0,
         "score_collision_after_goal": True,
+        "rollout_max_accel": 80.0,
         "ctg_cache_tolerance": 3,
         "viz_rollouts": 16,
         "log_action_provenance": True,
@@ -293,6 +296,41 @@ def test_gpu_mppi_rollout_can_score_post_goal_dynamic_collision() -> None:
 
     assert float(scoped.costs[0].item()) < -999_999.0
     assert float(post_goal.costs[0].item()) > 0.0
+
+
+def test_gpu_mppi_rollout_can_use_acceleration_limited_velocity() -> None:
+    obs = np.array([0.0, 0.0])
+    goal = np.array([10.0, 0.0])
+    actions = np.array([[10.0, 0.0]], dtype=float)
+    occ = np.zeros((20, 20), dtype=bool)
+    ctg = np.zeros_like(occ, dtype=float)
+
+    result = run_rollout(
+        obs=obs,
+        gl=goal,
+        actions_np=actions,
+        occ=occ,
+        ctg_np=ctg,
+        pred_traj=None,
+        r2_arr=None,
+        wind_step=None,
+        prev_action=None,
+        horizon=3,
+        dt_plan=0.1,
+        resolution=1.0,
+        goal_radius=0.5,
+        n_samples=1,
+        w_goal=1.0,
+        w_obs=100.0,
+        w_smooth=0.0,
+        temperature=1.0,
+        device=torch.device("cpu"),
+        rollout_initial_velocity=np.array([0.0, 0.0]),
+        rollout_max_accel=20.0,
+    )
+
+    xs = result.rollouts[0, :, 0].detach().cpu().numpy()
+    assert xs == pytest.approx([0.2, 0.6, 1.2], abs=1e-6)
 
 
 def test_gpu_mppi_reach_time_penalty_prefers_faster_clean_reach() -> None:

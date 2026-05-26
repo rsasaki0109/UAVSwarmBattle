@@ -205,9 +205,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--w-obs", type=float, default=500.0)
     p.add_argument("--w-reach-time", type=float, default=1000.0)
     p.add_argument("--w-clean-ctg", type=float, default=100.0)
+    p.add_argument(
+        "--inflate",
+        type=int,
+        help="Override the GPU MPPI static obstacle inflation in grid cells.",
+    )
     p.add_argument("--fallback-to-argmin", action="store_true", default=True)
     p.add_argument("--fallback-commit-steps", type=int, default=3)
     p.add_argument("--score-collision-after-goal", action="store_true", default=True)
+    p.add_argument(
+        "--rollout-max-accel",
+        type=float,
+        help="Opt into acceleration-limited GPU MPPI rollout dynamics.",
+    )
     p.add_argument("--n", type=int, default=1)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--episode", type=int, default=0)
@@ -249,6 +259,7 @@ def main(argv: list[str]) -> int:
             w_obs=args.w_obs,
             w_reach_time=args.w_reach_time,
             w_clean_ctg=args.w_clean_ctg,
+            inflate=args.inflate,
             fallback_to_argmin=args.fallback_to_argmin,
             fallback_commit_steps=args.fallback_commit_steps,
             dynamic_branch_sampling=False,
@@ -257,6 +268,7 @@ def main(argv: list[str]) -> int:
             dynamic_branch_speeds=None,
             dynamic_branch_max_obstacles=None,
             score_collision_after_goal=args.score_collision_after_goal,
+            rollout_max_accel=args.rollout_max_accel,
             n=args.n,
             seed=args.seed,
             output_root=args.output_root / variant.tag,
@@ -360,9 +372,11 @@ def main(argv: list[str]) -> int:
             "w_obs": args.w_obs,
             "w_reach_time": args.w_reach_time,
             "w_clean_ctg": args.w_clean_ctg,
+            "inflate": args.inflate,
             "fallback_to_argmin": args.fallback_to_argmin,
             "fallback_commit_steps": args.fallback_commit_steps,
             "score_collision_after_goal": args.score_collision_after_goal,
+            "rollout_max_accel": args.rollout_max_accel,
         },
         "rows": public_rows,
         "survivors": [

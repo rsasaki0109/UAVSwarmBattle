@@ -1,0 +1,3577 @@
+{
+  "source": {
+    "script": "scripts/race_hero_slot_wall_failure_report.py"
+  },
+  "focus": {
+    "drone": 3,
+    "pre_window_s": 4.0,
+    "snapshot_offsets_s": [
+      -3.0,
+      -2.0,
+      -1.0,
+      -0.5,
+      0.0
+    ],
+    "divergence_threshold_m": 1.0
+  },
+  "cases": [
+    {
+      "label": "x23_y27p5_sx5_sy2",
+      "base_run": "results/_race_hero_slot_wall_x23_y27p5_sx5_n3/x23_y27p5_sx5_sy2/base_wall/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_boxc23_27p5_7s5_2_14",
+      "gate_run": "results/_race_hero_slot_wall_x23_y27p5_sx5_n3/x23_y27p5_sx5_sy2/gate_wall/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_extrax24p5y12p86z7v0_0p64_0r1p75lin-x24p5y50p14z7v0_m0p64_0r1p75lin_boxc23_27p5_7s5_2_14",
+      "wall": {
+        "configured_box": {
+          "center": [
+            23.0,
+            27.5,
+            7.0
+          ],
+          "size": [
+            5.0,
+            2.0,
+            14.0
+          ]
+        },
+        "voxelized_aabb": {
+          "min": [
+            20.0,
+            26.0,
+            0.0
+          ],
+          "max": [
+            26.0,
+            29.0,
+            14.0
+          ]
+        }
+      },
+      "episodes": 3,
+      "gate_collisions": 3,
+      "gate_collision_times": [
+        29.95000000000029,
+        29.95000000000029,
+        29.95000000000029
+      ],
+      "episode_rows": [
+        {
+          "episode": 0,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 29.95000000000029,
+          "gate_collision_xy": [
+            26.412227432853747,
+            26.996769995597244
+          ],
+          "gate_projected_next_xy": [
+            26.24812871707158,
+            26.63704685678804
+          ],
+          "gate_collision_reference_xy": [
+            18.732000690289933,
+            31.962257311423222
+          ],
+          "base_xy_at_gate_collision_t": [
+            26.194622727996194,
+            30.410110947098826
+          ],
+          "trajectory_delta_at_collision_m": 3.600429339044391,
+          "first_delta_ge_threshold_t": 26.100000000000236,
+          "first_gate_wall_conflict_t": 29.95000000000029,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.012227432853747167,
+            "projected_next_clearance_m": -0.15187128292841978,
+            "projected_next_pos": [
+              26.24812871707158,
+              26.63704685678804,
+              5.637023773059619
+            ],
+            "projected_next_vel": [
+              -3.2819743156433105,
+              -7.194462776184082,
+              -0.7333946228027344
+            ],
+            "min_clearance_m": -0.15187128292841978
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 1.023478447107868,
+            "projected_next_clearance_m": 0.9130526733998438,
+            "projected_next_pos": [
+              26.077593336582606,
+              30.310758023908477,
+              6.7697259246588235
+            ],
+            "projected_next_vel": [
+              -2.3405878282717447,
+              -1.9870584638070077,
+              -0.5724008876815674
+            ],
+            "min_clearance_m": 0.9130526733998438
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 1.463322812748037,
+            "t": 29.550000000000285,
+            "obstacle_idx": 3
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 1.463322812748037,
+            "t": 29.550000000000285,
+            "obstacle_idx": 3
+          },
+          "snapshots": [
+            {
+              "t": 26.950000000000248,
+              "base_xy": [
+                31.025436651697348,
+                28.172319722957692
+              ],
+              "gate_xy": [
+                32.4951429397222,
+                24.82320488644811
+              ],
+              "gate_projected_next_xy": [
+                32.4226571795031,
+                24.833246462555916
+              ],
+              "reference_xy": [
+                32.256711089902836,
+                27.713451316239194
+              ],
+              "gate_minus_base_xy": [
+                1.4697062880248524,
+                -3.3491148365095817
+              ],
+              "trajectory_delta_m": 3.6682898860996223,
+              "base_wall_clearance": {
+                "current_clearance_m": 4.625436651697347,
+                "projected_next_clearance_m": 4.74841796140692,
+                "projected_next_pos": [
+                  31.14841796140692,
+                  27.79812617435276,
+                  7.435691401369572
+                ],
+                "projected_next_vel": [
+                  2.4596261941914577,
+                  -7.483870972098655,
+                  -1.3935258367990078
+                ],
+                "min_clearance_m": 4.625436651697347
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 6.2008884664644,
+                "projected_next_clearance_m": 6.127774434105468,
+                "projected_next_pos": [
+                  32.4226571795031,
+                  24.833246462555916,
+                  7.2266077280757335
+                ],
+                "projected_next_vel": [
+                  -1.449715204382081,
+                  0.20083152215614586,
+                  0.07259415220151128
+                ],
+                "min_clearance_m": 6.127774434105468
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 7.436505579011786,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 7.436505579011786,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.950000000000262,
+              "base_xy": [
+                29.2819484402492,
+                28.698167985266686
+              ],
+              "gate_xy": [
+                29.01208651969845,
+                28.253115496669057
+              ],
+              "gate_projected_next_xy": [
+                29.015408269787976,
+                27.86555636886144
+              ],
+              "reference_xy": [
+                28.435607481766915,
+                30.196705159394696
+              ],
+              "gate_minus_base_xy": [
+                -0.2698619205507491,
+                -0.4450524885976286
+              ],
+              "trajectory_delta_m": 0.7076534824732473,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.881948440249199,
+                "projected_next_clearance_m": 2.6188348461940216,
+                "projected_next_pos": [
+                  29.01883484619402,
+                  28.97469257671261,
+                  7.160379263259818
+                ],
+                "projected_next_vel": [
+                  -5.262271881103516,
+                  5.530491828918457,
+                  1.5703762769699097
+                ],
+                "min_clearance_m": 2.6188348461940216
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.6120865196984497,
+                "projected_next_clearance_m": 2.615408269787976,
+                "projected_next_pos": [
+                  29.015408269787976,
+                  27.86555636886144,
+                  7.561145702012752
+                ],
+                "projected_next_vel": [
+                  0.06643500179052353,
+                  -7.751182556152344,
+                  -0.003377854824066162
+                ],
+                "min_clearance_m": 2.6120865196984497
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 3.036371324971823,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 3.036371324971823,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.950000000000276,
+              "base_xy": [
+                22.71003826789774,
+                31.471413701175276
+              ],
+              "gate_xy": [
+                30.390104279848707,
+                29.311337078938674
+              ],
+              "gate_projected_next_xy": [
+                30.280931410850787,
+                29.57217624629605
+              ],
+              "reference_xy": [
+                23.772142968149485,
+                31.661738819882746
+              ],
+              "gate_minus_base_xy": [
+                7.6800660119509665,
+                -2.160076622236602
+              ],
+              "trajectory_delta_m": 8.226650543475712,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.0714137011752762,
+                "projected_next_clearance_m": 2.1227085165845083,
+                "projected_next_pos": [
+                  22.704253434634925,
+                  31.52270851658451,
+                  5.315296870782804
+                ],
+                "projected_next_vel": [
+                  -0.11569666525632583,
+                  1.0258963081846546,
+                  0.701886157249703
+                ],
+                "min_clearance_m": 2.0714137011752762
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 4.00113012357826,
+                "projected_next_clearance_m": 3.9189998149148315,
+                "projected_next_pos": [
+                  30.280931410850787,
+                  29.57217624629605,
+                  7.207275348084358
+                ],
+                "projected_next_vel": [
+                  -2.1834573799583867,
+                  5.216783347147489,
+                  -1.6004635463600356
+                ],
+                "min_clearance_m": 3.9189998149148315
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.102071477350696,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.102071477350696,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.450000000000284,
+              "base_xy": [
+                25.611561809807736,
+                31.449015657085646
+              ],
+              "gate_xy": [
+                28.022885553962755,
+                30.61842956056916
+              ],
+              "gate_projected_next_xy": [
+                27.85559088481145,
+                30.257139248755806
+              ],
+              "reference_xy": [
+                21.267999309707196,
+                31.962257311423393
+              ],
+              "gate_minus_base_xy": [
+                2.4113237441550197,
+                -0.830586096516484
+              ],
+              "trajectory_delta_m": 2.6774439780772847,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.0490156570856457,
+                "projected_next_clearance_m": 1.9686964372579951,
+                "projected_next_pos": [
+                  25.93234828594299,
+                  31.368696437257995,
+                  6.982102490890927
+                ],
+                "projected_next_vel": [
+                  6.415729522705078,
+                  -1.6063843965530396,
+                  3.1300177574157715
+                ],
+                "min_clearance_m": 1.9686964372579951
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.190633167192008,
+                "projected_next_clearance_m": 1.8413425937499261,
+                "projected_next_pos": [
+                  27.85559088481145,
+                  30.257139248755806,
+                  5.972030320033804
+                ],
+                "projected_next_vel": [
+                  -3.345893383026123,
+                  -7.22580623626709,
+                  -0.7698822617530823
+                ],
+                "min_clearance_m": 1.8413425937499261
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.5650231698497286,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.5650231698497286,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.95000000000029,
+              "base_xy": [
+                26.194622727996194,
+                30.410110947098826
+              ],
+              "gate_xy": [
+                26.412227432853747,
+                26.996769995597244
+              ],
+              "gate_projected_next_xy": [
+                26.24812871707158,
+                26.63704685678804
+              ],
+              "reference_xy": [
+                18.732000690289933,
+                31.962257311423222
+              ],
+              "gate_minus_base_xy": [
+                0.21760470485755334,
+                -3.4133409515015813
+              ],
+              "trajectory_delta_m": 3.600429339044391,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.023478447107868,
+                "projected_next_clearance_m": 0.9130526733998438,
+                "projected_next_pos": [
+                  26.077593336582606,
+                  30.310758023908477,
+                  6.7697259246588235
+                ],
+                "projected_next_vel": [
+                  -2.3405878282717447,
+                  -1.9870584638070077,
+                  -0.5724008876815674
+                ],
+                "min_clearance_m": 0.9130526733998438
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.012227432853747167,
+                "projected_next_clearance_m": -0.15187128292841978,
+                "projected_next_pos": [
+                  26.24812871707158,
+                  26.63704685678804,
+                  5.637023773059619
+                ],
+                "projected_next_vel": [
+                  -3.2819743156433105,
+                  -7.194462776184082,
+                  -0.7333946228027344
+                ],
+                "min_clearance_m": -0.15187128292841978
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 2.4287296866468364,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 2.4287296866468364,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        },
+        {
+          "episode": 1,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 29.95000000000029,
+          "gate_collision_xy": [
+            26.412227432853747,
+            26.996769995597244
+          ],
+          "gate_projected_next_xy": [
+            26.24812871707158,
+            26.63704685678804
+          ],
+          "gate_collision_reference_xy": [
+            18.732000690289933,
+            31.962257311423222
+          ],
+          "base_xy_at_gate_collision_t": [
+            26.194622727996194,
+            30.410110947098826
+          ],
+          "trajectory_delta_at_collision_m": 3.600429339044391,
+          "first_delta_ge_threshold_t": 26.100000000000236,
+          "first_gate_wall_conflict_t": 29.95000000000029,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.012227432853747167,
+            "projected_next_clearance_m": -0.15187128292841978,
+            "projected_next_pos": [
+              26.24812871707158,
+              26.63704685678804,
+              5.637023773059619
+            ],
+            "projected_next_vel": [
+              -3.2819743156433105,
+              -7.194462776184082,
+              -0.7333946228027344
+            ],
+            "min_clearance_m": -0.15187128292841978
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 1.023478447107868,
+            "projected_next_clearance_m": 0.9130526733998438,
+            "projected_next_pos": [
+              26.077593336582606,
+              30.310758023908477,
+              6.7697259246588235
+            ],
+            "projected_next_vel": [
+              -2.3405878282717447,
+              -1.9870584638070077,
+              -0.5724008876815674
+            ],
+            "min_clearance_m": 0.9130526733998438
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 1.463322812748037,
+            "t": 29.550000000000285,
+            "obstacle_idx": 3
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 1.463322812748037,
+            "t": 29.550000000000285,
+            "obstacle_idx": 3
+          },
+          "snapshots": [
+            {
+              "t": 26.950000000000248,
+              "base_xy": [
+                31.025436651697348,
+                28.172319722957692
+              ],
+              "gate_xy": [
+                32.4951429397222,
+                24.82320488644811
+              ],
+              "gate_projected_next_xy": [
+                32.4226571795031,
+                24.833246462555916
+              ],
+              "reference_xy": [
+                32.256711089902836,
+                27.713451316239194
+              ],
+              "gate_minus_base_xy": [
+                1.4697062880248524,
+                -3.3491148365095817
+              ],
+              "trajectory_delta_m": 3.6682898860996223,
+              "base_wall_clearance": {
+                "current_clearance_m": 4.625436651697347,
+                "projected_next_clearance_m": 4.74841796140692,
+                "projected_next_pos": [
+                  31.14841796140692,
+                  27.79812617435276,
+                  7.435691401369572
+                ],
+                "projected_next_vel": [
+                  2.4596261941914577,
+                  -7.483870972098655,
+                  -1.3935258367990078
+                ],
+                "min_clearance_m": 4.625436651697347
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 6.2008884664644,
+                "projected_next_clearance_m": 6.127774434105468,
+                "projected_next_pos": [
+                  32.4226571795031,
+                  24.833246462555916,
+                  7.2266077280757335
+                ],
+                "projected_next_vel": [
+                  -1.449715204382081,
+                  0.20083152215614586,
+                  0.07259415220151128
+                ],
+                "min_clearance_m": 6.127774434105468
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 7.436505579011786,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 7.436505579011786,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.950000000000262,
+              "base_xy": [
+                29.2819484402492,
+                28.698167985266686
+              ],
+              "gate_xy": [
+                29.01208651969845,
+                28.253115496669057
+              ],
+              "gate_projected_next_xy": [
+                29.015408269787976,
+                27.86555636886144
+              ],
+              "reference_xy": [
+                28.435607481766915,
+                30.196705159394696
+              ],
+              "gate_minus_base_xy": [
+                -0.2698619205507491,
+                -0.4450524885976286
+              ],
+              "trajectory_delta_m": 0.7076534824732473,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.881948440249199,
+                "projected_next_clearance_m": 2.6188348461940216,
+                "projected_next_pos": [
+                  29.01883484619402,
+                  28.97469257671261,
+                  7.160379263259818
+                ],
+                "projected_next_vel": [
+                  -5.262271881103516,
+                  5.530491828918457,
+                  1.5703762769699097
+                ],
+                "min_clearance_m": 2.6188348461940216
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.6120865196984497,
+                "projected_next_clearance_m": 2.615408269787976,
+                "projected_next_pos": [
+                  29.015408269787976,
+                  27.86555636886144,
+                  7.561145702012752
+                ],
+                "projected_next_vel": [
+                  0.06643500179052353,
+                  -7.751182556152344,
+                  -0.003377854824066162
+                ],
+                "min_clearance_m": 2.6120865196984497
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 3.036371324971823,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 3.036371324971823,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.950000000000276,
+              "base_xy": [
+                22.71003826789774,
+                31.471413701175276
+              ],
+              "gate_xy": [
+                30.390104279848707,
+                29.311337078938674
+              ],
+              "gate_projected_next_xy": [
+                30.280931410850787,
+                29.57217624629605
+              ],
+              "reference_xy": [
+                23.772142968149485,
+                31.661738819882746
+              ],
+              "gate_minus_base_xy": [
+                7.6800660119509665,
+                -2.160076622236602
+              ],
+              "trajectory_delta_m": 8.226650543475712,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.0714137011752762,
+                "projected_next_clearance_m": 2.1227085165845083,
+                "projected_next_pos": [
+                  22.704253434634925,
+                  31.52270851658451,
+                  5.315296870782804
+                ],
+                "projected_next_vel": [
+                  -0.11569666525632583,
+                  1.0258963081846546,
+                  0.701886157249703
+                ],
+                "min_clearance_m": 2.0714137011752762
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 4.00113012357826,
+                "projected_next_clearance_m": 3.9189998149148315,
+                "projected_next_pos": [
+                  30.280931410850787,
+                  29.57217624629605,
+                  7.207275348084358
+                ],
+                "projected_next_vel": [
+                  -2.1834573799583867,
+                  5.216783347147489,
+                  -1.6004635463600356
+                ],
+                "min_clearance_m": 3.9189998149148315
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.102071477350696,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.102071477350696,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.450000000000284,
+              "base_xy": [
+                25.611561809807736,
+                31.449015657085646
+              ],
+              "gate_xy": [
+                28.022885553962755,
+                30.61842956056916
+              ],
+              "gate_projected_next_xy": [
+                27.85559088481145,
+                30.257139248755806
+              ],
+              "reference_xy": [
+                21.267999309707196,
+                31.962257311423393
+              ],
+              "gate_minus_base_xy": [
+                2.4113237441550197,
+                -0.830586096516484
+              ],
+              "trajectory_delta_m": 2.6774439780772847,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.0490156570856457,
+                "projected_next_clearance_m": 1.9686964372579951,
+                "projected_next_pos": [
+                  25.93234828594299,
+                  31.368696437257995,
+                  6.982102490890927
+                ],
+                "projected_next_vel": [
+                  6.415729522705078,
+                  -1.6063843965530396,
+                  3.1300177574157715
+                ],
+                "min_clearance_m": 1.9686964372579951
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.190633167192008,
+                "projected_next_clearance_m": 1.8413425937499261,
+                "projected_next_pos": [
+                  27.85559088481145,
+                  30.257139248755806,
+                  5.972030320033804
+                ],
+                "projected_next_vel": [
+                  -3.345893383026123,
+                  -7.22580623626709,
+                  -0.7698822617530823
+                ],
+                "min_clearance_m": 1.8413425937499261
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.5650231698497286,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.5650231698497286,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.95000000000029,
+              "base_xy": [
+                26.194622727996194,
+                30.410110947098826
+              ],
+              "gate_xy": [
+                26.412227432853747,
+                26.996769995597244
+              ],
+              "gate_projected_next_xy": [
+                26.24812871707158,
+                26.63704685678804
+              ],
+              "reference_xy": [
+                18.732000690289933,
+                31.962257311423222
+              ],
+              "gate_minus_base_xy": [
+                0.21760470485755334,
+                -3.4133409515015813
+              ],
+              "trajectory_delta_m": 3.600429339044391,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.023478447107868,
+                "projected_next_clearance_m": 0.9130526733998438,
+                "projected_next_pos": [
+                  26.077593336582606,
+                  30.310758023908477,
+                  6.7697259246588235
+                ],
+                "projected_next_vel": [
+                  -2.3405878282717447,
+                  -1.9870584638070077,
+                  -0.5724008876815674
+                ],
+                "min_clearance_m": 0.9130526733998438
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.012227432853747167,
+                "projected_next_clearance_m": -0.15187128292841978,
+                "projected_next_pos": [
+                  26.24812871707158,
+                  26.63704685678804,
+                  5.637023773059619
+                ],
+                "projected_next_vel": [
+                  -3.2819743156433105,
+                  -7.194462776184082,
+                  -0.7333946228027344
+                ],
+                "min_clearance_m": -0.15187128292841978
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 2.4287296866468364,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 2.4287296866468364,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        },
+        {
+          "episode": 2,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 29.95000000000029,
+          "gate_collision_xy": [
+            26.412227432853747,
+            26.996769995597244
+          ],
+          "gate_projected_next_xy": [
+            26.24812871707158,
+            26.63704685678804
+          ],
+          "gate_collision_reference_xy": [
+            18.732000690289933,
+            31.962257311423222
+          ],
+          "base_xy_at_gate_collision_t": [
+            26.194622727996194,
+            30.410110947098826
+          ],
+          "trajectory_delta_at_collision_m": 3.600429339044391,
+          "first_delta_ge_threshold_t": 26.100000000000236,
+          "first_gate_wall_conflict_t": 29.95000000000029,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.012227432853747167,
+            "projected_next_clearance_m": -0.15187128292841978,
+            "projected_next_pos": [
+              26.24812871707158,
+              26.63704685678804,
+              5.637023773059619
+            ],
+            "projected_next_vel": [
+              -3.2819743156433105,
+              -7.194462776184082,
+              -0.7333946228027344
+            ],
+            "min_clearance_m": -0.15187128292841978
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 1.023478447107868,
+            "projected_next_clearance_m": 0.9130526733998438,
+            "projected_next_pos": [
+              26.077593336582606,
+              30.310758023908477,
+              6.7697259246588235
+            ],
+            "projected_next_vel": [
+              -2.3405878282717447,
+              -1.9870584638070077,
+              -0.5724008876815674
+            ],
+            "min_clearance_m": 0.9130526733998438
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 1.463322812748037,
+            "t": 29.550000000000285,
+            "obstacle_idx": 3
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 1.463322812748037,
+            "t": 29.550000000000285,
+            "obstacle_idx": 3
+          },
+          "snapshots": [
+            {
+              "t": 26.950000000000248,
+              "base_xy": [
+                31.025436651697348,
+                28.172319722957692
+              ],
+              "gate_xy": [
+                32.4951429397222,
+                24.82320488644811
+              ],
+              "gate_projected_next_xy": [
+                32.4226571795031,
+                24.833246462555916
+              ],
+              "reference_xy": [
+                32.256711089902836,
+                27.713451316239194
+              ],
+              "gate_minus_base_xy": [
+                1.4697062880248524,
+                -3.3491148365095817
+              ],
+              "trajectory_delta_m": 3.6682898860996223,
+              "base_wall_clearance": {
+                "current_clearance_m": 4.625436651697347,
+                "projected_next_clearance_m": 4.74841796140692,
+                "projected_next_pos": [
+                  31.14841796140692,
+                  27.79812617435276,
+                  7.435691401369572
+                ],
+                "projected_next_vel": [
+                  2.4596261941914577,
+                  -7.483870972098655,
+                  -1.3935258367990078
+                ],
+                "min_clearance_m": 4.625436651697347
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 6.2008884664644,
+                "projected_next_clearance_m": 6.127774434105468,
+                "projected_next_pos": [
+                  32.4226571795031,
+                  24.833246462555916,
+                  7.2266077280757335
+                ],
+                "projected_next_vel": [
+                  -1.449715204382081,
+                  0.20083152215614586,
+                  0.07259415220151128
+                ],
+                "min_clearance_m": 6.127774434105468
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 7.436505579011786,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 7.436505579011786,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.950000000000262,
+              "base_xy": [
+                29.2819484402492,
+                28.698167985266686
+              ],
+              "gate_xy": [
+                29.01208651969845,
+                28.253115496669057
+              ],
+              "gate_projected_next_xy": [
+                29.015408269787976,
+                27.86555636886144
+              ],
+              "reference_xy": [
+                28.435607481766915,
+                30.196705159394696
+              ],
+              "gate_minus_base_xy": [
+                -0.2698619205507491,
+                -0.4450524885976286
+              ],
+              "trajectory_delta_m": 0.7076534824732473,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.881948440249199,
+                "projected_next_clearance_m": 2.6188348461940216,
+                "projected_next_pos": [
+                  29.01883484619402,
+                  28.97469257671261,
+                  7.160379263259818
+                ],
+                "projected_next_vel": [
+                  -5.262271881103516,
+                  5.530491828918457,
+                  1.5703762769699097
+                ],
+                "min_clearance_m": 2.6188348461940216
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.6120865196984497,
+                "projected_next_clearance_m": 2.615408269787976,
+                "projected_next_pos": [
+                  29.015408269787976,
+                  27.86555636886144,
+                  7.561145702012752
+                ],
+                "projected_next_vel": [
+                  0.06643500179052353,
+                  -7.751182556152344,
+                  -0.003377854824066162
+                ],
+                "min_clearance_m": 2.6120865196984497
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 3.036371324971823,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 3.036371324971823,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.950000000000276,
+              "base_xy": [
+                22.71003826789774,
+                31.471413701175276
+              ],
+              "gate_xy": [
+                30.390104279848707,
+                29.311337078938674
+              ],
+              "gate_projected_next_xy": [
+                30.280931410850787,
+                29.57217624629605
+              ],
+              "reference_xy": [
+                23.772142968149485,
+                31.661738819882746
+              ],
+              "gate_minus_base_xy": [
+                7.6800660119509665,
+                -2.160076622236602
+              ],
+              "trajectory_delta_m": 8.226650543475712,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.0714137011752762,
+                "projected_next_clearance_m": 2.1227085165845083,
+                "projected_next_pos": [
+                  22.704253434634925,
+                  31.52270851658451,
+                  5.315296870782804
+                ],
+                "projected_next_vel": [
+                  -0.11569666525632583,
+                  1.0258963081846546,
+                  0.701886157249703
+                ],
+                "min_clearance_m": 2.0714137011752762
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 4.00113012357826,
+                "projected_next_clearance_m": 3.9189998149148315,
+                "projected_next_pos": [
+                  30.280931410850787,
+                  29.57217624629605,
+                  7.207275348084358
+                ],
+                "projected_next_vel": [
+                  -2.1834573799583867,
+                  5.216783347147489,
+                  -1.6004635463600356
+                ],
+                "min_clearance_m": 3.9189998149148315
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.102071477350696,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.102071477350696,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.450000000000284,
+              "base_xy": [
+                25.611561809807736,
+                31.449015657085646
+              ],
+              "gate_xy": [
+                28.022885553962755,
+                30.61842956056916
+              ],
+              "gate_projected_next_xy": [
+                27.85559088481145,
+                30.257139248755806
+              ],
+              "reference_xy": [
+                21.267999309707196,
+                31.962257311423393
+              ],
+              "gate_minus_base_xy": [
+                2.4113237441550197,
+                -0.830586096516484
+              ],
+              "trajectory_delta_m": 2.6774439780772847,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.0490156570856457,
+                "projected_next_clearance_m": 1.9686964372579951,
+                "projected_next_pos": [
+                  25.93234828594299,
+                  31.368696437257995,
+                  6.982102490890927
+                ],
+                "projected_next_vel": [
+                  6.415729522705078,
+                  -1.6063843965530396,
+                  3.1300177574157715
+                ],
+                "min_clearance_m": 1.9686964372579951
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.190633167192008,
+                "projected_next_clearance_m": 1.8413425937499261,
+                "projected_next_pos": [
+                  27.85559088481145,
+                  30.257139248755806,
+                  5.972030320033804
+                ],
+                "projected_next_vel": [
+                  -3.345893383026123,
+                  -7.22580623626709,
+                  -0.7698822617530823
+                ],
+                "min_clearance_m": 1.8413425937499261
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.5650231698497286,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.5650231698497286,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.95000000000029,
+              "base_xy": [
+                26.194622727996194,
+                30.410110947098826
+              ],
+              "gate_xy": [
+                26.412227432853747,
+                26.996769995597244
+              ],
+              "gate_projected_next_xy": [
+                26.24812871707158,
+                26.63704685678804
+              ],
+              "reference_xy": [
+                18.732000690289933,
+                31.962257311423222
+              ],
+              "gate_minus_base_xy": [
+                0.21760470485755334,
+                -3.4133409515015813
+              ],
+              "trajectory_delta_m": 3.600429339044391,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.023478447107868,
+                "projected_next_clearance_m": 0.9130526733998438,
+                "projected_next_pos": [
+                  26.077593336582606,
+                  30.310758023908477,
+                  6.7697259246588235
+                ],
+                "projected_next_vel": [
+                  -2.3405878282717447,
+                  -1.9870584638070077,
+                  -0.5724008876815674
+                ],
+                "min_clearance_m": 0.9130526733998438
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.012227432853747167,
+                "projected_next_clearance_m": -0.15187128292841978,
+                "projected_next_pos": [
+                  26.24812871707158,
+                  26.63704685678804,
+                  5.637023773059619
+                ],
+                "projected_next_vel": [
+                  -3.2819743156433105,
+                  -7.194462776184082,
+                  -0.7333946228027344
+                ],
+                "min_clearance_m": -0.15187128292841978
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 2.4287296866468364,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 2.4287296866468364,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "x24_y26p5_sx5_sy2",
+      "base_run": "results/_race_hero_slot_wall_x24_y26p5_sx5_n3/x24_y26p5_sx5_sy2/base_wall/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_boxc24_26p5_7s5_2_14",
+      "gate_run": "results/_race_hero_slot_wall_x24_y26p5_sx5_n3/x24_y26p5_sx5_sy2/gate_wall/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_extrax24p5y12p86z7v0_0p64_0r1p75lin-x24p5y50p14z7v0_m0p64_0r1p75lin_boxc24_26p5_7s5_2_14",
+      "wall": {
+        "configured_box": {
+          "center": [
+            24.0,
+            26.5,
+            7.0
+          ],
+          "size": [
+            5.0,
+            2.0,
+            14.0
+          ]
+        },
+        "voxelized_aabb": {
+          "min": [
+            21.0,
+            25.0,
+            0.0
+          ],
+          "max": [
+            27.0,
+            28.0,
+            14.0
+          ]
+        }
+      },
+      "episodes": 3,
+      "gate_collisions": 3,
+      "gate_collision_times": [
+        28.950000000000276,
+        28.950000000000276,
+        28.950000000000276
+      ],
+      "episode_rows": [
+        {
+          "episode": 0,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 28.950000000000276,
+          "gate_collision_xy": [
+            27.190592863773276,
+            28.410111362805306
+          ],
+          "gate_projected_next_xy": [
+            26.87230222876448,
+            28.39568047682623
+          ],
+          "gate_collision_reference_xy": [
+            23.772142968149485,
+            31.661738819882746
+          ],
+          "base_xy_at_gate_collision_t": [
+            24.841040652868738,
+            31.088119617499576
+          ],
+          "trajectory_delta_at_collision_m": 3.587077347130198,
+          "first_delta_ge_threshold_t": 25.70000000000023,
+          "first_gate_wall_conflict_t": 28.950000000000276,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.05223552450390717,
+            "projected_next_clearance_m": -0.004319523173771267,
+            "projected_next_pos": [
+              26.87230222876448,
+              28.39568047682623,
+              6.333546227263703
+            ],
+            "projected_next_vel": [
+              -6.3658127001759155,
+              -0.28861771958156224,
+              0.059054243968646114
+            ],
+            "min_clearance_m": -0.004319523173771267
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 2.688119617499576,
+            "projected_next_clearance_m": 2.708225554622873,
+            "projected_next_pos": [
+              25.194037717459192,
+              31.108225554622873,
+              6.088017547576586
+            ],
+            "projected_next_vel": [
+              7.059941291809082,
+              0.4021187424659729,
+              3.515083074569702
+            ],
+            "min_clearance_m": 2.688119617499576
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 1.1402193398328784,
+            "t": 28.60000000000027,
+            "obstacle_idx": 2
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 1.1402193398328784,
+            "t": 28.60000000000027,
+            "obstacle_idx": 2
+          },
+          "snapshots": [
+            {
+              "t": 25.950000000000234,
+              "base_xy": [
+                34.11050880660223,
+                24.9276304671254
+              ],
+              "gate_xy": [
+                34.56941991409823,
+                26.226029832126034
+              ],
+              "gate_projected_next_xy": [
+                34.620332854204854,
+                26.197117550906288
+              ],
+              "reference_xy": [
+                34.85388692825672,
+                24.45994946792476
+              ],
+              "gate_minus_base_xy": [
+                0.45891110749600017,
+                1.298399365000634
+              ],
+              "trajectory_delta_m": 1.404535554786655,
+              "base_wall_clearance": {
+                "current_clearance_m": 6.71087707938032,
+                "projected_next_clearance_m": 6.617744729910916,
+                "projected_next_pos": [
+                  34.017744729910916,
+                  25.02887620683848,
+                  6.85474434550605
+                ],
+                "projected_next_vel": [
+                  -1.855281533826274,
+                  2.024914794261599,
+                  0.04241338058733324
+                ],
+                "min_clearance_m": 6.617744729910916
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 7.169419914098233,
+                "projected_next_clearance_m": 7.2203328542048535,
+                "projected_next_pos": [
+                  34.620332854204854,
+                  26.197117550906288,
+                  7.195218586281227
+                ],
+                "projected_next_vel": [
+                  1.0182588021324688,
+                  -0.5782456243949139,
+                  1.3281382794181207
+                ],
+                "min_clearance_m": 7.169419914098233
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 8.429233451566667,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 8.429233451566667,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 26.950000000000248,
+              "base_xy": [
+                32.42267530286657,
+                26.148602326426165
+              ],
+              "gate_xy": [
+                30.56214664366614,
+                29.03981058967253
+              ],
+              "gate_projected_next_xy": [
+                30.4869480293177,
+                28.979250608210922
+              ],
+              "reference_xy": [
+                32.256711089902836,
+                27.713451316239194
+              ],
+              "gate_minus_base_xy": [
+                -1.8605286592004333,
+                2.891208263246366
+              ],
+              "trajectory_delta_m": 3.4409960814666682,
+              "base_wall_clearance": {
+                "current_clearance_m": 5.022675302866572,
+                "projected_next_clearance_m": 5.026512092593782,
+                "projected_next_pos": [
+                  32.42651209259378,
+                  25.77792719176735,
+                  7.177917116055442
+                ],
+                "projected_next_vel": [
+                  0.07673579454421997,
+                  -7.4135026931762695,
+                  1.6667475700378418
+                ],
+                "min_clearance_m": 5.022675302866572
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 3.3108078329896147,
+                "projected_next_clearance_m": 3.221841839843927,
+                "projected_next_pos": [
+                  30.4869480293177,
+                  28.979250608210922,
+                  6.960388095905974
+                ],
+                "projected_next_vel": [
+                  -1.503972286968832,
+                  -1.2111996292321487,
+                  0.1305530324718307
+                ],
+                "min_clearance_m": 3.221841839843927
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.00571112092263,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.00571112092263,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.950000000000262,
+              "base_xy": [
+                28.748109418112048,
+                29.359610311929302
+              ],
+              "gate_xy": [
+                28.393409587800893,
+                29.86338527847618
+              ],
+              "gate_projected_next_xy": [
+                28.642943884790334,
+                29.610287744296492
+              ],
+              "reference_xy": [
+                28.435607481766915,
+                30.196705159394696
+              ],
+              "gate_minus_base_xy": [
+                -0.35469983031115504,
+                0.503774966546878
+              ],
+              "trajectory_delta_m": 1.0188006057731198,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.8145940345798226,
+                "projected_next_clearance_m": 1.690989859894192,
+                "projected_next_pos": [
+                  28.442470389562853,
+                  29.51377599710615,
+                  6.916453417818261
+                ],
+                "projected_next_vel": [
+                  -6.112780570983887,
+                  3.0833137035369873,
+                  -1.6624561548233032
+                ],
+                "min_clearance_m": 1.690989859894192
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.9267563205925122,
+                "projected_next_clearance_m": 1.9004980391214077,
+                "projected_next_pos": [
+                  28.642943884790334,
+                  29.610287744296492,
+                  6.362362651845036
+                ],
+                "projected_next_vel": [
+                  4.990685939788818,
+                  -5.06195068359375,
+                  3.483525514602661
+                ],
+                "min_clearance_m": 1.9004980391214077
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.924337097472708,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.924337097472708,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.45000000000027,
+              "base_xy": [
+                25.4209558546126,
+                30.70573398942144
+              ],
+              "gate_xy": [
+                28.007677889265782,
+                30.07655813633537
+              ],
+              "gate_projected_next_xy": [
+                27.73421647679625,
+                30.321719430453136
+              ],
+              "reference_xy": [
+                26.181522011088806,
+                31.06825152925537
+              ],
+              "gate_minus_base_xy": [
+                2.5867220346531816,
+                -0.6291758530860712
+              ],
+              "trajectory_delta_m": 2.674974849229448,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.3057339894214395,
+                "projected_next_clearance_m": 2.383012657109808,
+                "projected_next_pos": [
+                  25.04777434464098,
+                  30.783012657109808,
+                  5.716704508344842
+                ],
+                "projected_next_vel": [
+                  -7.463630199432373,
+                  1.545573353767395,
+                  -2.382256269454956
+                ],
+                "min_clearance_m": 2.3057339894214395
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.9081396019512682,
+                "projected_next_clearance_m": 2.035047216902114,
+                "projected_next_pos": [
+                  27.73421647679625,
+                  30.321719430453136,
+                  5.939060737163645
+                ],
+                "projected_next_vel": [
+                  -5.469228249390696,
+                  4.9032258823553585,
+                  -3.169529665844334
+                ],
+                "min_clearance_m": 1.9081396019512682
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.6051564830688112,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.6051564830688112,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.950000000000276,
+              "base_xy": [
+                24.841040652868738,
+                31.088119617499576
+              ],
+              "gate_xy": [
+                27.190592863773276,
+                28.410111362805306
+              ],
+              "gate_projected_next_xy": [
+                26.87230222876448,
+                28.39568047682623
+              ],
+              "reference_xy": [
+                23.772142968149485,
+                31.661738819882746
+              ],
+              "gate_minus_base_xy": [
+                2.3495522109045375,
+                -2.6780082546942694
+              ],
+              "trajectory_delta_m": 3.587077347130198,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.688119617499576,
+                "projected_next_clearance_m": 2.708225554622873,
+                "projected_next_pos": [
+                  25.194037717459192,
+                  31.108225554622873,
+                  6.088017547576586
+                ],
+                "projected_next_vel": [
+                  7.059941291809082,
+                  0.4021187424659729,
+                  3.515083074569702
+                ],
+                "min_clearance_m": 2.688119617499576
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.05223552450390717,
+                "projected_next_clearance_m": -0.004319523173771267,
+                "projected_next_pos": [
+                  26.87230222876448,
+                  28.39568047682623,
+                  6.333546227263703
+                ],
+                "projected_next_vel": [
+                  -6.3658127001759155,
+                  -0.28861771958156224,
+                  0.059054243968646114
+                ],
+                "min_clearance_m": -0.004319523173771267
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.9188101130667996,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.9188101130667996,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        },
+        {
+          "episode": 1,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 28.950000000000276,
+          "gate_collision_xy": [
+            27.190592863773276,
+            28.410111362805306
+          ],
+          "gate_projected_next_xy": [
+            26.87230222876448,
+            28.39568047682623
+          ],
+          "gate_collision_reference_xy": [
+            23.772142968149485,
+            31.661738819882746
+          ],
+          "base_xy_at_gate_collision_t": [
+            24.841040652868738,
+            31.088119617499576
+          ],
+          "trajectory_delta_at_collision_m": 3.587077347130198,
+          "first_delta_ge_threshold_t": 25.70000000000023,
+          "first_gate_wall_conflict_t": 28.950000000000276,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.05223552450390717,
+            "projected_next_clearance_m": -0.004319523173771267,
+            "projected_next_pos": [
+              26.87230222876448,
+              28.39568047682623,
+              6.333546227263703
+            ],
+            "projected_next_vel": [
+              -6.3658127001759155,
+              -0.28861771958156224,
+              0.059054243968646114
+            ],
+            "min_clearance_m": -0.004319523173771267
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 2.688119617499576,
+            "projected_next_clearance_m": 2.708225554622873,
+            "projected_next_pos": [
+              25.194037717459192,
+              31.108225554622873,
+              6.088017547576586
+            ],
+            "projected_next_vel": [
+              7.059941291809082,
+              0.4021187424659729,
+              3.515083074569702
+            ],
+            "min_clearance_m": 2.688119617499576
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 1.1402193398328784,
+            "t": 28.60000000000027,
+            "obstacle_idx": 2
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 1.1402193398328784,
+            "t": 28.60000000000027,
+            "obstacle_idx": 2
+          },
+          "snapshots": [
+            {
+              "t": 25.950000000000234,
+              "base_xy": [
+                34.11050880660223,
+                24.9276304671254
+              ],
+              "gate_xy": [
+                34.56941991409823,
+                26.226029832126034
+              ],
+              "gate_projected_next_xy": [
+                34.620332854204854,
+                26.197117550906288
+              ],
+              "reference_xy": [
+                34.85388692825672,
+                24.45994946792476
+              ],
+              "gate_minus_base_xy": [
+                0.45891110749600017,
+                1.298399365000634
+              ],
+              "trajectory_delta_m": 1.404535554786655,
+              "base_wall_clearance": {
+                "current_clearance_m": 6.71087707938032,
+                "projected_next_clearance_m": 6.617744729910916,
+                "projected_next_pos": [
+                  34.017744729910916,
+                  25.02887620683848,
+                  6.85474434550605
+                ],
+                "projected_next_vel": [
+                  -1.855281533826274,
+                  2.024914794261599,
+                  0.04241338058733324
+                ],
+                "min_clearance_m": 6.617744729910916
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 7.169419914098233,
+                "projected_next_clearance_m": 7.2203328542048535,
+                "projected_next_pos": [
+                  34.620332854204854,
+                  26.197117550906288,
+                  7.195218586281227
+                ],
+                "projected_next_vel": [
+                  1.0182588021324688,
+                  -0.5782456243949139,
+                  1.3281382794181207
+                ],
+                "min_clearance_m": 7.169419914098233
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 8.429233451566667,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 8.429233451566667,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 26.950000000000248,
+              "base_xy": [
+                32.42267530286657,
+                26.148602326426165
+              ],
+              "gate_xy": [
+                30.56214664366614,
+                29.03981058967253
+              ],
+              "gate_projected_next_xy": [
+                30.4869480293177,
+                28.979250608210922
+              ],
+              "reference_xy": [
+                32.256711089902836,
+                27.713451316239194
+              ],
+              "gate_minus_base_xy": [
+                -1.8605286592004333,
+                2.891208263246366
+              ],
+              "trajectory_delta_m": 3.4409960814666682,
+              "base_wall_clearance": {
+                "current_clearance_m": 5.022675302866572,
+                "projected_next_clearance_m": 5.026512092593782,
+                "projected_next_pos": [
+                  32.42651209259378,
+                  25.77792719176735,
+                  7.177917116055442
+                ],
+                "projected_next_vel": [
+                  0.07673579454421997,
+                  -7.4135026931762695,
+                  1.6667475700378418
+                ],
+                "min_clearance_m": 5.022675302866572
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 3.3108078329896147,
+                "projected_next_clearance_m": 3.221841839843927,
+                "projected_next_pos": [
+                  30.4869480293177,
+                  28.979250608210922,
+                  6.960388095905974
+                ],
+                "projected_next_vel": [
+                  -1.503972286968832,
+                  -1.2111996292321487,
+                  0.1305530324718307
+                ],
+                "min_clearance_m": 3.221841839843927
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.00571112092263,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.00571112092263,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.950000000000262,
+              "base_xy": [
+                28.748109418112048,
+                29.359610311929302
+              ],
+              "gate_xy": [
+                28.393409587800893,
+                29.86338527847618
+              ],
+              "gate_projected_next_xy": [
+                28.642943884790334,
+                29.610287744296492
+              ],
+              "reference_xy": [
+                28.435607481766915,
+                30.196705159394696
+              ],
+              "gate_minus_base_xy": [
+                -0.35469983031115504,
+                0.503774966546878
+              ],
+              "trajectory_delta_m": 1.0188006057731198,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.8145940345798226,
+                "projected_next_clearance_m": 1.690989859894192,
+                "projected_next_pos": [
+                  28.442470389562853,
+                  29.51377599710615,
+                  6.916453417818261
+                ],
+                "projected_next_vel": [
+                  -6.112780570983887,
+                  3.0833137035369873,
+                  -1.6624561548233032
+                ],
+                "min_clearance_m": 1.690989859894192
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.9267563205925122,
+                "projected_next_clearance_m": 1.9004980391214077,
+                "projected_next_pos": [
+                  28.642943884790334,
+                  29.610287744296492,
+                  6.362362651845036
+                ],
+                "projected_next_vel": [
+                  4.990685939788818,
+                  -5.06195068359375,
+                  3.483525514602661
+                ],
+                "min_clearance_m": 1.9004980391214077
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.924337097472708,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.924337097472708,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.45000000000027,
+              "base_xy": [
+                25.4209558546126,
+                30.70573398942144
+              ],
+              "gate_xy": [
+                28.007677889265782,
+                30.07655813633537
+              ],
+              "gate_projected_next_xy": [
+                27.73421647679625,
+                30.321719430453136
+              ],
+              "reference_xy": [
+                26.181522011088806,
+                31.06825152925537
+              ],
+              "gate_minus_base_xy": [
+                2.5867220346531816,
+                -0.6291758530860712
+              ],
+              "trajectory_delta_m": 2.674974849229448,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.3057339894214395,
+                "projected_next_clearance_m": 2.383012657109808,
+                "projected_next_pos": [
+                  25.04777434464098,
+                  30.783012657109808,
+                  5.716704508344842
+                ],
+                "projected_next_vel": [
+                  -7.463630199432373,
+                  1.545573353767395,
+                  -2.382256269454956
+                ],
+                "min_clearance_m": 2.3057339894214395
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.9081396019512682,
+                "projected_next_clearance_m": 2.035047216902114,
+                "projected_next_pos": [
+                  27.73421647679625,
+                  30.321719430453136,
+                  5.939060737163645
+                ],
+                "projected_next_vel": [
+                  -5.469228249390696,
+                  4.9032258823553585,
+                  -3.169529665844334
+                ],
+                "min_clearance_m": 1.9081396019512682
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.6051564830688112,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.6051564830688112,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.950000000000276,
+              "base_xy": [
+                24.841040652868738,
+                31.088119617499576
+              ],
+              "gate_xy": [
+                27.190592863773276,
+                28.410111362805306
+              ],
+              "gate_projected_next_xy": [
+                26.87230222876448,
+                28.39568047682623
+              ],
+              "reference_xy": [
+                23.772142968149485,
+                31.661738819882746
+              ],
+              "gate_minus_base_xy": [
+                2.3495522109045375,
+                -2.6780082546942694
+              ],
+              "trajectory_delta_m": 3.587077347130198,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.688119617499576,
+                "projected_next_clearance_m": 2.708225554622873,
+                "projected_next_pos": [
+                  25.194037717459192,
+                  31.108225554622873,
+                  6.088017547576586
+                ],
+                "projected_next_vel": [
+                  7.059941291809082,
+                  0.4021187424659729,
+                  3.515083074569702
+                ],
+                "min_clearance_m": 2.688119617499576
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.05223552450390717,
+                "projected_next_clearance_m": -0.004319523173771267,
+                "projected_next_pos": [
+                  26.87230222876448,
+                  28.39568047682623,
+                  6.333546227263703
+                ],
+                "projected_next_vel": [
+                  -6.3658127001759155,
+                  -0.28861771958156224,
+                  0.059054243968646114
+                ],
+                "min_clearance_m": -0.004319523173771267
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.9188101130667996,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.9188101130667996,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        },
+        {
+          "episode": 2,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 28.950000000000276,
+          "gate_collision_xy": [
+            27.190592863773276,
+            28.410111362805306
+          ],
+          "gate_projected_next_xy": [
+            26.87230222876448,
+            28.39568047682623
+          ],
+          "gate_collision_reference_xy": [
+            23.772142968149485,
+            31.661738819882746
+          ],
+          "base_xy_at_gate_collision_t": [
+            24.841040652868738,
+            31.088119617499576
+          ],
+          "trajectory_delta_at_collision_m": 3.587077347130198,
+          "first_delta_ge_threshold_t": 25.70000000000023,
+          "first_gate_wall_conflict_t": 28.950000000000276,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.05223552450390717,
+            "projected_next_clearance_m": -0.004319523173771267,
+            "projected_next_pos": [
+              26.87230222876448,
+              28.39568047682623,
+              6.333546227263703
+            ],
+            "projected_next_vel": [
+              -6.3658127001759155,
+              -0.28861771958156224,
+              0.059054243968646114
+            ],
+            "min_clearance_m": -0.004319523173771267
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 2.688119617499576,
+            "projected_next_clearance_m": 2.708225554622873,
+            "projected_next_pos": [
+              25.194037717459192,
+              31.108225554622873,
+              6.088017547576586
+            ],
+            "projected_next_vel": [
+              7.059941291809082,
+              0.4021187424659729,
+              3.515083074569702
+            ],
+            "min_clearance_m": 2.688119617499576
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 1.1402193398328784,
+            "t": 28.60000000000027,
+            "obstacle_idx": 2
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 1.1402193398328784,
+            "t": 28.60000000000027,
+            "obstacle_idx": 2
+          },
+          "snapshots": [
+            {
+              "t": 25.950000000000234,
+              "base_xy": [
+                34.11050880660223,
+                24.9276304671254
+              ],
+              "gate_xy": [
+                34.56941991409823,
+                26.226029832126034
+              ],
+              "gate_projected_next_xy": [
+                34.620332854204854,
+                26.197117550906288
+              ],
+              "reference_xy": [
+                34.85388692825672,
+                24.45994946792476
+              ],
+              "gate_minus_base_xy": [
+                0.45891110749600017,
+                1.298399365000634
+              ],
+              "trajectory_delta_m": 1.404535554786655,
+              "base_wall_clearance": {
+                "current_clearance_m": 6.71087707938032,
+                "projected_next_clearance_m": 6.617744729910916,
+                "projected_next_pos": [
+                  34.017744729910916,
+                  25.02887620683848,
+                  6.85474434550605
+                ],
+                "projected_next_vel": [
+                  -1.855281533826274,
+                  2.024914794261599,
+                  0.04241338058733324
+                ],
+                "min_clearance_m": 6.617744729910916
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 7.169419914098233,
+                "projected_next_clearance_m": 7.2203328542048535,
+                "projected_next_pos": [
+                  34.620332854204854,
+                  26.197117550906288,
+                  7.195218586281227
+                ],
+                "projected_next_vel": [
+                  1.0182588021324688,
+                  -0.5782456243949139,
+                  1.3281382794181207
+                ],
+                "min_clearance_m": 7.169419914098233
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 8.429233451566667,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 8.429233451566667,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 26.950000000000248,
+              "base_xy": [
+                32.42267530286657,
+                26.148602326426165
+              ],
+              "gate_xy": [
+                30.56214664366614,
+                29.03981058967253
+              ],
+              "gate_projected_next_xy": [
+                30.4869480293177,
+                28.979250608210922
+              ],
+              "reference_xy": [
+                32.256711089902836,
+                27.713451316239194
+              ],
+              "gate_minus_base_xy": [
+                -1.8605286592004333,
+                2.891208263246366
+              ],
+              "trajectory_delta_m": 3.4409960814666682,
+              "base_wall_clearance": {
+                "current_clearance_m": 5.022675302866572,
+                "projected_next_clearance_m": 5.026512092593782,
+                "projected_next_pos": [
+                  32.42651209259378,
+                  25.77792719176735,
+                  7.177917116055442
+                ],
+                "projected_next_vel": [
+                  0.07673579454421997,
+                  -7.4135026931762695,
+                  1.6667475700378418
+                ],
+                "min_clearance_m": 5.022675302866572
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 3.3108078329896147,
+                "projected_next_clearance_m": 3.221841839843927,
+                "projected_next_pos": [
+                  30.4869480293177,
+                  28.979250608210922,
+                  6.960388095905974
+                ],
+                "projected_next_vel": [
+                  -1.503972286968832,
+                  -1.2111996292321487,
+                  0.1305530324718307
+                ],
+                "min_clearance_m": 3.221841839843927
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.00571112092263,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.00571112092263,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.950000000000262,
+              "base_xy": [
+                28.748109418112048,
+                29.359610311929302
+              ],
+              "gate_xy": [
+                28.393409587800893,
+                29.86338527847618
+              ],
+              "gate_projected_next_xy": [
+                28.642943884790334,
+                29.610287744296492
+              ],
+              "reference_xy": [
+                28.435607481766915,
+                30.196705159394696
+              ],
+              "gate_minus_base_xy": [
+                -0.35469983031115504,
+                0.503774966546878
+              ],
+              "trajectory_delta_m": 1.0188006057731198,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.8145940345798226,
+                "projected_next_clearance_m": 1.690989859894192,
+                "projected_next_pos": [
+                  28.442470389562853,
+                  29.51377599710615,
+                  6.916453417818261
+                ],
+                "projected_next_vel": [
+                  -6.112780570983887,
+                  3.0833137035369873,
+                  -1.6624561548233032
+                ],
+                "min_clearance_m": 1.690989859894192
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.9267563205925122,
+                "projected_next_clearance_m": 1.9004980391214077,
+                "projected_next_pos": [
+                  28.642943884790334,
+                  29.610287744296492,
+                  6.362362651845036
+                ],
+                "projected_next_vel": [
+                  4.990685939788818,
+                  -5.06195068359375,
+                  3.483525514602661
+                ],
+                "min_clearance_m": 1.9004980391214077
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.924337097472708,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.924337097472708,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.45000000000027,
+              "base_xy": [
+                25.4209558546126,
+                30.70573398942144
+              ],
+              "gate_xy": [
+                28.007677889265782,
+                30.07655813633537
+              ],
+              "gate_projected_next_xy": [
+                27.73421647679625,
+                30.321719430453136
+              ],
+              "reference_xy": [
+                26.181522011088806,
+                31.06825152925537
+              ],
+              "gate_minus_base_xy": [
+                2.5867220346531816,
+                -0.6291758530860712
+              ],
+              "trajectory_delta_m": 2.674974849229448,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.3057339894214395,
+                "projected_next_clearance_m": 2.383012657109808,
+                "projected_next_pos": [
+                  25.04777434464098,
+                  30.783012657109808,
+                  5.716704508344842
+                ],
+                "projected_next_vel": [
+                  -7.463630199432373,
+                  1.545573353767395,
+                  -2.382256269454956
+                ],
+                "min_clearance_m": 2.3057339894214395
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.9081396019512682,
+                "projected_next_clearance_m": 2.035047216902114,
+                "projected_next_pos": [
+                  27.73421647679625,
+                  30.321719430453136,
+                  5.939060737163645
+                ],
+                "projected_next_vel": [
+                  -5.469228249390696,
+                  4.9032258823553585,
+                  -3.169529665844334
+                ],
+                "min_clearance_m": 1.9081396019512682
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.6051564830688112,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.6051564830688112,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.950000000000276,
+              "base_xy": [
+                24.841040652868738,
+                31.088119617499576
+              ],
+              "gate_xy": [
+                27.190592863773276,
+                28.410111362805306
+              ],
+              "gate_projected_next_xy": [
+                26.87230222876448,
+                28.39568047682623
+              ],
+              "reference_xy": [
+                23.772142968149485,
+                31.661738819882746
+              ],
+              "gate_minus_base_xy": [
+                2.3495522109045375,
+                -2.6780082546942694
+              ],
+              "trajectory_delta_m": 3.587077347130198,
+              "base_wall_clearance": {
+                "current_clearance_m": 2.688119617499576,
+                "projected_next_clearance_m": 2.708225554622873,
+                "projected_next_pos": [
+                  25.194037717459192,
+                  31.108225554622873,
+                  6.088017547576586
+                ],
+                "projected_next_vel": [
+                  7.059941291809082,
+                  0.4021187424659729,
+                  3.515083074569702
+                ],
+                "min_clearance_m": 2.688119617499576
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.05223552450390717,
+                "projected_next_clearance_m": -0.004319523173771267,
+                "projected_next_pos": [
+                  26.87230222876448,
+                  28.39568047682623,
+                  6.333546227263703
+                ],
+                "projected_next_vel": [
+                  -6.3658127001759155,
+                  -0.28861771958156224,
+                  0.059054243968646114
+                ],
+                "min_clearance_m": -0.004319523173771267
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.9188101130667996,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.9188101130667996,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "x24_y27p5_sx5_sy2",
+      "base_run": "results/_race_hero_base_pair_slot_wall_x24_y27p5_n3/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_boxc24_27p5_7s5_2_14",
+      "gate_run": "results/_race_hero_dynamic_gate_slot_wall_x24_y27p5_n3/p19p8_y3p5_13_v1p5_r1p75/moving_t0p1_argmin_postgoal_sm0p8_wobs500_wrt1000_wclean100_fc3_extrax24p5y12p86z7v0_0p64_0r1p75lin-x24p5y50p14z7v0_m0p64_0r1p75lin_boxc24_27p5_7s5_2_14",
+      "wall": {
+        "configured_box": {
+          "center": [
+            24.0,
+            27.5,
+            7.0
+          ],
+          "size": [
+            5.0,
+            2.0,
+            14.0
+          ]
+        },
+        "voxelized_aabb": {
+          "min": [
+            21.0,
+            26.0,
+            0.0
+          ],
+          "max": [
+            27.0,
+            29.0,
+            14.0
+          ]
+        }
+      },
+      "episodes": 3,
+      "gate_collisions": 3,
+      "gate_collision_times": [
+        29.80000000000029,
+        29.80000000000029,
+        29.80000000000029
+      ],
+      "episode_rows": [
+        {
+          "episode": 0,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 29.80000000000029,
+          "gate_collision_xy": [
+            27.691809313081183,
+            26.427709199406223
+          ],
+          "gate_projected_next_xy": [
+            27.38343509890882,
+            26.19503078601511
+          ],
+          "gate_collision_reference_xy": [
+            19.492353064029466,
+            31.993958508598187
+          ],
+          "base_xy_at_gate_collision_t": [
+            21.552859933809433,
+            30.442758500690736
+          ],
+          "trajectory_delta_at_collision_m": 7.6118355018287485,
+          "first_delta_ge_threshold_t": 25.900000000000233,
+          "first_gate_wall_conflict_t": 29.80000000000029,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.2918093130811833,
+            "projected_next_clearance_m": -0.016564901091180695,
+            "projected_next_pos": [
+              27.38343509890882,
+              26.19503078601511,
+              6.985918460193553
+            ],
+            "projected_next_vel": [
+              -6.167484283447266,
+              -4.653568267822266,
+              -0.7225377559661865
+            ],
+            "min_clearance_m": -0.016564901091180695
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 1.0427585006907365,
+            "projected_next_clearance_m": 1.0372151405766403,
+            "projected_next_pos": [
+              21.172618849710616,
+              30.43721514057664,
+              4.9106369194590895
+            ],
+            "projected_next_vel": [
+              -7.604821681976318,
+              -0.1108672022819519,
+              -1.5699869394302368
+            ],
+            "min_clearance_m": 1.0372151405766403
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 0.3489992427222832,
+            "t": 28.750000000000274,
+            "obstacle_idx": 2
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 0.3489992427222832,
+            "t": 28.750000000000274,
+            "obstacle_idx": 2
+          },
+          "snapshots": [
+            {
+              "t": 26.800000000000246,
+              "base_xy": [
+                31.56998787093191,
+                28.075203885941033
+              ],
+              "gate_xy": [
+                31.641718656532767,
+                27.15302103762654
+              ],
+              "gate_projected_next_xy": [
+                31.424204904549125,
+                27.232203066396988
+              ],
+              "reference_xy": [
+                32.732189448492555,
+                27.267316245652747
+              ],
+              "gate_minus_base_xy": [
+                0.071730785600856,
+                -0.9221828483144918
+              ],
+              "trajectory_delta_m": 0.9797734629960676,
+              "base_wall_clearance": {
+                "current_clearance_m": 4.1699878709319105,
+                "projected_next_clearance_m": 4.096323139794274,
+                "projected_next_pos": [
+                  31.496323139794274,
+                  27.80216847328129,
+                  7.158145810276304
+                ],
+                "projected_next_vel": [
+                  -1.4732946227527643,
+                  -5.4607082531948175,
+                  1.5902926027400444
+                ],
+                "min_clearance_m": 4.096323139794274
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 4.2417186565327665,
+                "projected_next_clearance_m": 4.024204904549125,
+                "projected_next_pos": [
+                  31.424204904549125,
+                  27.232203066396988,
+                  6.688883531058199
+                ],
+                "projected_next_vel": [
+                  -4.350275039672852,
+                  1.5836405754089355,
+                  -1.3330793380737305
+                ],
+                "min_clearance_m": 4.024204904549125
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 5.546601067436576,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 5.546601067436576,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.80000000000026,
+              "base_xy": [
+                28.511707959277256,
+                29.004008621129476
+              ],
+              "gate_xy": [
+                29.850283723244587,
+                27.152907659265534
+              ],
+              "gate_projected_next_xy": [
+                29.57681274927608,
+                27.398020841333405
+              ],
+              "reference_xy": [
+                29.072957821803243,
+                29.884118977158554
+              ],
+              "gate_minus_base_xy": [
+                1.3385757639673308,
+                -1.851100961863942
+              ],
+              "trajectory_delta_m": 2.4900000477917565,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.1117132741315618,
+                "projected_next_clearance_m": 0.877437308737251,
+                "projected_next_pos": [
+                  28.24771886835776,
+                  29.27394105807253,
+                  7.918290730085079
+                ],
+                "projected_next_vel": [
+                  -5.279781818389893,
+                  5.398648738861084,
+                  0.44774946570396423
+                ],
+                "min_clearance_m": 0.877437308737251
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.450283723244587,
+                "projected_next_clearance_m": 2.17681274927608,
+                "projected_next_pos": [
+                  29.57681274927608,
+                  27.398020841333405,
+                  6.74661958405892
+                ],
+                "projected_next_vel": [
+                  -5.469419479370117,
+                  4.902263641357422,
+                  -3.1691107749938965
+                ],
+                "min_clearance_m": 2.17681274927608
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.243605701051132,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.243605701051132,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.800000000000274,
+              "base_xy": [
+                28.323931678370702,
+                28.511576593735715
+              ],
+              "gate_xy": [
+                25.315078917943033,
+                30.85801159488436
+              ],
+              "gate_projected_next_xy": [
+                25.63478811877925,
+                30.727775799143767
+              ],
+              "reference_xy": [
+                24.507720909461547,
+                31.51391568337426
+              ],
+              "gate_minus_base_xy": [
+                -3.0088527604276685,
+                2.3464350011486452
+              ],
+              "trajectory_delta_m": 4.572366964279874,
+              "base_wall_clearance": {
+                "current_clearance_m": 0.9239316783707018,
+                "projected_next_clearance_m": 0.688121731714402,
+                "projected_next_pos": [
+                  28.088121731714402,
+                  28.632059675569806,
+                  7.060514843186124
+                ],
+                "projected_next_vel": [
+                  -4.716198933125984,
+                  2.409661636681816,
+                  -2.3976104824444064
+                ],
+                "min_clearance_m": 0.688121731714402
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.45801159488436,
+                "projected_next_clearance_m": 1.3277757991437675,
+                "projected_next_pos": [
+                  25.63478811877925,
+                  30.727775799143767,
+                  4.740782044397682
+                ],
+                "projected_next_vel": [
+                  6.394184016724383,
+                  -2.604715914811862,
+                  1.5965716212237884
+                ],
+                "min_clearance_m": 1.3277757991437675
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 0.3647242948139868,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 0.3647242948139868,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.30000000000028,
+              "base_xy": [
+                25.300328357652813,
+                30.28949852597264
+              ],
+              "gate_xy": [
+                28.003062831341815,
+                29.377193795550316
+              ],
+              "gate_projected_next_xy": [
+                28.1871103157397,
+                29.08564888130471
+              ],
+              "reference_xy": [
+                22.02547925717858,
+                31.90345775396968
+              ],
+              "gate_minus_base_xy": [
+                2.702734473689002,
+                -0.9123047304223242
+              ],
+              "trajectory_delta_m": 2.8876562570333446,
+              "base_wall_clearance": {
+                "current_clearance_m": 0.8894985259726397,
+                "projected_next_clearance_m": 0.9432457865431644,
+                "projected_next_pos": [
+                  24.92446239753166,
+                  30.343245786543164,
+                  5.65518453093408
+                ],
+                "projected_next_vel": [
+                  -7.517319202423096,
+                  1.0749452114105225,
+                  -2.1503512859344482
+                ],
+                "min_clearance_m": 0.8894985259726397
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.6716390264548558,
+                "projected_next_clearance_m": 0.7901960479704014,
+                "projected_next_pos": [
+                  28.1871103157397,
+                  29.08564888130471,
+                  6.353177414404243
+                ],
+                "projected_next_vel": [
+                  3.6809496879577637,
+                  -5.830898284912109,
+                  2.832087993621826
+                ],
+                "min_clearance_m": 0.6716390264548558
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.949846375927899,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.949846375927899,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.80000000000029,
+              "base_xy": [
+                21.552859933809433,
+                30.442758500690736
+              ],
+              "gate_xy": [
+                27.691809313081183,
+                26.427709199406223
+              ],
+              "gate_projected_next_xy": [
+                27.38343509890882,
+                26.19503078601511
+              ],
+              "reference_xy": [
+                19.492353064029466,
+                31.993958508598187
+              ],
+              "gate_minus_base_xy": [
+                6.13894937927175,
+                -4.015049301284513
+              ],
+              "trajectory_delta_m": 7.6118355018287485,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.0427585006907365,
+                "projected_next_clearance_m": 1.0372151405766403,
+                "projected_next_pos": [
+                  21.172618849710616,
+                  30.43721514057664,
+                  4.9106369194590895
+                ],
+                "projected_next_vel": [
+                  -7.604821681976318,
+                  -0.1108672022819519,
+                  -1.5699869394302368
+                ],
+                "min_clearance_m": 1.0372151405766403
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.2918093130811833,
+                "projected_next_clearance_m": -0.016564901091180695,
+                "projected_next_pos": [
+                  27.38343509890882,
+                  26.19503078601511,
+                  6.985918460193553
+                ],
+                "projected_next_vel": [
+                  -6.167484283447266,
+                  -4.653568267822266,
+                  -0.7225377559661865
+                ],
+                "min_clearance_m": -0.016564901091180695
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 3.4557539003487654,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 3.4557539003487654,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        },
+        {
+          "episode": 1,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 29.80000000000029,
+          "gate_collision_xy": [
+            27.691809313081183,
+            26.427709199406223
+          ],
+          "gate_projected_next_xy": [
+            27.38343509890882,
+            26.19503078601511
+          ],
+          "gate_collision_reference_xy": [
+            19.492353064029466,
+            31.993958508598187
+          ],
+          "base_xy_at_gate_collision_t": [
+            21.552859933809433,
+            30.442758500690736
+          ],
+          "trajectory_delta_at_collision_m": 7.6118355018287485,
+          "first_delta_ge_threshold_t": 25.900000000000233,
+          "first_gate_wall_conflict_t": 29.80000000000029,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.2918093130811833,
+            "projected_next_clearance_m": -0.016564901091180695,
+            "projected_next_pos": [
+              27.38343509890882,
+              26.19503078601511,
+              6.985918460193553
+            ],
+            "projected_next_vel": [
+              -6.167484283447266,
+              -4.653568267822266,
+              -0.7225377559661865
+            ],
+            "min_clearance_m": -0.016564901091180695
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 1.0427585006907365,
+            "projected_next_clearance_m": 1.0372151405766403,
+            "projected_next_pos": [
+              21.172618849710616,
+              30.43721514057664,
+              4.9106369194590895
+            ],
+            "projected_next_vel": [
+              -7.604821681976318,
+              -0.1108672022819519,
+              -1.5699869394302368
+            ],
+            "min_clearance_m": 1.0372151405766403
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 0.3489992427222832,
+            "t": 28.750000000000274,
+            "obstacle_idx": 2
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 0.3489992427222832,
+            "t": 28.750000000000274,
+            "obstacle_idx": 2
+          },
+          "snapshots": [
+            {
+              "t": 26.800000000000246,
+              "base_xy": [
+                31.56998787093191,
+                28.075203885941033
+              ],
+              "gate_xy": [
+                31.641718656532767,
+                27.15302103762654
+              ],
+              "gate_projected_next_xy": [
+                31.424204904549125,
+                27.232203066396988
+              ],
+              "reference_xy": [
+                32.732189448492555,
+                27.267316245652747
+              ],
+              "gate_minus_base_xy": [
+                0.071730785600856,
+                -0.9221828483144918
+              ],
+              "trajectory_delta_m": 0.9797734629960676,
+              "base_wall_clearance": {
+                "current_clearance_m": 4.1699878709319105,
+                "projected_next_clearance_m": 4.096323139794274,
+                "projected_next_pos": [
+                  31.496323139794274,
+                  27.80216847328129,
+                  7.158145810276304
+                ],
+                "projected_next_vel": [
+                  -1.4732946227527643,
+                  -5.4607082531948175,
+                  1.5902926027400444
+                ],
+                "min_clearance_m": 4.096323139794274
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 4.2417186565327665,
+                "projected_next_clearance_m": 4.024204904549125,
+                "projected_next_pos": [
+                  31.424204904549125,
+                  27.232203066396988,
+                  6.688883531058199
+                ],
+                "projected_next_vel": [
+                  -4.350275039672852,
+                  1.5836405754089355,
+                  -1.3330793380737305
+                ],
+                "min_clearance_m": 4.024204904549125
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 5.546601067436576,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 5.546601067436576,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.80000000000026,
+              "base_xy": [
+                28.511707959277256,
+                29.004008621129476
+              ],
+              "gate_xy": [
+                29.850283723244587,
+                27.152907659265534
+              ],
+              "gate_projected_next_xy": [
+                29.57681274927608,
+                27.398020841333405
+              ],
+              "reference_xy": [
+                29.072957821803243,
+                29.884118977158554
+              ],
+              "gate_minus_base_xy": [
+                1.3385757639673308,
+                -1.851100961863942
+              ],
+              "trajectory_delta_m": 2.4900000477917565,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.1117132741315618,
+                "projected_next_clearance_m": 0.877437308737251,
+                "projected_next_pos": [
+                  28.24771886835776,
+                  29.27394105807253,
+                  7.918290730085079
+                ],
+                "projected_next_vel": [
+                  -5.279781818389893,
+                  5.398648738861084,
+                  0.44774946570396423
+                ],
+                "min_clearance_m": 0.877437308737251
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.450283723244587,
+                "projected_next_clearance_m": 2.17681274927608,
+                "projected_next_pos": [
+                  29.57681274927608,
+                  27.398020841333405,
+                  6.74661958405892
+                ],
+                "projected_next_vel": [
+                  -5.469419479370117,
+                  4.902263641357422,
+                  -3.1691107749938965
+                ],
+                "min_clearance_m": 2.17681274927608
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.243605701051132,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.243605701051132,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.800000000000274,
+              "base_xy": [
+                28.323931678370702,
+                28.511576593735715
+              ],
+              "gate_xy": [
+                25.315078917943033,
+                30.85801159488436
+              ],
+              "gate_projected_next_xy": [
+                25.63478811877925,
+                30.727775799143767
+              ],
+              "reference_xy": [
+                24.507720909461547,
+                31.51391568337426
+              ],
+              "gate_minus_base_xy": [
+                -3.0088527604276685,
+                2.3464350011486452
+              ],
+              "trajectory_delta_m": 4.572366964279874,
+              "base_wall_clearance": {
+                "current_clearance_m": 0.9239316783707018,
+                "projected_next_clearance_m": 0.688121731714402,
+                "projected_next_pos": [
+                  28.088121731714402,
+                  28.632059675569806,
+                  7.060514843186124
+                ],
+                "projected_next_vel": [
+                  -4.716198933125984,
+                  2.409661636681816,
+                  -2.3976104824444064
+                ],
+                "min_clearance_m": 0.688121731714402
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.45801159488436,
+                "projected_next_clearance_m": 1.3277757991437675,
+                "projected_next_pos": [
+                  25.63478811877925,
+                  30.727775799143767,
+                  4.740782044397682
+                ],
+                "projected_next_vel": [
+                  6.394184016724383,
+                  -2.604715914811862,
+                  1.5965716212237884
+                ],
+                "min_clearance_m": 1.3277757991437675
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 0.3647242948139868,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 0.3647242948139868,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.30000000000028,
+              "base_xy": [
+                25.300328357652813,
+                30.28949852597264
+              ],
+              "gate_xy": [
+                28.003062831341815,
+                29.377193795550316
+              ],
+              "gate_projected_next_xy": [
+                28.1871103157397,
+                29.08564888130471
+              ],
+              "reference_xy": [
+                22.02547925717858,
+                31.90345775396968
+              ],
+              "gate_minus_base_xy": [
+                2.702734473689002,
+                -0.9123047304223242
+              ],
+              "trajectory_delta_m": 2.8876562570333446,
+              "base_wall_clearance": {
+                "current_clearance_m": 0.8894985259726397,
+                "projected_next_clearance_m": 0.9432457865431644,
+                "projected_next_pos": [
+                  24.92446239753166,
+                  30.343245786543164,
+                  5.65518453093408
+                ],
+                "projected_next_vel": [
+                  -7.517319202423096,
+                  1.0749452114105225,
+                  -2.1503512859344482
+                ],
+                "min_clearance_m": 0.8894985259726397
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.6716390264548558,
+                "projected_next_clearance_m": 0.7901960479704014,
+                "projected_next_pos": [
+                  28.1871103157397,
+                  29.08564888130471,
+                  6.353177414404243
+                ],
+                "projected_next_vel": [
+                  3.6809496879577637,
+                  -5.830898284912109,
+                  2.832087993621826
+                ],
+                "min_clearance_m": 0.6716390264548558
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.949846375927899,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.949846375927899,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.80000000000029,
+              "base_xy": [
+                21.552859933809433,
+                30.442758500690736
+              ],
+              "gate_xy": [
+                27.691809313081183,
+                26.427709199406223
+              ],
+              "gate_projected_next_xy": [
+                27.38343509890882,
+                26.19503078601511
+              ],
+              "reference_xy": [
+                19.492353064029466,
+                31.993958508598187
+              ],
+              "gate_minus_base_xy": [
+                6.13894937927175,
+                -4.015049301284513
+              ],
+              "trajectory_delta_m": 7.6118355018287485,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.0427585006907365,
+                "projected_next_clearance_m": 1.0372151405766403,
+                "projected_next_pos": [
+                  21.172618849710616,
+                  30.43721514057664,
+                  4.9106369194590895
+                ],
+                "projected_next_vel": [
+                  -7.604821681976318,
+                  -0.1108672022819519,
+                  -1.5699869394302368
+                ],
+                "min_clearance_m": 1.0372151405766403
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.2918093130811833,
+                "projected_next_clearance_m": -0.016564901091180695,
+                "projected_next_pos": [
+                  27.38343509890882,
+                  26.19503078601511,
+                  6.985918460193553
+                ],
+                "projected_next_vel": [
+                  -6.167484283447266,
+                  -4.653568267822266,
+                  -0.7225377559661865
+                ],
+                "min_clearance_m": -0.016564901091180695
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 3.4557539003487654,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 3.4557539003487654,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        },
+        {
+          "episode": 2,
+          "base_outcome": "success",
+          "gate_outcome": "collision",
+          "gate_first_collision_t": 29.80000000000029,
+          "gate_collision_xy": [
+            27.691809313081183,
+            26.427709199406223
+          ],
+          "gate_projected_next_xy": [
+            27.38343509890882,
+            26.19503078601511
+          ],
+          "gate_collision_reference_xy": [
+            19.492353064029466,
+            31.993958508598187
+          ],
+          "base_xy_at_gate_collision_t": [
+            21.552859933809433,
+            30.442758500690736
+          ],
+          "trajectory_delta_at_collision_m": 7.6118355018287485,
+          "first_delta_ge_threshold_t": 25.900000000000233,
+          "first_gate_wall_conflict_t": 29.80000000000029,
+          "gate_wall_clearance_at_collision": {
+            "current_clearance_m": 0.2918093130811833,
+            "projected_next_clearance_m": -0.016564901091180695,
+            "projected_next_pos": [
+              27.38343509890882,
+              26.19503078601511,
+              6.985918460193553
+            ],
+            "projected_next_vel": [
+              -6.167484283447266,
+              -4.653568267822266,
+              -0.7225377559661865
+            ],
+            "min_clearance_m": -0.016564901091180695
+          },
+          "base_wall_clearance_at_gate_collision_t": {
+            "current_clearance_m": 1.0427585006907365,
+            "projected_next_clearance_m": 1.0372151405766403,
+            "projected_next_pos": [
+              21.172618849710616,
+              30.43721514057664,
+              4.9106369194590895
+            ],
+            "projected_next_vel": [
+              -7.604821681976318,
+              -0.1108672022819519,
+              -1.5699869394302368
+            ],
+            "min_clearance_m": 1.0372151405766403
+          },
+          "gate_dynamic_min_pre_collision": {
+            "clearance_m": 0.3489992427222832,
+            "t": 28.750000000000274,
+            "obstacle_idx": 2
+          },
+          "gate_extra_gate_min_pre_collision": {
+            "clearance_m": 0.3489992427222832,
+            "t": 28.750000000000274,
+            "obstacle_idx": 2
+          },
+          "snapshots": [
+            {
+              "t": 26.800000000000246,
+              "base_xy": [
+                31.56998787093191,
+                28.075203885941033
+              ],
+              "gate_xy": [
+                31.641718656532767,
+                27.15302103762654
+              ],
+              "gate_projected_next_xy": [
+                31.424204904549125,
+                27.232203066396988
+              ],
+              "reference_xy": [
+                32.732189448492555,
+                27.267316245652747
+              ],
+              "gate_minus_base_xy": [
+                0.071730785600856,
+                -0.9221828483144918
+              ],
+              "trajectory_delta_m": 0.9797734629960676,
+              "base_wall_clearance": {
+                "current_clearance_m": 4.1699878709319105,
+                "projected_next_clearance_m": 4.096323139794274,
+                "projected_next_pos": [
+                  31.496323139794274,
+                  27.80216847328129,
+                  7.158145810276304
+                ],
+                "projected_next_vel": [
+                  -1.4732946227527643,
+                  -5.4607082531948175,
+                  1.5902926027400444
+                ],
+                "min_clearance_m": 4.096323139794274
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 4.2417186565327665,
+                "projected_next_clearance_m": 4.024204904549125,
+                "projected_next_pos": [
+                  31.424204904549125,
+                  27.232203066396988,
+                  6.688883531058199
+                ],
+                "projected_next_vel": [
+                  -4.350275039672852,
+                  1.5836405754089355,
+                  -1.3330793380737305
+                ],
+                "min_clearance_m": 4.024204904549125
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 5.546601067436576,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 5.546601067436576,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 27.80000000000026,
+              "base_xy": [
+                28.511707959277256,
+                29.004008621129476
+              ],
+              "gate_xy": [
+                29.850283723244587,
+                27.152907659265534
+              ],
+              "gate_projected_next_xy": [
+                29.57681274927608,
+                27.398020841333405
+              ],
+              "reference_xy": [
+                29.072957821803243,
+                29.884118977158554
+              ],
+              "gate_minus_base_xy": [
+                1.3385757639673308,
+                -1.851100961863942
+              ],
+              "trajectory_delta_m": 2.4900000477917565,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.1117132741315618,
+                "projected_next_clearance_m": 0.877437308737251,
+                "projected_next_pos": [
+                  28.24771886835776,
+                  29.27394105807253,
+                  7.918290730085079
+                ],
+                "projected_next_vel": [
+                  -5.279781818389893,
+                  5.398648738861084,
+                  0.44774946570396423
+                ],
+                "min_clearance_m": 0.877437308737251
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 2.450283723244587,
+                "projected_next_clearance_m": 2.17681274927608,
+                "projected_next_pos": [
+                  29.57681274927608,
+                  27.398020841333405,
+                  6.74661958405892
+                ],
+                "projected_next_vel": [
+                  -5.469419479370117,
+                  4.902263641357422,
+                  -3.1691107749938965
+                ],
+                "min_clearance_m": 2.17681274927608
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 4.243605701051132,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 4.243605701051132,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 28.800000000000274,
+              "base_xy": [
+                28.323931678370702,
+                28.511576593735715
+              ],
+              "gate_xy": [
+                25.315078917943033,
+                30.85801159488436
+              ],
+              "gate_projected_next_xy": [
+                25.63478811877925,
+                30.727775799143767
+              ],
+              "reference_xy": [
+                24.507720909461547,
+                31.51391568337426
+              ],
+              "gate_minus_base_xy": [
+                -3.0088527604276685,
+                2.3464350011486452
+              ],
+              "trajectory_delta_m": 4.572366964279874,
+              "base_wall_clearance": {
+                "current_clearance_m": 0.9239316783707018,
+                "projected_next_clearance_m": 0.688121731714402,
+                "projected_next_pos": [
+                  28.088121731714402,
+                  28.632059675569806,
+                  7.060514843186124
+                ],
+                "projected_next_vel": [
+                  -4.716198933125984,
+                  2.409661636681816,
+                  -2.3976104824444064
+                ],
+                "min_clearance_m": 0.688121731714402
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 1.45801159488436,
+                "projected_next_clearance_m": 1.3277757991437675,
+                "projected_next_pos": [
+                  25.63478811877925,
+                  30.727775799143767,
+                  4.740782044397682
+                ],
+                "projected_next_vel": [
+                  6.394184016724383,
+                  -2.604715914811862,
+                  1.5965716212237884
+                ],
+                "min_clearance_m": 1.3277757991437675
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 0.3647242948139868,
+                "obstacle_idx": 2
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 0.3647242948139868,
+                "obstacle_idx": 2
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.30000000000028,
+              "base_xy": [
+                25.300328357652813,
+                30.28949852597264
+              ],
+              "gate_xy": [
+                28.003062831341815,
+                29.377193795550316
+              ],
+              "gate_projected_next_xy": [
+                28.1871103157397,
+                29.08564888130471
+              ],
+              "reference_xy": [
+                22.02547925717858,
+                31.90345775396968
+              ],
+              "gate_minus_base_xy": [
+                2.702734473689002,
+                -0.9123047304223242
+              ],
+              "trajectory_delta_m": 2.8876562570333446,
+              "base_wall_clearance": {
+                "current_clearance_m": 0.8894985259726397,
+                "projected_next_clearance_m": 0.9432457865431644,
+                "projected_next_pos": [
+                  24.92446239753166,
+                  30.343245786543164,
+                  5.65518453093408
+                ],
+                "projected_next_vel": [
+                  -7.517319202423096,
+                  1.0749452114105225,
+                  -2.1503512859344482
+                ],
+                "min_clearance_m": 0.8894985259726397
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.6716390264548558,
+                "projected_next_clearance_m": 0.7901960479704014,
+                "projected_next_pos": [
+                  28.1871103157397,
+                  29.08564888130471,
+                  6.353177414404243
+                ],
+                "projected_next_vel": [
+                  3.6809496879577637,
+                  -5.830898284912109,
+                  2.832087993621826
+                ],
+                "min_clearance_m": 0.6716390264548558
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 1.949846375927899,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 1.949846375927899,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": false
+            },
+            {
+              "t": 29.80000000000029,
+              "base_xy": [
+                21.552859933809433,
+                30.442758500690736
+              ],
+              "gate_xy": [
+                27.691809313081183,
+                26.427709199406223
+              ],
+              "gate_projected_next_xy": [
+                27.38343509890882,
+                26.19503078601511
+              ],
+              "reference_xy": [
+                19.492353064029466,
+                31.993958508598187
+              ],
+              "gate_minus_base_xy": [
+                6.13894937927175,
+                -4.015049301284513
+              ],
+              "trajectory_delta_m": 7.6118355018287485,
+              "base_wall_clearance": {
+                "current_clearance_m": 1.0427585006907365,
+                "projected_next_clearance_m": 1.0372151405766403,
+                "projected_next_pos": [
+                  21.172618849710616,
+                  30.43721514057664,
+                  4.9106369194590895
+                ],
+                "projected_next_vel": [
+                  -7.604821681976318,
+                  -0.1108672022819519,
+                  -1.5699869394302368
+                ],
+                "min_clearance_m": 1.0372151405766403
+              },
+              "gate_wall_clearance": {
+                "current_clearance_m": 0.2918093130811833,
+                "projected_next_clearance_m": -0.016564901091180695,
+                "projected_next_pos": [
+                  27.38343509890882,
+                  26.19503078601511,
+                  6.985918460193553
+                ],
+                "projected_next_vel": [
+                  -6.167484283447266,
+                  -4.653568267822266,
+                  -0.7225377559661865
+                ],
+                "min_clearance_m": -0.016564901091180695
+              },
+              "gate_all_dynamic_min": {
+                "clearance_m": 3.4557539003487654,
+                "obstacle_idx": 3
+              },
+              "gate_extra_gate_min": {
+                "clearance_m": 3.4557539003487654,
+                "obstacle_idx": 3
+              },
+              "gate_collision_flag": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
