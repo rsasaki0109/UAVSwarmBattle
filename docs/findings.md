@@ -3226,7 +3226,7 @@ unchanged. On the r=3.0 third-blocker cell:
 | `w_reach_time=1000, w_clean_ctg=100` | 10/10 joint, 40/40 drones | +0.48 m | 6.19 m | 5.73 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean100_allobs_n10.json` |
 | `w_reach_time=1000, w_clean_ctg=500` | 4/4 drones success | +0.49 m | 10.37 m | 9.20 m | `race_hero_third_blocker_r3_postgoal_progress_wrt1000_wclean500_allobs_n1.json` |
 
-The README hero has been updated to the `w_clean_ctg=100` stress visual:
+The first progress-weighted README hero used the `w_clean_ctg=100` stress visual:
 `docs/images/race_hero_third_blocker_progress_allobs.gif`. This is still
 a small stress/control visual, not a success-rate benchmark, but it
 directly addresses the "it only looks like a big detour" concern: the
@@ -3237,6 +3237,26 @@ confirmation is seed-robust in this cell: episodes 0-9 all finish joint
 success (`40/40` drones, no env / peer / timeout failures). The rendered
 seed reports `+0.484 m` all-obstacle clearance for drone 3 in the
 encounter window, with `5.73 m` max reference error.
+
+Dynamic-gate follow-up (2026-05-26): to make the avoidance legible in
+the GIF rather than just numerically real, two additional moving blockers
+were placed at `x=24.5` so they close around the no-sweeper ghost line
+near `t=28.5 s`. Their target positions are roughly `y=30.1` and
+`y=32.9` at the encounter, with `r=1.75 m` and `|v_y|=0.32 m/s`.
+Together with the two race sweepers, the ghost now enters four moving
+safety halos, while the green run dives below the closing gate:
+
+| arm | outcome | ghost obs0 / obs1 / obs2 / obs3 clearance | moving clearance | max path delta | report |
+|---|---:|---:|---:|---:|---|
+| dynamic gate, progress-weighted | 10/10 joint, 40/40 drones | -1.77 / -1.32 / -0.63 / -1.00 m | +0.77 m | 6.28 m | `race_hero_dynamic_gate_postgoal_progress_allobs_n10.json` |
+
+The updated README hero is
+`docs/images/race_hero_dynamic_gate_progress_allobs.gif`. This still
+does not prove branch necessity; it is a clearer race visual for the
+same post-goal-scoring plus progress-weighted controller. The important
+visual control is that the red ghost passes through the closing gate
+halo, while the green trajectory drops under the gate and then returns
+toward the racing line.
 
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature

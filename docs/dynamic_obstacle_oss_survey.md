@@ -292,8 +292,16 @@ Control-first outputs are tracked:
   race goal. The best tested arm (`w_reach_time=1000`,
   `w_clean_ctg=100`) keeps `10/10` joint success (`40/40` drones),
   preserves all-obstacle clearance (`+0.48 m` in the rendered seed),
-  and reduces max path delta from `8.20 m` to `6.19 m`. The updated README hero is
+  and reduces max path delta from `8.20 m` to `6.19 m`. The previous progress hero was
   `docs/images/race_hero_third_blocker_progress_allobs.gif`.
+- `docs/data/race_hero_dynamic_gate_postgoal_progress_allobs_n10.json`:
+  dynamic-gate follow-up for a clearer visual. Two extra moving blockers
+  close around the ghost line near `x=24.5`, so the no-obstacle ghost
+  enters four safety halos (`-1.77 / -1.32 / -0.63 / -1.00 m`). The
+  progress-weighted run keeps `10/10` joint success (`40/40` drones),
+  clears the closest halo by `+0.77 m` in the rendered seed, and has a
+  `6.28 m` max path delta. The current README hero is
+  `docs/images/race_hero_dynamic_gate_progress_allobs.gif`.
 
 Conclusion: simple phase/radius search can produce a strong no-obstacle
 counterfactual, but the local MPPI controller needed two changes to
@@ -312,8 +320,9 @@ too easy for post-goal-only. The offset-gate and third-blocker probes
 are stronger because multiple hazards conflict with the ghost, but they
 are also solved by post-goal-only. The first static corridor wall probe
 was too blunt for the periodic oval, so the current useful direction is
-progress-weighted control plus either n=3/10 confirmation or a dynamic
-fixed-gate probe.
+progress-weighted control plus small phase / gate-width follow-ups that
+test how far the dynamic-gate visual generalizes beyond the seed-42
+render.
 
 ### P3: only then update README
 

@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-26 (third-blocker progress-weighted n=10 confirmed)
+> 最終更新: 2026-05-26 (dynamic-gate race hero added)
 
 ---
 
@@ -142,9 +142,16 @@
   `6.19 m`、max reference error `5.73 m` まで改善。強すぎる
   `w_clean_ctg=500` は delta `10.37 m` へ悪化。
   README 先頭 GIF は
-  `docs/images/race_hero_third_blocker_progress_allobs.gif` に更新。次は固定ゲートを
-  動的 blocker として作るか、別 seed/phase の小さな grid で stress cell の
-  外挿限界を見る。
+  いったん `docs/images/race_hero_third_blocker_progress_allobs.gif` に更新し、
+  さらに visual clarity 用に dynamic gate 版を作った。gate pair は
+  `x=24.5`, `r=1.75`, `|v_y|=0.32` で ghost line を上下から閉じる。
+  `docs/data/race_hero_dynamic_gate_postgoal_progress_allobs_n10.json` は
+  n=10 で `10/10` joint success (`40/40` drones)、ghost は4 halo に
+  `-1.77/-1.32/-0.63/-1.00 m` 入り、moving は `+0.77 m` clearance、
+  path delta `6.28 m`。README 先頭 GIF は
+  `docs/images/race_hero_dynamic_gate_progress_allobs.gif`。次は別 seed/phase の
+  小さな grid で stress cell の外挿限界を見るか、gate 速度/幅を少し詰めて
+  視覚的な「閉じる」感を強める。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 
