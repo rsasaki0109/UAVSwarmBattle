@@ -17,7 +17,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Rectangle
 import numpy as np
 import yaml
 
@@ -30,6 +30,7 @@ OBSTACLE_COLOR = "#d6261f"
 FAIL_COLOR = "#ef4444"
 AVOID_COLOR = "#16a34a"
 GHOST_COLOR = "#475569"
+STATIC_COLOR = "#111827"
 
 
 def load_cfg(path: Path) -> dict:
@@ -64,6 +65,26 @@ def clearance(
     drone_radius: float,
 ) -> float:
     return float(np.linalg.norm(pos - obs_pos) - obstacle_radius - drone_radius)
+
+
+def draw_static_boxes(ax, scenario: dict) -> None:
+    boxes = ((scenario.get("obstacles") or {}).get("boxes") or [])
+    for box in boxes:
+        center = np.asarray(box.get("center", []), dtype=float)
+        size = np.asarray(box.get("size", []), dtype=float)
+        if center.size < 2 or size.size < 2:
+            continue
+        rect = Rectangle(
+            (float(center[0] - 0.5 * size[0]), float(center[1] - 0.5 * size[1])),
+            float(size[0]),
+            float(size[1]),
+            facecolor=STATIC_COLOR,
+            edgecolor="#000000",
+            linewidth=1.2,
+            alpha=0.30,
+            zorder=6,
+        )
+        ax.add_patch(rect)
 
 
 def main() -> int:
@@ -168,6 +189,7 @@ def main() -> int:
     fig, ax = plt.subplots(figsize=(7.4, 5.45))
     fig.subplots_adjust(left=0.07, right=0.98, bottom=0.08, top=0.83)
     draw_track(ax, center, rx, ry, world)
+    draw_static_boxes(ax, scenario)
     set_limits(ax, args.xlim, args.ylim)
     for _, _, obs_traj in obs_trajs:
         ax.plot(

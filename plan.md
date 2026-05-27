@@ -247,7 +247,10 @@
   planner occupancy (`inflate=0`) が機体半径 `0.4 m` を持っておらず、
   gateで選ばれたラインが voxel wall 境界をかすめたこと。次は
   README/GIF候補を、`inflate=1` 後も本当に dynamic obstacle で経路が変わる
-  場面から選ぶ。
+  場面から選ぶ。`docs/images/race_hero_slot_wall_inflate1_x24_overlay.gif`
+  を作成し、findings の slot-wall 節へ mechanism visual として追加。
+  red=base-wall trajectory under the virtual dynamic gate、green=dynamic-gate
+  trajectory、gray=static slot wall。README先頭は n=10 裏取りの現行heroを維持。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

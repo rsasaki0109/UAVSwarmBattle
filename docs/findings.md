@@ -3492,6 +3492,16 @@ points to a static occupancy/swept-radius mismatch as the dominant
 local bug: the planner had been scoring wall cells with `inflate=0`,
 while the sim collision check uses a `0.4 m` drone radius.
 
+<img src="images/race_hero_slot_wall_inflate1_x24_overlay.gif" alt="Inflated slot-wall race overlay: red base-wall trajectory enters the virtual dynamic-gate halo while green dynamic-gate trajectory bends around the visible static wall" width="740">
+
+The overlay above is rendered from the `x=24,y=27.5,sx=5,inflate=1`
+seed-42 logs. Red is the base-wall trajectory evaluated against the
+dynamic gate, green is the dynamic-gate trajectory, the translucent
+gray rectangle is the static slot wall, and red circles are the moving
+obstacles plus safety halos. It is a mechanism visual rather than a
+README replacement: the current README hero remains backed by the
+stronger n=10 dynamic-gate stress check.
+
 Important correction: the earlier `y=5.5/34.5` README overlay did **not**
 pass this causal visual control. Rerunning the same low-temperature
 controller with scene sweepers removed produced an identical drone-3
