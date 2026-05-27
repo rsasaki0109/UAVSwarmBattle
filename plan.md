@@ -5,7 +5,7 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-26 (dynamic-gate race hero added)
+> 最終更新: 2026-05-27 (slot-wall swept-radius audit reproducibility)
 
 ---
 
@@ -251,6 +251,11 @@
   を作成し、findings の slot-wall 節へ mechanism visual として追加。
   red=base-wall trajectory under the virtual dynamic gate、green=dynamic-gate
   trajectory、gray=static slot wall。README先頭は n=10 裏取りの現行heroを維持。
+  引き継ぎ用の再現手順は `docs/findings.md` の同節に固定済み:
+  `race_hero_slot_wall_failure_report.py`,
+  `race_hero_slot_wall_rollout_horizon_report.py`, そして3本の
+  `race_hero_slot_wall_sweep.py --inflate 1 --n 3` で failure mechanism /
+  horizon audit / post-fix `still_solved` JSON を再生成できる。
 
 #### 2026-05-22..24 の 3 日アーク (HEAD = `016e031`)
 

@@ -3492,6 +3492,30 @@ points to a static occupancy/swept-radius mismatch as the dominant
 local bug: the planner had been scoring wall cells with `inflate=0`,
 while the sim collision check uses a `0.4 m` drone radius.
 
+Reproduction commands for this audit:
+
+```bash
+python3 scripts/race_hero_slot_wall_failure_report.py
+python3 scripts/race_hero_slot_wall_rollout_horizon_report.py
+python3 scripts/race_hero_slot_wall_sweep.py \
+  --wall-center-x 23 --wall-center-y 27.5 --wall-size-x 5 \
+  --n 3 --inflate 1 \
+  --out docs/data/race_hero_slot_wall_x23_y27p5_sx5_inflate1_n3.json
+python3 scripts/race_hero_slot_wall_sweep.py \
+  --wall-center-x 24 --wall-center-y 26.5 --wall-size-x 5 \
+  --n 3 --inflate 1 \
+  --out docs/data/race_hero_slot_wall_x24_y26p5_sx5_inflate1_n3.json
+python3 scripts/race_hero_slot_wall_sweep.py \
+  --wall-center-x 24 --wall-center-y 27.5 --wall-size-x 5 \
+  --n 3 --inflate 1 \
+  --out docs/data/race_hero_slot_wall_x24_y27p5_sx5_inflate1_n3.json
+```
+
+The first two commands refresh the non-inflated failure-mechanism and
+rollout-horizon reports. The three `inflate=1` commands are the direct
+post-fix check; each should print base and gate joint success as `3/3`
+with the row classified as `still_solved`.
+
 <img src="images/race_hero_slot_wall_inflate1_x24_overlay.gif" alt="Inflated slot-wall race overlay: red base-wall trajectory enters the virtual dynamic-gate halo while green dynamic-gate trajectory bends around the visible static wall" width="740">
 
 The overlay above is rendered from the `x=24,y=27.5,sx=5,inflate=1`
