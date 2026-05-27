@@ -5,7 +5,7 @@
 **Python research framework for UAV motion planning.**
 YAML-driven ablations with Wilson 95 % CIs by default.
 
-> **Post-fix status (2026-05-26)**: the old race / gates / dyn4 / chaos
+> **Post-fix status (2026-05-27)**: the old race / gates / dyn4 / chaos
 > dynamic-obstacle headlines were retracted after commit `1646e11` fixed
 > a multi-runner bug that froze dynamic obstacles after total-wipeout
 > episodes. The replacement race-simple mechanism is backed by a
@@ -17,7 +17,11 @@ YAML-driven ablations with Wilson 95 % CIs by default.
 > dives under the closing gate, finishes `10/10` seeds (`40/40` drones),
 > clears the closest halo by `+0.77 m`, and has a `6.28 m` max path
 > delta in the rendered seed. The previous three-blocker stress cell is
-> also confirmed at `10/10` seeds (`40/40` drones).
+> also confirmed at `10/10` seeds (`40/40` drones). A follow-up slot-wall
+> audit found the remaining wall-boundary failures were dominated by
+> static occupancy/swept-radius mismatch, not direct moving-obstacle
+> contact: `inflate=1` flips three gate-wall boundary cells from `0/3`
+> to `3/3`.
 > This is a mechanism/stress result, not a broad benchmark claim. See
 > `docs/dynamic_obstacle_oss_survey.md` and `docs/findings.md` for the
 > audit trail.
@@ -295,7 +299,11 @@ post-goal collision scoring: race lookahead goals no longer mask
 collisions later in the MPPI horizon. The newer hero also adds
 clean-reach progress weighting so the avoiding trajectory stays closer
 to the race line, then adds a moving gate pair so the obstacle avoidance
-reads directly in the GIF. The earlier
+reads directly in the GIF. The slot-wall follow-up is intentionally kept as a mechanism figure in
+<code>docs/findings.md</code>, not as the README hero: it showed that
+inflating static occupancy by one grid cell resolves three narrow
+gate-wall boundary cells that were previously <code>0/3</code>.
+The earlier
 4-way intersection speed-cut (<code>compare_intersection_4way_speed.gif</code>)
 is retained as a companion coordination visual, but it is no longer
 the README hero because it is not a race. The original gates4 / chaos /
@@ -337,8 +345,9 @@ YAMLs and scripts; the current dynamic-obstacle hero is
 post-fix race-simple control sweep. The latest post-fix race-simple work
 adds post-goal collision scoring for short race lookahead goals,
 clean-reach progress weighting, planner-internal provenance, an n=10
-control-first check, and scoring-vs-branch ablations. The older race /
-gates4 / dyn4 / chaos
+control-first check, scoring-vs-branch ablations, and a slot-wall
+swept-radius audit where `inflate=1` turns three gate-wall boundary cells
+from `0/3` to `3/3`. The older race / gates4 / dyn4 / chaos
 scenarios remain retracted after the `1646e11` bug fix.
 
 **External backends:**
