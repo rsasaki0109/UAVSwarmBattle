@@ -1,0 +1,69 @@
+# Risk-aware CVaR-MPPI vs a fast crossing obstacle under PREDICTION NOISE.
+#
+# A drone crosses left→right while a wide obstacle sweeps up through the middle
+# of the corridor. CVaR-MPPI scores each candidate action against n_scenarios
+# perturbed futures (the predicted obstacle path jittered with growing
+# uncertainty, std ∝ √t) and minimises the worst risk_alpha tail instead of the
+# expected case. So it keeps a margin that survives the prediction being wrong,
+# where vanilla MPPI threads the gap that is only safe on the nominal forecast.
+#
+# Pair with exp_cvar_crossing_mppi.yaml (identical scenario, planner: mppi):
+#   uav-nav run examples/exp_cvar_crossing_cvar_mppi.yaml
+#   uav-nav run examples/exp_cvar_crossing_mppi.yaml
+#   uav-nav eval results/cvar_crossing_cvar_mppi
+#   uav-nav eval results/cvar_crossing_mppi
+name: cvar_crossing_cvar_mppi
+seed: 7
+num_episodes: 10
+
+scenario:
+  type: grid_world
+  size: [40, 40]
+  start: [2.0, 20.0]
+  goal: [38.0, 20.0]
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - start: [18.0, 8.0]
+      velocity: [0.0, 7.0]   # fast vertical sweep across the lane
+      reflect: true
+      radius: 1.8
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 700
+  max_accel: 25.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: cvar_mppi
+  max_speed: 4.0
+  replan_period: 0.15
+  horizon: 25
+  dt_plan: 0.08
+  n_samples: 16
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+  # CVaR-specific: the risk lever lives entirely in the planner's scenario
+  # sampling, so the comparison baseline can reuse the same predictor.
+  n_scenarios: 6
+  risk_alpha: 0.15      # average the worst 15% of sampled futures
+  pred_noise_std: 1.2   # m/√s growth of prediction uncertainty
+  predictor:
+    type: noisy_velocity
+    velocity_noise_std: 1.5
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/cvar_crossing_cvar_mppi
