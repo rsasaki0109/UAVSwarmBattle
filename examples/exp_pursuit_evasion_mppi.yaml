@@ -1,0 +1,67 @@
+# Pursuit-evasion: a single drone must cross the field to its goal while an
+# intelligent "intercept" obstacle hunts it by leading its motion (proportional
+# navigation), plus a couple of constant-velocity blockers for texture.
+#
+#   uav-nav run examples/exp_pursuit_evasion_mppi.yaml
+#   uav-nav anim results/<run> --fps 20      # watch the chase
+#
+# The pursuer reads the drone's position each step (set_targets) and aims where
+# the drone *will be*; turn_rate caps how sharply it can cut, so a decisive
+# evasive juke can shake it. See uav_nav_lab/scenario/grid_world.py.
+name: pursuit_evasion_mppi
+seed: 0
+num_episodes: 5
+
+scenario:
+  type: grid_world
+  size: [40, 40]
+  start: [2.0, 20.0]
+  goal: [38.0, 20.0]
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    # the hunter — leads the drone, slightly slower so evasion is possible
+    - start: [20.0, 20.0]
+      policy: intercept
+      speed: 2.4
+      turn_rate: 1.2
+      radius: 1.0
+      reflect: false
+    # two linear blockers drifting across the lane
+    - start: [14.0, 6.0]
+      velocity: [0.0, 1.4]
+      radius: 1.0
+    - start: [28.0, 34.0]
+      velocity: [0.0, -1.4]
+      radius: 1.0
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 1200
+  max_accel: 20.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mppi
+  max_speed: 3.0
+  replan_period: 0.1
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true   # anticipate the moving threats (incl. the hunter)
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/pursuit_evasion_mppi

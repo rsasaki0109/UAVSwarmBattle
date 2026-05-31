@@ -134,7 +134,10 @@ def _run_episode(
             perceived_dyn = sensor.observe_dynamics(
                 t, state.position, sim.scenario.dynamic_obstacles
             )
-            planner.set_current_state(state.position, state.velocity)
+            # Optional planner hook — only some planners (e.g. gpu_mppi) model
+            # plant velocity. Guard so any planner / test stub is tolerated.
+            if hasattr(planner, "set_current_state"):
+                planner.set_current_state(state.position, state.velocity)
             plan = planner.plan(
                 observation,
                 sim.goal,

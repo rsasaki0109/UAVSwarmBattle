@@ -19,7 +19,12 @@ from typing import Any, Mapping
 import numpy as np
 
 from .base import SCENARIO_REGISTRY
-from .grid_world import GridWorldScenario, _DynamicObstacle, _ObstacleSpec
+from .grid_world import (
+    GridWorldScenario,
+    _DynamicObstacle,
+    _ObstacleSpec,
+    _dynamic_from_specs,
+)
 
 
 @dataclass
@@ -81,16 +86,7 @@ class MultiDroneGridScenario(GridWorldScenario):
             )
             for i, d in enumerate(drone_specs)
         ]
-        dynamic_specs = cfg.get("dynamic_obstacles", []) or []
-        dynamic = [
-            _DynamicObstacle(
-                pos0=np.asarray(d["start"], dtype=float),
-                velocity=np.asarray(d["velocity"], dtype=float),
-                reflect=bool(d.get("reflect", True)),
-                radius=float(d.get("radius", 0.5)),
-            )
-            for d in dynamic_specs
-        ]
+        dynamic = _dynamic_from_specs(cfg.get("dynamic_obstacles", []))
         return cls(
             size=(int(size[0]), int(size[1])),
             drones=drones,
