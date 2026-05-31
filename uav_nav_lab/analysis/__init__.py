@@ -18,6 +18,7 @@ Scripts in ``scripts/`` should depend on this package, not on
 
 from __future__ import annotations
 
+from .hero_finder import HeroScore, find_heroes, pair_by_seed, score_cell
 from .joint_stats import (
     binom_pmf,
     load_joint_episodes,
@@ -28,12 +29,16 @@ from .success_rates import joint_outcomes, joint_success_rate
 from .warmup import WarmupDiagnostic, diagnose_warmup
 
 __all__ = [
+    "HeroScore",
     "WarmupDiagnostic",
     "binom_pmf",
     "diagnose_warmup",
+    "find_heroes",
     "joint_outcomes",
     "joint_success_rate",
     "load_joint_episodes",
     "mcnemar_exact_p",
+    "pair_by_seed",
+    "score_cell",
     "wilson",
 ]
