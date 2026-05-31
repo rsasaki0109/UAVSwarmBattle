@@ -134,9 +134,11 @@ class DummySim(SimInterface):
         self._state.t += self.dt
         self._step_count += 1
         if self._advance_scenario:
-            # let pursuing obstacles see the drone before they move
-            self.scenario.set_targets([self._state.position])
-            self.scenario.advance(self.dt)  # no-op for static-only scenarios
+            # Pursuing obstacles are fed drone positions by the runner via
+            # scenario.set_targets() *before* this step (the runner is the only
+            # layer that knows every drone, exactly like the peer view). We only
+            # advance here. Static-only scenarios make advance() a no-op.
+            self.scenario.advance(self.dt)
 
         # Synthetic perception — emit lidar / depth payloads when configured
         # so the same dummy sim can drive both pointcloud_occupancy and

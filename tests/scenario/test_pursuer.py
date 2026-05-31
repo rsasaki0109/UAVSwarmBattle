@@ -131,3 +131,35 @@ def test_pursuer_coasts_without_targets():
     scn.advance(dt)  # no set_targets call → coast
     pos = scn.dynamic_obstacles[0]["position"]
     assert abs(pos[0] - (5.0 + 1.0 * dt)) < 1e-9
+
+
+def test_intercept_target_switch_does_not_fling_aim():
+    """When the nearest target switches between steps, the intercept lead must
+    not difference two distinct targets' positions into a bogus huge velocity.
+
+    Step 1: target A near the obstacle is the nearest; the obstacle records it.
+    Step 2: a far target B suddenly becomes the nearest (A removed). Without the
+    target-identity guard, tvel = (B - A)/dt would be a fabricated ~100+ m/s
+    velocity and the aim would be flung far past B. With the guard, the step
+    falls back to pure pursuit (aim = B), so the obstacle moves a bounded
+    distance no larger than its cruise speed * dt toward B.
+    """
+    ob = _DynamicObstacle(
+        pos0=np.array([0.0, 0.0]),
+        velocity=np.array([1.0, 0.0]),
+        reflect=False,
+        policy="intercept",
+        speed=2.0,
+    )
+    ob.reset()
+    dt = 0.1
+    a = np.array([1.0, 0.0])      # near A (nearest on step 1)
+    b = np.array([0.0, 30.0])     # far B
+    ob.step(dt, (100.0, 100.0), targets=[a, b])  # nearest = A (idx 0)
+    pos_before = ob.pos.copy()
+    # A vanishes; B is now the only / nearest target → nearest_idx changes.
+    ob.step(dt, (100.0, 100.0), targets=[b])
+    moved = float(np.linalg.norm(ob.pos - pos_before))
+    # pure-pursuit bound: cruise speed (2.0) * dt (0.1) = 0.2 m, plus a little
+    # slack. A fling would move many metres.
+    assert moved <= 2.0 * dt + 1e-6

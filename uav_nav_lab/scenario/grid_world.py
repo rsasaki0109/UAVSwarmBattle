@@ -54,11 +54,13 @@ class _DynamicObstacle:
     pos: np.ndarray = None  # type: ignore[assignment]
     vel: np.ndarray = None  # type: ignore[assignment]
     _prev_target: np.ndarray | None = None  # for intercept lead estimation
+    _prev_target_idx: int = -1  # which target the prev sample refers to
 
     def reset(self) -> None:
         self.pos = self.pos0.copy()
         self.vel = self.velocity.copy()
         self._prev_target = None
+        self._prev_target_idx = -1
 
     def _cruise_speed(self) -> float:
         if self.speed is not None:
@@ -71,9 +73,23 @@ class _DynamicObstacle:
         if not targets:
             return  # no perception this step → coast on current velocity
         tgts = [np.asarray(t, dtype=float) for t in targets]
-        nearest = min(tgts, key=lambda t: float(np.sum((t - self.pos) ** 2)))
+        nearest_idx = min(
+            range(len(tgts)),
+            key=lambda i: float(np.sum((tgts[i] - self.pos) ** 2)),
+        )
+        nearest = tgts[nearest_idx]
         aim = nearest
-        if self.policy == "intercept" and self._prev_target is not None and dt > 0:
+        # Only take the finite-difference lead when this step's nearest target
+        # is the SAME one as last step's. If the nearest switched (another
+        # target overtook, or a target dropped out), differencing two distinct
+        # targets' positions would fabricate a huge bogus velocity, so we fall
+        # back to pure pursuit for one step until the estimate restabilises.
+        if (
+            self.policy == "intercept"
+            and self._prev_target is not None
+            and self._prev_target_idx == nearest_idx
+            and dt > 0
+        ):
             # finite-difference target velocity, then lead by closing time.
             tvel = (nearest - self._prev_target) / dt
             speed = self._cruise_speed()
@@ -82,6 +98,7 @@ class _DynamicObstacle:
             lead_t = min(lead_t, 5.0)  # cap so an erratic target can't fling aim
             aim = nearest + tvel * lead_t
         self._prev_target = nearest.copy()
+        self._prev_target_idx = nearest_idx
         direction = aim - self.pos
         norm = float(np.linalg.norm(direction))
         if norm < 1e-9:
