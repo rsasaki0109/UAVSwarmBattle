@@ -191,9 +191,15 @@ flowchart LR
 |---|---|
 | sim | `dummy_2d`, `dummy_3d`, `airsim`, `ros2` |
 | scenario | `grid_world`, `voxel_world`, `multi_drone_{grid,voxel,aerobatic}` |
-| planner | `astar`, `straight`, `mpc`, `mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp` |
+| planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi` |
 | sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `pointcloud_occupancy`, `depth_image_occupancy` |
-| predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity` |
+| predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity`, `game_theoretic` |
+
+Dynamic obstacles support `policy: linear` (constant velocity, the default),
+`pursue` (steers toward the nearest drone), and `intercept` (proportional-
+navigation lead) — see `examples/exp_pursuit_evasion_mppi.yaml`. Paired
+baseline-vs-proposed sweeps can be ranked into a GIF-worthy "hero cell" by
+`scripts/find_hero_cells.py` (McNemar-gated drama score).
 
 Add a backend by dropping a file with `@REGISTRY.register("name")` and a
 `from_config(cfg)` classmethod — the CLI picks it up via `type: name`.
@@ -338,7 +344,7 @@ samples and action provenance are logged under
 ## ✅ Status
 
 v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
-stack includes 4 sim backends, 6 sensors, 3 predictors, 9 planners, and
+stack includes 4 sim backends, 6 sensors, 4 predictors, 11 planners, and
 5 scenario families. Stable ablations are reproducible from the example
 YAMLs and scripts; the current dynamic-obstacle hero is
 `race_hero_dynamic_gate_progress_allobs.gif`, rendered from the
