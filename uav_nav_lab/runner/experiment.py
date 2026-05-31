@@ -174,9 +174,10 @@ def _run_episode(
         )
         # Let pursuing dynamic obstacles see the drone's current (pre-step)
         # position before they advance inside sim.step(). No-op for scenarios
-        # without pursuing obstacles.
+        # without pursuing obstacles; guarded so sims whose scenario stub lacks
+        # the hook (e.g. test fakes) are tolerated.
         scenario = getattr(sim, "scenario", None)
-        if scenario is not None:
+        if scenario is not None and hasattr(scenario, "set_targets"):
             scenario.set_targets([state.position])
         next_state, info = sim.step(cmd)
 
