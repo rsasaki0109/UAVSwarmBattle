@@ -144,6 +144,14 @@ def run_episode_multi(
         # time, and re-pauses) and reads every bridge's state afterward —
         # eliminating the 1-tick command lag that the original
         # master-first loop carried.
+        # Feed ALL drone positions to pursuing dynamic obstacles before the
+        # master sim advances the scenario. Peers are runner-owned (like
+        # _peers_view), so the runner — not the per-drone sim — sets targets;
+        # this also matches what the animation replay feeds, keeping rendered
+        # GIFs consistent with the recorded run. Pre-step positions are used so
+        # the obstacle chases what each planner saw this tick.
+        scenario.set_targets([states[i].position for i in range(n)])
+
         _two_phase = all(
             hasattr(s, "step_command") and hasattr(s, "step_readback") for s in sims
         )

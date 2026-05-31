@@ -1,0 +1,73 @@
+# Game-theoretic peer prediction on a 2-drone perpendicular crossing.
+#
+# One drone flies east, one flies north; their straight-line paths cross at the
+# centre. Each plans independently with MPC and sees its peer as a moving
+# obstacle. The PREDICTOR is the variable: game_theoretic models the peer as
+# steering toward its OWN goal (one best-response step). The value shows up in
+# the *secondary* motion — once a drone swerves to avoid, a constant-velocity
+# forecast extrapolates the swerve in a straight line, while game_theoretic
+# knows the peer will curve back toward its goal, so the ego planner reacts to
+# where the peer is actually headed.
+#
+# Pair with exp_multi_drone_crossing_const_vel.yaml (identical except
+# predictor.type=constant_velocity) and compare joint success:
+#   uav-nav run examples/exp_multi_drone_crossing_game_theoretic.yaml
+#   uav-nav run examples/exp_multi_drone_crossing_const_vel.yaml
+#   uav-nav eval results/mdx_game_theoretic
+#   uav-nav eval results/mdx_const_vel
+#
+# Or sweep the predictor directly:
+#   uav-nav sweep examples/exp_multi_drone_crossing_game_theoretic.yaml \
+#     --param planner.predictor.type=game_theoretic,constant_velocity \
+#     --param num_episodes=30 -j 2
+name: mdx_game_theoretic
+seed: 42
+num_episodes: 12
+
+scenario:
+  type: multi_drone_grid
+  size: [50, 50]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - name: east
+      start: [4.0, 25.0]
+      goal:  [46.0, 25.0]
+      radius: 0.4
+    - name: north
+      start: [25.0, 4.0]
+      goal:  [25.0, 46.0]
+      radius: 0.4
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 1000
+  max_accel: 80.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.8
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  predictor:
+    type: game_theoretic
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/mdx_game_theoretic

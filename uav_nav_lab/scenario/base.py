@@ -40,6 +40,14 @@ class Scenario(ABC):
         Default: no-op. Scenarios with moving obstacles override this.
         """
 
+    def set_targets(self, positions: list[np.ndarray]) -> None:
+        """Inform the scenario of the current drone position(s).
+
+        Called by the simulator (and the animation replay) each step *before*
+        `advance`, so intelligent (pursuing) dynamic obstacles can steer toward
+        the drones. Default: no-op — linear-motion scenarios ignore it.
+        """
+
     @property
     def dynamic_obstacles(self) -> list[dict]:
         """Return current dynamic obstacle states.

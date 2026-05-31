@@ -134,7 +134,10 @@ def _run_episode(
             perceived_dyn = sensor.observe_dynamics(
                 t, state.position, sim.scenario.dynamic_obstacles
             )
-            planner.set_current_state(state.position, state.velocity)
+            # Optional planner hook — only some planners (e.g. gpu_mppi) model
+            # plant velocity. Guard so any planner / test stub is tolerated.
+            if hasattr(planner, "set_current_state"):
+                planner.set_current_state(state.position, state.velocity)
             plan = planner.plan(
                 observation,
                 sim.goal,
@@ -169,6 +172,12 @@ def _run_episode(
             plan, observation, planner.max_speed,
             t_since_replan=float(t - last_replan_t),
         )
+        # Let pursuing dynamic obstacles see the drone's current (pre-step)
+        # position before they advance inside sim.step(). No-op for scenarios
+        # without pursuing obstacles.
+        scenario = getattr(sim, "scenario", None)
+        if scenario is not None:
+            scenario.set_targets([state.position])
         next_state, info = sim.step(cmd)
 
         # `sim_extra` carries any side-channel data the sim backend wants

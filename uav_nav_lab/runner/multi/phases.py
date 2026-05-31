@@ -48,7 +48,10 @@ def _replan_one_drone(
         sim_extra=states[drone_idx].extra or None,
     )
     scenario_dyn = scenario.dynamic_obstacles
-    peer_dyn = _peers_view(states, radii, finished, me=drone_idx)
+    # Pass peer goals so a game-theoretic predictor can model each peer as
+    # steering toward its destination (other planners ignore the goal key).
+    peer_goals = [d.goal for d in scenario.drones] if hasattr(scenario, "drones") else None
+    peer_dyn = _peers_view(states, radii, finished, me=drone_idx, goals=peer_goals)
     # Filter through the sensor — a range-limited sensor will drop
     # peers / scene-dyn obstacles beyond its range.
     perceived_dyn = sensors[drone_idx].observe_dynamics(

@@ -1,0 +1,55 @@
+# Risk-NEUTRAL baseline for the CVaR crossing comparison.
+#
+# Identical scenario and shared MPPI knobs as exp_cvar_crossing_cvar_mppi.yaml —
+# the ONLY difference is planner: mppi (expected-case) vs cvar_mppi (worst-tail).
+# Any gap in collision rate / clearance is attributable to the risk term.
+name: cvar_crossing_mppi
+seed: 7
+num_episodes: 10
+
+scenario:
+  type: grid_world
+  size: [40, 40]
+  start: [2.0, 20.0]
+  goal: [38.0, 20.0]
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - start: [18.0, 8.0]
+      velocity: [0.0, 7.0]
+      reflect: true
+      radius: 1.8
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 700
+  max_accel: 25.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mppi
+  max_speed: 4.0
+  replan_period: 0.15
+  horizon: 25
+  dt_plan: 0.08
+  n_samples: 16
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+  predictor:
+    type: noisy_velocity
+    velocity_noise_std: 1.5
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/cvar_crossing_mppi

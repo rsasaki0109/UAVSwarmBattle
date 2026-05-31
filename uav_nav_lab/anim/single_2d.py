@@ -71,7 +71,9 @@ def animate_episode_2d(plt, animation, cfg: ExperimentConfig, ep: dict, scenario
             scenario._steps_advanced = 0  # bookkeeping
         target = i
         cur = getattr(scenario, "_steps_advanced", 0)
-        for _ in range(cur, target):
+        for k in range(cur, target):
+            # feed recorded drone position so a pursuing obstacle reproduces
+            scenario.set_targets([steps[min(k, len(steps) - 1)]["true_pos"]])
             scenario.advance(dt)
         scenario._steps_advanced = target
 

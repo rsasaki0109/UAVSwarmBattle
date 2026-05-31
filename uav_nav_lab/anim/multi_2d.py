@@ -81,7 +81,12 @@ def animate_episode_multi_2d(
             scenario._steps_advanced = 0
         target = i
         cur = getattr(scenario, "_steps_advanced", 0)
-        for _ in range(cur, target):
+        for k in range(cur, target):
+            # feed recorded drone positions so pursuing obstacles reproduce
+            scenario.set_targets(
+                [e["steps"][min(k, len(e["steps"]) - 1)]["true_pos"]
+                 for e in drones_eps]
+            )
             scenario.advance(dt)
         scenario._steps_advanced = target
 
