@@ -121,10 +121,27 @@ class _DynamicObstacle:
         if angle <= max_step:
             self.vel = desired
             return
-        t = max_step / angle
-        blended = (1 - t) * cu + t * du
-        bn = float(np.linalg.norm(blended))
-        self.vel = blended / bn * self._cruise_speed() if bn > 1e-9 else desired
+        # Exact great-circle rotation of cu toward du by max_step. (The old
+        # linear blend (1-t)cu + t*du collapses to ~0 length when cu and du are
+        # antiparallel, which silently fell back to an instant 180° flip and
+        # defeated the turn-rate cap.) Build the in-plane perpendicular via
+        # Gram-Schmidt; if cu/du are antiparallel (perp ~ 0) the turn direction
+        # is undefined, so pick any axis perpendicular to cu.
+        perp = du - cos_a * cu
+        pn = float(np.linalg.norm(perp))
+        perp_hat = perp / pn if pn > 1e-9 else self._perp_axis(cu)
+        new_dir = np.cos(max_step) * cu + np.sin(max_step) * perp_hat
+        self.vel = new_dir * self._cruise_speed()
+
+    @staticmethod
+    def _perp_axis(u: np.ndarray) -> np.ndarray:
+        """A unit vector perpendicular to u (any one), for the antiparallel
+        turn case where the rotation plane is otherwise undefined."""
+        basis = np.zeros_like(u)
+        basis[int(np.argmin(np.abs(u)))] = 1.0
+        p = basis - float(np.dot(basis, u)) * u
+        pn = float(np.linalg.norm(p))
+        return p / pn if pn > 1e-9 else basis
 
     def step(
         self,

@@ -45,28 +45,64 @@ def _config_name(run_dir: Path) -> str:
     return run_dir.name
 
 
+def _cell_key(name: str, match: str) -> str:
+    """The scenario-cell identity of a config name, with the group's match
+    token removed so a baseline and its proposed twin map to the same key.
+
+    e.g. name='cell_d4_cvar_mppi', match='cvar_mppi' → 'cell_d4_'. Pairing on
+    this key (instead of sorted position) is robust to missing cells and to
+    naming/sort-order differences between the two groups.
+    """
+    return name.replace(match, "")
+
+
 def _pairs_from_sweep(
     sweep_dir: Path, baseline_match: str, proposed_match: str
 ) -> list[tuple[str, Path, Path]]:
-    """Split a sweep's run dirs into baseline/proposed by config-name substring
-    and pair them positionally (sorted), so cell i of each group is compared."""
+    """Split a sweep's run dirs into baseline/proposed by config-name substring,
+    then pair them by SCENARIO-CELL KEY (the config name with the group token
+    stripped), not by sorted position — so a missing cell or divergent naming
+    can't silently misalign baseline cell i with an unrelated proposed cell i."""
     run_dirs = sorted(d for d in sweep_dir.iterdir() if d.is_dir())
-    base = [d for d in run_dirs if baseline_match in _config_name(d)]
+    # Classify proposed first, then baseline = matches baseline_match but is NOT
+    # already proposed. This keeps the two groups disjoint even when one match
+    # token is a substring of the other (the real case here: 'mppi' ⊂
+    # 'cvar_mppi'), where a naive `baseline_match in name` would also sweep the
+    # proposed dirs into the baseline group.
     prop = [d for d in run_dirs if proposed_match in _config_name(d)]
+    prop_set = set(prop)
+    base = [
+        d for d in run_dirs
+        if baseline_match in _config_name(d) and d not in prop_set
+    ]
     if not base or not prop:
         raise SystemExit(
             f"sweep split empty: {len(base)} baseline (match '{baseline_match}'), "
             f"{len(prop)} proposed (match '{proposed_match}')"
         )
-    if len(base) != len(prop):
+    prop_by_key: dict[str, Path] = {}
+    for d in prop:
+        prop_by_key.setdefault(_cell_key(_config_name(d), proposed_match), d)
+    cells = []
+    unmatched = []
+    for b in base:
+        key = _cell_key(_config_name(b), baseline_match)
+        p = prop_by_key.get(key)
+        if p is None:
+            unmatched.append(_config_name(b))
+            continue
+        cells.append((f"{_config_name(b)} vs {_config_name(p)}", b, p))
+    if unmatched:
         print(
-            f"[warn] baseline ({len(base)}) and proposed ({len(prop)}) counts "
-            f"differ; pairing the first {min(len(base), len(prop))} positionally",
+            f"[warn] {len(unmatched)} baseline cell(s) had no proposed twin by "
+            f"key and were skipped: {', '.join(unmatched)}",
             file=sys.stderr,
         )
-    cells = []
-    for b, p in zip(base, prop):
-        cells.append((f"{_config_name(b)} vs {_config_name(p)}", b, p))
+    if not cells:
+        raise SystemExit(
+            "no baseline/proposed cells paired by key — check that the two "
+            "groups share scenario-cell names apart from the match tokens"
+        )
     return cells
 
 

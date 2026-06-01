@@ -159,3 +159,57 @@ def test_cvar_is_more_conservative_than_mppi():
 
     # risk-averse should not steer more downward (toward the rising threat).
     assert a_averse[1] >= a_neutral[1] - 1e-6
+
+
+def test_seed_episode_makes_perturbations_reproducible():
+    """seed_episode(s) keys the scenario-noise RNG on the episode seed, so the
+    sampled perturbed futures are identical for the same seed and differ for a
+    different seed. Checked on the raw perturbations (the RNG output), not the
+    final softmax-averaged plan — in an open scene the chosen action can be
+    noise-insensitive even though the underlying draws differ."""
+    horizon_dts = np.arange(1, 11, dtype=float) * 0.05
+    pred = np.zeros((2, 10, 2), dtype=float)  # 2 obstacles, horizon 10, 2D
+    args = dict(max_speed=5.0, horizon=10, n_scenarios=8, risk_alpha=0.2,
+                pred_noise_std=1.0)
+
+    def perturb_with_seed(s):
+        p = CVaRMPPIPlanner(**args)
+        p.reset()
+        p.seed_episode(s)
+        return p._perturbed_predictions(pred, horizon_dts)
+
+    s1 = perturb_with_seed(42)
+    s2 = perturb_with_seed(42)   # same seed → identical draws
+    s3 = perturb_with_seed(99)   # different seed → different draws
+    assert np.array_equal(s1, s2)
+    assert not np.array_equal(s1, s3)
+    # scenario 0 is always the unperturbed nominal regardless of seed
+    assert np.array_equal(s1[0], pred)
+
+
+def test_seed_episode_independent_of_reset_call_count():
+    """The bug: noise was keyed on a reset() COUNTER, so the Nth episode in a
+    batch differed from the same episode rerun in isolation. With seed_episode,
+    the sampled perturbations depend only on the seed, regardless of how many
+    resets preceded it."""
+    horizon_dts = np.arange(1, 11, dtype=float) * 0.05
+    pred = np.zeros((2, 10, 2), dtype=float)
+    args = dict(max_speed=5.0, horizon=10, n_scenarios=8, risk_alpha=0.2,
+                pred_noise_std=1.0)
+
+    # planner A: seed 7 reached as the 1st episode
+    pa = CVaRMPPIPlanner(**args)
+    pa.reset()
+    pa.seed_episode(7)
+    a_first = pa._perturbed_predictions(pred, horizon_dts)
+
+    # planner B: seed 7 reached as the 4th episode (3 prior resets)
+    pb = CVaRMPPIPlanner(**args)
+    for _ in range(3):
+        pb.reset()
+        pb.seed_episode(123)  # unrelated earlier episodes
+    pb.reset()
+    pb.seed_episode(7)
+    b_later = pb._perturbed_predictions(pred, horizon_dts)
+
+    assert np.allclose(a_first, b_later)

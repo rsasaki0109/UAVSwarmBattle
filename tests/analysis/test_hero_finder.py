@@ -130,3 +130,47 @@ def test_find_heroes_skips_cells_with_no_common_seeds(tmp_path: Path):
     _write_run(prop, {99: True})  # disjoint seeds
     heroes = find_heroes([("x", base, prop)])
     assert heroes == []
+
+
+# --- _outcomes_by_seed layout handling (review follow-up) ---------------
+
+def _write_joint_per_drone(dir_, seed, drone_outcomes):
+    """Write per-drone episode_NNN_drone_MM.json files that SHARE a seed,
+    mirroring the real multi-drone runner output (no joint file)."""
+    import json as _json
+    dir_.mkdir(parents=True, exist_ok=True)
+    for m, ok in enumerate(drone_outcomes):
+        ep = {
+            "meta": {"episode": 0, "seed": seed, "drone_id": m},
+            "outcome": "success" if ok else "collision",
+            "steps": [], "replans": [],
+        }
+        (dir_ / f"episode_000_drone_{m:02d}.json").write_text(_json.dumps(ep))
+
+
+def test_per_drone_shared_seed_and_merges_without_warning(tmp_path, recwarn):
+    """Per-drone files (drone_id present) legitimately share a seed; they must
+    AND-merge to a joint outcome with NO warning."""
+    from uav_nav_lab.analysis.hero_finder import _outcomes_by_seed
+    d = tmp_path / "md"
+    _write_joint_per_drone(d, seed=42, drone_outcomes=[True, False])  # one fails
+    out = _outcomes_by_seed(d, "joint")
+    assert out == {42: False}  # joint fails because a drone failed
+    assert len(recwarn) == 0   # no spurious warning for legitimate siblings
+
+
+def test_non_drone_seed_collision_warns(tmp_path):
+    """Two non-per-drone files sharing a seed means unrelated episodes were
+    mixed in; that must warn (not silently AND-merge)."""
+    import json as _json
+    import pytest as _pytest
+    from uav_nav_lab.analysis.hero_finder import _outcomes_by_seed
+    d = tmp_path / "mixed"
+    d.mkdir()
+    for i, ok in enumerate([True, False]):
+        ep = {"meta": {"episode": i, "seed": 5}, "outcome": "success" if ok else "collision",
+              "steps": [], "replans": []}
+        (d / f"episode_{i:03d}.json").write_text(_json.dumps(ep))
+    with _pytest.warns(UserWarning, match="multiple non-"):
+        out = _outcomes_by_seed(d, "joint")
+    assert out == {5: False}

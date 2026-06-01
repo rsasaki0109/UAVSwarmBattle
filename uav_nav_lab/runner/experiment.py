@@ -106,6 +106,8 @@ def _run_episode(
     state = sim.reset(seed=seed)
     sensor.reset(seed=seed)
     planner.reset()
+    if hasattr(planner, "seed_episode"):
+        planner.seed_episode(seed)
     # Predictors carry RNG state (e.g. NoisyVelocityPredictor) but were
     # never re-seeded — same config + same episode seed produced different
     # outcomes across runs. Use seed + 7777 to decorrelate from sim/sensor.
