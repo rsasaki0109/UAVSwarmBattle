@@ -214,6 +214,14 @@ by seed), CVaR-MPPI cuts collisions ~30% (15.0%→10.5%) and nudges success
 76.0%→79.0%, but the success gain is **not** statistically significant
 (McNemar c=15/b=9, p≈0.31) and trades a little throughput for timeouts — risk
 aversion buys fewer crashes at a small, non-significant cost, not a headline win.
+A 3-arm noise sweep (`scripts/corridor_cvar_noise_phase.py`, n=80/cell) then
+decomposes *where* and *why* the edge exists: it is largest when the sensor is
+good and **erodes to nothing** as actual noise outgrows the planner's assumed
+spread; and a risk-*neutral* ensemble (`risk_alpha=1.0`, just averaging the 12
+sampled futures) captures essentially the whole collision reduction — the
+worst-10% CVaR tail adds nothing significant (all p≥0.25). The lever is
+Monte-Carlo forecast ensembling, not the risk tail. See
+[`docs/findings.md`](docs/findings.md#cvar-mppi-decomposition-the-win-is-forecast-ensembling-not-the-risk-averse-tail).
 
 Add a backend by dropping a file with `@REGISTRY.register("name")` and a
 `from_config(cfg)` classmethod — the CLI picks it up via `type: name`.
@@ -224,7 +232,13 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: GPU MPPI softmax provenance and temperature counterfactual in a
+- **Latest: CVaR-MPPI decomposition — the safety win is forecast ensembling,
+  not the risk tail** — a 3-arm, 5-noise-level paired sweep on the noisy-tracker
+  pinch corridor shows the collision reduction over risk-neutral MPPI is largest
+  when perception is good and vanishes as noise outgrows the assumed spread; and
+  a risk-*neutral* ensemble (averaging the sampled futures) captures the whole
+  effect — the worst-10% CVaR tail is a non-significant refinement (all p≥0.25).
+- **GPU MPPI softmax provenance and temperature counterfactual in a
   moving-obstacle race** —
   after the `1646e11` dynamic-obstacle fix, a re-tuned race-simple
   split cell now has planner-internal provenance. GPU MPPI sees a

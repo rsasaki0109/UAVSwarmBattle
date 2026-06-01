@@ -26,6 +26,14 @@
 #   aversion reduces collisions at a small, non-significant cost in throughput",
 #   not as a headline win. Both planners share a deterministic constant_velocity
 #   predictor so the only difference is the CVaR risk term.
+#
+# Decomposition (scripts/corridor_cvar_noise_phase.py, 3 arms x 5 noise levels,
+# n=80 paired): the collision reduction is largest when the sensor is good and
+# erodes to zero as the actual noise outgrows pred_noise_std; and a RISK-NEUTRAL
+# ensemble (risk_alpha=1.0, just averaging the 12 sampled futures) captures
+# essentially the whole effect -- the worst-10% CVaR tail (risk_alpha below) adds
+# nothing significant (all p>=0.25). The lever is Monte-Carlo forecast
+# ensembling, not the risk tail. See docs/findings.md.
 name: corridor_tracker_cvar_mppi
 seed: 7
 num_episodes: 40
