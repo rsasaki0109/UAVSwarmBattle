@@ -116,11 +116,19 @@ class CVaRMPPIPlanner(MPPIPlanner):
         self._episode += 1
         self._rng = np.random.default_rng(self.base_seed + self._episode)
 
+    # Offset added to the episode seed so the perturbation RNG does not share a
+    # stream with the sim/sensor/predictor, which are seeded from the same
+    # episode seed (sensor at `seed`, predictor at `seed + 7777`). default_rng(N)
+    # yields an identical bit stream regardless of consumer, so an un-offset key
+    # would correlate the CVaR scenario noise with a stochastic sensor's
+    # position noise. Distinct from the predictor's 7777 for the same reason.
+    _SEED_OFFSET = 90001
+
     def seed_episode(self, seed: int) -> None:
         # Key the scenario-perturbation RNG on the actual episode seed (like
         # the predictor's reseed), so re-running a single episode in isolation
         # reproduces the same perturbed futures as when it ran inside a batch.
-        self._rng = np.random.default_rng(self.base_seed + int(seed))
+        self._rng = np.random.default_rng(self.base_seed + int(seed) + self._SEED_OFFSET)
 
     def _perturbed_predictions(
         self, pred_traj: np.ndarray, horizon_dts: np.ndarray

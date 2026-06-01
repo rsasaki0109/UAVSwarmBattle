@@ -64,8 +64,17 @@ def _pairs_from_sweep(
     stripped), not by sorted position — so a missing cell or divergent naming
     can't silently misalign baseline cell i with an unrelated proposed cell i."""
     run_dirs = sorted(d for d in sweep_dir.iterdir() if d.is_dir())
-    base = [d for d in run_dirs if baseline_match in _config_name(d)]
+    # Classify proposed first, then baseline = matches baseline_match but is NOT
+    # already proposed. This keeps the two groups disjoint even when one match
+    # token is a substring of the other (the real case here: 'mppi' ⊂
+    # 'cvar_mppi'), where a naive `baseline_match in name` would also sweep the
+    # proposed dirs into the baseline group.
     prop = [d for d in run_dirs if proposed_match in _config_name(d)]
+    prop_set = set(prop)
+    base = [
+        d for d in run_dirs
+        if baseline_match in _config_name(d) and d not in prop_set
+    ]
     if not base or not prop:
         raise SystemExit(
             f"sweep split empty: {len(base)} baseline (match '{baseline_match}'), "
