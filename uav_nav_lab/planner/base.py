@@ -72,6 +72,16 @@ class Planner(ABC):
     def reset(self) -> None:
         """Called once at the start of each episode. Default: no-op."""
 
+    def seed_episode(self, seed: int) -> None:
+        """Optional hook: reseed any per-episode RNG with the episode seed.
+
+        Called by the runner right after :meth:`reset`, mirroring how the
+        predictor is reseeded, so a planner that samples internally (e.g.
+        ``cvar_mppi`` perturbing predicted obstacle futures) is reproducible
+        from the episode seed rather than a call-order counter. Default: no-op
+        — most planners are deterministic and ignore it.
+        """
+
     def set_current_state(
         self,
         position: np.ndarray,

@@ -109,9 +109,18 @@ class CVaRMPPIPlanner(MPPIPlanner):
 
     def reset(self) -> None:
         super().reset()
-        # Decorrelate scenario noise across episodes while staying reproducible.
+        # Standalone determinism (e.g. unit tests that call reset() directly,
+        # no runner): decorrelate scenario noise across successive resets while
+        # staying reproducible. The runner additionally calls seed_episode()
+        # right after this to key the RNG on the real episode seed.
         self._episode += 1
         self._rng = np.random.default_rng(self.base_seed + self._episode)
+
+    def seed_episode(self, seed: int) -> None:
+        # Key the scenario-perturbation RNG on the actual episode seed (like
+        # the predictor's reseed), so re-running a single episode in isolation
+        # reproduces the same perturbed futures as when it ran inside a batch.
+        self._rng = np.random.default_rng(self.base_seed + int(seed))
 
     def _perturbed_predictions(
         self, pred_traj: np.ndarray, horizon_dts: np.ndarray

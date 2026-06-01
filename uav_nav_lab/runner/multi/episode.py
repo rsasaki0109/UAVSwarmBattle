@@ -60,6 +60,7 @@ def _reset_drones(
         states.append(s)
         sensors[i].reset(seed=seed + 1000 * i)
         planners[i].reset()
+        planners[i].seed_episode(seed + 1000 * i)
         pred = getattr(planners[i], "_predictor", None)
         if pred is not None and hasattr(pred, "reset"):
             pred.reset(seed=seed + 7777 + 1000 * i)

@@ -22,6 +22,7 @@ the episode succeeds — the coordination metric) or *per-drone* level.
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -118,12 +119,23 @@ def _outcomes_by_seed(
 ) -> dict[int, bool]:
     """Map episode-seed → success bool for a run dir.
 
-    Multi-drone runs write ``episode_*_joint.json`` (one per episode) with an
-    ``outcome`` ("success" iff every drone reached its goal) and a ``meta.seed``.
-    Single-drone runs write ``episode_*.json`` with an ``outcome`` and a
-    top-level ``seed``. We prefer the joint files when present (the mission-level
-    metric); otherwise fall back to single-drone episodes. ``level`` is accepted
-    for forward compatibility but both layouts key on episode success here.
+    Three real layouts, in priority order:
+
+    * Multi-drone runs write one ``episode_*_joint.json`` per episode with an
+      ``outcome`` ("success" iff every drone reached its goal) and ``meta.seed``.
+      Preferred — it is the mission-level metric.
+    * Multi-drone runs without joint files (rare) leave per-drone
+      ``episode_*_drone_*.json`` files that legitimately *share* a seed (one
+      per drone, each carrying ``meta.drone_id``). We aggregate them to a joint
+      outcome: the seed succeeds iff every drone-episode at that seed succeeded.
+    * Single-drone runs write one ``episode_*.json`` per episode, each with a
+      *distinct* ``meta.seed`` (``cfg.seed + episode_index``) and no
+      ``drone_id``.
+
+    A seed collision between two files that are NOT per-drone siblings (neither
+    carries a ``drone_id``) means unrelated episodes were mixed into one dir; we
+    warn rather than silently AND-merge them. ``level`` is accepted for forward
+    compatibility; both layouts key on episode success here.
     """
     run_dir = Path(run_dir)
     joint_files = sorted(run_dir.glob("episode_*_joint.json"))
@@ -133,16 +145,24 @@ def _outcomes_by_seed(
             d = json.loads(jf.read_text())
             out[_seed_of(d)] = d.get("outcome") == "success"
         return out
-    # Single-drone (or joint-less) layout: episode_*.json is one file PER DRONE,
-    # several sharing a seed. Aggregate to a joint outcome: a seed succeeds iff
-    # every drone-episode at that seed succeeded.
     by_seed: dict[int, bool] = {}
+    seen_drone_keyed: set[int] = set()
     for ef in sorted(run_dir.glob("episode_*.json")):
         if ef.name.endswith("_joint.json"):
             continue
         d = json.loads(ef.read_text())
         seed = _seed_of(d)
         ok = d.get("outcome") == "success"
+        has_drone_id = "drone_id" in (d.get("meta") or {})
+        if seed in by_seed and not (has_drone_id and seed in seen_drone_keyed):
+            warnings.warn(
+                f"{run_dir}: episode seed {seed} appears in multiple non-"
+                f"per-drone files; AND-merging their outcomes. This usually "
+                f"means unrelated runs were mixed into one directory.",
+                stacklevel=2,
+            )
+        if has_drone_id:
+            seen_drone_keyed.add(seed)
         by_seed[seed] = ok if seed not in by_seed else (by_seed[seed] and ok)
     return by_seed
 

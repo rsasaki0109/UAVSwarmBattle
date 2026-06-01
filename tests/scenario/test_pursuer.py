@@ -121,6 +121,39 @@ def test_turn_rate_caps_heading_change():
     assert angle <= 0.2 * dt + 1e-6
 
 
+def test_turn_rate_antiparallel_rotates_not_flips():
+    """A target directly BEHIND (180°) must rotate the heading by exactly
+    turn_rate*dt, not snap-flip via a degenerate zero-length blend.
+
+    The old linear-blend slerp collapsed to ~0 length when current and desired
+    headings were antiparallel and fell back to `self.vel = desired`, an instant
+    180° flip that defeated the turn_rate cap. The great-circle rotation must
+    turn by precisely the capped step instead.
+    """
+    ob = _DynamicObstacle(
+        pos0=np.array([0.0, 0.0]),
+        velocity=np.array([1.0, 0.0]),  # heading +x
+        reflect=False,
+        policy="pursue",
+        speed=1.0,
+        turn_rate=0.5,  # rad/s
+    )
+    ob.reset()
+    dt = 0.1
+    before = ob.vel.copy()
+    # target directly behind on the -x axis → desired heading is antiparallel
+    ob.step(dt, (100.0, 100.0), targets=[np.array([-10.0, 0.0])])
+    after = ob.vel
+    # speed preserved
+    assert abs(float(np.linalg.norm(after)) - 1.0) < 1e-9
+    cos_a = float(
+        np.dot(before, after) / (np.linalg.norm(before) * np.linalg.norm(after))
+    )
+    angle = float(np.arccos(np.clip(cos_a, -1.0, 1.0)))
+    # rotated by exactly the cap, NOT 180°
+    assert abs(angle - 0.5 * dt) < 1e-6
+
+
 def test_pursuer_coasts_without_targets():
     """A pursuer with no targets fed just coasts on its current velocity."""
     scn = _grid(
