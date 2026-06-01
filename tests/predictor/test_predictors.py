@@ -28,7 +28,6 @@ def test_predictor_registry_has_defaults() -> None:
 
 
 def test_constant_velocity_predictor_extrapolates_linearly() -> None:
-    import numpy as np
 
     from uav_nav_lab.predictor import build_predictor
 
@@ -45,7 +44,6 @@ def test_kalman_predictor_basic_roundtrip() -> None:
     """Kalman predictor must (a) register, (b) produce the right shape,
     (c) eventually agree with the truth on a clean constant-velocity
     target after a few measurement updates."""
-    import numpy as np
 
     from uav_nav_lab.predictor import build_predictor
 
@@ -68,7 +66,6 @@ def test_kalman_predictor_basic_roundtrip() -> None:
 def test_kalman_track_associates_across_calls() -> None:
     """A drifting target observed across multiple calls should remain a
     single track (not be re-spawned every call as a brand-new one)."""
-    import numpy as np
 
     from uav_nav_lab.predictor import build_predictor
 
@@ -86,7 +83,6 @@ def test_kalman_track_associates_across_calls() -> None:
 def test_kalman_delayed_sensor_recovers_current_pose() -> None:
     """Kalman-delayed sensor should converge to the true current pose
     on a constant-velocity target after the buffer fills + a few KF updates."""
-    import numpy as np
 
     from uav_nav_lab.sensor import SENSOR_REGISTRY
 
@@ -111,7 +107,6 @@ def test_kalman_delayed_sensor_recovers_current_pose() -> None:
 def test_delayed_sensor_velocity_window_smooths_noisy_position() -> None:
     """A larger velocity_window should reduce the variance of the
     extrapolated estimate when position observations are noisy."""
-    import numpy as np
 
     from uav_nav_lab.sensor import SENSOR_REGISTRY
 
@@ -147,7 +142,6 @@ def test_delayed_sensor_extrapolate_recovers_current_pose() -> None:
     """With `extrapolate=True`, a stale measurement should be projected
     forward by `delay`, recovering close to the true current pose for a
     constant-velocity target."""
-    import numpy as np
 
     from uav_nav_lab.sensor import SENSOR_REGISTRY
 
@@ -168,7 +162,6 @@ def test_delayed_sensor_extrapolate_recovers_current_pose() -> None:
 def test_kalman_delay_compensation_extrapolates_forward() -> None:
     """With delay_compensation set, the output should sit ahead of the
     raw rollout by delay_compensation × velocity."""
-    import numpy as np
 
     from uav_nav_lab.predictor import build_predictor
 
@@ -186,7 +179,6 @@ def test_kalman_delay_compensation_extrapolates_forward() -> None:
 
 
 def test_noisy_predictor_seed_is_deterministic() -> None:
-    import numpy as np
 
     from uav_nav_lab.predictor import build_predictor
 

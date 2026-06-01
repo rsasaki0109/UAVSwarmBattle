@@ -8,8 +8,6 @@ all other diagnose_warmup callers depend on.
 
 from __future__ import annotations
 
-import math
-from pathlib import Path
 
 import pytest
 
@@ -65,7 +63,6 @@ def test_diagnose_warmup_does_not_leak_session():
     # After the function returns, the module-level singleton should be
     # either cleared by the next call or carry only this run's data.
     # Either way, a second call must produce a self-consistent result.
-    from uav_nav_lab.planner.warmup_select_mppi import _SHARED_SESSIONS
     diag1 = diagnose_warmup(YAML, episodes=1)
     n1 = diag1.n_samples
     diag2 = diagnose_warmup(YAML, episodes=1)

@@ -192,14 +192,28 @@ flowchart LR
 | sim | `dummy_2d`, `dummy_3d`, `airsim`, `ros2` |
 | scenario | `grid_world`, `voxel_world`, `multi_drone_{grid,voxel,aerobatic}` |
 | planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi` |
-| sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `pointcloud_occupancy`, `depth_image_occupancy` |
+| sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `noisy_tracker`, `pointcloud_occupancy`, `depth_image_occupancy` |
 | predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity`, `game_theoretic` |
 
 Dynamic obstacles support `policy: linear` (constant velocity, the default),
 `pursue` (steers toward the nearest drone), and `intercept` (proportional-
-navigation lead) — see `examples/exp_pursuit_evasion_mppi.yaml`. Paired
-baseline-vs-proposed sweeps can be ranked into a GIF-worthy "hero cell" by
-`scripts/find_hero_cells.py` (McNemar-gated drama score).
+navigation lead) — see `examples/exp_pursuit_evasion_mppi.yaml`. Per-episode
+`start_jitter`/`vel_jitter` diversify an obstacle's spawn (keyed on the seed, so
+replays reproduce), and `obstacles.rects: [[x0,y0,x1,y1], …]` declares filled
+wall blocks without enumerating cells. Paired baseline-vs-proposed sweeps can be
+ranked into a GIF-worthy "hero cell" by `scripts/find_hero_cells.py`
+(McNemar-gated drama score).
+
+The `noisy_tracker` sensor reports each dynamic obstacle's position with a fixed
+delay plus Gaussian position/velocity noise — the first sensor that makes a
+moving threat's *current* state uncertain (the others report obstacles at ground
+truth). This is the regime where a forecast actually errs, so it is where a
+risk-aware planner can matter. Honest finding: in the
+`exp_corridor_tracker_{mppi,cvar_mppi}.yaml` pinch-corridor pair (n=200, paired
+by seed), CVaR-MPPI cuts collisions ~30% (15.0%→10.5%) and nudges success
+76.0%→79.0%, but the success gain is **not** statistically significant
+(McNemar c=15/b=9, p≈0.31) and trades a little throughput for timeouts — risk
+aversion buys fewer crashes at a small, non-significant cost, not a headline win.
 
 Add a backend by dropping a file with `@REGISTRY.register("name")` and a
 `from_config(cfg)` classmethod — the CLI picks it up via `type: name`.
@@ -344,7 +358,7 @@ samples and action provenance are logged under
 ## ✅ Status
 
 v0.2.0 is tagged; CI runs on Python 3.10 / 3.11 / 3.12. The current
-stack includes 4 sim backends, 6 sensors, 4 predictors, 11 planners, and
+stack includes 4 sim backends, 7 sensors, 4 predictors, 11 planners, and
 5 scenario families. Stable ablations are reproducible from the example
 YAMLs and scripts; the current dynamic-obstacle hero is
 `race_hero_dynamic_gate_progress_allobs.gif`, rendered from the

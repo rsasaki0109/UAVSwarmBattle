@@ -11,9 +11,9 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from uav_nav_lab.planner.gpu_mppi import GPUMPPIPlanner
-from uav_nav_lab.planner.gpu_mppi import ctg_cache as ctg_cache_mod
-from uav_nav_lab.planner.gpu_mppi.rollout import run_rollout
+from uav_nav_lab.planner.gpu_mppi import GPUMPPIPlanner  # noqa: E402
+from uav_nav_lab.planner.gpu_mppi import ctg_cache as ctg_cache_mod  # noqa: E402
+from uav_nav_lab.planner.gpu_mppi.rollout import run_rollout  # noqa: E402
 
 
 def _free_grid(shape: tuple[int, ...] = (20, 20)) -> np.ndarray:

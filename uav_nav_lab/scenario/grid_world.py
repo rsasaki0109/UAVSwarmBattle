@@ -21,6 +21,10 @@ class _ObstacleSpec:
     count: int = 0
     seed: int = 0
     cells: list[tuple[int, int]] | None = None  # explicit list overrides random
+    # Filled rectangular blocks [x0, y0, x1, y1] (inclusive cell bounds). Lets a
+    # config declare walls/corridors without enumerating every cell — e.g. a
+    # pinch corridor is two rects. Applied on top of `cells` if both are given.
+    rects: list[tuple[int, int, int, int]] | None = None
 
 
 @dataclass
@@ -51,14 +55,26 @@ class _DynamicObstacle:
     policy: str = "linear"
     speed: float | None = None  # pursue/intercept cruise speed; default |velocity|
     turn_rate: float | None = None  # max heading change rad/s (None = instant)
+    # Per-episode Gaussian jitter (std, meters / m·s⁻¹) added to the spawn pos /
+    # velocity when reset() is given an RNG. Without this, every episode replays
+    # the identical obstacle path — seed varies nothing, so a risk-aware planner
+    # never faces the hard tail it is built for. Drawn deterministically from the
+    # episode-seeded RNG so a replayed GIF reproduces the recorded run exactly.
+    start_jitter: float = 0.0
+    vel_jitter: float = 0.0
     pos: np.ndarray = None  # type: ignore[assignment]
     vel: np.ndarray = None  # type: ignore[assignment]
     _prev_target: np.ndarray | None = None  # for intercept lead estimation
     _prev_target_idx: int = -1  # which target the prev sample refers to
 
-    def reset(self) -> None:
+    def reset(self, rng: "np.random.Generator | None" = None) -> None:
         self.pos = self.pos0.copy()
         self.vel = self.velocity.copy()
+        if rng is not None:
+            if self.start_jitter > 0.0:
+                self.pos = self.pos + rng.normal(0.0, self.start_jitter, self.pos.shape)
+            if self.vel_jitter > 0.0:
+                self.vel = self.vel + rng.normal(0.0, self.vel_jitter, self.vel.shape)
         self._prev_target = None
         self._prev_target_idx = -1
 
@@ -179,6 +195,8 @@ def _dynamic_from_specs(specs: Any) -> list[_DynamicObstacle]:
                 turn_rate=(
                     float(d["turn_rate"]) if d.get("turn_rate") is not None else None
                 ),
+                start_jitter=float(d.get("start_jitter", 0.0)),
+                vel_jitter=float(d.get("vel_jitter", 0.0)),
             )
         )
     return out
@@ -221,6 +239,7 @@ class GridWorldScenario(Scenario):
             count=int(obs_cfg.get("count", 0)),
             seed=int(obs_cfg.get("seed", 0)),
             cells=obs_cfg.get("cells"),
+            rects=obs_cfg.get("rects"),
         )
         dynamic = _dynamic_from_specs(cfg.get("dynamic_obstacles", []))
         return cls(
@@ -232,15 +251,21 @@ class GridWorldScenario(Scenario):
             dynamic_obstacles=dynamic,
         )
 
+    # Offset keeping the dynamic-obstacle jitter stream disjoint from the static
+    # placement RNG (which uses `seed ^ obs_spec.seed`), so spawn jitter is not
+    # correlated with where the random static obstacles landed.
+    _DYN_SEED_OFFSET = 0x5DEC0DE
+
     def reseed(self, seed: int) -> None:
         # Mix run-level seed with scenario-level obstacle seed so multiple
         # episodes inside one run get different layouts deterministically.
         self._rng = np.random.default_rng(seed ^ self._obs_spec.seed)
+        dyn_rng = np.random.default_rng(seed ^ self._obs_spec.seed ^ self._DYN_SEED_OFFSET)
         self._static_occ[:] = False
         self._targets = []
         self._populate()
         for d in self._dynamic:
-            d.reset()
+            d.reset(dyn_rng)
         self._refresh_occupancy()
 
     def set_targets(self, positions: list[np.ndarray]) -> None:
@@ -273,10 +298,22 @@ class GridWorldScenario(Scenario):
         self.occupancy = grid
 
     def _populate(self) -> None:
+        if self._obs_spec.rects is not None:
+            for x0, y0, x1, y1 in self._obs_spec.rects:
+                xa, xb = sorted((int(x0), int(x1)))
+                ya, yb = sorted((int(y0), int(y1)))
+                xa = max(0, xa)
+                ya = max(0, ya)
+                xb = min(self.size[0] - 1, xb)
+                yb = min(self.size[1] - 1, yb)
+                if xa <= xb and ya <= yb:
+                    self._static_occ[xa : xb + 1, ya : yb + 1] = True
         if self._obs_spec.cells is not None:
             for ix, iy in self._obs_spec.cells:
                 if 0 <= ix < self.size[0] and 0 <= iy < self.size[1]:
                     self._static_occ[ix, iy] = True
+            return
+        if self._obs_spec.rects is not None:
             return
         if self._obs_spec.type == "random":
             n = self._obs_spec.count

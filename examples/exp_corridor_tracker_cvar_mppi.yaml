@@ -1,0 +1,91 @@
+# Risk-aware CVaR-MPPI through a pinch corridor under NOISY OBSTACLE TRACKING.
+#
+# Why this scenario exists
+# ------------------------
+# CVaR-MPPI only earns its keep when the *forecast* of a moving threat is
+# genuinely uncertain. With a perfect sensor the obstacle's current position is
+# known exactly, so a collision-averse planner just avoids what it sees and a
+# risk term over forecast error has nothing to hedge — in earlier crossing/gate
+# scenarios vanilla MPPI and CVaR-MPPI both scored ~100%. The lever is the
+# PERCEPTION model, not the geometry.
+#
+# Here the `noisy_tracker` sensor reports each obstacle's position with a fixed
+# delay plus Gaussian position/velocity noise, so the obstacle's current state
+# is itself uncertain and a constant-velocity forecast genuinely errs. Static
+# walls (`obstacles.rects`) pinch the lane to a 6 m slit at x=20 that one
+# oscillating obstacle periodically plugs; low `max_accel` gives the drone real
+# momentum so it must commit on the forecast rather than stop on a dime. Each
+# episode jitters the obstacle's spawn (`start_jitter`/`vel_jitter`) so the seed
+# actually varies the encounter.
+#
+# Honest result (n=200, paired by seed vs exp_corridor_tracker_mppi.yaml):
+#   MPPI 76.0% → CVaR-MPPI 79.0% success; collisions 15.0% → 10.5%.
+#   The direction is consistent (CVaR cuts collisions ~30%) but the success-rate
+#   gain is NOT statistically significant (McNemar c=15/b=9, p≈0.31). CVaR also
+#   trades a little success for timeouts (more waiting). Treat this as "risk
+#   aversion reduces collisions at a small, non-significant cost in throughput",
+#   not as a headline win. Both planners share a deterministic constant_velocity
+#   predictor so the only difference is the CVaR risk term.
+name: corridor_tracker_cvar_mppi
+seed: 7
+num_episodes: 40
+
+scenario:
+  type: grid_world
+  size: [40, 40]
+  start: [2.0, 20.0]
+  goal: [38.0, 20.0]
+  obstacles:
+    type: cells
+    # two horizontal walls leaving a y in [17,22] slit, only across the gate
+    # band x in [18,22] so start/goal stay reachable.
+    rects:
+      - [18, 0, 22, 16]
+      - [18, 23, 22, 39]
+  dynamic_obstacles:
+    - start: [20.0, 17.0]
+      velocity: [0.0, 6.0]    # oscillates vertically across the slit
+      reflect: true
+      radius: 2.0
+      start_jitter: 3.5       # per-episode spawn spread (keyed on the seed)
+      vel_jitter: 1.0
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 700
+  max_accel: 4.0            # low accel → the drone must commit on the forecast
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: cvar_mppi
+  max_speed: 4.0
+  replan_period: 0.15
+  horizon: 25
+  dt_plan: 0.08
+  n_samples: 16
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.3
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  temperature: 1.0
+  n_scenarios: 12
+  risk_alpha: 0.1           # average the worst 10% of sampled futures
+  pred_noise_std: 1.5
+  predictor:
+    type: constant_velocity   # deterministic — no double-counted forecast noise
+
+sensor:
+  type: noisy_tracker
+  dt: 0.05
+  delay: 0.2                # obstacle reports lag 0.2 s
+  position_noise_std: 1.2
+  velocity_noise_std: 1.5
+
+output:
+  dir: results/corridor_tracker_cvar_mppi

@@ -36,7 +36,6 @@ class _FakeClient:
 def _install_fake_airsim(monkeypatch: pytest.MonkeyPatch) -> _FakeClient:
     """Inject a fake airsim module exposing the minimum surface used."""
     fake = ModuleType("airsim")
-    captured: dict[str, Any] = {}
 
     class Vector3r:
         def __init__(self, x: float, y: float, z: float) -> None:

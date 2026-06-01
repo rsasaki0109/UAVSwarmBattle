@@ -38,7 +38,6 @@ def test_3d_runs(tmp_path: Path) -> None:
     summary = evaluate_run(run_dir)
     assert summary["n_episodes"] == 1
     # confirm the run was actually 3D (3 components per logged position)
-    import json
     ep0 = json.loads((run_dir / "episode_000.json").read_text())
     assert len(ep0["steps"][0]["true_pos"]) == 3
 
@@ -242,7 +241,6 @@ def test_airsim_camera_to_video_end_to_end_via_mocks(tmp_path: Path) -> None:
     bytes, catching any contract drift between them."""
     import io
     import shutil
-    import sys
     from types import ModuleType, SimpleNamespace
 
     if shutil.which("ffmpeg") is None:
