@@ -2,6 +2,13 @@
 # (dynamic-obstacle) scenario. Same layout as exp_compare_{straight,astar,mpc};
 # RRT is the sampling-based comparison point against grid A* and rollout MPC.
 # See exp_compare_astar.yaml for the full comparison table and discussion.
+#
+# NOTE — counter-intuitively, plain RRT BEATS its "optimal" sibling rrt_star on
+# this dynamic scenario: paired by seed across replan_period (n=60/cell), RRT
+# reaches the goal +12..+33 goal-reaches/60 MORE often (p<1e-3..0.029). The
+# zigzag's incidental slack is doing safety work that rrt_star's rewiring
+# optimises away. See docs/findings.md, "RRT* rewiring is a closed-loop
+# liability", scripts/rrt_rewire_replan_phase.py, and exp_compare_rrt_star.yaml.
 name: cmp_rrt
 seed: 42
 num_episodes: 30
