@@ -84,6 +84,7 @@ different strategies.
 - [CHOMP's explicit clearance band has a sweet spot — but the cap breaks only when you seed it with RRT](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
 - [Goal-aware peer prediction wins head-on and inverts to a liability on the symmetric swap](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
 - [A decentralized right-of-way lateral bias lifts the antipodal swap to 100 %](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+- [The goal-aware peer-predictor win is bimodal in encounter angle](#the-goal-aware-peer-predictor-win-is-bimodal-in-encounter-angle)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6270,3 +6271,73 @@ is — and a ~10-line, default-off, communication-free constraint recovers it.
 Reproduce: `python scripts/antipodal_rightofway_phase.py --n-list 2 3 4 5 6 --episodes 40 --bias 2.0`
 (15 cells; `--bias-sweep 0.5 1 2 4 8` calibrates the magnitude at one N; writes
 `results/antipodal_rightofway_phase.{json,png}`).
+
+## The goal-aware peer-predictor win is bimodal in encounter angle
+
+The proven two-drone crossing win of the `game_theoretic` peer predictor over
+`constant_velocity` ([the crossing study](#game-theoretic-peer-predictor-a-real-significant-crossing-win-after-fixing-a-non-discriminating-example))
+was measured at a *single* geometry — a 90° perpendicular crossing — and the
+[antipodal sections above](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+test the *number* of drones. Neither sweeps the **encounter angle** of a single
+pairwise conflict, which is the orthogonal axis: *for which geometries does
+goal-aware prediction actually help?*
+
+`scripts/crossing_predictor_angle_phase.py` answers it. Two drones each fly a
+diameter of a circle (radius 21 about the world centre), so they are guaranteed
+to conflict at the centre and **every arm has an identical path length (2R)** — the
+only thing that changes across the sweep is the angle between their travel
+directions. 90° reproduces the shipped perpendicular crossing; 180° is a pure
+head-on swap. We hold `max_accel` at the proven sweet spot (6, where
+constant_velocity is most stressed), keep `start_jitter=0.8` (mirror-break per
+seed → honest pairing), swap only the predictor, and pair joint success by seed.
+n=60, McNemar exact, Wilson 95 % intervals.
+
+I expected an **inverted-U**: at head-on the peer's goal sits directly behind the
+ego drone, so "steer toward your goal" and "coast straight" should point the same
+way, making the two predictors *identical* and erasing the gap. **That guess was
+wrong.** The result is **bimodal**:
+
+| encounter angle | const_velocity | game_theoretic | Δ (pp) | gt won / lost | McNemar p |
+|---|---|---|---|---|---|
+| 30° (glancing)        | 98.3 % | 100 %  | +1.7 | 1 / 0  | 1.000     |
+| 60°                   | 100 %  | 100 %  |  0.0 | 0 / 0  | 1.000     |
+| **90° (perpendicular)** | 88.3 % | 100 %  | +11.7 | 7 / 0  | **0.0156** |
+| 120°                  | 98.3 % | 98.3 % |  0.0 | 1 / 1  | 1.000     |
+| 150°                  | 100 %  | 100 %  |  0.0 | 0 / 0  | 1.000     |
+| 165°                  | 95.0 % | 90.0 % | −5.0 | 2 / 5  | 0.4531    |
+| **180° (head-on)**    | 75.0 % | 96.7 % | +21.7 | 14 / 1 | **0.0010** |
+
+![bimodal predictor win over encounter angle](images/crossing_predictor_angle.png)
+
+Two significant peaks — perpendicular (90°) and head-on (180°) — with a dead zone
+of exact ties at every oblique angle in between, and the head-on peak is the
+*larger* of the two. The 90° cell reproduces the published accel=6 result
+bit-for-bit (88.3 % / 100 %, c=7/b=0, p=0.0156), which validates the geometry
+harness; the head-on cell is a new, larger, more-significant operating point
+(c=14/b=1, p=0.0010) that the single-geometry study never saw.
+
+The unifying read is simple: **goal-aware prediction helps only where the myopic
+baseline is actually stressed.** constant_velocity fails in exactly two geometries
+— the perpendicular crossing (a lateral swerve gets extrapolated straight, so the
+forecast lags the peer's curve-back) and the head-on swap (the most adversarial
+mutual manoeuvre). At every oblique angle the low-accel MPC threads the conflict
+regardless of forecast, both predictors sit on the 100 % ceiling, and the
+predictor is irrelevant — there is no room left to win. So the predictor's value
+is **stress-gated, not uniform**: it pays off only when the geometry pushes the
+baseline off the ceiling.
+
+Honest wrinkle: the lone negative cell, 165°, shows game_theoretic nominally
+*behind* (90 % vs 95 %, b=5/c=2) — but it is not significant (p=0.45) and sits
+between two ceiling cells, so it reads as sampling noise near the head-on
+transition, not a real reversal.
+
+This is the angle-axis companion to the N-axis inversion: the 180° head-on cell is
+exactly the N=2 antipodal pair, and it is the *largest* two-drone win here —
+which is what makes the
+[N≥3 inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+so sharp (the geometry where the forecast helps most pairwise is the one whose
+symmetry breaks it in a crowd).
+
+Reproduce: `python scripts/crossing_predictor_angle_phase.py`
+(7 angles × 2 predictors × n=60; writes
+`results/crossing_predictor_angle_phase/phase.{json,png}`).

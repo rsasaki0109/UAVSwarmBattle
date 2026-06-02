@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: A decentralized right-of-way bias lifts the antipodal swap to 100 %**
+- **Latest: The goal-aware peer-predictor win is bimodal in encounter angle**
+  — on a 2-drone crossing, sweeping the *encounter angle* at the proven sweet-spot
+  acceleration (n=60 paired McNemar), game_theoretic beats constant_velocity at
+  *exactly two* geometries: the 90° perpendicular crossing (88→100 %, c=7/b=0,
+  p=0.016, reproducing the published cell) and the 180° head-on swap
+  (75→97 %, c=14/b=1, p=0.001 — the *larger* gain). At every oblique angle in
+  between (60/120/150°) both predictors sit at the 100 % ceiling and the predictor
+  is irrelevant. So goal-aware prediction is not a uniform win but a **stress-gated**
+  one — it pays off only when the geometry pushes the myopic baseline off the
+  ceiling. (This disproved the natural inverted-U guess that head-on would erase the
+  gap.) The 180° cell is the N=2 antipodal pair, the largest pairwise win — which is
+  what makes its N≥3 inversion below so sharp. See
+  `scripts/crossing_predictor_angle_phase.py`.
+- **A decentralized right-of-way bias lifts the antipodal swap to 100 %**
   — the companion result below shows goal-aware peer prediction *inverts* to a
   liability on the symmetric N-drone swap because the fleet mirror-swerves into a
   re-collision at the hub. The fix is not a better forecast but a symmetry-breaker,
