@@ -193,7 +193,7 @@ flowchart LR
 | scenario | `grid_world`, `voxel_world`, `multi_drone_{grid,voxel,aerobatic}` |
 | planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi` |
 | sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `noisy_tracker`, `pointcloud_occupancy`, `depth_image_occupancy` |
-| predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity`, `game_theoretic` |
+| predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity`, `game_theoretic`, `constant_turn` |
 
 Dynamic obstacles support `policy: linear` (constant velocity, the default),
 `pursue` (steers toward the nearest drone), and `intercept` (proportional-
@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: pursuit-evasion — prediction's value is gated by escapability** —
+- **Latest: a constant-turn predictor wins exactly where forecast accuracy
+  binds** — the new `constant_turn` predictor estimates a curving obstacle's turn
+  rate from its velocity rotation and rolls it along an arc (it cuts the
+  intercept hunter's 1 s forecast error ~60–90% vs constant velocity). A paired
+  hunter-speed sweep (both arms predicting; only the model differs) shows it is a
+  *wash* in the easy band (both ~97%, the safety margin absorbs the sub-metre CV
+  error) and null where escape is impossible — but a large, significant win right
+  at the escapability cliff (hunter speed 2.85: 18%→63%, McNemar c=29/b=2,
+  p<1e-4), where the ~0.5 m CV forecast error is the difference between dodging
+  and being caught. Better forecasts only matter when accuracy is the binding
+  constraint.
+- **Pursuit-evasion — prediction's value is gated by escapability** —
   a paired hunter-speed sweep shows that anticipating an `intercept` hunter
   (`use_prediction`) is a large, significant evasion win *only while the hunter
   is slower than the drone*: at hunter speed 2.7 it lifts escape 50%→97% (strict
