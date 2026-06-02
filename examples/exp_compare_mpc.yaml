@@ -1,6 +1,15 @@
 # Planner head-to-head — MPC at the validated Pareto config (n_samples=16,
 # horizon=20) on the predictive (dynamic-obstacle) scenario. See
 # exp_compare_astar.yaml for the full comparison table and discussion.
+#
+# REPLAN CADENCE — `replan_period` (0.2 here) is NOT a safety sweet-spot. Sweeping it
+# on this scenario (scripts/mpc_replan_commitment_phase.py, docs/findings.md "More-
+# frequent replanning is never counterproductive") shows the success curve is monotone
+# at the calibrated operating point: replanning every control step (0.05 s) is best
+# (76.7 %) and stretching to 1.6 s costs 25 points (b=18/c=3, p=0.0015). Freshness wins;
+# the asserted "commitment between replans does safety work" reading is backwards in
+# closed loop. (A dramatic 0.4 s collapse at one obstacle speed is a single-point
+# artifact, not a resonance — it vanishes when the obstacle speed shifts.)
 name: cmp_mpc
 seed: 42
 num_episodes: 30
