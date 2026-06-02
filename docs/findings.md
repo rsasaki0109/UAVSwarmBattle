@@ -84,6 +84,7 @@ different strategies.
 - [CHOMP's explicit clearance band has a sweet spot — but the cap breaks only when you seed it with RRT](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
 - [Goal-aware peer prediction wins head-on and inverts to a liability on the symmetric swap](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
 - [A decentralized right-of-way lateral bias lifts the antipodal swap to 100 %](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+- [The right-of-way bias is safe everywhere and general to head-on convergence](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)
 - [The goal-aware peer-predictor win is bimodal in encounter angle](#the-goal-aware-peer-predictor-win-is-bimodal-in-encounter-angle)
 - [Right-of-way substitutes for the predictor at head-on, but not at the perpendicular crossing](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing)
 ## MPC compute Pareto
@@ -6272,6 +6273,60 @@ is — and a ~10-line, default-off, communication-free constraint recovers it.
 Reproduce: `python scripts/antipodal_rightofway_phase.py --n-list 2 3 4 5 6 --episodes 40 --bias 2.0`
 (15 cells; `--bias-sweep 0.5 1 2 4 8` calibrates the magnitude at one N; writes
 `results/antipodal_rightofway_phase.{json,png}`).
+
+## The right-of-way bias is safe everywhere and general to head-on convergence
+
+The section above adds a `lateral_bias` knob and proves it on one scenario (the
+antipodal ring). Two questions decide whether the knob is *recommendable* or just an
+antipodal trick: does it **harm** the regimes with no symmetric deadlock to break,
+and does it **generalise** to a symmetric deadlock that is *not* a ring? A constant
+rightward bias is not obviously harmless — in a cluttered field it could push a drone
+into obstacles or lengthen paths past the goal timeout. So this has to be measured,
+not assumed.
+
+Four regimes, `lateral_bias` 0.0 vs 2.0, paired by seed, McNemar exact (`b` = bias
+*hurt* a seed, `c` = bias *helped*):
+
+| regime | what it tests | no-bias | bias 2.0 | b / c | p | verdict |
+|---|---|---|---|---|---|---|
+| single drone, static+dynamic clutter | safety (clutter threading) | 40/40 | 40/40 | 0 / 0 | 1.0 | **no harm** |
+| proven 2-drone perpendicular crossing | safety (asymmetric encounter) | 40/40 | 40/40 | 0 / 0 | 1.0 | **no harm** |
+| dense 3×3 perpendicular crossing | generality (a non-ring crossing) | 39/40 | 40/40 | 0 / 1 | 1.0 | no deadlock to fix |
+| 3-lane head-on corridor swap (n=80) | generality (a non-ring head-on) | 70/80 | 80/80 | 0 / 10 | **0.002** | **HELPS** |
+
+Two clean conclusions:
+
+**Safety: the bias never harms.** Single-drone obstacle threading and the proven
+2-drone crossing both sit at 40/40 with and without the bias — zero regressions, the
+McNemar `b` count is 0 in every regime tested. The constant rightward preference is
+small enough next to `w_obs` that it only reorders near-symmetric ties; it does not
+degrade clutter avoidance or the asymmetric-encounter win. So leaving the knob on is
+not a risk (though it ships default-off, since most scenarios have nothing for it to
+do).
+
+**Generality, with a precise scope.** The bias significantly lifts the *head-on
+corridor swap* (70→80/80, b=0 c=10, p=0.002) — a different topology from the
+antipodal ring but the **same opposing-convergence mechanism**, so the win is not
+ring-specific. The *perpendicular* crossing, by contrast, has nothing to fix: it
+sits at 39/40 without the bias because a 90° crossing is exactly the asymmetric
+encounter the goal-aware predictor already wins (it decomposes into independent
+pairwise crossings, not one shared head-on hub). This is the mechanism stated as a
+scope condition: **the deadlock — and therefore the bias's benefit — requires
+symmetric *head-on* convergence (drones driving at each other toward a shared
+region); conflicts that decompose into 90° crossings or independent lanes never
+deadlock, so the bias is a (harmless) no-op there.** The corridor's win is also
+milder than the ring's (87.5 %→100 % vs 2 %→100 % at N=6) precisely because a
+multi-lane corridor partly decomposes into pairwise head-ons, each of which the
+predictor half-solves on its own; the ring forces every drone through one point at
+once, which nothing but a shared rotational convention can resolve.
+
+Net: `lateral_bias` is a safe, targeted symmetry-breaker for head-on convergence, not
+a general always-on coordination primitive — and it costs nothing where it does not
+apply.
+
+Reproduce: `python scripts/lateral_bias_regimes_phase.py --episodes 40` (the three
+n=40 regimes) and `--regimes headon --episodes 80` (the head-on cell at n=80); writes
+`results/lateral_bias_regimes_phase.json`.
 
 ## The goal-aware peer-predictor win is bimodal in encounter angle
 
