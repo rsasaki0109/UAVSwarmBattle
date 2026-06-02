@@ -40,7 +40,17 @@
 # freeze: the correct, shared, symmetric goal-aware forecast makes all drones
 # mirror-swerve into a new symmetric arrangement that re-collides at the hub.
 # Goal-aware prediction needs an explicit symmetry-breaker (right-of-way / lateral
-# bias) to coordinate symmetric swaps — the CPU MPC stack has none.
+# bias) to coordinate symmetric swaps — see planner.lateral_bias and
+# scripts/antipodal_rightofway_phase.py.
+#
+# GEOMETRY — this 90° perpendicular crossing is one of only TWO encounter angles
+# where the win shows up (scripts/crossing_predictor_angle_phase.py, docs/findings.md
+# "The goal-aware peer-predictor win is bimodal in encounter angle"). Sweeping the
+# encounter angle at this accel, game_theoretic beats constant_velocity only at 90°
+# (here, +11.7 pp, p=0.0156) and 180° head-on (+21.7 pp, p=0.0010); at every oblique
+# angle (60/120/150°) both predictors hit the 100 % ceiling and the predictor is
+# irrelevant. The win is stress-gated: it appears only where the myopic baseline is
+# pushed off the ceiling.
 #
 # Pair with exp_multi_drone_crossing_const_vel.yaml (identical except
 # predictor.type=constant_velocity) and compare joint success:
