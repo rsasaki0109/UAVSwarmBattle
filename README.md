@@ -234,7 +234,22 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the classical-planner ladder is a *clearance* ladder, and the buried
+- **Latest: CHOMP's explicit clearance term has a sweet spot — but the cap breaks
+  only when you seed it with RRT** — CHOMP is the one classical planner that
+  reaches for clearance *explicitly* (an obstacle potential of band-width
+  `epsilon`), so it directly tests the clearance-ladder takeaway. Sweeping
+  `epsilon` on the dynamic scenario (n=80, paired McNemar): success is an
+  **inverted-U** peaking at epsilon≈3 (50 %), both tails significantly worse
+  (too narrow → near-straight → drives in, 80 % collision; too wide → over-deviates,
+  can't thread gaps, 86 %). But even tuned to its peak CHOMP caps **below plain
+  RRT** (67 %) — `epsilon` adds clearance from the *static* map while every failure
+  is a *dynamic* collision, so it defends the wrong threat. The fix is the buried
+  roadmap claim, now proven: **seed CHOMP from an RRT path** and it jumps to
+  **78.8 %** (+34 pp over straight-init, p<1e-3) — *above* RRT itself. RRT supplies
+  the omnidirectional incidental clearance; CHOMP smooths it without optimising the
+  slack away. Best of both, second only to MPC. See
+  `scripts/chomp_clearance_band_phase.py`.
+- **The classical-planner ladder is a *clearance* ladder, and the buried
   mechanism stories are both wrong** — `exp_compare_astar.yaml` buries a 5-planner
   table (`straight 0 % < astar 20 % < rrt_star 23 % < rrt 73 % < mpc 100 %`) and
   blames A* for "zigzagging" and `rrt_star` for "blowing the replan budget."

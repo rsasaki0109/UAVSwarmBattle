@@ -81,6 +81,7 @@ different strategies.
 - [Sensor field of view: the blind-spot cost is structural and dominates the range cost](#sensor-field-of-view-the-blind-spot-cost-is-structural-and-dominates-the-range-cost)
 - [RRT* rewiring is a closed-loop liability: the optimal path collides more](#rrt-rewiring-is-a-closed-loop-liability-the-optimal-path-collides-more)
 - [The classical-planner ladder is a clearance ladder, and the buried mechanism stories are both wrong](#the-classical-planner-ladder-is-a-clearance-ladder-and-the-buried-mechanism-stories-are-both-wrong)
+- [CHOMP's explicit clearance band has a sweet spot — but the cap breaks only when you seed it with RRT](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6048,3 +6049,76 @@ Reproduce: `python scripts/planner_clearance_ladder_phase.py`
 (5 replan periods × 4 arms × n=60; rrt_star is the expensive arm — ~20 min on
 6 workers; writes `results/planner_clearance_ladder_phase/phase.{json,png}` +
 per-seed `phase_raw.json`).
+
+## CHOMP's explicit clearance band has a sweet spot — but the cap breaks only when you seed it with RRT
+
+The clearance-ladder study closed with "reach for clearance (inflate, or a cost
+that models motion)." CHOMP is the one classical planner in the suite that
+reaches for clearance *explicitly*: its objective is `U(x) = w_smooth·‖Ax‖²/2 +
+w_obs·Σ c(xᵢ)`, where the obstacle potential `c(xᵢ)` pushes each waypoint off
+obstacles within a band of width `epsilon`. So CHOMP is the clean test of that
+takeaway — does an explicit clearance term buy what plain RRT gets for free?
+`examples/exp_compare_chomp.yaml` buries a single n=30 number (chomp 53.3 %,
+between rrt_star 23 % and rrt 73 %) but never swept `epsilon`, the knob that sets
+the clearance, and never paired-tested it. It also buries a roadmap note: "RRT
+init might lift the success rate further."
+
+Sweeping `epsilon` (shipped default 2.0) on the same dynamic scenario (50×50,
+3 reflecting moving obstacles, perfect sensing, w_obs 5, rp 0.2), paired by seed,
+n=80, exact McNemar vs the shipped value:
+
+| epsilon | success | collision | directness | vs eps 2.0 (net c−b, p) |
+|---|---|---|---|---|
+| 0.5 | 20.0 % | 80 % | 1.06 | −13, p=0.019 |
+| 1.0 | 20.0 % | 80 % | 1.06 | −13, p=0.019 |
+| 2.0 (shipped) | 36.2 % | 64 % | 1.07 | — |
+| 3.0 | 50.0 % | 49 % | 1.09 | +11, p=0.090 (ns) |
+| 4.0 | 36.2 % | 61 % | 1.28 | +0, p=1.0 |
+| 6.0 | 12.5 % | 86 % | 1.44 | −19, p=0.001 |
+| **2.0 + RRT init** | **78.8 %** | 21 % | 1.22 | **+34, p<1e-3** |
+
+(references, same scenario/cadence from the clearance-ladder study: astar 20 %,
+rrt_star 26.7 %, rrt 66.7 %. Every CHOMP failure is a collision — timeouts ≤ 2 %.)
+
+Three findings:
+
+1. **The clearance band has a sweet spot, with two distinct failure modes at the
+   tails.** Success is an inverted-U peaking around epsilon 2–3 (50 % at 3.0); both
+   ends are significantly worse than the shipped 2.0 (eps 0.5/1.0: −13, p=0.019;
+   eps 6.0: −19, p=0.001). Too *narrow* a band and the potential only fires right
+   at the obstacle surface, so the path stays near-straight (directness 1.06) and
+   drives into things (80 % collision); too *wide* and every obstacle shoves the
+   path at once (directness 1.44), it over-deviates, can no longer thread the gaps,
+   and collides again (86 %). The shipped epsilon 2.0 is good but not quite the
+   peak — 3.0 is marginally better (+11, though p=0.090 lands non-significant at
+   n=80).
+
+2. **Even tuned to its peak, explicit clearance caps below plain RRT.** CHOMP's
+   best straight-init cell (50 % at eps 3.0) sits under RRT's 66.7 %. The reason is
+   in the mechanism: `epsilon` adds clearance from the *static* occupancy only
+   (CHOMP does not use the dynamic obstacles — `planner/chomp/planner.py` marks
+   them unused), yet every failure is a *dynamic* collision. Tuning epsilon tunes
+   clearance against the wrong threat. RRT's wandering first-path, by contrast,
+   carries incidental slack in *every* direction, which happens to defend against
+   the moving obstacles too.
+
+3. **Seeding CHOMP from an RRT path shatters the cap — and beats RRT itself.**
+   The buried roadmap claim is not just true, it is the headline: CHOMP at the
+   shipped epsilon but initialised from an RRT path instead of the straight line
+   reaches **78.8 %** — +34 net goal-reaches over straight-init (p<1e-3), and above
+   plain RRT's 66.7 %. RRT supplies the omnidirectional incidental clearance CHOMP
+   cannot synthesise from a static potential; CHOMP's smoothing then cleans up
+   RRT's zigzag without optimising the slack away (directness 1.22, between RRT's
+   1.12 and the over-deviated tail). Best of both, second only to MPC.
+
+So the clearance takeaway sharpens. "Reach for clearance" is right, but *where the
+clearance comes from* decides the ceiling: an explicit potential against the
+static map is a tunable good with a sweet spot and a hard cap, because it defends
+the wrong threat; the incidental, omnidirectional clearance of a sampled path is
+what actually survives unmodelled motion — and the winning recipe is to *generate*
+it with RRT and *clean it up* with CHOMP, not to ask either alone. (MPC still tops
+all of it by being the only planner that models the moving obstacles outright.)
+
+Reproduce: `python scripts/chomp_clearance_band_phase.py`
+(6 epsilons + 1 RRT-init arm × n=80; CHOMP is cheap — ~2 min on 6 workers; writes
+`results/chomp_clearance_band_phase/phase.{json,png}` + per-seed `phase_raw.json`).
