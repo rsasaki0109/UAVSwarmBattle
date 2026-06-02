@@ -1,0 +1,92 @@
+# Antipodal swap (4 drones) + decentralized right-of-way symmetry-breaker.
+#
+# Four drones sit on a ring and each crosses to its ANTIPODE through the same
+# central hub — the canonical hard swarm benchmark, where every drone's
+# straight-line path meets at one point. obstacles:none, so peer coordination
+# is the ONLY thing the planner must solve.
+#
+# THE TRAP (docs/findings.md "Goal-aware peer prediction wins head-on and
+# inverts to a liability on the symmetric swap"): with predictor game_theoretic
+# and NO symmetry-breaker, this scenario is a deadlock — every drone's correct,
+# shared, symmetric forecast (it is fed peer goals, so it knows all peers
+# converge on the hub at once) makes the fleet mirror-swerve into a NEW
+# symmetric arrangement that re-collides at the hub. game_theoretic scores
+# ~30 % joint success here at N=4 (and 2 % at N=6), WORSE than constant_velocity.
+#
+# THE FIX (docs/findings.md "A decentralized right-of-way lateral bias lifts the
+# antipodal swap to 100 %"): planner.lateral_bias adds a small global cost
+# preference for veering to the RIGHT of the goal heading — a shared "give way
+# to the right" rule, no inter-drone communication. The symmetric convergence
+# self-organises into a clockwise roundabout. At lateral_bias=2.0 this reaches
+# 40/40 = 100 % joint success at every N=2..6 (strict Pareto over both the
+# inverted predictor AND the constant-velocity baseline).
+#
+# Try it: flip lateral_bias between 0.0 (deadlock) and 2.0 (solved):
+#   uav-nav run examples/exp_multi_drone_antipodal_rightofway.yaml
+#   uav-nav eval results/antipodal_rightofway_demo
+# Sweep / reproduce the full table:
+#   python scripts/antipodal_rightofway_phase.py --n-list 2 3 4 5 6 --episodes 40 --bias 2.0
+name: antipodal_rightofway_demo
+seed: 1000
+num_episodes: 20
+
+scenario:
+  type: multi_drone_grid
+  size: [50, 50]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - name: d0
+      start: [45.0, 25.0]
+      goal:  [5.0, 25.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d1
+      start: [25.0, 45.0]
+      goal:  [25.0, 5.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d2
+      start: [5.0, 25.0]
+      goal:  [45.0, 25.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d3
+      start: [25.0, 5.0]
+      goal:  [25.0, 45.0]
+      radius: 0.4
+      start_jitter: 0.8
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 1000
+  max_accel: 6.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  lateral_bias: 2.0      # 0.0 = deadlock (~30% at N=4); 2.0 = 100%
+  predictor:
+    type: game_theoretic
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/antipodal_rightofway_demo

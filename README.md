@@ -234,7 +234,22 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: Goal-aware peer prediction wins head-on and *inverts* to a liability
+- **Latest: A decentralized right-of-way bias lifts the antipodal swap to 100 %**
+  — the companion result below shows goal-aware peer prediction *inverts* to a
+  liability on the symmetric N-drone swap because the fleet mirror-swerves into a
+  re-collision at the hub. The fix is not a better forecast but a symmetry-breaker,
+  which the CPU MPC stack lacked. A new `planner.lateral_bias` knob (default off,
+  ~10 lines) adds a tiny global cost preference for veering *right* of the goal
+  heading — a shared "give way to the right" rule, no inter-drone comms — so the
+  symmetric convergence self-organises into a clockwise roundabout. At `bias=2.0`
+  it takes game_theoretic to **40/40 = 100 % joint success at every N from 2 to 6**
+  (n=40 paired McNemar) — a **strict Pareto improvement** (b=0 at every N, never
+  loses a seed) over *both* the inverted predictor (N=6: 1/40 → 40/40) *and* the
+  myopic constant-velocity baseline. Two takeaways: the deadlock was symmetry (only
+  a rotational convention changed, and it vanished), and once symmetry is broken the
+  goal-aware forecast is the better tool again (gt+bias beats const-velocity at
+  every N). See `scripts/antipodal_rightofway_phase.py`.
+- **Goal-aware peer prediction wins head-on and *inverts* to a liability
   on the symmetric swap** — a game-theoretic predictor (models each peer steering
   toward its goal) is the proven winner on a 2-drone crossing. Scaled to the
   antipodal swap (N drones on a ring, each crossing to its antipode through one

@@ -62,6 +62,7 @@ class SamplingMPCPlanner(Planner):
         w_obs: float = 100.0,
         w_smooth: float = 0.05,
         ctg_cache_tolerance: int = 0,
+        lateral_bias: float = 0.0,
         predictor: Predictor | None = None,
     ) -> None:
         self.max_speed = float(max_speed)
@@ -80,6 +81,18 @@ class SamplingMPCPlanner(Planner):
         # See `gpu_mppi.GPUMPPIPlanner.__init__` for the rationale; this is
         # the same speed/accuracy knob for the Dijkstra cost-to-go cache.
         self.ctg_cache_tolerance = max(0, int(ctg_cache_tolerance))
+        # Decentralized right-of-way symmetry-breaker. A small global cost
+        # preference for candidate directions that veer to the ego drone's
+        # RIGHT of the goal heading (clockwise in the horizontal plane). All
+        # drones share the same rule, so a symmetric convergence (e.g. the
+        # antipodal swap, where every drone's goal-aware forecast otherwise
+        # makes the fleet mirror-swerve into a re-collision at the hub) self-
+        # organises into a clockwise roundabout instead of a head-on jam. The
+        # bias only reorders near-tied directions — it is tiny next to the
+        # obstacle term (`w_obs`), so it never overrides real avoidance. 0 = off
+        # (default; the planner is exactly as before). See docs/findings.md
+        # "A decentralized right-of-way lateral bias lifts the antipodal swap".
+        self.lateral_bias = float(lateral_bias)
         self._predictor: Predictor = predictor if predictor is not None else build_predictor(None)
         self._prev_action: np.ndarray | None = None
         # Per-episode caches: ctg / static-occ depend only on the static
@@ -107,6 +120,7 @@ class SamplingMPCPlanner(Planner):
             w_obs=float(cfg.get("w_obs", 100.0)),
             w_smooth=float(cfg.get("w_smooth", 0.05)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
+            lateral_bias=float(cfg.get("lateral_bias", 0.0)),
             predictor=build_predictor(cfg.get("predictor")),
         )
 
@@ -206,6 +220,17 @@ class SamplingMPCPlanner(Planner):
             prev_action=self._prev_action,
             w_goal=self.w_goal, w_obs=self.w_obs, w_smooth=self.w_smooth,
         )
+
+        # Decentralized right-of-way symmetry-breaker (see __init__). Penalise
+        # candidate directions that veer to the LEFT of the goal heading so the
+        # argmin consistently prefers the RIGHT side; in the horizontal plane
+        # the signed lateral offset of direction d from `base` is the z-cross
+        # base × d = base_x·d_y − base_y·d_x (>0 = left/CCW). The term is in
+        # [−lateral_bias, +lateral_bias], tiny next to the obstacle cost, so it
+        # only breaks near-symmetric ties.
+        if self.lateral_bias > 0.0 and ndim >= 2:
+            lateral = base[0] * directions[:, 1] - base[1] * directions[:, 0]
+            costs = costs + self.lateral_bias * lateral
 
         best_action, best_cost, best_k = argmin_aggregate(costs, actions)
         best_rollout = rollouts[best_k]
