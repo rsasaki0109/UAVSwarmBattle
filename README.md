@@ -234,7 +234,22 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: CHOMP's explicit clearance term has a sweet spot — but the cap breaks
+- **Latest: Goal-aware peer prediction wins head-on and *inverts* to a liability
+  on the symmetric swap** — a game-theoretic predictor (models each peer steering
+  toward its goal) is the proven winner on a 2-drone crossing. Scaled to the
+  antipodal swap (N drones on a ring, each crossing to its antipode through one
+  hub, `obstacles: none`, n=40 paired McNemar), the sign **flips and stays
+  flipped**: vs constant-velocity it is **+26 pp at N=2** (98 % vs 72 %, p=0.002,
+  the expected win) but **−32/−50/−50/−63 pp at N=3/4/5/6** (every cell p≤0.001;
+  at N=6 the goal-aware fleet reaches goal in **1/40** vs 26/40). Every failure is
+  a *collision*, zero timeouts — not a freeze. The correct, shared, symmetric
+  forecast makes all drones mirror-swerve into a new symmetric arrangement that
+  re-collides at the hub; the *worse* myopic forecast desynchronises the reactions
+  and threads more drones through. The most accurate predictor is the closed-loop
+  liability — the predictor-level twin of the RRT*/clearance-ladder results — and
+  the CPU MPC stack has no symmetry-breaker to fix it. See
+  `scripts/antipodal_predictor_phase.py`.
+- **CHOMP's explicit clearance term has a sweet spot — but the cap breaks
   only when you seed it with RRT** — CHOMP is the one classical planner that
   reaches for clearance *explicitly* (an obstacle potential of band-width
   `epsilon`), so it directly tests the clearance-ladder takeaway. Sweeping

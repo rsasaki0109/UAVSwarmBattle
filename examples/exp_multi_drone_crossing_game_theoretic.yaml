@@ -30,6 +30,18 @@
 #   constant_velocity dodge reactively, so the win is largest in the middle.
 #   Unlike the CVaR study, this is a genuine, significant predictor win.
 #
+# SCOPE — the win is asymmetric-encounter-specific and INVERTS on symmetric
+# congestion (scripts/antipodal_predictor_phase.py, docs/findings.md
+# "Goal-aware peer prediction wins head-on and inverts to a liability on the
+# symmetric swap"). On the antipodal swap (N drones on a ring, each crossing to
+# its antipode through one hub), this same predictor is +26 pp at N=2 (head-on,
+# p=0.002) but −32/−50/−50/−63 pp at N=3/4/5/6 vs constant_velocity (every cell
+# p≤0.001; 1/40 joint success at N=6). Every failure is a collision, not a
+# freeze: the correct, shared, symmetric goal-aware forecast makes all drones
+# mirror-swerve into a new symmetric arrangement that re-collides at the hub.
+# Goal-aware prediction needs an explicit symmetry-breaker (right-of-way / lateral
+# bias) to coordinate symmetric swaps — the CPU MPC stack has none.
+#
 # Pair with exp_multi_drone_crossing_const_vel.yaml (identical except
 # predictor.type=constant_velocity) and compare joint success:
 #   uav-nav run examples/exp_multi_drone_crossing_game_theoretic.yaml
