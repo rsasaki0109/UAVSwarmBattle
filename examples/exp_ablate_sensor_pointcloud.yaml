@@ -18,6 +18,12 @@
 # entering the planner's path from the side or behind during a replan
 # window; an omni-LiDAR sees them in time.
 #
+# This single point is now PROVEN, decomposed (range cost vs FOV cost) and
+# swept over obstacle density in scripts/sensor_fov_density_phase.py: the FOV
+# cost is significant at every density (p<1e-4) and the 30 pp headline was
+# conservative — it widens with clutter. See docs/findings.md, "Sensor field
+# of view: the blind-spot cost is structural and dominates the range cost".
+#
 # Reproduce: uav-nav run examples/exp_ablate_sensor_pointcloud.yaml
 #            uav-nav eval results/abl_sensor_pc
 name: abl_sensor_pc

@@ -234,7 +234,19 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: a three-way predictor shootout, and an offline "crossover" that
+- **Latest: a sensor's field of view costs more than its range, and the gap is
+  structural** — a buried YAML number claimed a forward 90° depth camera reaches
+  the goal 30 pp less often than an omni 8 m LiDAR at the same compute. Proven,
+  decomposed, and swept over obstacle density (n=100/cell, paired McNemar): the
+  **FOV cost (omni→depth) is huge and significant at every density** (−15 to −60
+  goal-reaches/100, p<1e-4 throughout, present even at sparse clutter), while the
+  **range cost (perfect→omni) is negligible until clutter is dense** (non-sig
+  below count 50, growing to −30 pp by count 100). With `memory` occupancy the
+  forward camera never maps what stays outside its cone, so A* routes through
+  "unknown=free" cells and collides — no planner smarts recover what the sensor
+  never surfaced. Angular coverage ≫ range for cluttered navigation. See
+  `scripts/sensor_fov_density_phase.py`.
+- **A three-way predictor shootout, and an offline "crossover" that
   refuses to cross** — under noisy velocity `constant_turn` (model the curve)
   decays, so the natural counter is `kalman_velocity` (ignore the velocity
   field, filter motion from clean positions — structurally noise-immune).
