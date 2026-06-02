@@ -76,6 +76,7 @@ different strategies.
 - [Game-theoretic peer predictor: a real, significant crossing win](#game-theoretic-peer-predictor-a-real-significant-crossing-win-after-fixing-a-non-discriminating-example)
 - [Pursuit-evasion: prediction's value is gated by escapability](#pursuit-evasion-predictions-value-is-gated-by-escapability)
 - [Constant-turn predictor: a better forecast wins only where accuracy binds](#constant-turn-predictor-a-better-forecast-wins-only-where-accuracy-binds)
+- [Constant-turn under noisy velocity: the win decays, and smoothing does not rescue it](#constant-turn-under-noisy-velocity-the-win-decays-and-smoothing-does-not-rescue-it)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5612,12 +5613,97 @@ gating leaves open. Both are mid-band effects, for the same reason — the
 win lives where the problem is hard but still solvable.
 
 Caveats: `constant_turn` needs its `dt` set to the planner's
-`replan_period` (it scales the ω estimate); under a noisy velocity field
-(`noisy_tracker`) lower its `smoothing` or set `max_turn_rate` to keep an
-estimate spike from flinging the arc; and the turn is modelled in 2D only
-(3D obstacles fall back to constant velocity).
+`replan_period` (it scales the ω estimate); the turn is modelled in 2D
+only (3D obstacles fall back to constant velocity); and its behaviour
+under noisy velocity sensing is *not* what the offline intuition suggests
+— see the next section, which tests it under `noisy_tracker` and corrects
+the `smoothing` recommendation this caveat originally carried.
 
 Reproduce: `python scripts/curved_predictor_speed_phase.py`
 (6 speed levels × 2 predictors × n=60; ~16 min on 16 workers; writes
 `results/curved_predictor_speed_phase/phase.{json,png}` + per-seed
 `phase_raw.json`).
+
+## Constant-turn under noisy velocity: the win decays, and `smoothing` does not rescue it
+
+The section above validated `constant_turn` under a *perfect* sensor and
+shipped a plausible-sounding caveat: under a noisy velocity field, lower
+the `smoothing` (EMA the ω estimate) to stop a noise spike from flinging
+the arc. This study tests that claim end-to-end — and **disproves it**.
+
+`constant_turn` reads ω from the rotation of an obstacle's *velocity*
+between calls, which is exactly the channel `noisy_tracker` corrupts. Two
+predictions to check: (1) does the cliff-edge evasion win (hunter speed
+2.85: 18 % → 63 %) survive noisy velocity, and (2) does low `smoothing`
+help once it is noisy?
+
+**Offline intuition (constant-ω surrogate).** Driving a target on a
+*steady* arc (ω = 0.6 rad/s) and corrupting its reported velocity, the
+1 s-ahead forecast error says smoothing clearly helps:
+
+| velocity_noise_std | 0.0 | 0.1 | 0.2 | 0.3 | 0.5 |
+|---|---|---|---|---|---|
+| constant_velocity (mean, m) | 0.64 | 0.65 | 0.68 | 0.72 | 0.87 |
+| constant_turn, smoothing=1.0 | **0.08** | 0.62 | 1.16 | 1.58 | 2.07 |
+| constant_turn, smoothing=0.15 | 0.11 | **0.22** | **0.38** | **0.54** | 0.88 |
+
+On a steady turn the default (smoothing=1.0) is best when clean but
+*worst* under noise — a single noisy velocity flips the estimated turn —
+while smoothing=0.15 averages the spikes down and holds the lead to
+≈0.3. This is the story the shipped caveat told.
+
+**Closed-loop outcome (the real hunter).** It does not hold. A paired
+sweep at the escapability cliff (hunter speed 2.85), all three arms
+predicting, `noisy_tracker` corrupting *only* the velocity channel
+(delay 0, position noise 0, so the predictor effect is isolated), n=60:
+
+| velocity_noise_std | const_velocity | ct smoothing=1.0 (shipped) | ct smoothing=0.15 |
+|---|---|---|---|
+| 0.0 | 18.3 % | **63.3 %** (c/b 29/2, p<1e-4) | 48.3 % (22/4, p=5e-4) |
+| 0.1 |  5.0 % | **26.7 %** (14/1, p=1e-3) | 18.3 % (8/0, p=8e-3) |
+| 0.2 |  5.0 % | 13.3 % (6/1, p=0.13) | 8.3 % (2/0, p=0.50) |
+| 0.3 |  8.3 % | 16.7 % (7/2, p=0.18) | 11.7 % (4/2, p=0.69) |
+| 0.5 | 10.0 % | 18.3 % (8/3, p=0.23) | 11.7 % (5/4, p=1.00) |
+
+(Control: the noise=0 row reproduces the perfect-sensor result of the
+section above *bit-for-bit* — 18.3 % / 63.3 % — confirming
+`noisy_tracker` with delay 0 and zero noise is a faithful passthrough.)
+
+Two findings, both against the prior intuition:
+
+1. **The win survives only mild noise, then decays.** `constant_turn`
+   stays a large, significant win at velocity_noise 0.1 (5 % → 27 %,
+   p=1e-3 — a 5× relative lift). By noise ≥ 0.2 the whole regime collapses
+   toward the floor: every arm is in single digits, `constant_turn` is
+   still numerically ~2× the baseline but n=60 is underpowered there and
+   significance is gone. The cliff is unforgiving — once the velocity is
+   noisy enough, the turn cannot be read and any forecast error is fatal.
+
+2. **`smoothing` does not earn its keep — the offline intuition is
+   inverted.** The responsive default (smoothing=1.0) is numerically
+   *ahead* of smoothing=0.15 at every single noise level, the opposite of
+   the offline-error ranking. Head-to-head paired tests of the two CT arms
+   find no significant difference (p ≥ 0.16 throughout), so the honest
+   claim is not "the default is a trap" but: **smoothing buys no
+   measurable robustness here, and if anything trends against you.** The
+   reason is that the offline surrogate used a *constant* ω, where
+   smoothing is pure variance reduction; the real `intercept` hunter has a
+   *time-varying* ω (proportional-navigation lead), and smoothing's lag
+   bias offsets the variance it removes. Averaging a maneuvering target's
+   turn rate makes the forecast stale exactly when the maneuver matters.
+
+The reusable lesson sharpens the one from the section above. There the
+caution was *offline accuracy ≠ outcome* (the planner's safety margin can
+swallow a forecast gain). Here it is worse: **offline accuracy measured on
+a stationary surrogate can recommend the wrong knob setting outright.** The
+variance/lag tradeoff that governs a predictor's tuning inverts between a
+steady target and a maneuvering one, so a knob validated on constant-ω
+synthetic data must be re-checked in the closed loop before it is
+recommended — which is why the prior section's `smoothing` caveat is
+retracted here rather than left to mislead.
+
+Reproduce: `python scripts/curved_predictor_noise_phase.py`
+(5 velocity-noise levels × 3 arms × n=60; ~15 min on 16 workers; writes
+`results/curved_predictor_noise_phase/phase.{json,png}` + per-seed
+`phase_raw.json`). The offline forecast-error table is reproduced in that
+script's header docstring.
