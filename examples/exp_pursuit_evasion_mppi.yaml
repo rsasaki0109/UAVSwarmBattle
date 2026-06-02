@@ -24,6 +24,13 @@
 #      is unwinnable and prediction adds nothing (p>=0.5): the feature helps only
 #      where escape is physically possible, peaking in the mid-band where the
 #      reactive planner is a coin-flip but prediction still escapes.
+#
+# Which forecast? The hunter CURVES (proportional-navigation lead), so a
+# constant-velocity forecast mis-points. The `constant_turn` predictor (estimate
+# the turn rate, roll along the arc) cuts that forecast error ~60-90% and, right
+# at the escapability cliff (hunter speed 2.85), lifts evasion 18% -> 63%
+# (paired McNemar c=29/b=2, p<1e-4) — set `predictor: {type: constant_turn, dt:
+# 0.1}` (dt = replan_period). See scripts/curved_predictor_speed_phase.py.
 name: pursuit_evasion_mppi
 seed: 0
 num_episodes: 5

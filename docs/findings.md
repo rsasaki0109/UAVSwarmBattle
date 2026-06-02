@@ -75,6 +75,7 @@ different strategies.
 - [CVaR-MPPI decomposition: the win is forecast ensembling, not the risk-averse tail](#cvar-mppi-decomposition-the-win-is-forecast-ensembling-not-the-risk-averse-tail)
 - [Game-theoretic peer predictor: a real, significant crossing win](#game-theoretic-peer-predictor-a-real-significant-crossing-win-after-fixing-a-non-discriminating-example)
 - [Pursuit-evasion: prediction's value is gated by escapability](#pursuit-evasion-predictions-value-is-gated-by-escapability)
+- [Constant-turn predictor: a better forecast wins only where accuracy binds](#constant-turn-predictor-a-better-forecast-wins-only-where-accuracy-binds)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5553,4 +5554,70 @@ trusting any single-cell p-value.
 Reproduce: `python scripts/pursuit_prediction_speed_phase.py`
 (6 speed levels × 2 arms × n=60; ~14 min on 16 workers; writes
 `results/pursuit_prediction_speed_phase/phase.{json,png}` + per-seed
+`phase_raw.json`).
+
+## Constant-turn predictor: a better forecast wins only where accuracy binds
+
+The escapability study above used `use_prediction` with the default
+*constant-velocity* forecast. But the `intercept` hunter does not move
+in a straight line — proportional-navigation lead makes it curve — so a
+straight-line forecast systematically points the wrong way. This is the
+gap the new `constant_turn` predictor fills: it estimates each obstacle's
+turn rate ω from the rotation of its velocity vector between successive
+observations (stateful, with nearest-neighbour association across calls)
+and rolls the state forward along the matching circular arc, reducing to
+constant velocity as ω→0 (so it is a no-op on straight traffic, not a
+regression).
+
+**Forecast-error check (offline, no planner).** Driving the intercept
+hunter against a scripted crossing target and comparing each predictor's
+rollout to the hunter's actual future positions: constant_turn cuts the
+mean horizon forecast error **~60–90 %** vs constant velocity (at a 1 s
+horizon, 0.15 m → 0.03 m mean, 0.50 m → 0.08 m p90; at 2 s, 0.57 m →
+0.21 m mean). The reduction is concentrated on the *curved* segments —
+on straight stretches both are near-perfect, so constant_turn "wins" only
+~40–60 % of instants but slashes the error where the hunter is turning.
+
+**Does the better forecast change the outcome?** That is the real
+question — the planner's safety margin might already absorb a sub-metre
+forecast error. A paired hunter-speed sweep with **both arms predicting**
+(only `predictor.type` differs), per-seed jitter, n=60:
+
+| hunter speed | constant_velocity | constant_turn | Δ | turn won/lost (c/b) | McNemar p |
+|---|---|---|---|---|---|
+| 2.0  | 96.7 % | 96.7 % |  +0.0 |  2 / 2 | 1.00 (tie) |
+| 2.4  | 98.3 % | 100.0 % |  +1.7 |  1 / 0 | 1.00 (ceiling) |
+| 2.7  | 96.7 % | 95.0 % |  −1.7 |  1 / 2 | 1.00 (ceiling) |
+| 2.8  | 63.3 % | 88.3 % | +25.0 | 21 / 6 | 0.0059 |
+| 2.85 | 18.3 % | 63.3 % | +45.0 | 29 / 2 | <0.0001 |
+| 2.9  |  5.0 % | 13.3 % |  +8.3 |  5 / 0 | 0.0625 |
+
+The finding: **a more accurate forecast helps only where forecast accuracy
+is the binding constraint.** In the easy band (hunter ≤ 2.7) both
+predictors sit at the ~97 % ceiling — constant velocity is already good
+enough and the safety margin swallows its sub-metre error, so the better
+model is a wash. Where escape is physically impossible (hunter ≥ 2.9, at
+the drone's own max_speed) no forecast helps and the gain is marginal
+(p=0.06). But **right at the escapability cliff (2.8–2.85), constant_turn
+is a large, highly significant win** (+25 to +45 pp, p≤0.006): here the
+hunter is fast, escape is barely possible, and the ~0.5 m constant-velocity
+error is exactly the difference between dodging and being caught.
+Effectively, modelling the turn shifts the escapability cliff (§ above)
+a notch to the right.
+
+This composes with the escapability result rather than contradicting it:
+prediction's *existence* is gated by escapability (predict vs react), and
+prediction's *quality* matters only in the narrow contested band that
+gating leaves open. Both are mid-band effects, for the same reason — the
+win lives where the problem is hard but still solvable.
+
+Caveats: `constant_turn` needs its `dt` set to the planner's
+`replan_period` (it scales the ω estimate); under a noisy velocity field
+(`noisy_tracker`) lower its `smoothing` or set `max_turn_rate` to keep an
+estimate spike from flinging the arc; and the turn is modelled in 2D only
+(3D obstacles fall back to constant velocity).
+
+Reproduce: `python scripts/curved_predictor_speed_phase.py`
+(6 speed levels × 2 predictors × n=60; ~16 min on 16 workers; writes
+`results/curved_predictor_speed_phase/phase.{json,png}` + per-seed
 `phase_raw.json`).
