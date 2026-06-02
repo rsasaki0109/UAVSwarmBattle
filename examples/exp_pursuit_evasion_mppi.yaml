@@ -8,6 +8,22 @@
 # The pursuer reads the drone's position each step (set_targets) and aims where
 # the drone *will be*; turn_rate caps how sharply it can cut, so a decisive
 # evasive juke can shake it. See uav_nav_lab/scenario/grid_world.py.
+#
+# Is anticipating the hunter (planner.use_prediction) worth it? See the honest
+# study in scripts/pursuit_prediction_speed_phase.py and docs/findings.md.
+# Two caveats it surfaces:
+#   1. As shipped this scenario is DETERMINISTIC (single drone, perfect sensor,
+#      fixed geometry) — the episode seed changes nothing, so every cell is
+#      all-or-nothing and num_episodes>1 buys no statistical power. To make it a
+#      real paired test, add `start_jitter` to the dynamic obstacles (see the
+#      sweep) so each seed is a different chase.
+#   2. The value is gated by ESCAPABILITY. With per-seed jitter and the hunter
+#      slower than the drone (max_speed 3.0), prediction is a large, significant
+#      win — at hunter speed 2.7 it lifts evasion 50% -> 97% (paired McNemar
+#      c=28/b=0, p<1e-4). Once the hunter reaches the drone's own speed the chase
+#      is unwinnable and prediction adds nothing (p>=0.5): the feature helps only
+#      where escape is physically possible, peaking in the mid-band where the
+#      reactive planner is a coin-flip but prediction still escapes.
 name: pursuit_evasion_mppi
 seed: 0
 num_episodes: 5

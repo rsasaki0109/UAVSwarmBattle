@@ -197,7 +197,9 @@ flowchart LR
 
 Dynamic obstacles support `policy: linear` (constant velocity, the default),
 `pursue` (steers toward the nearest drone), and `intercept` (proportional-
-navigation lead) — see `examples/exp_pursuit_evasion_mppi.yaml`. Per-episode
+navigation lead) — see `examples/exp_pursuit_evasion_mppi.yaml`, and
+`scripts/pursuit_prediction_speed_phase.py` for the honest study of when
+anticipating the hunter actually helps (it is gated by escapability). Per-episode
 `start_jitter`/`vel_jitter` diversify an obstacle's spawn (keyed on the seed, so
 replays reproduce), and `obstacles.rects: [[x0,y0,x1,y1], …]` declares filled
 wall blocks without enumerating cells. Paired baseline-vs-proposed sweeps can be
@@ -232,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: game-theoretic peer predictor is a real, significant crossing win** —
+- **Latest: pursuit-evasion — prediction's value is gated by escapability** —
+  a paired hunter-speed sweep shows that anticipating an `intercept` hunter
+  (`use_prediction`) is a large, significant evasion win *only while the hunter
+  is slower than the drone*: at hunter speed 2.7 it lifts escape 50%→97% (strict
+  Pareto, McNemar c=28/b=0, p<1e-4), but once the hunter reaches the drone's own
+  max_speed the chase is unwinnable and the edge is null (p≥0.5). The shipped
+  example was non-discriminating for the *opposite* reason to the crossing — a
+  deterministic 0→100% blowout with zero seed variance — fixed by injecting
+  obstacle `start_jitter` so each seed is a different chase.
+- **Game-theoretic peer predictor is a real, significant crossing win** —
   a paired max_accel sweep on a 2-drone crossing shows `game_theoretic` reaches
   100% joint success at every accel level and never loses a paired seed (strict
   Pareto), while `constant_velocity` drops to ~88% in the mid-accel band where
