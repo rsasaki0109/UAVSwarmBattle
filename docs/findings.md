@@ -78,6 +78,7 @@ different strategies.
 - [Constant-turn predictor: a better forecast wins only where accuracy binds](#constant-turn-predictor-a-better-forecast-wins-only-where-accuracy-binds)
 - [Constant-turn under noisy velocity: the win decays, and smoothing does not rescue it](#constant-turn-under-noisy-velocity-the-win-decays-and-smoothing-does-not-rescue-it)
 - [Predictor shootout: model the curve, filter it out, or trust it — and the crossover that does not cross](#predictor-shootout-model-the-curve-filter-it-out-or-trust-it--and-the-crossover-that-does-not-cross)
+- [Sensor field of view: the blind-spot cost is structural and dominates the range cost](#sensor-field-of-view-the-blind-spot-cost-is-structural-and-dominates-the-range-cost)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5800,3 +5801,76 @@ Reproduce: `python scripts/predictor_noise_shootout.py`
 `results/predictor_noise_shootout/phase.{json,png}` + per-seed
 `phase_raw.json`). The offline forecast-error table is reproduced in that
 script's header docstring.
+
+## Sensor field of view: the blind-spot cost is structural and dominates the range cost
+
+`examples/exp_ablate_sensor_{pointcloud,depth}.yaml` shipped a striking number
+buried in a YAML header: on a 50×50 random-obstacle grid with A*, an
+omnidirectional 8 m LiDAR reaches the goal 93.3 % of the time while a
+forward-facing 90° depth camera at essentially the same per-replan compute
+(plan_dt 1.36 vs 1.45 ms) reaches it only 63.3 % — a 30 pp gap blamed on the
+camera's blind spots. That single point was never run through a significance
+test, replicated, or decomposed. This study does all three and adds the
+mechanism axis the single point cannot show.
+
+Three sensing arms, identical scenario/planner (A*, `max_speed` 8, occupancy
+with `memory: true`), only the perception differs: **perfect** (full obstacle
+knowledge — the ceiling), **omni** (point-cloud occupancy from a 360°, 8 m
+LiDAR — range-limited only), and **depth** (a forward 90°-FOV, 8 m pinhole
+depth camera — range *and* FOV limited). Two ordered paired contrasts decompose
+the perception cost: `perfect → omni` is the **range cost** (can't see past 8 m,
+but all around), `omni → depth` is the **FOV cost** (same range, blind outside
+90°). Pairing is exact — `grid_world.reseed(seed)` derives each episode's layout
+from `episode_seed ^ obstacles.seed`, so a given seed is the *same* obstacle map
+for all three arms. The mechanism axis is obstacle density (count on the 50×50
+grid), swept 15→100; n=100 per cell, paired McNemar on the goal-reach outcome:
+
+| count | perfect | omni (360°) | depth (90°) | range cost (perfect→omni) | FOV cost (omni→depth) |
+|---|---|---|---|---|---|
+| 15  | 100 % | 99 % | 84 % | −1, p=1.0 (ns) | **−15, p=2e-5** |
+| 30  | 100 % | 97 % | 54 % | −3, p=0.25 (ns) | **−43, p<1e-12** |
+| 50  | 100 % | 92 % | 39 % | **−8, p=0.008** | **−53, p<1e-15** |
+| 75  | 99 %  | 82 % | 22 % | **−17, p<1e-4** | **−60, p<1e-17** |
+| 100 | 96 %  | 66 % | 12 % | **−30, p<1e-7** | **−54, p<1e-15** |
+
+(net = paired c−b successes vs the arm above; negative = the lower-coverage arm
+loses. The c1 entries at count 75/100 are the single seeds where the camera
+happened to win — noise, swamped by 55–61 losses.)
+
+Three findings:
+
+1. **The FOV cost is huge, significant at every density, and dwarfs the range
+   cost.** `omni → depth` loses 15–60 net goal-reaches per 100 at every level,
+   p<1e-4 throughout. Even at the sparsest clutter tested (count 15) the forward
+   camera already gives up 15 pp (84 % vs 99 %) — the blind spot bites before the
+   range horizon does anything at all.
+
+2. **The two costs have different shapes: FOV is structural and early, range is
+   gradual and late.** At low density the range cost is negligible and
+   non-significant (perfect ≈ omni, both ≥ 97 %) while the FOV cost is already
+   dominant; the range cost only crosses into significance at count 50 and grows
+   to −30 pp by count 100 (omni 66 % vs perfect 96 %). So an 8 m horizon is
+   *cheap until clutter is dense*, whereas missing 270° of coverage is *expensive
+   immediately* — they are not interchangeable knobs.
+
+3. **The buried 30 pp headline was, if anything, conservative.** At the matched
+   density (count 30 ≈ the original count-25 cell) the gap is omni 97 % vs depth
+   54 % = 43 pp, and it widens to 54 pp (66 % vs 12 %) by count 100. The original
+   single-config number understated a gap that grows monotonically with clutter.
+
+The mechanism is the blind spot interacting with `memory` occupancy: a cell is
+only ever marked occupied if it was once *inside* the sensor's view, and the
+planner treats never-seen cells as free. The forward camera maps only the 90°
+cone ahead of its motion, so as it advances, obstacles it passes — and any that
+sit off to the side of the goal-ward path — stay "unknown = free"; A* routes
+through them and the drone collides. The omni LiDAR sees every direction, so it
+only ever fails to map what is beyond 8 m, and that bites solely once the field
+is dense enough that an 8 m commitment outruns what it can see. Engineering
+takeaway, now proven rather than asserted: **for navigation in clutter that can
+surround you, angular coverage matters far more than range — a forward-only
+camera is structurally inadequate, and no planner smarts recover what the sensor
+never surfaced; pair front+rear cameras or use an omni LiDAR.**
+
+Reproduce: `python scripts/sensor_fov_density_phase.py`
+(5 densities × 3 arms × n=100; A* is cheap — ~25 s on 8 workers; writes
+`results/sensor_fov_density_phase/phase.{json,png}` + per-seed `phase_raw.json`).

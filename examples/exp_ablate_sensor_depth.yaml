@@ -16,6 +16,13 @@
 # Pair multiple cameras (e.g. front + back) or use an omni-LiDAR to
 # close the gap.
 #
+# This is now PROVEN and decomposed in scripts/sensor_fov_density_phase.py
+# (range cost vs FOV cost, swept over obstacle density, n=100/cell, paired
+# McNemar): the FOV cost is significant at every density (p<1e-4) and the gap
+# widens with clutter (43 pp at count 30, 54 pp at count 100). See
+# docs/findings.md, "Sensor field of view: the blind-spot cost is structural
+# and dominates the range cost".
+#
 # Reproduce: uav-nav run examples/exp_ablate_sensor_depth.yaml
 #            uav-nav eval results/abl_sensor_depth
 name: abl_sensor_depth
