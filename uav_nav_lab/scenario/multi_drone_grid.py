@@ -33,6 +33,7 @@ class DroneSpec:
     goal: np.ndarray
     radius: float = 0.4
     name: str = ""
+    start_jitter: float = 0.0  # per-episode Gaussian spread (m) on the spawn
 
 
 @SCENARIO_REGISTRY.register("multi_drone_grid")
@@ -83,6 +84,7 @@ class MultiDroneGridScenario(GridWorldScenario):
                 goal=np.asarray(d["goal"], dtype=float),
                 radius=float(d.get("radius", 0.4)),
                 name=str(d.get("name", f"d{i}")),
+                start_jitter=float(d.get("start_jitter", 0.0)),
             )
             for i, d in enumerate(drone_specs)
         ]
@@ -98,3 +100,26 @@ class MultiDroneGridScenario(GridWorldScenario):
     @property
     def n_drones(self) -> int:
         return len(self.drones)
+
+    # XOR offset to decorrelate the drone-spawn RNG from the dynamic-obstacle
+    # and static-layout RNGs that also key off the episode seed.
+    _DRONE_SEED_OFFSET = 0x5D2017E
+
+    def episode_drone_starts(self, seed: int) -> list[np.ndarray]:
+        """Per-episode spawn positions; jittered when any drone sets
+        ``start_jitter``, otherwise the nominal starts unchanged.
+
+        Pure function of the seed (no state mutation) so every drone's
+        runner can agree on the same realization, and a zero-jitter config
+        stays byte-identical to the fixed-start behavior. Jittering only the
+        spawn (not the goal) is enough to break a symmetric crossing's mirror
+        so a predictor's secondary-motion model can actually be tested.
+        """
+        starts = [d.start.copy() for d in self.drones]
+        if not any(d.start_jitter > 0.0 for d in self.drones):
+            return starts
+        rng = np.random.default_rng(int(seed) ^ self._DRONE_SEED_OFFSET)
+        for i, d in enumerate(self.drones):
+            if d.start_jitter > 0.0:
+                starts[i] = starts[i] + rng.normal(0.0, d.start_jitter, size=starts[i].shape)
+        return starts

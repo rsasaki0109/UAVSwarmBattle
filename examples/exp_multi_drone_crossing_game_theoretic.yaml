@@ -9,20 +9,36 @@
 # knows the peer will curve back toward its goal, so the ego planner reacts to
 # where the peer is actually headed.
 #
+# Why this configuration (it took two fixes to make the comparison real)
+# ---------------------------------------------------------------------
+# The original setup (max_accel=80, no spawn jitter) could NOT tell the two
+# predictors apart: a perfectly symmetric crossing with near-instant accel makes
+# both drones mirror-swerve and re-collide, so BOTH predictors scored 100%
+# collision on every seed, and the fixed geometry was seed-invariant (n>1
+# meaningless). Two changes fix it: `start_jitter` on each drone breaks the
+# mirror and varies the encounter per seed; low `max_accel` removes last-instant
+# reactive dodging so the planner must COMMIT on its forecast — exactly when
+# forecast quality can matter.
+#
+# Honest finding (scripts/crossing_predictor_accel_phase.py, paired by seed,
+# n=60/cell, max_accel swept 4..40):
+#   game_theoretic reaches 100% joint success at EVERY accel level and never
+#   loses a paired seed (b=0 everywhere) — a strict Pareto improvement here.
+#   constant_velocity drops to ~88% in the mid-accel band (6-8), where the gap
+#   is significant (McNemar c=7/b=0, p=0.0156). The edge is non-monotonic:
+#   very low accel makes the crossing gentle for both, high accel lets
+#   constant_velocity dodge reactively, so the win is largest in the middle.
+#   Unlike the CVaR study, this is a genuine, significant predictor win.
+#
 # Pair with exp_multi_drone_crossing_const_vel.yaml (identical except
 # predictor.type=constant_velocity) and compare joint success:
 #   uav-nav run examples/exp_multi_drone_crossing_game_theoretic.yaml
 #   uav-nav run examples/exp_multi_drone_crossing_const_vel.yaml
 #   uav-nav eval results/mdx_game_theoretic
 #   uav-nav eval results/mdx_const_vel
-#
-# Or sweep the predictor directly:
-#   uav-nav sweep examples/exp_multi_drone_crossing_game_theoretic.yaml \
-#     --param planner.predictor.type=game_theoretic,constant_velocity \
-#     --param num_episodes=30 -j 2
 name: mdx_game_theoretic
 seed: 42
-num_episodes: 12
+num_episodes: 60
 
 scenario:
   type: multi_drone_grid
@@ -35,16 +51,18 @@ scenario:
       start: [4.0, 25.0]
       goal:  [46.0, 25.0]
       radius: 0.4
+      start_jitter: 0.8   # break the mirror symmetry; vary the encounter per seed
     - name: north
       start: [25.0, 4.0]
       goal:  [25.0, 46.0]
       radius: 0.4
+      start_jitter: 0.8
 
 simulator:
   type: dummy_2d
   dt: 0.05
   max_steps: 1000
-  max_accel: 80.0
+  max_accel: 6.0           # low accel → must commit on the forecast, not dodge late
   goal_radius: 1.5
   drone_radius: 0.4
 
@@ -58,7 +76,7 @@ planner:
   resolution: 1.0
   inflate: 1
   goal_radius: 1.5
-  safety_margin: 0.8
+  safety_margin: 0.5
   use_prediction: true
   w_goal: 1.0
   w_obs: 100.0

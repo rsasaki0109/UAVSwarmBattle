@@ -73,6 +73,7 @@ different strategies.
 - [AirSim over ROS 2 parity harness](#airsim-over-ros-2-parity-harness)
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
 - [CVaR-MPPI decomposition: the win is forecast ensembling, not the risk-averse tail](#cvar-mppi-decomposition-the-win-is-forecast-ensembling-not-the-risk-averse-tail)
+- [Game-theoretic peer predictor: a real, significant crossing win](#game-theoretic-peer-predictor-a-real-significant-crossing-win-after-fixing-a-non-discriminating-example)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5416,4 +5417,65 @@ Two findings:
 Reproduce: `python scripts/corridor_cvar_noise_phase.py`
 (5 noise levels × 3 arms × n=80; ~40 min on 16 workers; writes
 `results/corridor_cvar_noise_phase/phase.{json,png}` and a per-seed
+`phase_raw.json`).
+
+## Game-theoretic peer predictor: a real, significant crossing win (after fixing a non-discriminating example)
+
+`scripts/crossing_predictor_accel_phase.py` — 2-drone perpendicular
+crossing, paired by seed, n=60 per cell. `game_theoretic` models a peer
+as taking one best-response step toward its OWN goal;
+`constant_velocity` coasts the peer's current velocity straight.
+
+**The shipped example pair could not tell them apart.** A perfectly
+symmetric crossing with near-instant acceleration (`max_accel=80`) makes
+both drones mirror-swerve and re-collide, so *both* predictors scored
+100% collision on every seed — and the fixed geometry was seed-invariant
+(n>1 meaningless). The predictor was clearly changing behavior (a
+single-episode trace showed game_theoretic swerving 13.75 m laterally vs
+constant_velocity's 3.1 m) but symmetry forced an identical outcome.
+
+Two fixes make the comparison real: a new `start_jitter` knob on each
+drone (`multi_drone_grid`, applied per seed via a guarded
+`episode_drone_starts` runner hook) breaks the mirror and varies the
+encounter; and lowering `max_accel` removes last-instant reactive dodging
+so the planner must COMMIT on its forecast — exactly when forecast
+quality can matter. With the tight-conflict setup fixed
+(`start_jitter=0.8`, `safety_margin=0.5`) we sweep `max_accel`:
+
+| max_accel | const_velocity | game_theoretic | gt won / lost | McNemar p |
+| --------- | -------------- | -------------- | ------------- | --------- |
+| 4         | 98.3 %         | 100 %          | 1 / 0         | 1.000     |
+| 6         | 88.3 %         | 100 %          | 7 / 0         | **0.0156**|
+| 8         | 88.3 %         | 100 %          | 7 / 0         | **0.0156**|
+| 12        | 91.7 %         | 100 %          | 5 / 0         | 0.0625    |
+| 20        | 91.7 %         | 100 %          | 5 / 0         | 0.0625    |
+| 40        | 93.3 %         | 100 %          | 4 / 0         | 0.125     |
+
+Two findings:
+
+1. **It is a genuine, significant predictor win — and a strict Pareto
+   improvement on this scenario.** game_theoretic reaches 100 % joint
+   success at *every* acceleration level and **never loses a paired
+   seed** (b=0 in all six cells): there is no seed where the
+   goal-aware forecast hurts. In the mid-accel band the gap is
+   statistically significant (c=7/b=0, p=0.0156). This contrasts sharply
+   with the CVaR-MPPI study, whose headline ingredient washed out under a
+   control arm — here the predictor genuinely earns its keep.
+
+2. **The edge is non-monotonic in acceleration headroom.** It is largest
+   in the *middle* (max_accel 6–8, where constant_velocity is most
+   stressed and drops to 88 %), and smaller at both ends: very low accel
+   makes the crossing gentle enough that constant_velocity also coasts
+   through (98 %), while high accel lets it dodge reactively at the last
+   instant (93 %), making the forecast less decisive. The win lives where
+   the planner is forced to act on a prediction it cannot walk back.
+
+Methodological note: the original example is a cautionary tale — a
+"baseline vs proposed" pair that scores identically is not evidence the
+proposed method is useless; first check the scenario actually
+discriminates (here, symmetry + seed-invariance hid a real effect).
+
+Reproduce: `python scripts/crossing_predictor_accel_phase.py`
+(6 accel levels × 2 predictors × n=60; ~9 min on 16 workers; writes
+`results/crossing_predictor_accel_phase/phase.{json,png}` + per-seed
 `phase_raw.json`).

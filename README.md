@@ -232,7 +232,14 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: CVaR-MPPI decomposition — the safety win is forecast ensembling,
+- **Latest: game-theoretic peer predictor is a real, significant crossing win** —
+  a paired max_accel sweep on a 2-drone crossing shows `game_theoretic` reaches
+  100% joint success at every accel level and never loses a paired seed (strict
+  Pareto), while `constant_velocity` drops to ~88% in the mid-accel band where
+  the gap is significant (McNemar c=7/b=0, p=0.0156). Required first fixing the
+  shipped example, which was non-discriminating (symmetry + seed-invariance made
+  both predictors collide 100%); a new `start_jitter` knob breaks the mirror.
+- **CVaR-MPPI decomposition — the safety win is forecast ensembling,
   not the risk tail** — a 3-arm, 5-noise-level paired sweep on the noisy-tracker
   pinch corridor shows the collision reduction over risk-neutral MPPI is largest
   when perception is good and vanishes as noise outgrows the assumed spread; and

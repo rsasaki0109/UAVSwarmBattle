@@ -51,11 +51,17 @@ def _reset_drones(
     for i, sim in enumerate(sims):
         if hasattr(sim, "_advance_scenario"):
             sim._advance_scenario = (i == 0)
+    # Optional per-episode spawn jitter (multi_drone_grid). Guarded so any
+    # scenario / test stub lacking the hook keeps the fixed-start behavior.
+    if hasattr(scenario, "episode_drone_starts"):
+        starts = scenario.episode_drone_starts(seed)
+    else:
+        starts = [d.start for d in scenario.drones]
     states: list[Any] = []
     for i, sim in enumerate(sims):
         s = sim.reset(
             seed=seed if i == 0 else None,
-            initial_position=scenario.drones[i].start,
+            initial_position=starts[i],
         )
         states.append(s)
         sensors[i].reset(seed=seed + 1000 * i)
