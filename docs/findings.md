@@ -85,6 +85,7 @@ different strategies.
 - [Goal-aware peer prediction wins head-on and inverts to a liability on the symmetric swap](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
 - [A decentralized right-of-way lateral bias lifts the antipodal swap to 100 %](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
 - [The goal-aware peer-predictor win is bimodal in encounter angle](#the-goal-aware-peer-predictor-win-is-bimodal-in-encounter-angle)
+- [Right-of-way substitutes for the predictor at head-on, but not at the perpendicular crossing](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6341,3 +6342,80 @@ symmetry breaks it in a crowd).
 Reproduce: `python scripts/crossing_predictor_angle_phase.py`
 (7 angles × 2 predictors × n=60; writes
 `results/crossing_predictor_angle_phase/phase.{json,png}`).
+
+## Right-of-way substitutes for the predictor at head-on, but not at the perpendicular crossing
+
+The [bimodal section above](#the-goal-aware-peer-predictor-win-is-bimodal-in-encounter-angle)
+established that the `game_theoretic` peer predictor beats `constant_velocity` on a
+two-drone crossing at exactly two angles — 90° (perpendicular) and 180° (head-on) —
+and is irrelevant at every oblique angle. Separately, the
+[antipodal right-of-way section](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+showed that on N≥3 *symmetric* congestion the failure is a coordination problem,
+fixed at zero forecast cost by a tiny `planner.lateral_bias` (a global "veer right"
+cost). That raises a sharp question: **are those two stories the same story at N=2?**
+If the predictor's crossing win is really a *symmetry-breaking* win, a passive
+right-of-way convention applied to the **dumb** `constant_velocity` predictor should
+recover the failing cells just as well — making goal-aware prediction *substitutable*
+by ten lines of decentralized convention.
+
+`scripts/crossing_rightofway_phase.py` tests it on the identical geometry (diameter
+crossing, R=21, `max_accel`=6, `start_jitter`=0.8), with three arms paired by seed:
+`cv` = constant_velocity, bias 0 (the one that fails); `gt` = game_theoretic, bias 0
+(the proven predictor fix); `cvrow` = constant_velocity, bias B (the proposed cheap
+fix). The bias was calibrated at the largest-gap angle (180°): `cv` scores 73 % there,
+and `cvrow` saturates to 100 % for any B≥1.0 (B=0.5 → 96.7 %, p=0.039); I use **B=1.5**,
+comfortably inside the plateau. I sweep the two stress angles (90°, 180°) plus two
+**oblique controls** (60°, 150°) where `cv` already succeeds, to check the standing
+bias does not *introduce* collisions where it is not needed. n=60, McNemar exact.
+
+| encounter angle | cv | gt | cvrow | cvrow vs cv (c/b, p) | cvrow vs gt (c/b, p) |
+|---|---|---|---|---|---|
+| 60° (control)         | 100 %  | 100 % | 100 %  | 0/0, 1.000 | 0/0, 1.000 |
+| **90° (perpendicular)** | 88.3 % | 100 % | 93.3 % | 7/4, 0.549 (NS) | 0/4, 0.125 (NS) |
+| 150° (control)        | 100 %  | 100 % | 100 %  | 0/0, 1.000 | 0/0, 1.000 |
+| **180° (head-on)**    | 75.0 % | 96.7 % | **100 %** | **15/0, 0.0001** | 2/0, 0.500 |
+
+![right-of-way vs predictor over encounter angle](images/crossing_rightofway.png)
+
+The clean expectation — "right-of-way replaces the predictor at both peaks" — is
+**wrong**. The two peaks have *different mechanisms*:
+
+- **Head-on (180°) is a symmetry-breaking win.** The passive convention on a myopic
+  predictor reaches **100 %**, beating not only the `cv` baseline (75 %, c=15/b=0,
+  p=0.0001) but even the smart predictor `gt` (96.7 %; cvrow wins 2 paired seeds gt
+  loses, loses none). Mechanism: a head-on swap is a *pure* mirror-symmetric mutual
+  manoeuvre — both drones share the same forecast and mirror-swerve into a re-collision.
+  The right-of-way cost makes the +x drone veer south and the −x drone veer north, i.e.
+  a deterministic right-hand pass, which the predictor cannot reliably manufacture
+  because its forecast is symmetric. So at head-on, **a decentralized convention fully
+  substitutes for — and marginally beats — goal-aware prediction.**
+
+- **Perpendicular (90°) is not.** Here the convention only nudges 88.3 % → 93.3 %, and
+  the move is **double-edged**: it rescues 7 seeds `cv` failed but *breaks* 4 seeds `cv`
+  had solved (c=7/b=4, net +3, p=0.55, not significant). Crucially it never closes the
+  gap to `gt`: `gt` is at 100 %, `cvrow` loses 4 paired seeds to it (c=0/b=4, p=0.125).
+  The perpendicular crossing is not a mirror-symmetric problem — `cv` fails because it
+  extrapolates the peer's lateral swerve straight and lags the curve-back, which is a
+  genuine *forecast-divergence* failure that needs the actual prediction, not a passive
+  bias.
+
+- **The standing bias is harmless where unneeded — at oblique angles.** Both controls
+  (60°, 150°) stay at 100 % for all three arms: bias introduces zero collisions there.
+  The double-edged behaviour appears only at the 90° *stress* cell, where the geometry
+  already lives near the failure boundary.
+
+This refines the stress-gated story: the predictor's two-peak win is two different
+stresses. The 180° peak is a **symmetry stress** — solvable by convention, and in fact
+better solved that way (a shared symmetric forecast is the *wrong* tool when the whole
+problem is symmetry). The 90° peak is a **forecast-divergence stress** — a passive
+convention cannot replace prediction there. The N-axis bookend
+([antipodal inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+and its [right-of-way fix](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-))
+is the same lesson scaled up: it is precisely the 180° head-on geometry — the one a
+convention beats prediction at — whose symmetry makes the smart predictor *invert* in a
+crowd. Convention and prediction are complementary, and the encounter geometry decides
+which one you actually need.
+
+Reproduce: `python scripts/crossing_rightofway_phase.py`
+(calibrate first with `--bias-sweep 0.5 1 1.5 2 3 --angles 180 --n 30`; the full run is
+4 angles × 3 arms × n=60, writes `results/crossing_rightofway_phase/phase.{json,png}`).

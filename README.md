@@ -234,7 +234,21 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: The goal-aware peer-predictor win is bimodal in encounter angle**
+- **Latest: Right-of-way substitutes for the predictor at head-on, but not at the
+  perpendicular crossing** — the two angles where the goal-aware predictor wins on a
+  2-drone crossing turn out to have *different* mechanisms. Applying the passive
+  `planner.lateral_bias` right-of-way convention to the **dumb** constant_velocity
+  predictor (n=60 paired McNemar, B=1.5 calibrated at 180°) fully recovers the
+  **head-on (180°)** cell — 75→**100 %**, c=15/b=0, p=0.0001 — *beating even the smart
+  game_theoretic predictor* (96.7 %), because a head-on swap is a pure mirror-symmetric
+  problem a shared symmetric forecast is the wrong tool for. But at the **perpendicular
+  (90°)** cell the convention is only double-edged (88→93 %, c=7/b=4, p=0.55 NS) and
+  never closes the gap to the predictor (loses 4 paired seeds to gt): that failure is
+  genuine forecast-divergence, not symmetry. Oblique controls (60/150°) stay at 100 %,
+  so the standing bias is harmless where unneeded. Convention and prediction are
+  complementary; the encounter geometry decides which you need. See
+  `scripts/crossing_rightofway_phase.py`.
+- **The goal-aware peer-predictor win is bimodal in encounter angle**
   — on a 2-drone crossing, sweeping the *encounter angle* at the proven sweet-spot
   acceleration (n=60 paired McNemar), game_theoretic beats constant_velocity at
   *exactly two* geometries: the 90° perpendicular crossing (88→100 %, c=7/b=0,
