@@ -79,6 +79,7 @@ different strategies.
 - [Constant-turn under noisy velocity: the win decays, and smoothing does not rescue it](#constant-turn-under-noisy-velocity-the-win-decays-and-smoothing-does-not-rescue-it)
 - [Predictor shootout: model the curve, filter it out, or trust it — and the crossover that does not cross](#predictor-shootout-model-the-curve-filter-it-out-or-trust-it--and-the-crossover-that-does-not-cross)
 - [Sensor field of view: the blind-spot cost is structural and dominates the range cost](#sensor-field-of-view-the-blind-spot-cost-is-structural-and-dominates-the-range-cost)
+- [RRT* rewiring is a closed-loop liability: the optimal path collides more](#rrt-rewiring-is-a-closed-loop-liability-the-optimal-path-collides-more)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5874,3 +5875,88 @@ never surfaced; pair front+rear cameras or use an omni LiDAR.**
 Reproduce: `python scripts/sensor_fov_density_phase.py`
 (5 densities × 3 arms × n=100; A* is cheap — ~25 s on 8 workers; writes
 `results/sensor_fov_density_phase/phase.{json,png}` + per-seed `phase_raw.json`).
+
+## RRT* rewiring is a closed-loop liability: the optimal path collides more
+
+`examples/exp_compare_rrt{,_star}.yaml` ship two planners that differ by exactly
+one mechanism. RRT returns the *first* collision-free path its sampler stumbles
+onto — a zigzag with random slack. RRT* adds best-parent selection plus
+neighbourhood rewiring, so the path it returns is asymptotically *optimal*
+(shortest collision-free). The textbook promise is "RRT* gives you a better
+path." Neither planner had ever been run through a paired test here, and the
+pointed question is whether that better path becomes a better *outcome* once it
+is dropped into a fast closed-loop replanner that re-plans against moving
+obstacles it does not model.
+
+The two implementations make this an unusually clean ablation. For a given layout
+and planner seed both arms draw the *same* RNG stream and grow the *same* node
+positions, and the rewiring uses no randomness — so on the first replan they
+return paths through an identical tree: RRT the first-found chain, RRT* the
+rewired-shortest one. The only thing that varies is *which path is returned*,
+which is exactly what RRT* is supposed to improve. The mechanism axis is
+`replan_period`: a fast loop executes only the prefix of each plan before
+re-planning, a slow loop flies more of it. We pair by episode seed (same
+`episode_seed ^ obstacles.seed` random layout for both arms) on the shipped
+dynamic-obstacle scenario (50×50 grid, 3 reflecting moving obstacles, perfect
+sensing, `inflate: 1`); n=60 per cell, exact McNemar on the goal-reach outcome:
+
+| replan_period | RRT succ | RRT* succ | RRT* − RRT (net c−b) | p | RRT* planner_dt | RRT* path len | RRT path len |
+|---|---|---|---|---|---|---|---|
+| 0.1 s | 76.7 % | 21.7 % | **−33** (c4/b37) | <1e-3 | 945 ms | 61.8 | 67.5 |
+| 0.2 s | 66.7 % | 26.7 % | **−24** (c7/b31) | <1e-3 | 982 ms | 61.1 | 69.6 |
+| 0.4 s | 56.7 % | 33.3 % | **−14** (c8/b22) | 0.016 | 975 ms | 60.9 | 69.9 |
+| 0.8 s | 48.3 % | 28.3 % | **−12** (c7/b19) | 0.029 | 990 ms | 60.4 | 67.8 |
+| 1.6 s | 33.3 % | 45.0 % | +7 (c19/b12) | 0.281 (ns) | 966 ms | 60.3 | 64.7 |
+
+(net = paired c−b successes, RRT→RRT*; negative = rewiring *loses* goal-reaches.
+planner_dt is mean wall-clock per replan; path len is mean executed length on the
+episodes that reached the goal.)
+
+Four findings:
+
+1. **RRT* is significantly worse at every realistic replan cadence, and the harm
+   is largest exactly where you replan fastest.** From rp 0.1 to 0.8 s the
+   rewiring costs 12–33 net goal-reaches per 60 (p from <1e-3 to 0.029), and the
+   loss grows monotonically as the loop speeds up — at rp 0.1 s RRT reaches 76.7 %
+   and RRT* only 21.7 %. The single regime where RRT* is *not* worse is rp 1.6 s,
+   where the result is a non-significant +7 — and there RRT has itself collapsed
+   to 33 % because it can no longer react to the moving obstacles. RRT* "wins"
+   only where its opponent has already fallen apart.
+
+2. **The rewiring delivers the better path it promises — uniformly — and it does
+   not help.** At every cadence RRT* produces the shorter executed path (≈60–62 vs
+   65–70) from far fewer waypoints (≈16 vs ≈24): the optimisation works exactly as
+   advertised offline. The offline metric (path length) is uniformly *better*
+   while the outcome is uniformly *worse*. This is the sharpest offline≠outcome
+   case in this repo so far, and the first for a *planner* mechanism rather than a
+   predictor or sensor.
+
+3. **Every failure is a collision — never a timeout (0 % at all cells).** RRT*
+   does not fail by getting stuck or running out of time; it fails by hitting
+   things, 67–78 % of episodes vs RRT's 23–52 %. The mechanism is geometric:
+   rewiring collapses the zigzag into a few long, near-straight edges that hug the
+   inflated static obstacles and commit the drone to the most direct line across
+   the open region the dynamic obstacles roam. Because *neither* planner models
+   the moving obstacles, the only protection is incidental clearance — and RRT's
+   suboptimal wandering path accidentally supplies it while RRT*'s optimisation
+   strips it away. Shortest-path is minimum-clearance.
+
+4. **RRT* pays ≈30× the per-replan compute for this worse outcome.** 945–990 ms
+   vs RRT's 31–35 ms, at every cadence. In this sim planner_dt does not feed back
+   into sim time, so the compute does not *cause* the failures — but it means the
+   rewiring is pure wall-clock waste *on top of* a worse goal-reach rate.
+
+Engineering takeaway, proven rather than assumed: **path optimality is not a
+closed-loop good in dynamic avoidance.** When the planner does not model the
+moving obstacles and only reacts through replanning, the suboptimal slack in a
+plain-RRT path is doing useful safety work, and optimising it away (RRT*) trades
+that incidental clearance for shorter, more-committed paths that collide far more
+— while costing ~30× the compute. If you want RRT*'s optimality to pay off you
+must either model the dynamic obstacles in the cost or inflate clearance to
+replace the slack the rewiring removes; shipping `rrt_star` as a drop-in "better
+RRT" for this regime makes navigation worse.
+
+Reproduce: `python scripts/rrt_rewire_replan_phase.py`
+(5 replan periods × 2 arms × n=60; RRT* is the expensive arm — ~15 min on
+6 workers; writes `results/rrt_rewire_replan_phase/phase.{json,png}` + per-seed
+`phase_raw.json`).

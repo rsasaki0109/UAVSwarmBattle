@@ -234,7 +234,22 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: a sensor's field of view costs more than its range, and the gap is
+- **Latest: RRT*'s "better path" is a closed-loop liability — the optimal path
+  collides more** — `rrt` and `rrt_star` ship as a pair differing by one
+  mechanism (neighbourhood rewiring → asymptotically shortest path). On the
+  shipped dynamic-obstacle scenario (50×50, 3 moving obstacles, perfect sensing),
+  paired by seed across `replan_period`, n=60/cell: **RRT* reaches the goal
+  significantly *less* often at every realistic replan cadence** (rp 0.1–0.8 s:
+  −12 to −33 goal-reaches/60, p from <1e-3 to 0.029), with the harm largest where
+  you replan fastest (rp 0.1 s: RRT 76.7 % vs RRT* 21.7 %). Yet RRT* delivers the
+  shorter path it promises at *every* cadence (≈60 vs ≈68 length, ≈16 vs ≈24
+  waypoints) — the offline metric is uniformly better while the outcome is
+  uniformly worse. Every failure is a collision (0 % timeouts): rewiring collapses
+  the zigzag's incidental slack into direct, minimum-clearance lines that hit the
+  unmodelled moving obstacles, at ≈30× the per-replan compute. Sharpest
+  offline≠outcome case yet, and the first for a planner mechanism. See
+  `scripts/rrt_rewire_replan_phase.py`.
+- **A sensor's field of view costs more than its range, and the gap is
   structural** — a buried YAML number claimed a forward 90° depth camera reaches
   the goal 30 pp less often than an omni 8 m LiDAR at the same compute. Proven,
   decomposed, and swept over obstacle density (n=100/cell, paired McNemar): the

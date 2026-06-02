@@ -3,6 +3,16 @@
 # exp_compare_{straight,astar,rrt,mpc}; RRT* extends RRT with neighborhood
 # rewiring for asymptotic optimality.
 # See exp_compare_astar.yaml for the full comparison table and discussion.
+#
+# WARNING — on THIS dynamic-obstacle scenario the rewiring is a net negative.
+# Paired vs plain `rrt` by seed across replan_period (n=60/cell), RRT* reaches
+# the goal SIGNIFICANTLY LESS often at every realistic cadence (rp 0.1-0.8 s:
+# -12 to -33 goal-reaches/60, p<1e-3..0.029; rp 0.1 s = 21.7% vs RRT's 76.7%),
+# despite producing the shorter path it promises (~60 vs ~68 len) at ~30x the
+# per-replan compute. Every failure is a collision: rewiring strips the
+# incidental clearance that plain RRT's zigzag accidentally supplies against the
+# (unmodelled) moving obstacles. See docs/findings.md, "RRT* rewiring is a
+# closed-loop liability", and scripts/rrt_rewire_replan_phase.py.
 name: cmp_rrt_star
 seed: 42
 num_episodes: 30
