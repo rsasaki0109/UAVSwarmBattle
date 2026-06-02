@@ -74,6 +74,7 @@ different strategies.
 - [RL comparison baseline: gym.Env scaffold + initial training](#rl-comparison-baseline-gymenv-scaffold--initial-training)
 - [CVaR-MPPI decomposition: the win is forecast ensembling, not the risk-averse tail](#cvar-mppi-decomposition-the-win-is-forecast-ensembling-not-the-risk-averse-tail)
 - [Game-theoretic peer predictor: a real, significant crossing win](#game-theoretic-peer-predictor-a-real-significant-crossing-win-after-fixing-a-non-discriminating-example)
+- [Pursuit-evasion: prediction's value is gated by escapability](#pursuit-evasion-predictions-value-is-gated-by-escapability)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5478,4 +5479,78 @@ discriminates (here, symmetry + seed-invariance hid a real effect).
 Reproduce: `python scripts/crossing_predictor_accel_phase.py`
 (6 accel levels × 2 predictors × n=60; ~9 min on 16 workers; writes
 `results/crossing_predictor_accel_phase/phase.{json,png}` + per-seed
+`phase_raw.json`).
+
+## Pursuit-evasion: prediction's value is gated by escapability
+
+The fourth previously-shipped-but-unproven navigation feature
+(`examples/exp_pursuit_evasion_mppi.yaml`): a single drone crossing to
+its goal while an `intercept` hunter leads its motion (proportional
+navigation). The planner knob under test is `use_prediction` — with it
+on, the MPPI cost forecasts the hunter's future positions and the drone
+commits to a decisive evasive juke; with it off, the drone reacts only to
+where the hunter is *now*.
+
+**The scenario as shipped cannot test this — for the opposite reason the
+crossing example couldn't.** The game-theoretic example was a
+non-discriminating *tie*; this one is a non-discriminating *blowout*. It
+is fully deterministic (single drone, perfect sensor, fixed geometry), so
+the episode seed varies nothing and every parameter cell is all-or-nothing
+— at the shipped hunter speed 2.4, `use_prediction` flips the outcome from
+0/24 to 24/24 with zero variance. McNemar on 24 identical replays returns
+p=2⁻²⁴, which looks like overwhelming significance but is statistical
+theatre: it is really n=1. Worse, the deterministic boundary is
+*chaotic* — at hunter speed 2.8 prediction wins 100 %, at 2.85 it loses
+100 %, and as a function of `turn_rate` it flips 100→100→0→100 with no
+smooth structure. Great for a GIF; useless as a benchmark.
+
+**Fix: inject per-seed variance.** Adding `start_jitter` to the dynamic
+obstacles (the knob shipped with the noisy_tracker work) gives every seed
+a genuinely different chase, so success rates become graded and the
+paired McNemar test is honest — the same move that rescued the crossing
+example, applied to the opposite pathology.
+
+Sweeping the hunter `speed` from slow to the drone's own `max_speed`
+(3.0), with jitter 3.0 and turn_rate 1.2, paired by seed at n=60:
+
+| hunter speed | reactive | predict | Δ | pred won/lost (c/b) | McNemar p |
+|---|---|---|---|---|---|
+| 2.0  | 70.0 % | 96.7 % | +26.7 | 18 / 2 | 0.0004 |
+| 2.4  | 76.7 % | 98.3 % | +21.7 | 14 / 1 | 0.0010 |
+| 2.7  | 50.0 % | 96.7 % | +46.7 | 28 / 0 | <0.0001 |
+| 2.85 |  5.0 % | 18.3 % | +13.3 |  9 / 1 | 0.0215 |
+| 2.9  |  1.7 % |  5.0 % |  +3.3 |  2 / 0 | 0.50 (ns) |
+| 3.0  |  0.0 % |  1.7 % |  +1.7 |  1 / 0 | 1.00 (ns) |
+
+Two findings:
+
+1. **Prediction is a large, significant evasion win — but only where
+   escape is physically possible.** While the hunter is slower than the
+   drone (speed 2.0–2.7), anticipating its lead converts the drone's
+   speed margin into a reliable escape (97–98 %), while the reactive
+   planner squanders it by committing late (50–77 %). At hunter speed 2.7
+   it is a strict Pareto improvement — predict escapes on 28 seeds where
+   reactive is caught and loses *none* (c=28/b=0, p<1e-4). Once the hunter
+   reaches the drone's own max_speed the chase is unwinnable: both arms
+   collapse to near-zero and prediction's edge is non-significant
+   (p≥0.5). The feature does not "fail" there — it is null by physics.
+
+2. **The edge is non-monotonic, peaking in the mid-band** (hunter 2.7,
+   +47 pp) rather than at the slowest hunter. At very low hunter speed
+   even the reactive planner escapes often (70 %), shrinking the headroom;
+   the largest paired gain is where the reactive baseline is a coin-flip
+   (50 %) but prediction still almost always escapes. Same structure as
+   the game-theoretic crossing: the win is largest where the baseline is
+   most stressed but the problem is still solvable.
+
+Methodological note: this is the mirror image of the crossing lesson. A
+0 %→100 % "blowout" with zero seed variance is *also* a non-discriminating
+scenario — the absence of variance means num_episodes>1 buys no power and
+the chaotic parameter boundary means a single cell tells you nothing about
+the neighbourhood. Inject variance, then sweep the physical axis, before
+trusting any single-cell p-value.
+
+Reproduce: `python scripts/pursuit_prediction_speed_phase.py`
+(6 speed levels × 2 arms × n=60; ~14 min on 16 workers; writes
+`results/pursuit_prediction_speed_phase/phase.{json,png}` + per-seed
 `phase_raw.json`).
