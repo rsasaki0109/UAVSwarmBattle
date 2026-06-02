@@ -88,6 +88,7 @@ different strategies.
 - [The goal-aware peer-predictor win is bimodal in encounter angle](#the-goal-aware-peer-predictor-win-is-bimodal-in-encounter-angle)
 - [Right-of-way substitutes for the predictor at head-on, but not at the perpendicular crossing](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing)
 - [More-frequent replanning is never counterproductive — the replan_period "commitment" is not a safety mechanism](#more-frequent-replanning-is-never-counterproductive--the-replan_period-commitment-is-not-a-safety-mechanism)
+- [The antipodal predictor inversion is a 2D artifact — the vertical escape axis dissolves it, and at high density flips the predictor's sign](#the-antipodal-predictor-inversion-is-a-2d-artifact--the-vertical-escape-axis-dissolves-it-and-at-high-density-flips-the-predictors-sign)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6564,3 +6565,82 @@ Reproduce: `python scripts/mpc_replan_commitment_phase.py --max-accel 1.5 --n 60
 (calibrate first with `--accel-sweep 1.5 2 3 4 6 --n 30`; the obstacle-speed robustness
 sweeps add `--obs-speed-mult 1.5 2.5 --periods 0.2 0.3 0.4 0.5 0.6 0.8`; the overlay figure
 is the `--overlay` mode over the saved `results/rpcommit_*` dirs).
+
+## The antipodal predictor inversion is a 2D artifact — the vertical escape axis dissolves it, and at high density flips the predictor's sign
+
+The [antipodal inversion section](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+proved that on the symmetric antipodal swap the goal-aware `game_theoretic` predictor
+*inverts* to a liability that worsens with crowd size (N=6: gt 1/40 vs cv 26/40). The
+mechanism offered there was geometric: every drone shares the same correct, symmetric
+forecast, so they all mirror-swerve **sideways** — into the one congested hub they were
+trying to avoid — and re-collide. But "sideways" is a 2D word. That whole argument lives
+on a plane, where the only way past a head-on peer is left or right, and left/right both
+lead back to the centre. **In 3D each drone can also climb or dive** — an escape axis the
+symmetric *in-plane* forecast never contests. If the inversion is really a
+planar-confinement artifact, lifting the same ring into a voxel world with vertical room
+should dissolve it.
+
+`scripts/antipodal_3d_phase.py` embeds the identical antipodal ring (R=20, `max_accel`=6,
+`max_speed`=5, `start_jitter`=0.8, same MPC — it samples a Fibonacci sphere in 3D) in two
+worlds and runs three arms paired by seed, McNemar exact, n=40:
+
+- **gt2d** — `multi_drone_grid`, `game_theoretic`, the proven 2D inversion (the control).
+- **gt3d** — `multi_drone_voxel` (50×50×16, all drones launched at the mid-altitude
+  z=8), same predictor, free to use the vertical axis.
+- **cv3d** — the same 3D world with the *dumb* `constant_velocity` predictor, to ask
+  whether the predictor still matters once 3D is free.
+
+| N | gt2d | gt3d | cv3d | 3D vs 2D gt (c/b, p) | 3D gt vs cv (c/b, p) |
+|---|------|------|------|----------------------|----------------------|
+| 3 | 15/40 (37.5 %) | **40/40 (100 %)** | 40/40 (100 %) | 25/0, 6.0×10⁻⁸ | 0/0, 1.000 |
+| 4 | 11/40 (27.5 %) | **40/40 (100 %)** | 40/40 (100 %) | 29/0, 3.7×10⁻⁹ | 0/0, 1.000 |
+| 5 |  9/40 (22.5 %) | **40/40 (100 %)** | 40/40 (100 %) | 31/0, 9.3×10⁻¹⁰ | 0/0, 1.000 |
+| 6 |  1/40 (2.5 %)  | **40/40 (100 %)** | **0/40 (0 %)** | 39/0, 3.6×10⁻¹² | 40/0, 1.8×10⁻¹² |
+
+Two findings, one expected and one not.
+
+- **3D dissolves the inversion completely.** `gt3d` is a perfect 40/40 at *every* N=3–6,
+  while `gt2d` collapses monotonically (37.5 % → 2.5 %) as the crowd grows. The 3D-vs-2D
+  improvement is significant at every N (b=0 every cell — not a single seed prefers 2D),
+  and the gap *widens* with N (c = 25 → 29 → 31 → 39) exactly because the 2D failure
+  deepens with density. The mirror-swerve trap is real, and it is a **planar artifact**:
+  given a vertical degree of freedom the symmetric in-plane forecast is resolved by
+  climbing/diving rather than re-converging at the hub. The very thing that makes the
+  smart predictor invert on a plane — a shared, correct, symmetric forecast — is harmless
+  the moment there is an uncontested axis to deconflict on.
+
+- **At the highest density the predictor's sign flips.** This is the surprise. At N=3–5
+  the predictor is *irrelevant* in 3D: both `gt3d` and `cv3d` are a flat 100 % (p=1.000,
+  zero discordant seeds) — the vertical room is so generous that even a goal-blind
+  constant-velocity forecast deconflicts everything. But at **N=6 `cv3d` collapses to
+  0/40 while `gt3d` holds 40/40** (c=40/b=0, every single paired seed flips the same way,
+  p=1.8×10⁻¹²). So the relationship between predictor quality and outcome is not fixed —
+  it is set by *geometry and density together*:
+  - **2D antipodal:** goal-aware prediction is a **liability** (symmetric forecast →
+    mirror-swerve re-collision).
+  - **3D antipodal, moderate N (≤5):** prediction is **irrelevant** (free vertical
+    escape; the dumb forecast suffices).
+  - **3D antipodal, high N (=6):** goal-aware prediction is **required** (the dumb
+    forecast collapses; only the goal-aware one survives).
+
+  The N=6 collapse is deterministic (0/40, not a noisy boundary), and it is genuinely a
+  coordination failure rather than an unsolvable scenario: `gt3d` clears all 40 of the
+  same seeds. The plausible reading is that at N=6 the in-plane hub is crowded enough that
+  the vertical deconfliction must be *phased by where peers are actually going* — which the
+  goal-aware forecast supplies and the constant-velocity one, blind to goals, cannot. Once
+  the vertical axis is the only slack left, knowing the peers' destinations is what lets
+  six drones stack their climbs/dives without re-colliding.
+
+This **bounds the inversion as a low-dimensional phenomenon** and inverts its lesson at
+scale. The 2D study's headline — "the smarter predictor is worse" — is true *only on the
+plane*; add the third dimension and the predictor goes from liability to irrelevant to
+mandatory as the crowd grows. It is the same family as the
+[right-of-way fix](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-),
+which also dissolves the 2D inversion — but by a *different* route: the lateral bias breaks
+the planar symmetry with a convention, whereas 3D removes the confinement that made the
+symmetry pathological in the first place. Two independent escapes from the same trap, and a
+caution against reading any planar swarm result as dimension-free.
+
+Reproduce: `python scripts/antipodal_3d_phase.py --n-list 3 4 5 6 --episodes 40`
+(writes `results/antipodal_3d_phase.json`; a runnable single demo is
+`examples/exp_multi_drone_antipodal_3d.yaml`).
