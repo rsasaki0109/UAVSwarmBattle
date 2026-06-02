@@ -234,7 +234,23 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: RRT*'s "better path" is a closed-loop liability — the optimal path
+- **Latest: the classical-planner ladder is a *clearance* ladder, and the buried
+  mechanism stories are both wrong** — `exp_compare_astar.yaml` buries a 5-planner
+  table (`straight 0 % < astar 20 % < rrt_star 23 % < rrt 73 % < mpc 100 %`) and
+  blames A* for "zigzagging" and `rrt_star` for "blowing the replan budget."
+  Proven with paired McNemar across `replan_period` (4 arms, n=60/cell) — and both
+  stories are false. Planning is **instantaneous in sim time** (the runner only
+  logs `planner_dt`), so `rrt_star` cannot fail from stale plans; and A* is the
+  *most direct* planner of all (directness 0.985 vs RRT's 1.12), not a zigzagger.
+  The real variable is **path directness**: the two "optimal" planners (grid A*
+  ≈0.99, sampling RRT* ≈1.00) are the straightest and collide most (55–87 %),
+  while only the *wandering* RRT (≈1.12) keeps the incidental clearance that
+  survives the unmodelled moving obstacles. The buried "RRT beats A* by ~50 pp" is
+  real and significant at fast cadence (rp 0.1–0.4 s: +26 to +30/60, p<1e-3).
+  Optimise the path and you optimise away the slack keeping you alive — same
+  mechanism as the RRT* finding, generalised. See
+  `scripts/planner_clearance_ladder_phase.py`.
+- **RRT*'s "better path" is a closed-loop liability — the optimal path
   collides more** — `rrt` and `rrt_star` ship as a pair differing by one
   mechanism (neighbourhood rewiring → asymptotically shortest path). On the
   shipped dynamic-obstacle scenario (50×50, 3 moving obstacles, perfect sensing),
