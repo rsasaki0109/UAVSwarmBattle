@@ -83,6 +83,7 @@ different strategies.
 - [The classical-planner ladder is a clearance ladder, and the buried mechanism stories are both wrong](#the-classical-planner-ladder-is-a-clearance-ladder-and-the-buried-mechanism-stories-are-both-wrong)
 - [CHOMP's explicit clearance band has a sweet spot — but the cap breaks only when you seed it with RRT](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
 - [Goal-aware peer prediction wins head-on and inverts to a liability on the symmetric swap](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+- [A decentralized right-of-way lateral bias lifts the antipodal swap to 100 %](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6202,3 +6203,70 @@ Reproduce: `python scripts/antipodal_predictor_phase.py --n-list 2 3 4 5 6 --epi
 (10 cells, ~10–20 min depending on box load; writes
 `results/antipodal_predictor_phase.{json,png}`; `--plot-from <json>` redraws the
 figure without rerunning).
+
+## A decentralized right-of-way lateral bias lifts the antipodal swap to 100 %
+
+The section above ends on a named hypothesis: the antipodal deadlock is a
+*symmetry* failure, not a forecast-accuracy failure, so the fix should be an
+explicit symmetry-breaker layered on the forecast — not a better forecast — and
+the CPU MPC stack had none. This section builds that symmetry-breaker and tests it.
+It works completely.
+
+The mechanism. The sampling MPC scores `n_samples` candidate directions covering
+the full circle and takes the lowest-cost one. A new `planner.lateral_bias` knob
+(default `0.0` — the planner is byte-for-byte unchanged when off) adds a small term
+to each candidate's cost proportional to its signed lateral offset from the goal
+heading: in the horizontal plane, `base × d = base_x·d_y − base_y·d_x` (>0 = left /
+counter-clockwise). Penalising left makes the argmin **consistently prefer veering
+right**. Every drone shares the same rule, so a symmetric convergence on the hub
+self-organises into a **clockwise roundabout** instead of a head-on jam. The term is
+in `[−lateral_bias, +lateral_bias]`, tiny next to `w_obs=100`, so it only reorders
+near-symmetric ties — it never overrides real obstacle avoidance. This is the
+classic decentralized right-of-way primitive (a shared "give way to the right"
+convention, no inter-drone communication), and the CPU analogue of the GPU-MPPI
+`asymmetric_bias` — except a *global consistent* sense, not a per-drone random one,
+because the hub problem needs the fleet to agree on a rotation direction.
+
+Calibration (N=4, where game_theoretic sat at 30 %): success climbs with the bias
+and **saturates** — 0.5 → 11/20, 1.0 → 16/20, 2.0 → 20/20, 4.0 → 20/20, 8.0 → 20/20.
+It is a plateau, not a knife-edge; 2.0 is the smallest value that reaches 100 %.
+
+Full sweep at `lateral_bias=2.0`, n=40, paired by seed, same antipodal scenario and
+MPC as the section above (arms: `cv` = constant_velocity no bias, `gt` =
+game_theoretic no bias, `gt+row` = game_theoretic + right-of-way):
+
+| N | cv (no bias) | gt (no bias) | **gt+row** | row vs gt (c−b) | row vs cv (c−b) |
+|---|---|---|---|---|---|
+| 2 | 29/40 = 72 % | 39/40 = 98 % | **40/40 = 100 % [91, 100]** | c=1  b=0 (p=1.0)   | c=11 b=0 **p=0.001** |
+| 3 | 28/40 = 70 % | 15/40 = 38 % | **40/40 = 100 %** | c=25 b=0 **p<1e-4** | c=12 b=0 **p=0.0005** |
+| 4 | 32/40 = 80 % | 12/40 = 30 % | **40/40 = 100 %** | c=28 b=0 **p<1e-4** | c=8  b=0 **p=0.008** |
+| 5 | 34/40 = 85 % | 14/40 = 35 % | **40/40 = 100 %** | c=26 b=0 **p<1e-4** | c=6  b=0 **p=0.031** |
+| 6 | 26/40 = 65 % | 1/40 = 2 %   | **40/40 = 100 %** | c=39 b=0 **p<1e-4** | c=14 b=0 **p=0.0001** |
+
+The right-of-way bias takes goal-aware prediction to **100 % joint success at every
+N from 2 to 6** — a perfect, flat ceiling. It is a **strict Pareto improvement**
+(b=0 at every N: it never loses a paired seed) over *both* the inverted `gt` *and*
+the surprise winner `cv`. At N=6 it lifts the goal-aware fleet from 1/40 to 40/40.
+
+Two takeaways close the loop on the previous section:
+
+1. **The deadlock was symmetry, confirmed by construction.** Nothing about the
+   forecast changed — same predictor, same MPC, same scenario. Adding only a shared
+   rotational convention removes the failure entirely. The accurate forecast was
+   never the problem; the *unbroken symmetry* it was applied to was.
+
+2. **Once symmetry is broken, the goal-aware forecast is the better tool again.**
+   `gt+row` beats `cv` at every N (the myopic predictor cannot reach 100 % even with
+   more drones threading through by luck). So the right reading of the inversion is
+   not "use the dumber predictor on swarms" but "give the smart predictor the
+   symmetry-breaker it needs." Forecast quality and symmetry-breaking are
+   complementary: each is insufficient alone, and together they are perfect here.
+
+This is the constructive bookend to the session's "more-capable component is the
+closed-loop liability" thread (RRT\* rewiring, the clearance ladder, the predictor
+inversion): the capability is not the problem, the *missing coordinating constraint*
+is — and a ~10-line, default-off, communication-free constraint recovers it.
+
+Reproduce: `python scripts/antipodal_rightofway_phase.py --n-list 2 3 4 5 6 --episodes 40 --bias 2.0`
+(15 cells; `--bias-sweep 0.5 1 2 4 8` calibrates the magnitude at one N; writes
+`results/antipodal_rightofway_phase.{json,png}`).
