@@ -87,6 +87,7 @@ different strategies.
 - [The right-of-way bias is safe everywhere and general to head-on convergence](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)
 - [The goal-aware peer-predictor win is bimodal in encounter angle](#the-goal-aware-peer-predictor-win-is-bimodal-in-encounter-angle)
 - [Right-of-way substitutes for the predictor at head-on, but not at the perpendicular crossing](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing)
+- [More-frequent replanning is never counterproductive — the replan_period "commitment" is not a safety mechanism](#more-frequent-replanning-is-never-counterproductive--the-replan_period-commitment-is-not-a-safety-mechanism)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6474,3 +6475,92 @@ which one you actually need.
 Reproduce: `python scripts/crossing_rightofway_phase.py`
 (calibrate first with `--bias-sweep 0.5 1 1.5 2 3 --angles 180 --n 30`; the full run is
 4 angles × 3 arms × n=60, writes `results/crossing_rightofway_phase/phase.{json,png}`).
+
+## More-frequent replanning is never counterproductive — the replan_period "commitment" is not a safety mechanism
+
+Two shipped findings *assert* a "commitment" mechanism but never sweep the knob that
+controls it. The [CHOMP-smoothing wash](#mpc--chomp-smoothing-layering-on-a-saturated-planner-is-a-wash) explains MPC's
+low per-step |Δcmd| by noting it "commits to one velocity for the whole replan_period
+(0.2 s = 4 control steps) so the controller has nothing to chase between replans" — stated
+as mechanism, never measured. The [classical-planner ladder](#the-classical-planner-ladder-is-a-clearance-ladder-and-the-buried-mechanism-stories-are-both-wrong)
+swept `replan_period` only as a *planner-comparison* axis at `max_accel`=80, a reactive
+regime where the drone dodges late regardless of plan age, so the period "barely mattered."
+Neither asks whether MPC *alone* has a `replan_period` sweet-spot, and in particular
+whether **more-frequent replanning is counterproductive**: the runner holds the planned
+velocity constant between replans (`uav_nav_lab/runner/experiment.py`, recompute only when
+`t - last_replan_t >= replan_period`), so a short period re-solves every control step
+against a near-symmetric geometry and could chatter between left/right avoidance, never
+committing to a side. That was my hypothesis — an inverted-U where the *shortest* period
+collides most. **It is wrong, and so is the asserted commitment-aids-safety story.**
+
+Planning is instantaneous in sim time here (the runner only logs `planner_dt`), so this is
+a pure commitment/reactivity trade with no compute cost. `scripts/mpc_replan_commitment_phase.py`
+sweeps `replan_period` on the single-drone `exp_compare_mpc.yaml` dynamic-obstacle course,
+paired by seed, McNemar-exact each cell vs the per-sweep peak. The operating point needs
+calibration: at the natural obstacle speed MPC is robust enough that the period barely moves
+success until `max_accel` is dropped to ~1.5, which puts it off the ceiling (76.7 %) with
+0 % timeouts (every failure is a collision — the discriminating regime).
+
+At that **natural operating point** (obs ×1.0, `max_accel`=1.5, n=60) the curve is
+*monotone in the opposite direction to my hypothesis* — freshness wins, and long commitment
+is a significant liability:
+
+| replan_period | success | collision | vs peak (c/b, p) |
+|---|---|---|---|
+| **0.05 s (peak)** | **76.7 %** | 23.3 % | — |
+| 0.1 s | 75.0 % | 25.0 % | 0/1, 1.000 |
+| 0.2 s | 70.0 % | 30.0 % | 1/5, 0.219 (NS) |
+| 0.4 s | 63.3 % | 36.7 % | 1/9, **0.0215** |
+| 0.8 s | 60.0 % | 40.0 % | 2/12, **0.0129** |
+| 1.6 s | 51.7 % | 48.3 % | 3/18, **0.0015** |
+
+Replanning every control step (0.05 s) is the *best* cell; stretching the period to 1.6 s
+costs 25 points (b=18/c=3, p=0.0015). The chatter I predicted never materialises — the MPC
+smoothing term keeps successive re-solves coherent, so the only robust effect is the decay
+of a *stale* plan as it ages out of touch with the moving obstacles. **The "commitment does
+safety work" reading of the CHOMP prose is exactly backwards in closed loop: commitment
+buys nothing, and too much of it kills you.**
+
+![MPC success vs replan cadence across operating points](images/mpc_replan_commitment.png)
+
+### A deep 0.4 s valley that looks like resonance — but isn't
+
+Pushing the obstacles harder surfaces a tempting artifact. At obs ×2.0 (`max_accel`=2,
+n=60) the curve is flat at 45 % for 0.05–0.2 s, then **collapses to 5 % at exactly 0.4 s**
+(b=26 vs the short-period peak, p<10⁻⁴), then partly recovers. A 0.4 s commitment window
+catastrophically misaligned with the obstacle timescale *looks* like a commitment/obstacle
+resonance — a far more interesting story than a monotone decay. The honest test of a
+resonance is whether the valley **moves along the period axis** as the obstacle speed
+changes. It does not:
+
+| replan_period | obs ×1.5 (a=2) | obs ×2.0 (a=2) | obs ×2.5 (a=2) |
+|---|---|---|---|
+| 0.2 s | 75.0 % | 45.0 % | 55.0 % |
+| 0.3 s | 80.0 % | — | 57.5 % |
+| **0.4 s** | **82.5 % (peak)** | **5.0 % (collapse)** | **57.5 %** |
+| 0.5 s | 80.0 % | — | 57.5 % |
+| 0.6 s | 72.5 % | — | 57.5 % |
+| 0.8 s | 62.5 % | 31.7 % | 52.5 % |
+
+The 0.4 s collapse exists at **one** obstacle speed only. At ×1.5 the same period is the
+*peak* (82.5 %); at ×2.5 it is unremarkable (57.5 %, flat with its neighbours). A real
+resonance would shift the valley to a shorter period as the obstacles speed up; instead it
+simply vanishes on either side. It is a pathological single-point coincidence — at ×2.0 the
+deterministic dynamic-obstacle phase happens to put an obstacle across the drone's committed
+0.4 s segment on nearly every seed — not a generalisable mechanism. **Reporting that valley
+as a "resonance sweet-spot to avoid" would have been a fabricated finding;** the robustness
+sweep is what catches it, the same calibrate-first discipline that the rest of this document
+runs on.
+
+What survives across all four operating points is consistent and unglamorous: short and
+mid periods are statistically tied, and the *long*-commitment tail decays (significantly at
+the natural point and at obs ×1.5). There is no commitment sweet-spot and no
+frequent-replanning penalty. The lesson is the recurring one — an *asserted* offline
+mechanism (here, "commitment lets the controller stop chasing") need not be the *measured*
+closed-loop effect, and a dramatic-looking valley is worth disproving before it is
+published.
+
+Reproduce: `python scripts/mpc_replan_commitment_phase.py --max-accel 1.5 --n 60`
+(calibrate first with `--accel-sweep 1.5 2 3 4 6 --n 30`; the obstacle-speed robustness
+sweeps add `--obs-speed-mult 1.5 2.5 --periods 0.2 0.3 0.4 0.5 0.6 0.8`; the overlay figure
+is the `--overlay` mode over the saved `results/rpcommit_*` dirs).

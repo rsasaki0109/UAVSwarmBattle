@@ -234,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: Right-of-way substitutes for the predictor at head-on, but not at the
+- **Latest: More-frequent replanning is never counterproductive — the `replan_period`
+  "commitment" is not a safety mechanism.** Sweeping MPC's replan cadence on the
+  dynamic-obstacle course (single drone, paired McNemar, n=60) refutes *both* the
+  asserted commitment-aids-safety story and my own inverted-U guess: at the calibrated
+  operating point the curve is **monotone** — replanning every control step (0.05 s) is
+  best (76.7 %) and stretching to 1.6 s costs 25 points (b=18/c=3, p=0.0015). A dramatic
+  0.4 s collapse at one obstacle speed turns out to be a single-point artifact, not a
+  resonance — it vanishes (and even becomes the *peak*) when the obstacle speed shifts.
+  Freshness wins; commitment buys nothing.
+- **Right-of-way substitutes for the predictor at head-on, but not at the
   perpendicular crossing** — the two angles where the goal-aware predictor wins on a
   2-drone crossing turn out to have *different* mechanisms. Applying the passive
   `planner.lateral_bias` right-of-way convention to the **dumb** constant_velocity
