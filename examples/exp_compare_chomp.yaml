@@ -24,6 +24,20 @@
 # Reading: high value when compute is the bottleneck (cheap, smooth);
 # RRT init might lift the success rate further — see the roadmap.
 #
+# PROVEN + EXTENDED (scripts/chomp_clearance_band_phase.py, paired McNemar n=80;
+# docs/findings.md, "CHOMP's explicit clearance band has a sweet spot"):
+#  - The clearance band `epsilon` (shipped 2.0) has a SWEET SPOT: success is an
+#    inverted-U peaking at epsilon~3 (50%); both tails are significantly worse
+#    (eps 0.5/1.0: -13, p=0.019 — too narrow, path stays near-straight & drives
+#    in; eps 6.0: -19, p=0.001 — too wide, over-deviates & can't thread gaps).
+#  - Even tuned, CHOMP caps BELOW plain rrt (50% vs 67%). epsilon adds clearance
+#    from the STATIC map only (CHOMP ignores the dynamic obstacles) while every
+#    failure is a DYNAMIC collision — it defends the wrong threat.
+#  - The roadmap claim is now the headline: setting `init: rrt` (seed CHOMP from
+#    an RRT path) jumps success to 78.8% — +34pp over straight-init (p<1e-3) and
+#    ABOVE rrt itself. RRT supplies omnidirectional incidental clearance; CHOMP's
+#    smoothing cleans it up without optimising the slack away. Second only to MPC.
+#
 # Reproduce: uav-nav run examples/exp_compare_chomp.yaml
 #            uav-nav eval results/cmp_chomp
 name: cmp_chomp
