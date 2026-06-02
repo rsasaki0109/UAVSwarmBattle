@@ -234,7 +234,22 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the constant-turn win survives only mild sensor noise, and its
+- **Latest: a three-way predictor shootout, and an offline "crossover" that
+  refuses to cross** — under noisy velocity `constant_turn` (model the curve)
+  decays, so the natural counter is `kalman_velocity` (ignore the velocity
+  field, filter motion from clean positions — structurally noise-immune).
+  Offline forecast error promises a clean crossover (kalman overtakes
+  constant_turn past velocity_noise ≈0.2). The closed-loop sweep at the cliff
+  (hunter 2.85, n=60) says otherwise: clean, `constant_turn` strictly dominates
+  (63% vs kalman 22%, p=2e-5; kalman ties the straight-line baseline — discarding
+  velocity discards the turn signal). Noisy, the curve-modeller's edge goes
+  non-significant while kalman holds a flat ~22% and keeps a *baseline* edge —
+  but the direct `constant_turn` vs `kalman_velocity` head-to-head is a **tie at
+  every noisy level** (p=0.33–0.70). The promised crossover never materializes.
+  Third sighting of the lesson: a steady-ω offline metric can manufacture a
+  between-method crossover the planner never realizes. See
+  `scripts/predictor_noise_shootout.py`.
+- **The constant-turn win survives only mild sensor noise, and its
   `smoothing` knob does not rescue it** — re-running the cliff cell under
   `noisy_tracker` (corrupting only the velocity channel `constant_turn` reads its
   turn rate from), the evasion win holds at velocity_noise_std 0.1 (5%→27%,

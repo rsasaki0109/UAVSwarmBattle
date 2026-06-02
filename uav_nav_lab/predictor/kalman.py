@@ -14,6 +14,19 @@ new tracks; unmatched tracks are dropped (no aging logic — keeps the MVP
 small). Bootstrap of the track's initial velocity uses the observation's
 velocity field on the first detection, after which KF takes over.
 
+The flip side of ignoring the velocity field is that this predictor is
+*curve-blind*: its constant-velocity process model cannot anticipate a
+turning obstacle, so against a maneuvering threat it forecasts no better than
+the straight-line baseline. A closed-loop shootout vs a curving ``intercept``
+hunter (docs/findings.md, "Predictor shootout") makes the tradeoff concrete:
+with a *clean* velocity field ``constant_turn`` strictly beats this predictor
+(it models the turn this one discards), and here Kalman ties the plain
+constant-velocity baseline; under a *noisy* velocity channel Kalman's
+immunity keeps it a significant win over that baseline where ``constant_turn``
+decays, but the two never separate significantly head-to-head. Use this when
+the velocity field is noisy/absent *and* the obstacle does not curve much;
+prefer ``constant_turn`` when the velocity is trustworthy.
+
 Optional ``delay_compensation`` lets the predictor advance every output
 sample by a fixed lead time on top of ``horizon_dts`` — useful when the
 *known* sensor latency exceeds zero and you want to project to the current
