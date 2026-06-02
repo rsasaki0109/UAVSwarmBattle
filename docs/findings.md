@@ -77,6 +77,7 @@ different strategies.
 - [Pursuit-evasion: prediction's value is gated by escapability](#pursuit-evasion-predictions-value-is-gated-by-escapability)
 - [Constant-turn predictor: a better forecast wins only where accuracy binds](#constant-turn-predictor-a-better-forecast-wins-only-where-accuracy-binds)
 - [Constant-turn under noisy velocity: the win decays, and smoothing does not rescue it](#constant-turn-under-noisy-velocity-the-win-decays-and-smoothing-does-not-rescue-it)
+- [Predictor shootout: model the curve, filter it out, or trust it — and the crossover that does not cross](#predictor-shootout-model-the-curve-filter-it-out-or-trust-it--and-the-crossover-that-does-not-cross)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5705,5 +5706,97 @@ retracted here rather than left to mislead.
 Reproduce: `python scripts/curved_predictor_noise_phase.py`
 (5 velocity-noise levels × 3 arms × n=60; ~15 min on 16 workers; writes
 `results/curved_predictor_noise_phase/phase.{json,png}` + per-seed
+`phase_raw.json`). The offline forecast-error table is reproduced in that
+script's header docstring.
+
+## Predictor shootout: model the curve, filter it out, or trust it — and the crossover that does not cross
+
+The section above left `constant_turn` with a clear weakness: it reads the
+turn rate ω from the obstacle's *velocity* field, the exact channel
+`noisy_tracker` corrupts, so its cliff-edge win decays as velocity noise
+grows. That invites an obvious counter-design. Instead of *modelling* the
+curve from a noisy velocity, what if you *ignore* the velocity field and
+estimate motion from the (clean) **position** stream with a filter? That is
+`kalman_velocity` — a constant-velocity Kalman filter that observes position
+only and infers velocity from position deltas, making it structurally immune
+to velocity-channel noise (at the cost of being curve-blind). So this is a
+three-way shootout of distinct forecasting philosophies, prediction ON for
+all, only `predictor.type` differing:
+
+- **constant_velocity** — trust the reported velocity, extrapolate linearly.
+- **constant_turn** — model the curve, reading ω from the velocity field.
+- **kalman_velocity** — ignore the velocity field; filter velocity from positions.
+
+**Offline intuition (steady-ω surrogate, 1 s forecast error, mean m):**
+
+| velocity_noise_std | 0.0 | 0.1 | 0.2 | 0.3 | 0.5 |
+|---|---|---|---|---|---|
+| constant_velocity | 0.64 | 0.65 | 0.68 | 0.72 | 0.87 |
+| constant_turn | **0.08** | 0.63 | 1.17 | 1.59 | 2.07 |
+| kalman_velocity | 1.18 | 1.19 | 1.19 | 1.19 | 1.20 |
+
+By forecast error there is a clean **crossover**: `constant_turn` is far the
+best when clean but collapses as it eats the velocity noise, while
+`kalman_velocity` is flat (~1.2 m, velocity-noise immune) and overtakes it
+past ≈0.2 — paying for the immunity with a high curve-blind floor. The
+question #60 forces us to ask: that offline table is a *steady-ω surrogate*,
+and #60 proved the steady-ω metric **inverts** in the closed loop because the
+real hunter maneuvers. So does the crossover survive?
+
+**Closed-loop outcome.** Same rig as #60 — escapability cliff (hunter speed
+2.85), `noisy_tracker` corrupting *only* the velocity channel (delay 0,
+position noise 0), paired by seed, n=60. McNemar vs `const_velocity`, and the
+direct `constant_turn` vs `kalman_velocity` head-to-head:
+
+| velocity_noise_std | const_velocity | constant_turn (vs CV) | kalman_velocity (vs CV) | CT vs KF |
+|---|---|---|---|---|
+| 0.0 | 18.3 % | **63.3 %** (c/b 29/2, p<1e-6) | 21.7 % (10/8, p=0.81) | **CT** (30/5, p=2e-5) |
+| 0.1 |  5.0 % | **26.7 %** (14/1, p=1e-3) | **21.7 %** (11/1, p=6e-3) | tie (15/12, p=0.70) |
+| 0.2 |  5.0 % | 13.3 % (6/1, p=0.13) | **21.7 %** (11/1, p=6e-3) | tie (6/11, p=0.33) |
+| 0.3 |  8.3 % | 16.7 % (7/2, p=0.18) | **23.3 %** (12/3, p=0.035) | tie (7/11, p=0.48) |
+| 0.5 | 10.0 % | 18.3 % (8/3, p=0.23) | 23.3 % (11/3, p=0.057) | tie (7/10, p=0.63) |
+
+Three findings:
+
+1. **Clean velocity: `constant_turn` strictly dominates.** It beats both the
+   baseline (p<1e-6) *and* `kalman_velocity` head-to-head (63.3 % vs 21.7 %,
+   p=2e-5). Tellingly, `kalman_velocity` is statistically indistinguishable
+   from the straight-line baseline when clean (21.7 % vs 18.3 %, p=0.81):
+   discarding the velocity field throws away the very turn signal that wins
+   here, and the filter's curve-blindness leaves it no better than coasting.
+
+2. **Noisy velocity: the curve-modeller decays, the filter is robust — vs the
+   baseline.** `constant_turn`'s edge loses significance from noise 0.2 on
+   (p=0.13, 0.18, 0.23), exactly as #60 found. `kalman_velocity`, immune to
+   the corrupted channel, holds a flat ~22 % and stays a *significant* win
+   over the baseline at 0.1/0.2/0.3 (p down to 6e-3) where `constant_turn`
+   no longer is. So on the vs-baseline criterion the filter degrades more
+   gracefully.
+
+3. **But the offline crossover does NOT cross in the closed loop.** The clean
+   comparison is the direct `constant_turn` vs `kalman_velocity` head-to-head,
+   and it is a **tie at every noisy level** (p = 0.33–0.70). The offline table
+   said kalman overtakes constant_turn past ≈0.2; the closed loop refuses to
+   confirm a significant reversal. The asymmetry in finding 2 (kalman keeps a
+   baseline-edge where CT loses it) is suggestive but rides on kalman's *low
+   variance* against a near-floor baseline, not on kalman actually beating the
+   curve-modeller. Claiming "kalman wins under noise" would overstate a tie.
+
+The reusable lesson is the third sighting of the same pattern, now in its
+strongest form. #59: offline accuracy ≠ outcome (the safety margin swallows a
+forecast gain). #60: a steady-ω offline metric can recommend the *wrong knob*.
+Here: a steady-ω offline metric can manufacture a *clean crossover between two
+methods* that simply does not materialize as a closed-loop reversal. Offline
+forecast error ranks predictors on a surrogate the planner never sees; a
+crossover on that surrogate is a hypothesis, not a result. Practical guidance:
+**if you trust your velocity field, `constant_turn`; if it is noisy, neither
+strictly dominates — `kalman_velocity` degrades more gracefully against the
+baseline but does not beat `constant_turn`, so the choice is a wash you should
+make on other grounds (kalman's lower variance, or constant_turn's clean-case
+ceiling), not on a promised crossover.**
+
+Reproduce: `python scripts/predictor_noise_shootout.py`
+(5 velocity-noise levels × 3 arms × n=60; ~14 min on 16 workers; writes
+`results/predictor_noise_shootout/phase.{json,png}` + per-seed
 `phase_raw.json`). The offline forecast-error table is reproduced in that
 script's header docstring.
