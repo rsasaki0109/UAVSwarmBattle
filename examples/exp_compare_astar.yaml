@@ -47,6 +47,23 @@
 #    higher speeds where MPC's 56 ms p95 stops fitting in the replan
 #    period.
 #
+# CORRECTION (proven in scripts/planner_clearance_ladder_phase.py, paired
+# McNemar across replan_period, n=60/cell — see docs/findings.md, "The
+# classical-planner ladder is a clearance ladder"). The success ORDER above is
+# right and the astar→rrt gap is significant at fast cadence (rp 0.1-0.4 s:
+# +26..+30/60, p<1e-3), but the two MECHANISM stories here are both WRONG:
+#  * rrt_star does NOT fail by "overshooting the replan budget / following stale
+#    plans". Planning is INSTANTANEOUS in sim time — uav_nav_lab/runner/
+#    experiment.py sets last_replan_t to the sim time at replan and only LOGS
+#    planner_dt; sim time advances solely via sim.step. The 464 ms is pure
+#    wall-clock and has zero effect on the sim. rrt_star fails on path geometry.
+#  * A* does NOT lose because its grid path "zigzags". Measured, A* is the MOST
+#    DIRECT planner of the four (directness 0.985 vs RRT's ~1.12). It loses for
+#    the SAME reason rrt_star does: a minimum-length path is a minimum-CLEARANCE
+#    path, and against obstacles the planner does not model, the only protection
+#    is the incidental slack that plain RRT's wandering first-path carries. The
+#    real ordering variable is directness, not "grid vs continuous" or compute.
+#
 # Reproduce with:
 #   uav-nav run examples/exp_compare_astar.yaml
 #   uav-nav run examples/exp_compare_straight.yaml

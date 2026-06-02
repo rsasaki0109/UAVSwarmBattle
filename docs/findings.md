@@ -80,6 +80,7 @@ different strategies.
 - [Predictor shootout: model the curve, filter it out, or trust it — and the crossover that does not cross](#predictor-shootout-model-the-curve-filter-it-out-or-trust-it--and-the-crossover-that-does-not-cross)
 - [Sensor field of view: the blind-spot cost is structural and dominates the range cost](#sensor-field-of-view-the-blind-spot-cost-is-structural-and-dominates-the-range-cost)
 - [RRT* rewiring is a closed-loop liability: the optimal path collides more](#rrt-rewiring-is-a-closed-loop-liability-the-optimal-path-collides-more)
+- [The classical-planner ladder is a clearance ladder, and the buried mechanism stories are both wrong](#the-classical-planner-ladder-is-a-clearance-ladder-and-the-buried-mechanism-stories-are-both-wrong)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -5960,3 +5961,90 @@ Reproduce: `python scripts/rrt_rewire_replan_phase.py`
 (5 replan periods × 2 arms × n=60; RRT* is the expensive arm — ~15 min on
 6 workers; writes `results/rrt_rewire_replan_phase/phase.{json,png}` + per-seed
 `phase_raw.json`).
+
+## The classical-planner ladder is a clearance ladder, and the buried mechanism stories are both wrong
+
+`examples/exp_compare_astar.yaml` ships, buried in its header, a five-planner
+table on the dynamic-obstacle scenario (n=30, Wilson CIs, perfect sensor) —
+`straight 0 % < astar 20 % < rrt_star 23 % < rrt 73 % < mpc 100 %` — and explains
+the middle of it with two mechanism stories. A* supposedly loses because "its
+8-connected grid path zigzags, sitting in obstacle paths longer"; `rrt_star`
+supposedly loses because "464 ms overshoots the 200 ms replan_period … the drone
+follows stale plans." Neither claim was ever run through a paired test, and both
+are wrong. This study proves the buried ladder with paired McNemar and replaces
+both stories with one measured variable.
+
+First the refutations. **Planning is instantaneous in sim time** — in
+`uav_nav_lab/runner/experiment.py` the replan fires on `(t − last_replan_t) ≥
+replan_period`, `last_replan_t` is set to the *sim* time `t` at replan, and
+`planner_dt_ms` is only logged; sim time advances solely through `sim.step`. The
+945 ms RRT* spends planning has *zero* effect on the simulation, so "stale plans
+/ blew the replan budget" cannot be why `rrt_star` fails (the RRT* study above
+proved it fails on path geometry instead). And **A* is not the zigzagger** —
+measured, it produces the *most direct* path of all four arms (executed length
+≈ the straight-line goal distance). So the two stories are not just unproven,
+they point in opposite directions ("A* too wiggly" vs "rrt_star too straight")
+for what turns out to be one cause.
+
+Four planning arms, identical scenario/sensor/dynamics (50×50 grid, 25 static +
+3 reflecting moving obstacles, perfect sensing, `max_speed` 10, `inflate` 1),
+one search strategy apart: **straight** (head at the goal, no avoidance — the
+floor), **astar** (8-connected grid, grid-optimal), **rrt** (continuous
+sampling, first path — wanders), **rrt_star** (sampling + rewiring — shortest
+path). Paired by episode seed, swept over `replan_period` as in the RRT* study;
+n=60 per cell. The unifying variable is **directness** = executed path length /
+straight-line goal distance (1.0 = perfectly straight):
+
+| replan_period | straight | astar | rrt_star | rrt | astar→rrt (net c−b, p) |
+|---|---|---|---|---|---|
+| 0.1 s | 0 % | 26.7 % | 21.7 % | 76.7 % | **+30** (c34/b4), p<1e-3 |
+| 0.2 s | 0 % | 20.0 % | 26.7 % | 66.7 % | **+28** (c33/b5), p<1e-3 |
+| 0.4 s | 0 % | 13.3 % | 33.3 % | 56.7 % | **+26** (c29/b3), p<1e-3 |
+| 0.8 s | 0 % | 31.7 % | 28.3 % | 48.3 % | +10 (c19/b9), p=0.087 (ns) |
+| 1.6 s | 0 % | 18.3 % | 45.0 % | 33.3 % | +9 (c17/b8), p=0.108 (ns) |
+
+| directness | straight | astar | rrt_star | rrt |
+|---|---|---|---|---|
+| (mean over cadences) | — (0 successes) | **0.985** | **1.00** | **1.12** |
+
+Findings:
+
+1. **The buried "RRT beats A* by ~50 pp" is real and significant — at fast
+   cadence.** Paired astar→rrt is +26 to +30 net goal-reaches per 60 for rp
+   0.1–0.4 s (p<1e-3), reproducing the header's 20 %→73 % (here 20 %→67 % at the
+   matched rp 0.2 s). It washes out at slow cadence (rp 0.8/1.6 s, p>0.08) for the
+   same reason the RRT* contrast does: RRT's advantage is its reactivity, and at a
+   1.6 s period nothing reacts (RRT itself falls to 33 %).
+
+2. **Directness predicts the ladder, not search strategy.** The two "optimal"
+   planners — grid-optimal A* (directness 0.985) and sampling-optimal RRT*
+   (≈1.00) — are the *straightest* and sit in the *bottom* tier (13–33 % success,
+   55–87 % collision). The one planner that *wanders*, plain RRT (directness 1.06–
+   1.15), sits on top (48–77 % at fast cadence). `straight` is perfectly direct
+   and never arrives. "Grid vs continuous" does not order these — A* (grid) and
+   RRT* (continuous) land together at the bottom *because both are direct*; what
+   separates RRT is the incidental slack its first-found path carries.
+
+3. **It is the same mechanism as the RRT* study, now generalised.** Every failure
+   is a collision; against obstacles the planner does not model, the only
+   protection is incidental clearance, and a minimum-length path is a
+   minimum-clearance path. The `rrt → rrt_star` contrast reproduces the RRT* study
+   exactly within this harness (net −33, −24, −14, −12, +7 across the five
+   periods), cross-validating both. A* simply reaches the same place from the grid
+   side: optimise the path and you optimise away the slack that was keeping you
+   alive.
+
+The corrected ladder reads: `straight` (no avoidance) < `astar` ≈ `rrt_star`
+(direct, low-clearance, collision-prone) < `rrt` (wanders, incidental clearance)
+< `mpc` (the only arm that *models* the moving obstacles and so escapes the
+clearance tradeoff entirely — see the planner-family landscape above). Two of
+those four boundaries are governed by directness, not by "grid vs sampling" or by
+compute budget. Engineering takeaway: **when your planner does not model the
+dynamic obstacles, do not reach for the more optimal search — reach for clearance
+(inflate the obstacles, or a cost that models their motion). Path optimality buys
+you a collision.**
+
+Reproduce: `python scripts/planner_clearance_ladder_phase.py`
+(5 replan periods × 4 arms × n=60; rrt_star is the expensive arm — ~20 min on
+6 workers; writes `results/planner_clearance_ladder_phase/phase.{json,png}` +
+per-seed `phase_raw.json`).
