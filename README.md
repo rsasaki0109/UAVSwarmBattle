@@ -249,6 +249,11 @@ active findings are grouped this way:
   unmodelled moving obstacles, at ≈30× the per-replan compute. Sharpest
   offline≠outcome case yet, and the first for a planner mechanism. See
   `scripts/rrt_rewire_replan_phase.py`.
+
+  <p align="center">
+  <img src="docs/images/compare_rrt_vs_rrt_star.gif" alt="Same seed, same dynamic-obstacle layout: plain RRT (left) wanders to the goal on a wavy slack-filled path while RRT* (right) drives its shortest 'optimal' path straight into a moving obstacle and collides" width="900"><br>
+  <em>Same seed, same layout (replan_period 0.2 s). Left: plain RRT's wavy, slack-filled path reaches the goal. Right: RRT*'s shorter "optimal" path commits straight into a moving obstacle and collides at t=4.3 s — shortest-path is minimum-clearance.</em>
+  </p>
 - **A sensor's field of view costs more than its range, and the gap is
   structural** — a buried YAML number claimed a forward 90° depth camera reaches
   the goal 30 pp less often than an omni 8 m LiDAR at the same compute. Proven,
