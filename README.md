@@ -243,6 +243,21 @@ active findings are grouped this way:
   0.4 s collapse at one obstacle speed turns out to be a single-point artifact, not a
   resonance — it vanishes (and even becomes the *peak*) when the obstacle speed shifts.
   Freshness wins; commitment buys nothing.
+- **The antipodal predictor inversion is a 2D artifact — the vertical escape axis
+  dissolves it, and at high density flips the predictor's sign.** The companion result
+  below shows goal-aware `game_theoretic` prediction *inverts* to a liability on the
+  2D antipodal swap (N=6: 1/40). Lift the same ring into a voxel world with vertical
+  room (`scripts/antipodal_3d_phase.py`, paired McNemar, n=40) and the deadlock
+  **dissolves**: gt is **40/40 = 100 % at every N=3–6** (2D collapses 37.5 %→2.5 %),
+  significant at every N with the gap widening as the crowd grows (c up to 39/40,
+  p=4×10⁻¹²). The mirror-swerve trap was planar — given a climb/dive axis the symmetric
+  in-plane forecast deconflicts vertically instead of re-converging at the hub. The
+  twist: at the top density the predictor's sign *flips* vs 2D — at N≤5 it is irrelevant
+  (constant_velocity also 100 %), but at **N=6 constant_velocity collapses to 0/40 while
+  game_theoretic holds 100 %** (c=40/b=0, p=2×10⁻¹²). So with altitude the predictor
+  goes liability → irrelevant → *required* as N grows. A second, independent escape from
+  the same trap the right-of-way bias fixes by convention. See
+  `examples/exp_multi_drone_antipodal_3d.yaml`.
 - **Right-of-way substitutes for the predictor at head-on, but not at the
   perpendicular crossing** — the two angles where the goal-aware predictor wins on a
   2-drone crossing turn out to have *different* mechanisms. Applying the passive
