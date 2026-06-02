@@ -234,7 +234,21 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: The goal-aware peer-predictor win is bimodal in encounter angle**
+- **Latest: Right-of-way substitutes for the predictor at head-on, but not at the
+  perpendicular crossing** — the two angles where the goal-aware predictor wins on a
+  2-drone crossing turn out to have *different* mechanisms. Applying the passive
+  `planner.lateral_bias` right-of-way convention to the **dumb** constant_velocity
+  predictor (n=60 paired McNemar, B=1.5 calibrated at 180°) fully recovers the
+  **head-on (180°)** cell — 75→**100 %**, c=15/b=0, p=0.0001 — *beating even the smart
+  game_theoretic predictor* (96.7 %), because a head-on swap is a pure mirror-symmetric
+  problem a shared symmetric forecast is the wrong tool for. But at the **perpendicular
+  (90°)** cell the convention is only double-edged (88→93 %, c=7/b=4, p=0.55 NS) and
+  never closes the gap to the predictor (loses 4 paired seeds to gt): that failure is
+  genuine forecast-divergence, not symmetry. Oblique controls (60/150°) stay at 100 %,
+  so the standing bias is harmless where unneeded. Convention and prediction are
+  complementary; the encounter geometry decides which you need. See
+  `scripts/crossing_rightofway_phase.py`.
+- **The goal-aware peer-predictor win is bimodal in encounter angle**
   — on a 2-drone crossing, sweeping the *encounter angle* at the proven sweet-spot
   acceleration (n=60 paired McNemar), game_theoretic beats constant_velocity at
   *exactly two* geometries: the 90° perpendicular crossing (88→100 %, c=7/b=0,
@@ -262,6 +276,20 @@ active findings are grouped this way:
   a rotational convention changed, and it vanished), and once symmetry is broken the
   goal-aware forecast is the better tool again (gt+bias beats const-velocity at
   every N). See `scripts/antipodal_rightofway_phase.py`.
+- **The right-of-way bias is safe everywhere and general to head-on convergence**
+  — is `planner.lateral_bias` recommendable, or an antipodal trick? Tested 0.0 vs 2.0
+  across four regimes (paired McNemar). **Safety**: zero regressions anywhere — a
+  single drone threading static+dynamic clutter (40/40→40/40) and the proven 2-drone
+  perpendicular crossing (40/40→40/40) are both unchanged, so the constant rightward
+  preference never degrades obstacle threading or the asymmetric-encounter win.
+  **Generality**: it significantly lifts a *head-on corridor swap* (3 lanes, n=80:
+  70→**80/80**, c=10/b=0, **p=0.002**) — a different topology from the ring but the
+  same opposing-convergence mechanism, so the fix is not ring-specific. The
+  *perpendicular* 3×3 crossing has nothing to fix (39/40 without bias) because a 90°
+  crossing decomposes into independent pairwise conflicts the predictor already wins.
+  Scope, stated as mechanism: the deadlock (and the bias's benefit) needs symmetric
+  **head-on** convergence; conflicts that decompose never deadlock, so the bias is a
+  harmless no-op there. See `scripts/lateral_bias_regimes_phase.py`.
 - **Goal-aware peer prediction wins head-on and *inverts* to a liability
   on the symmetric swap** — a game-theoretic predictor (models each peer steering
   toward its goal) is the proven winner on a 2-drone crossing. Scaled to the

@@ -52,6 +52,16 @@
 # irrelevant. The win is stress-gated: it appears only where the myopic baseline is
 # pushed off the ceiling.
 #
+# SUBSTITUTABILITY — the two peaks have different mechanisms (scripts/
+# crossing_rightofway_phase.py, docs/findings.md "Right-of-way substitutes for the
+# predictor at head-on, but not at the perpendicular crossing"). Applying the passive
+# planner.lateral_bias right-of-way convention to the DUMB constant_velocity predictor
+# fully recovers the 180° head-on cell (75->100 %, p=0.0001) and even beats this
+# game_theoretic predictor there — a head-on swap is a pure symmetry problem a shared
+# symmetric forecast is the wrong tool for. But at 90° the convention is only
+# double-edged (88->93 %, NS) and never matches game_theoretic: that cell is genuine
+# forecast divergence, not symmetry. Convention and prediction are complementary.
+#
 # Pair with exp_multi_drone_crossing_const_vel.yaml (identical except
 # predictor.type=constant_velocity) and compare joint success:
 #   uav-nav run examples/exp_multi_drone_crossing_game_theoretic.yaml
