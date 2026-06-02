@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: a constant-turn predictor wins exactly where forecast accuracy
+- **Latest: the constant-turn win survives only mild sensor noise, and its
+  `smoothing` knob does not rescue it** — re-running the cliff cell under
+  `noisy_tracker` (corrupting only the velocity channel `constant_turn` reads its
+  turn rate from), the evasion win holds at velocity_noise_std 0.1 (5%→27%,
+  p=1e-3, a 5× lift) then decays to the floor by ≥0.2. An offline forecast-error
+  check on a *steady* turn said lowering `smoothing` should help under noise; the
+  closed loop against the *maneuvering* hunter says the opposite — the responsive
+  default leads at every noise level (head-to-head p≥0.16). Sharper lesson:
+  offline accuracy measured on a stationary surrogate can recommend the wrong
+  knob outright, because the variance/lag tradeoff inverts on a maneuvering
+  target. The prior section's `smoothing`-under-noise advice is retracted.
+- **A constant-turn predictor wins exactly where forecast accuracy
   binds** — the new `constant_turn` predictor estimates a curving obstacle's turn
   rate from its velocity rotation and rolls it along an arc (it cuts the
   intercept hunter's 1 s forecast error ~60–90% vs constant velocity). A paired

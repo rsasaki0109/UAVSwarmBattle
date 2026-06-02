@@ -31,6 +31,11 @@
 # at the escapability cliff (hunter speed 2.85), lifts evasion 18% -> 63%
 # (paired McNemar c=29/b=2, p<1e-4) — set `predictor: {type: constant_turn, dt:
 # 0.1}` (dt = replan_period). See scripts/curved_predictor_speed_phase.py.
+# That win rests on a clean velocity reading: under a noisy_tracker velocity
+# channel it survives only mild noise (still 5x the baseline at
+# velocity_noise_std 0.1) then decays to the floor, and lowering the predictor's
+# `smoothing` does NOT help despite the offline intuition that it should — see
+# scripts/curved_predictor_noise_phase.py and docs/findings.md.
 name: pursuit_evasion_mppi
 seed: 0
 num_episodes: 5

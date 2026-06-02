@@ -31,8 +31,13 @@ Config keys
     ``replan_period``. ω = (signed angle between last and current velocity) / dt,
     so a wrong ``dt`` scales every turn-rate estimate. Default 0.1.
 ``smoothing`` : EMA weight in (0, 1] on the newest ω estimate (1.0 = trust the
-    latest sample fully; lower resists velocity-field noise, e.g. under the
-    ``noisy_tracker`` sensor). Default 1.0.
+    latest sample fully; lower averages the estimate over more samples). On a
+    *steady* turn lower smoothing reduces velocity-noise variance, but on a
+    *maneuvering* target (e.g. an ``intercept`` hunter, whose ω is time-varying)
+    its lag bias offsets that — a closed-loop pursuit-evasion sweep found
+    lowering it bought no measurable robustness and trended slightly worse than
+    the default (see docs/findings.md, "Constant-turn under noisy velocity").
+    Default 1.0; do not lower it without checking the outcome on your target.
 ``max_turn_rate`` : optional clamp (rad/s) on |ω| so a noisy velocity flip cannot
     fling the arc. Default ``None`` (no clamp).
 ``association_threshold`` : NN gate (m) for matching observations across calls.
