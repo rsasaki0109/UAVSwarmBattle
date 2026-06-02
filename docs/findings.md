@@ -82,6 +82,7 @@ different strategies.
 - [RRT* rewiring is a closed-loop liability: the optimal path collides more](#rrt-rewiring-is-a-closed-loop-liability-the-optimal-path-collides-more)
 - [The classical-planner ladder is a clearance ladder, and the buried mechanism stories are both wrong](#the-classical-planner-ladder-is-a-clearance-ladder-and-the-buried-mechanism-stories-are-both-wrong)
 - [CHOMP's explicit clearance band has a sweet spot — but the cap breaks only when you seed it with RRT](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
+- [Goal-aware peer prediction wins head-on and inverts to a liability on the symmetric swap](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6122,3 +6123,82 @@ all of it by being the only planner that models the moving obstacles outright.)
 Reproduce: `python scripts/chomp_clearance_band_phase.py`
 (6 epsilons + 1 RRT-init arm × n=80; CHOMP is cheap — ~2 min on 6 workers; writes
 `results/chomp_clearance_band_phase/phase.{json,png}` + per-seed `phase_raw.json`).
+
+## Goal-aware peer prediction wins head-on and inverts to a liability on the symmetric swap
+
+The proven two-drone result
+([Multi-drone N-scaling](#multi-drone-n-scaling-and-peer-prediction-coordination)
+and the crossing study behind `examples/exp_multi_drone_crossing_game_theoretic.yaml`)
+is that a **game-theoretic** predictor — one that models each peer as steering
+toward its *goal* rather than coasting on current velocity — significantly beats
+a **constant-velocity** predictor on a perpendicular crossing. The natural next
+question for swarm control: does that goal-aware coordination *scale* to the
+canonical hard benchmark, the **antipodal swap** (N drones equally spaced on a
+ring, each crossing to its antipode through the same central hub)?
+
+It does not. It inverts. The very forecast that wins the 2-body encounter becomes
+a significant *liability* the moment a third drone makes the conflict symmetric,
+and the damage grows monotonically with N.
+
+Setup: N drones on a ring (radius 20, centre of a 50×50 world), `obstacles: none`
+so the *only* thing the planner must solve is peer coordination. Identical MPC and
+dynamics to the proven crossing study (`max_speed 5`, `max_accel 6`,
+`start_jitter 0.8` to give each seed a distinct mirror-break), `sensor: perfect`
+(peers fully visible to both predictors). We swap **only** `planner.predictor.type`
+and pair joint success (all drones reach goal) by seed. n=40, McNemar exact,
+Wilson 95 % intervals.
+
+| N | const_velocity joint | game_theoretic joint | paired b (cv-only) / c (gt-only) | McNemar p |
+|---|---|---|---|---|
+| **2 (head-on)** | 29/40 = 72 % [57, 84] | **39/40 = 98 % [87, 100]** | b=0  c=10 | **0.0020** (gt wins) |
+| 3 | **28/40 = 70 % [55, 82]** | 15/40 = 38 % [24, 53] | b=14 c=1  | **0.0010** (gt loses) |
+| 4 | **32/40 = 80 % [65, 90]** | 12/40 = 30 % [18, 45] | b=23 c=3  | **0.0001** |
+| 5 | **34/40 = 85 % [71, 93]** | 14/40 = 35 % [22, 50] | b=23 c=3  | **0.0001** |
+| 6 | **26/40 = 65 % [50, 78]** | 1/40 = 2 % [0, 13]   | b=25 c=0  | **<0.0001** |
+
+The sign of the paired difference flips between N=2 and N=3 and never comes back.
+At N=2 game_theoretic is +26 pp (p=0.002, the expected crossing win). At N≥3 it is
+−32, −50, −50, −63 pp respectively, every cell p≤0.001, and by N=6 the goal-aware
+fleet reaches the joint goal in **1 of 40** episodes against constant-velocity's 26.
+
+**Every failure is a collision — there are zero timeouts in any cell, for either
+predictor.** So this is not a freeze-in-place stall (the classic "robot freezing
+problem" where over-conservatism halts the fleet). It is the opposite: the drones
+keep moving and *re-collide at the hub*.
+
+Mechanism. The game-theoretic forecast is *correct*: it is fed the peer goals, so
+each drone accurately predicts that every other drone is converging on the same
+central hub at the same time. Acting on a shared, symmetric, accurate forecast,
+all N drones perform **mirror-symmetric** avoidance — they collectively rotate the
+configuration into a *new* symmetric arrangement that still meets at the hub.
+Better global information, applied without any symmetry-breaking, reproduces the
+deadlock instead of resolving it. Constant-velocity's myopic coast is a *worse*
+forecast (it never anticipates the convergence), and precisely because it is worse
+it does not lock the fleet into one coherent symmetric manoeuvre: each drone reacts
+locally and late, the reactions desynchronise, and more drones happen to thread the
+hub. At N=2 there is only a single pairwise conflict and no symmetry to amplify, so
+the accurate forecast simply splits the pair — the win survives.
+
+This is the predictor-level instance of the session's recurring result that the
+*more capable* component is the closed-loop liability: RRT*'s optimal rewiring
+([RRT\* rewiring is a closed-loop liability](#rrt-rewiring-is-a-closed-loop-liability-the-optimal-path-collides-more)),
+the straightest "optimal" planners
+([the clearance ladder](#the-classical-planner-ladder-is-a-clearance-ladder-and-the-buried-mechanism-stories-are-both-wrong)),
+and now the most accurate predictor. The common thread: an objective that is right
+in isolation (shortest path, lowest forecast error) is wrong once the closed loop
+and — here — the *symmetry* of the encounter are in play.
+
+Scope and the missing ingredient. The CPU MPC stack that runs the swarm has **no
+symmetry-breaking and no reciprocal right-of-way** at all; the only such mechanism
+in the codebase, the GPU-MPPI `asymmetric_bias`, is a different planner and its
+dynamic-cell numbers were invalidated by `1646e11`. So this finding bounds the
+proven coordination win rather than overturning it: goal-aware peer prediction is
+the right tool for *asymmetric* encounters (crossings, head-on pairs) and the wrong
+tool, applied alone, for *symmetric* congestion. Lifting the antipodal cliff needs
+an explicit symmetry-breaker (priority / right-of-way, or a per-drone lateral bias)
+layered on top of the forecast — not a better forecast.
+
+Reproduce: `python scripts/antipodal_predictor_phase.py --n-list 2 3 4 5 6 --episodes 40`
+(10 cells, ~10–20 min depending on box load; writes
+`results/antipodal_predictor_phase.{json,png}`; `--plot-from <json>` redraws the
+figure without rerunning).
