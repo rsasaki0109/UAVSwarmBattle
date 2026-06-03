@@ -91,6 +91,7 @@ different strategies.
 - [The antipodal predictor inversion is a 2D artifact — the vertical escape axis dissolves it, and at high density flips the predictor's sign](#the-antipodal-predictor-inversion-is-a-2d-artifact--the-vertical-escape-axis-dissolves-it-and-at-high-density-flips-the-predictors-sign)
 - [Heterogeneous predictor swarms break the antipodal deadlock by desync, not by diversity](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
 - [The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind right-of-way bias rescues it](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
+- [The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6784,3 +6785,77 @@ symmetry actually bites at.
 Reproduce: `python scripts/antipodal_3d_symmetry_phase.py --n-list 5 6 7 --episodes 25`
 (writes `results/antipodal_3d_symmetry_phase.json`; `--max-steps 600` keeps the deadlocked
 cells cheap — a crossing succeeds in ~200 steps, a deadlock never recovers).
+
+> **One refinement, established below** (see [The even-N antipodal resonance recurs at N=8 —
+> there the forecast fails too, and the convention turns harmful where there is no
+> deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)).
+> Extending the sweep to N=8 shows the collapse is **not N=6-only**: N=8 collapses too, so the
+> resonance is **even-N≥6** (map N=3–8 = ✓ ✓ ✓ ✗ ✓ ✗), exactly the even-harsher parity this
+> section already noted. Two things sharpen: at N=8 the goal-aware predictor `gt_b0` **also**
+> collapses (0/30, unlike N=6 where it held), so the forecast is a *stopgap* that runs out
+> while the convention keeps scaling; and `lateral_bias` is *not* harmless everywhere in 3D —
+> at N=4, where there is no deadlock, it drives `cv` from 30/30 to **0/30**.
+
+## The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock
+
+The [N=6 resonance section](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
+left one question open: is the 3D `cv` collapse a property of **N=6 specifically** (a single
+hexagonal resonance), or does it **recur at the next even N**? The hexagon mechanism — six
+antipodal drones forming three exact head-on diameter-pairs through the hub — predicts that an
+octagon (N=8, four exact pairs) should collapse too, while odd N (no exact pair) keeps
+threading through. The honest way to settle "N=6-only" versus "even-N" is to run N=8.
+
+`scripts/antipodal_3d_symmetry_phase.py --n-list 4 6 8 --episodes 30` runs the same four arms
+in the same 3D voxel world (50×50×16, all drones launched at z=8, R=20), paired by seed,
+McNemar exact. N=4 is the even control that the earlier sweep showed survives; N=6 is the known
+collapse; N=8 is the test.
+
+| N | cv_b0 | cv_bias | gt_b0 | gt_bias | cv_bias vs cv_b0 (c/b, p) | gt_b0 vs cv_b0 (c/b, p) |
+|---|-------|---------|-------|---------|---------------------------|-------------------------|
+| 4 | 30/30 (100 %) | **0/30 (0 %)** | 30/30 | 30/30 | **−30** (b=30/c=0, <1e-9) | 0/0, 1.000 (tie) |
+| 6 | **0/30 (0 %)** | 30/30 (100 %) | 30/30 (100 %) | 30/30 | +30 (b=0/c=30, <1e-9) | +30 (b=0/c=30, <1e-9) |
+| 8 | **0/30 (0 %)** | 30/30 (100 %) | **0/30 (0 %)** | 30/30 | +30 (b=0/c=30, <1e-9) | 0/0, 1.000 (tie) |
+
+Three findings, each correcting or extending the N=6 story:
+
+- **The resonance is even-N≥6, not N=6-only.** N=8 collapses exactly as N=6 does (`cv_b0`
+  0/30). Stitched with the prior sweep the full map across N=3–8 is ✓ ✓ ✓ **✗** ✓ **✗** — odd N
+  (3, 5, 7) always thread through, even N collapse *once there are enough drones*: N=4 (two
+  exact pairs) is uncrowded enough that the free vertical axis still resolves it, but from N=6
+  up every even ring deadlocks. So "N=6-specific" was too narrow; the parity texture the N=6
+  section already flagged (even harsher than odd) is the real law, and N=8 is its second tooth.
+
+- **At N=8 the forecast fails too — the convention is what scales.** This is the sharp new
+  result. At N=6 the goal-aware `gt_b0` held (30/30): knowing peer destinations was *enough* to
+  phase the escape, so prediction looked like a cure. At N=8 `gt_b0` **also collapses to 0/30**
+  — `gt_b0 vs cv_b0` is now a dead tie (both 0/30), where at N=6 `gt` beat `cv` by +30. Four
+  simultaneous head-on pairs overwhelm what destination-aware forecasting can deconflict. The
+  `lateral_bias` convention, by contrast, lifts **both** predictors to 30/30 at N=8
+  (`cv_bias`, `gt_bias`), exactly as at N=6. So a smarter forecast is a **stopgap that runs
+  out** with crowd size, while a cheap symmetry-breaking convention keeps working — strong
+  confirmation that the failure is symmetry, not forecast quality, and that breaking the
+  symmetry (not improving the prediction) is the durable fix.
+
+- **The convention is double-edged: at N=4 it *causes* the collapse it cures elsewhere.** The
+  surprise. At N=4 there is no deadlock (`cv_b0` and `gt_b0` both 30/30 — the vertical axis
+  alone resolves the square). Turning `lateral_bias` on there drives `cv` from 30/30 to **0/30**
+  (b=30/c=0, p<1e-9): a strong in-plane right-veer, applied by a goal-blind fleet that did not
+  need it, manufactures a coordinated four-way pinwheel that re-collides — the very
+  symmetric-convergence pathology the bias is meant to break, induced by the bias itself.
+  (`gt_bias` survives at N=4: a goal-aware fleet desynchronizes the veer enough to avoid it.)
+  This **bounds the 2D
+  [`lateral_bias`-is-safe-everywhere result](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)**:
+  that safety does *not* transfer to 3D, where the no-deadlock solution lives on the vertical
+  axis the in-plane bias disrupts. Right-of-way must be applied **where the deadlock is** (even
+  rings, N≥6), not as an always-on primitive — turn it on in the uncrowded regime and it is the
+  one knob that breaks an otherwise-perfect fleet.
+
+The net picture for the antipodal swarm, across both the dimension and the convention: odd
+rings are self-resolving at every N; even rings from N=6 up are pure symmetry deadlocks; a
+goal-aware forecast patches the smaller even ring (N=6) but is overwhelmed by the larger (N=8);
+and a right-of-way convention fixes every deadlocked ring — but only the deadlocked ones, since
+it actively harms a ring that had no symmetry to break.
+
+Reproduce: `python scripts/antipodal_3d_symmetry_phase.py --n-list 4 6 8 --episodes 30`
+(writes `results/antipodal_3d_n8_resonance.json`; `--max-steps 800` keeps deadlocked cells
+cheap — the slowest crossing succeeds well under 800 steps, a deadlock never recovers).

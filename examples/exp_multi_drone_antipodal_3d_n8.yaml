@@ -1,0 +1,117 @@
+# Antipodal swap (8 drones) in a 3D voxel world — the even-N resonance where the
+# FORECAST runs out and only the right-of-way CONVENTION still works.
+#
+# This is the 3D antipodal-ring deadlock (every drone crosses to its antipode
+# through one central hub) with eight drones launched at mid-altitude z=8.
+# obstacles:none, so peer coordination is the ONLY thing the planner solves.
+#
+# WHY N=8 IS DIFFERENT FROM N=6 (docs/findings.md "The even-N antipodal resonance
+# recurs at N=8 — there the forecast fails too, and the convention turns harmful
+# where there is no deadlock"):
+#
+#   The 3D antipodal collapse is an EVEN-N≥6 symmetric resonance (collapse map
+#   N=3..8 = OK OK OK FAIL OK FAIL): odd rings always thread through, even rings
+#   from N=6 up deadlock at the hub. N=4 is too uncrowded to deadlock; N=6 and
+#   N=8 are not.
+#
+#   At N=6 a goal-aware predictor (game_theoretic) still rescues the fleet on its
+#   own (it phases the vertical climb/dive by where peers are going). At N=8 it
+#   does NOT: four exact head-on diameter-pairs overwhelm what destination-aware
+#   forecasting can deconflict, so BOTH constant_velocity AND game_theoretic
+#   collapse to 0/30. The forecast is a stopgap that runs out with crowd size.
+#
+#   What still works at N=8 is a decentralized right-of-way: planner.lateral_bias
+#   (veer RIGHT of the goal heading) turns the symmetric hub convergence into a
+#   clockwise roundabout and lifts BOTH predictors back to 30/30 = 100 %. Breaking
+#   the symmetry — not improving the prediction — is the durable fix.
+#
+# Try it: this file has lateral_bias: 2.0 (100 %). Set it to 0.0 and the fleet
+# collapses to 0 % for EITHER predictor:
+#   uav-nav run examples/exp_multi_drone_antipodal_3d_n8.yaml
+#   uav-nav eval results/antipodal_3d_n8_demo
+# Reproduce the full N=4/6/8 four-arm table:
+#   python scripts/antipodal_3d_symmetry_phase.py --n-list 4 6 8 --episodes 30
+name: antipodal_3d_n8_demo
+seed: 1000
+num_episodes: 20
+
+scenario:
+  type: multi_drone_voxel
+  size: [50, 50, 16]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - name: d0
+      start: [45.0, 25.0, 8.0]
+      goal:  [5.0, 25.0, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d1
+      start: [39.142, 39.142, 8.0]
+      goal:  [10.858, 10.858, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d2
+      start: [25.0, 45.0, 8.0]
+      goal:  [25.0, 5.0, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d3
+      start: [10.858, 39.142, 8.0]
+      goal:  [39.142, 10.858, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d4
+      start: [5.0, 25.0, 8.0]
+      goal:  [45.0, 25.0, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d5
+      start: [10.858, 10.858, 8.0]
+      goal:  [39.142, 39.142, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d6
+      start: [25.0, 5.0, 8.0]
+      goal:  [25.0, 45.0, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+    - name: d7
+      start: [39.142, 10.858, 8.0]
+      goal:  [10.858, 39.142, 8.0]
+      radius: 0.4
+      start_jitter: 0.8
+
+simulator:
+  type: dummy_3d
+  dt: 0.05
+  max_steps: 800
+  max_accel: 6.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 48
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  lateral_bias: 2.0      # the rescue: set to 0.0 and BOTH predictors collapse to 0%
+  predictor:
+    type: game_theoretic # at N=8 even this collapses without lateral_bias
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/antipodal_3d_n8_demo
