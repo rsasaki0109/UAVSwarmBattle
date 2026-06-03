@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: More-frequent replanning is never counterproductive — the `replan_period`
+- **Latest: Heterogeneous predictor swarms break the antipodal deadlock by desync, not by
+  diversity.** When every drone runs the same goal-aware `game_theoretic` predictor the
+  N-drone antipodal swap deadlocks (shared symmetric forecast → all mirror-swerve →
+  re-collide; N=6: 1/40). Mixing half the fleet onto `constant_velocity` (`planner.per_drone`)
+  *robustly* rescues that deadlock — `mixed` beats `all_gt` at every N (N=6: 1→16/40,
+  c=15/b=0, p=0.0001), a direct confirmation that the **shared** forecast is the cause and a
+  swarm can self-desync without any convention. But it is only a partial fix: `mixed` beats
+  the uniform-dumb `all_cv` baseline *only* at N=3 (90 % vs 70 %), and is significantly worse
+  at N=4/6 — because the symmetry-breaker that matters is desync, not diversity, and keeping
+  half the drones on the correct symmetric forecast re-imports the coordinated mirror-swerve.
+  Placement-independent (block ≈ alternating, identical at N=3 despite opposite gt:cv ratios).
+  Only the explicit `lateral_bias` right-of-way gets *both* — symmetry-breaking **and** kept
+  intelligence — at 100 %.
+- **More-frequent replanning is never counterproductive — the `replan_period`
   "commitment" is not a safety mechanism.** Sweeping MPC's replan cadence on the
   dynamic-obstacle course (single drone, paired McNemar, n=60) refutes *both* the
   asserted commitment-aids-safety story and my own inverted-U guess: at the calibrated

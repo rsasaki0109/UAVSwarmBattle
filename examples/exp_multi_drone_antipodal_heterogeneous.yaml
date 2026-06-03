@@ -1,0 +1,88 @@
+# Heterogeneous-predictor swarm on the antipodal swap (N=6 ring).
+#
+# Every drone crosses to its antipode through the same congested hub. A UNIFORM
+# goal-aware fleet (every drone game_theoretic) DEADLOCKS here: all drones share
+# the same symmetric forecast, all mirror-swerve into the same new arrangement,
+# and re-collide at the hub (N=6 joint success ~1/40 — see docs/findings.md
+# "Goal-aware peer prediction wins head-on and inverts to a liability on the
+# symmetric swap").
+#
+# This config breaks the symmetry IMPLICITLY, with no convention: half the fleet
+# runs game_theoretic and half runs constant_velocity via `planner.per_drone`.
+# The two groups predict their peers differently, desynchronise, and thread
+# through the hub a uniform fleet jams in.
+#
+# HONEST SCOPE (scripts/antipodal_heterogeneous_phase.py, n=40, paired McNemar):
+# mixing ROBUSTLY rescues the deadlocked uniform-gt fleet at every N (N=6: 1→16/40,
+# c=15/b=0, p=0.0001) — proof that the shared symmetric forecast is the cause. BUT
+# it is only a PARTIAL fix: the mix beats the uniform constant_velocity baseline
+# only at N=3 (90 % vs 70 %) and is significantly worse at N=4/6, because the
+# symmetry-breaker that matters is DESYNC, not diversity — keeping half the drones
+# on the correct symmetric forecast re-imports the coordinated mirror-swerve. The
+# effect is placement-independent (block ≈ alternating). For a fix that keeps the
+# goal-aware intelligence AND reaches 100 %, use planner.lateral_bias (right-of-way)
+# instead — see exp_multi_drone_crossing_game_theoretic.yaml and
+# scripts/antipodal_rightofway_phase.py.
+#
+# Compare against the uniform fleets by swapping the predictor block:
+#   uniform gt : delete `per_drone`, keep predictor.type=game_theoretic
+#   uniform cv : delete `per_drone`, set  predictor.type=constant_velocity
+name: mdx_antipodal_heterogeneous
+seed: 1000
+num_episodes: 40
+
+scenario:
+  type: multi_drone_grid
+  size: [50, 50]
+  resolution: 1.0
+  obstacles:
+    type: none
+  # N=6 antipodal ring (CENTER=(25,25), RADIUS=20); each drone swaps to its antipode.
+  drones:
+    - {name: d0, start: [45.0,  25.0],  goal: [5.0,   25.0],  radius: 0.4, start_jitter: 0.8}
+    - {name: d1, start: [35.0,  42.32], goal: [15.0,  7.68],  radius: 0.4, start_jitter: 0.8}
+    - {name: d2, start: [15.0,  42.32], goal: [35.0,  7.68],  radius: 0.4, start_jitter: 0.8}
+    - {name: d3, start: [5.0,   25.0],  goal: [45.0,  25.0],  radius: 0.4, start_jitter: 0.8}
+    - {name: d4, start: [15.0,  7.68],  goal: [35.0,  42.32], radius: 0.4, start_jitter: 0.8}
+    - {name: d5, start: [35.0,  7.68],  goal: [15.0,  42.32], radius: 0.4, start_jitter: 0.8}
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 1000
+  max_accel: 6.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  predictor:
+    type: game_theoretic
+  # Heterogeneous fleet: first half goal-aware, second half coasting. Each entry
+  # is shallow-merged over the shared planner config above (empty = unchanged).
+  per_drone:
+    - {predictor: {type: game_theoretic}}
+    - {predictor: {type: game_theoretic}}
+    - {predictor: {type: game_theoretic}}
+    - {predictor: {type: constant_velocity}}
+    - {predictor: {type: constant_velocity}}
+    - {predictor: {type: constant_velocity}}
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/mdx_antipodal_heterogeneous
