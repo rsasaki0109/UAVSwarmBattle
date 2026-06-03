@@ -121,7 +121,13 @@ def main():
     ap.add_argument("--bias-sweep", type=float, nargs="+", default=None,
                     help="calibrate: at a single N (first of --n-list), run gt at each of these biases")
     ap.add_argument("--out", default="results/antipodal_rightofway_phase.json")
+    ap.add_argument("--overlay", nargs="+", default=None,
+                    help="report jsons (one per bias) to overlay cv + gt+row vs N (no run)")
     args = ap.parse_args()
+
+    if args.overlay is not None:
+        _plot_overlay(args.overlay, args.out)
+        return
 
     if args.bias_sweep is not None:
         n = args.n_list[0]
@@ -210,6 +216,49 @@ def _plot(report, png_path):
     fig.tight_layout()
     fig.savefig(png_path, dpi=110)
     plt.close(fig)
+
+
+def _plot_overlay(files, out):
+    """Overlay cv, gt(no bias), and gt+row at several biases vs N — the convention cliff
+    and how a stronger bias pushes it out."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    reports = [json.loads(Path(f).read_text()) for f in files]
+    reports.sort(key=lambda r: r.get("bias", 0))
+    base = reports[0]
+    cells0 = sorted(base["cells"], key=lambda d: d["n"])
+    ns = [d["n"] for d in cells0]
+    cv = [100.0 * d["cv"] / d["m"] for d in cells0]
+    gt = [100.0 * d["gt"] / d["m"] for d in cells0]
+
+    fig, ax = plt.subplots(figsize=(8, 5.2))
+    ax.plot(ns, cv, "o--", color="#1f77b4", lw=1.8, ms=7, label="constant_velocity (no bias)")
+    ax.plot(ns, gt, "x--", color="#7f7f7f", lw=1.5, ms=7, label="game_theoretic (no bias)")
+    greens = ["#a1d99b", "#41ab5d", "#006d2c", "#00441b"]
+    for i, r in enumerate(reports):
+        cells = sorted(r["cells"], key=lambda d: d["n"])
+        row = [100.0 * d["gtrow"] / d["m"] for d in cells]
+        xs = [d["n"] for d in cells]
+        ax.plot(xs, row, "D-", color=greens[i % len(greens)], lw=2.4, ms=8,
+                label=f"game_theoretic + right-of-way (bias={r['bias']:g})")
+    ax.set_xlabel("N drones (antipodal swap on a ring, fixed radius → rising hub density)")
+    ax.set_ylabel("joint success rate (%)")
+    ax.set_title("The convention cliff: a fixed right-of-way bias decays with N,\n"
+                 "but a stronger bias pushes the cliff out")
+    ax.set_xticks(ns)
+    ax.set_ylim(-3, 103)
+    ax.grid(alpha=0.3)
+    ax.legend(loc="lower left", fontsize=8.5)
+    fig.tight_layout()
+    out_path = Path(out)
+    if out_path.suffix == "":
+        out_path = out_path / "convention_cliff.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+    print(f"wrote overlay {out_path}")
 
 
 if __name__ == "__main__":

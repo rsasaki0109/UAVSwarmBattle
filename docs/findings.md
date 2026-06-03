@@ -93,6 +93,7 @@ different strategies.
 - [The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind right-of-way bias rescues it](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
 - [The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
 - [The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet still rounds the hub](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
+- [The right-of-way convention has a density cliff — but a stronger bias pushes it out](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6921,3 +6922,61 @@ Reproduce: `python scripts/antipodal_hetero_dynamics_phase.py --n 6 --spreads 2 
 (writes `results/antipodal_hetero_dynamics_phase.json`; `--max-steps 1000` gives the slowest
 arm ample clock so any timeout is a genuine jam). Demo:
 `examples/exp_multi_drone_antipodal_hetero_speed.yaml`.
+
+## The right-of-way convention has a density cliff — but a stronger bias pushes it out
+
+The [right-of-way fix](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+reached 100 % on the antipodal swap at N=2–6, and the
+[safety/generality check](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)
+found a fixed `lateral_bias`=2 harmless across topologies. But N≤6 is a small crowd. On a
+*fixed-radius* ring, raising N raises the hub density — more drones must thread the same
+centre at once — so the natural question is whether one fixed bias keeps scaling, or whether
+the convention has a **density cliff**. This is the 2D, bias-*strength* companion to the 3D
+on/off [even-N resonance study](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock):
+that one showed *whether* a convention is needed flips with parity and dimension; this one asks
+*how strong* it must be as the same deadlock gets denser.
+
+`scripts/antipodal_rightofway_phase.py` swept N ∈ {8, 12, 16} on the 2D ring (CENTER=(25,25),
+RADIUS=20 fixed, `max_accel`=6), three arms paired by seed (cv / gt / gt+row), at two bias
+strengths, n=40, McNemar exact.
+
+| N | cv (no bias) | gt (no bias) | gt+row **bias=2** | gt+row **bias=4** |
+|---|---|---|---|---|
+| 8  | 60.0 % | 2.5 % | 97.5 % | 97.5 % |
+| 12 | 30.0 % | 2.5 % | 90.0 % | **100.0 %** |
+| 16 | 17.5 % | 0.0 % | **65.0 % (cliff)** | **97.5 %** |
+
+![the convention cliff and how a stronger bias pushes it out](images/convention_cliff.png)
+
+- **A fixed bias has a density cliff.** `gt`-without-bias is fully deadlocked at every N here
+  (0–2.5 %), and `cv` decays steadily with density (60→30→17.5 %). The shipped fix at
+  `bias`=2 holds at N=8 (97.5 %) but erodes monotonically as the hub fills: 90 % at N=12, then
+  **65 % at N=16**. The convention does not fail all at once — it keeps beating `cv` at every N
+  (N=16: 65 % vs 17.5 %, c=21/b=2, p=0.0001) — but a single fixed strength is not enough to
+  hold 100 % as the crowd grows. The N≤6 "always 100 %" result was a small-crowd regime.
+
+- **A stronger bias pushes the cliff out.** Doubling to `bias`=4 restores the high-N cells:
+  N=12 goes 90→**100 %**, and N=16 goes 65→**97.5 %** (39/40). At N=16 the stronger convention
+  beats *both* the deadlocked `gt` (c=39/b=0, p<1e-4) and the dumb `cv` (c=32/b=0, p<1e-4). So
+  the cliff is not a hard ceiling on what a decentralized convention can do — it is the limit
+  of a *particular* strength. **The required bias scales with density:** a sparse ring needs
+  only a gentle veer, a crowded hub needs a faster roundabout to clear the same geometry.
+
+- **But stronger is not unconditionally better (preliminary).** A single-N bias sweep at N=16
+  (n=20, calibration) suggests an *upper* limit as well: success climbs 15 %→65 %→100 % from
+  bias 1→2→4, then **dips to ~65 % at bias 6** before recovering at 8–12. The likely reading is
+  that an over-strong right-veer over-rotates the roundabout into its own coordinated
+  re-collision — the same double-edged behaviour the 3D study found when a convention is applied
+  where it is not needed, here induced by *over*-applying it. There is an operating band, not a
+  monotone "more is better"; pinning the optimum at n=40 is the natural next step.
+
+The picture this completes: a decentralized right-of-way convention is the durable fix for the
+antipodal deadlock (a smarter forecast is a [stopgap that runs out](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)),
+but "durable" means *tunable*, not *free*: its strength is an operating point that must rise
+with crowd density and probably has an upper band, not a single magic constant. The right
+mental model is a roundabout — it clears any amount of traffic, but only if you set the
+rotation speed to the load.
+
+Reproduce: `python scripts/antipodal_rightofway_phase.py --n-list 8 12 16 --bias 2 --episodes 40`
+then `--bias 4`; overlay the two with `--overlay results/conv_cliff_b2.json results/conv_cliff_b4.json`;
+calibrate the bias band with `--n-list 16 --bias-sweep 1 2 4 6 8 12`.
