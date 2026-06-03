@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: The right-of-way convention has a density cliff — but a stronger bias pushes it
+- **Latest: The right-of-way convention needs near-full adoption — free-riders break it, and
+  tolerance shrinks with density.** Mirror of the predictor result: mixing *predictors* helps
+  (desync breaks symmetry), but mixing in *free-riders* who ignore the `lateral_bias` rule
+  hurts. Sweeping how many of N goal-aware drones obey the convention (rest = deadlocking gt,
+  paired McNemar, n=40), partial adoption stays *below* graceful-degradation and only near-full
+  adoption clears the deadlock. Free-rider tolerance shrinks with crowd density: sparse N=6
+  tolerates exactly one straggler (k=5 → 100 %, k=4 → 22 %, a critical mass at N−1), but dense
+  N=8 tolerates none (k=7 → 68 %, only full k=8 → 98 %) — a deadlock needs a symmetric pair of
+  non-cooperators, and a crowded hub has no slack to absorb even one. **Desync helps prediction,
+  coordination helps convention.**
+- **The right-of-way convention has a density cliff — but a stronger bias pushes it
   out.** The `lateral_bias` right-of-way fix reached 100 % on the antipodal swap at N≤6, but on
   a fixed-radius ring raising N raises hub density. A *fixed* `bias`=2 then has a **density
   cliff** — it decays monotonically (N=8 → 16: 97.5 → 90 → **65 %**) even as it keeps beating

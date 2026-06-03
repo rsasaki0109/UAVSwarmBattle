@@ -95,6 +95,7 @@ different strategies.
 - [The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet still rounds the hub](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
 - [The right-of-way convention has a density cliff — but a stronger bias pushes it out](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
 - [The 3D antipodal collapse is a non-monotone resonance, not the even-N law](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)
+- [The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7050,3 +7051,64 @@ one, is open.
 Reproduce: `python scripts/antipodal_3d_symmetry_phase.py --n-list 8 10 12 --episodes 25`
 (writes `results/antipodal_3d_cliff_phase.json`; `--max-steps 600` keeps the deadlocked cells
 cheap).
+
+## The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density
+
+The [heterogeneous-predictor study](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
+found that *mixing* predictors helps: half gt / half cv DESYNCs the shared symmetric forecast
+and rescues the uniform-gt deadlock — diversity breaks symmetry. This asks the mirror question
+for the *convention*: a right-of-way rule is a **coordination** device, not a desync device, so
+it should need to be **shared**. If only some drones obey `lateral_bias` and the rest run the
+deadlocking goal-aware predictor with no bias, does coordination degrade gracefully, kick in at
+a critical mass, or collapse until nearly everyone complies?
+
+`scripts/antipodal_convention_adoption_phase.py` puts all N drones on `game_theoretic` (the
+deadlocking predictor) and lets `k` of them also carry `lateral_bias`=2 (adopters), the rest 0
+(free-riders), sweeping k=0..N via `planner.per_drone`. Joint success, paired by seed, n=40,
+McNemar exact vs full adoption (k=N).
+
+| adoption | N=6 joint success | N=8 joint success |
+|---|---|---|
+| 0 %    | 2 %   | 2 %  |
+| ~⅓     | 10 %  | 5 %  |
+| ½      | 28 %  | 18 % |
+| ⅔      | 22 %  | 40 % (N=8: 0.62) |
+| N−2 free-riders | — | 65 % (k=6) |
+| **N−1 (one free-rider)** | **100 % (k=5)** | **68 % (k=7)** |
+| **N (full)** | **100 %** | **98 %** |
+
+![convention adoption fraction vs joint success, N=6 and N=8](images/convention_adoption.png)
+
+- **Partial adoption does not work — the convention is a coordination device.** At both N the
+  success curve stays *below* the linear (graceful-degradation) reference for most of the range
+  and only reaches the deadlock-free regime near full adoption. This is the exact mirror of the
+  predictor result: mixing predictors *helps* (desync), but mixing in free-riders *hurts* — you
+  cannot get partial credit for a convention only some of the fleet obeys, because the
+  non-adopters keep mirror-swerving into the hub.
+
+- **Free-rider tolerance shrinks with density.** At N=6 there is a sharp critical mass at
+  **N−1**: one free-rider is tolerated (k=5 → 100 %, tied with full adoption), but two collapse
+  it (k=4 → 22 %). At the denser N=8 even *one* free-rider is too many — k=7 reaches only 68 %,
+  and only full adoption (k=8) clears the deadlock (98 %). The mechanism is the deadlock's own
+  geometry: a deadlock needs a *symmetric pair* of non-cooperating drones, so a single free-rider
+  in a sparse ring is harmlessly absorbed (its one nearby adopter rounds it), but in a crowded
+  ring there is no slack to absorb even one.
+
+- **The curve shape flips with density too.** N=6 is a step (flat-low, then a jump at N−1); N=8
+  is a smoother accelerating climb that only saturates at full adoption. Either way the practical
+  rule is the same: a right-of-way convention is an all-or-(nearly-)nothing coordination device,
+  and the safety margin for stragglers vanishes as the hub fills.
+
+This is the coordination-side bookend to the
+[predictor-desync result](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity):
+**desync helps prediction, coordination helps convention** — heterogeneity rescues a fleet of
+identical *forecasts* but breaks a fleet of identical *rules*. It is orthogonal to the
+[pairwise-vs-global](#)
+question (this varies *how many* obey one global rule, not *which* rule); the two compose — a
+neighbour-conditional convention might raise free-rider tolerance, which this adoption axis could
+then re-measure. Scope: adopters are assigned in ring-contiguous (`block`) order; the placement
+of free-riders relative to one another is a plausible second-order effect left open.
+
+Reproduce: `python scripts/antipodal_convention_adoption_phase.py --n 6 --bias 2 --episodes 40`
+then `--n 8`; overlay with `--overlay results/adopt_n6.json results/adopt_n8.json`
+(`--max-steps 700` keeps the deadlocked low-k cells cheap; `--pattern spread` probes placement).
