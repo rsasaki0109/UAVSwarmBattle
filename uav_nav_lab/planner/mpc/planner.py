@@ -27,6 +27,7 @@ no pure-pursuit aliasing under noisy observations.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Mapping
 
 import numpy as np
@@ -63,6 +64,8 @@ class SamplingMPCPlanner(Planner):
         w_smooth: float = 0.05,
         ctg_cache_tolerance: int = 0,
         lateral_bias: float = 0.0,
+        pairwise_bias: float = 0.0,
+        pairwise_radius: float = 5.0,
         predictor: Predictor | None = None,
     ) -> None:
         self.max_speed = float(max_speed)
@@ -93,6 +96,20 @@ class SamplingMPCPlanner(Planner):
         # (default; the planner is exactly as before). See docs/findings.md
         # "A decentralized right-of-way lateral bias lifts the antipodal swap".
         self.lateral_bias = float(lateral_bias)
+        # Pairwise (winding-number-style) right-of-way symmetry-breaker. Where
+        # `lateral_bias` veers right of the ego's OWN goal heading uncondition-
+        # ally — a GLOBAL convention that also perturbs drones in no conflict —
+        # this prefers candidate directions that pass each NEARBY neighbour on a
+        # consistent relative side (to the right of the bearing to that neigh-
+        # bour). Because the bearing reverses between the two drones of a pair,
+        # both independently pick compatible sides and a head-on meeting becomes
+        # a consistent circulation, with NO shared global heading. Each
+        # neighbour's contribution falls off as exp(-d / pairwise_radius), so a
+        # drone with no close neighbour (or whose neighbours cancel by symmetry)
+        # feels no bias — unlike `lateral_bias`, which fires even with no one
+        # around (it harms the 3D no-deadlock regime, see findings.md). 0 = off.
+        self.pairwise_bias = float(pairwise_bias)
+        self.pairwise_radius = max(1e-6, float(pairwise_radius))
         self._predictor: Predictor = predictor if predictor is not None else build_predictor(None)
         self._prev_action: np.ndarray | None = None
         # Per-episode caches: ctg / static-occ depend only on the static
@@ -121,6 +138,8 @@ class SamplingMPCPlanner(Planner):
             w_smooth=float(cfg.get("w_smooth", 0.05)),
             ctg_cache_tolerance=int(cfg.get("ctg_cache_tolerance", 0)),
             lateral_bias=float(cfg.get("lateral_bias", 0.0)),
+            pairwise_bias=float(cfg.get("pairwise_bias", 0.0)),
+            pairwise_radius=float(cfg.get("pairwise_radius", 5.0)),
             predictor=build_predictor(cfg.get("predictor")),
         )
 
@@ -231,6 +250,29 @@ class SamplingMPCPlanner(Planner):
         if self.lateral_bias > 0.0 and ndim >= 2:
             lateral = base[0] * directions[:, 1] - base[1] * directions[:, 0]
             costs = costs + self.lateral_bias * lateral
+
+        # Pairwise (winding-number-style) right-of-way (see __init__). For each
+        # nearby neighbour, accumulate a preferred in-plane lateral direction =
+        # the clockwise perpendicular of the bearing to that neighbour (i.e.
+        # "pass it on the right"), weighted by an exp(-d/radius) conflict fall-
+        # off. We then REWARD (subtract cost from) candidate directions aligned
+        # with that accumulated preference. The bearing reverses between the two
+        # drones of a pair, so they veer to compatible sides without any shared
+        # global heading; and far / mutually-cancelling neighbours contribute
+        # ~0, so a drone in no conflict is left undisturbed.
+        if self.pairwise_bias > 0.0 and ndim >= 2 and dynamic_obstacles:
+            pref = np.zeros(2)
+            ego2 = obs[:2]
+            for d in dynamic_obstacles:
+                rel = np.asarray(d["position"], dtype=float)[:2] - ego2
+                dn = float(np.linalg.norm(rel))
+                if dn < 1e-6:
+                    continue
+                nrel = rel / dn
+                cw = np.array([nrel[1], -nrel[0]])  # to the right of the bearing
+                pref += math.exp(-dn / self.pairwise_radius) * cw
+            lateral = directions[:, 0] * pref[0] + directions[:, 1] * pref[1]
+            costs = costs - self.pairwise_bias * lateral
 
         best_action, best_cost, best_k = argmin_aggregate(costs, actions)
         best_rollout = rollouts[best_k]

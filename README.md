@@ -245,6 +245,19 @@ active findings are grouped this way:
   p=1.8e-12) — so symmetry-breaking is planner-agnostic, not an artefact of our sampler. It is an
   *inverted-U band*, double-edged: too little → collision at the hub, too much → timeout
   (over-rotation orbits), and the band shifts right with hub density.
+- **A pairwise winding-number right-of-way strictly dominates the global veer-right.**
+  Every convention result here used `lateral_bias` — a *global* rule (veer right of your own goal
+  heading, unconditionally) with two proven blemishes: it *harms* where there is no deadlock (3D
+  N=4, success 30/30 → 0/30) and it has a *density cliff* (a fixed bias decays as the hub fills).
+  Reproducing the pairwise idea of [Winding Number-Aware MPC](https://arxiv.org/abs/2511.15239)
+  and [Merry-Go-Round](https://arxiv.org/abs/2503.05848) (2025) as a new `pairwise_bias` knob —
+  pass each *nearby* neighbour on a consistent relative side, weighted `exp(−dist/radius)` — fixes
+  both at once. In 3D it is a **strict Pareto improvement**: identical to the global rule where it
+  rescues (N=6, N=8 → 100 %) but no N=4 harm (30/30 vs 0/30, deterministic, p<1e-9). In 2D it
+  pushes the density cliff out *at fixed strength* (the per-neighbour weight auto-scales with
+  crowding), beating the global bias by +20 → +30 → +36 pp from N=16 to N=24 (92 vs 72 %, p=0.031;
+  82 vs 52 %, p=0.0026; 60 vs 24 %, p=0.0003). The conditional rule is the global convention's
+  strict upgrade. See [docs/findings.md](docs/findings.md#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right).
 - **Once the right-of-way convention is on, the predictor is free — cv and gt become
   identical.** On the bare antipodal swap the predictor is decisive (goal-aware `gt` deadlocks,
   dumb `cv` partially threads through). Crossing predictor {cv, gt} × convention {off, on}
