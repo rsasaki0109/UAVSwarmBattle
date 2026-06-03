@@ -247,6 +247,19 @@ active findings are grouped this way:
   Placement-independent (block ≈ alternating, identical at N=3 despite opposite gt:cv ratios).
   Only the explicit `lateral_bias` right-of-way gets *both* — symmetry-breaking **and** kept
   intelligence — at 100 %.
+- **The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet
+  still rounds the hub.** The `lateral_bias` right-of-way was proven on *homogeneous* fleets;
+  a clockwise roundabout could in principle be shattered by a fast drone lapping a slow one
+  into the hub. It is not. A speed-spread sweep at N=6 antipodal
+  (`scripts/antipodal_hetero_dynamics_phase.py`, mean speed held at 5, per-drone `max_speed`
+  via `planner.per_drone`, paired McNemar, n=40) shows the convention holds at **40/40 with
+  zero collisions at every spread up to an 8-vs-2, 4× speed ratio**, tied with the homogeneous
+  fleet. And it is still doing the work: the same mixed fleet *without* the bias collides ~35 %
+  of the time (26/40, 14 collisions), rescued to 40/40 by the convention (c=14/b=0, p=0.0001) —
+  so speed heterogeneity is too weak a desync to fix the hub on its own. Extends the
+  "`lateral_bias` is safe and general" result to non-interchangeable drones. (Tested the speed
+  axis only; heterogeneous radii/dynamics left open.) Demo:
+  `examples/exp_multi_drone_antipodal_hetero_speed.yaml`.
 - **The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the
   convention turns harmful where there is no deadlock.** Extending the four-arm sweep
   (`scripts/antipodal_3d_symmetry_phase.py`, paired McNemar, n=30) to N=8 refines the N=6
