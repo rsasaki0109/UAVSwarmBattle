@@ -90,6 +90,7 @@ different strategies.
 - [More-frequent replanning is never counterproductive — the replan_period "commitment" is not a safety mechanism](#more-frequent-replanning-is-never-counterproductive--the-replan_period-commitment-is-not-a-safety-mechanism)
 - [The antipodal predictor inversion is a 2D artifact — the vertical escape axis dissolves it, and at high density flips the predictor's sign](#the-antipodal-predictor-inversion-is-a-2d-artifact--the-vertical-escape-axis-dissolves-it-and-at-high-density-flips-the-predictors-sign)
 - [Heterogeneous predictor swarms break the antipodal deadlock by desync, not by diversity](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
+- [The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind right-of-way bias rescues it](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6632,6 +6633,17 @@ Two findings, one expected and one not.
   the vertical axis is the only slack left, knowing the peers' destinations is what lets
   six drones stack their climbs/dives without re-colliding.
 
+> **Two corrections, established below** (see [The 3D cv collapse is an N=6 symmetry
+> resonance, not a density wall](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)).
+> A follow-up sweep over N=5,6,7 shows the `cv` collapse is **not** monotone in density —
+> it happens **only at N=6** (N=7 is denser and a clean 25/25), so "irrelevant → mandatory
+> *as the crowd grows*" is wrong; it is an N=6-specific symmetric resonance. And the
+> collapse is a **symmetry** failure, not a forecast one: a goal-blind `lateral_bias`
+> convention rescues `cv` at N=6 as completely as the goal-aware predictor does (0→25/25,
+> p=6×10⁻⁸), so goal-aware prediction is *not* "required" there — a cheap convention
+> suffices. The "knowing destinations is what lets them stack" reading above is the part
+> that is refined.
+
 This **bounds the inversion as a low-dimensional phenomenon** and inverts its lesson at
 scale. The 2D study's headline — "the smarter predictor is worse" — is true *only on the
 plane*; add the third dimension and the predictor goes from liability to irrelevant to
@@ -6714,3 +6726,61 @@ only the convention also keeps the intelligence.
 Reproduce: `python scripts/antipodal_heterogeneous_phase.py --n-list 3 4 5 6 --episodes 40`
 (calibrate with `--n-list 4 6 --episodes 20`; check placement-independence with
 `--mix-pattern alternating`; writes `results/antipodal_heterogeneous_phase.{json,png}`).
+
+## The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind right-of-way bias rescues it
+
+The [3D-dissolution section](#the-antipodal-predictor-inversion-is-a-2d-artifact--the-vertical-escape-axis-dissolves-it-and-at-high-density-flips-the-predictors-sign)
+reported a surprise: lifting the antipodal ring into 3D makes the goal-aware `game_theoretic`
+fleet succeed at every N, but the dumb `constant_velocity` fleet, fine at N≤5, **collapses to
+0/40 at N=6**. I read that as a density effect ("at the top density the predictor flips to
+required") and offered a forecast mechanism ("you must know peers' goals to phase the vertical
+escape"). Both readings are wrong, and the right-of-way knob from the
+[`lateral_bias` study](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+is what disproves them.
+
+`scripts/antipodal_3d_symmetry_phase.py` runs four arms in the same 3D voxel world
+(50×50×16, all drones launched at z=8, R=20, same MPC), paired by seed, McNemar exact, over
+the band around the collapse: `cv_b0` (constant_velocity, no bias — the collapse), `cv_bias`
+(constant_velocity + `lateral_bias`=2 — does a goal-blind convention rescue it?), `gt_b0`
+(game_theoretic — the survivor), `gt_bias` (is the convention harmless on the survivor?).
+
+| N | cv_b0 | cv_bias | gt_b0 | gt_bias | cv_bias vs cv_b0 (c/b, p) |
+|---|-------|---------|-------|---------|---------------------------|
+| 5 | 25/25 (100 %) | 25/25 | 25/25 | 25/25 | 0/0, 1.000 |
+| **6** | **0/25 (0 %)** | **25/25 (100 %)** | 25/25 | 25/25 | **25/0, 6.0×10⁻⁸** |
+| 7 | 25/25 (100 %) | 25/25 | 25/25 | 25/25 | 0/0, 1.000 |
+
+Two corrections to the 3D-dissolution story fall straight out:
+
+- **The collapse is N=6-specific, not a density wall.** Stitched together with the earlier
+  3D sweep (`cv` at N=3/4/5 = 40/40 each), the full collapse map across N=3–7 is
+  ✓ ✓ ✓ **✗** ✓ — `cv` fails at **N=6 only**. N=7 is a *denser* swarm and a clean 25/25, so
+  "irrelevant → mandatory as the crowd grows" is simply false. N=6 is a special symmetric
+  configuration: six antipodal drones form a regular hexagon whose three diameters drive
+  three exact head-on pairs through the hub at once, with a high-order rotational symmetry
+  that the myopic forecast cannot perturb. Odd N (5, 7) place each drone's antipode *between*
+  two others — no exact head-on pair — so the symmetry never closes and the dumb fleet threads
+  through. (This is the same N-parity texture the
+  [heterogeneous-swarm study](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
+  independently saw in 2D — odd-N kinder than even-N — observed here as a clean on/off at N=6.)
+
+- **It is a symmetry failure, not a forecast failure.** A goal-*blind* `lateral_bias`
+  convention lifts `cv` from 0/25 to 25/25 at N=6 (c=25/b=0, p=6×10⁻⁸) — exactly as well as
+  the goal-aware predictor `gt_b0` (also 25/25). So goal-aware prediction is **not** "required"
+  at N=6, as the dissolution section claimed: the constant-velocity forecast was never the
+  problem; the *shared symmetry* was, and any symmetry-breaker — a convention here, a
+  destination-aware forecast there — fixes it. `gt_bias` stays 25/25 everywhere, so the
+  convention is harmless on the arms that already succeed (consistent with the
+  [`lateral_bias` safety study](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)).
+
+This converges with the heterogeneous-swarm result from the other direction. That study broke
+the *shared forecast* by mixing predictors (implicit desync) in 2D; this one breaks the
+*shared geometry* by adding a right-of-way convention in 3D. Both land on the same diagnosis —
+**the antipodal failure is symmetry, full stop** — and both show the goal-aware predictor is
+neither the cause nor a unique cure. What 3D added was never "the predictor becomes required";
+it was a sharper exposure of *which* configuration (the N=6 hexagonal resonance) the shared
+symmetry actually bites at.
+
+Reproduce: `python scripts/antipodal_3d_symmetry_phase.py --n-list 5 6 7 --episodes 25`
+(writes `results/antipodal_3d_symmetry_phase.json`; `--max-steps 600` keeps the deadlocked
+cells cheap — a crossing succeeds in ~200 steps, a deadlock never recovers).

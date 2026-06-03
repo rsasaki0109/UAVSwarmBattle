@@ -247,6 +247,18 @@ active findings are grouped this way:
   Placement-independent (block ≈ alternating, identical at N=3 despite opposite gt:cv ratios).
   Only the explicit `lateral_bias` right-of-way gets *both* — symmetry-breaking **and** kept
   intelligence — at 100 %.
+- **The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind
+  right-of-way bias rescues it.** This corrects two claims from the 3D-dissolution result
+  below. A four-arm sweep (`scripts/antipodal_3d_symmetry_phase.py`, paired McNemar) over
+  N=5,6,7 shows the dumb `constant_velocity` fleet's 3D collapse is **not** a density wall:
+  stitched with the earlier sweep the map across N=3–7 is ✓✓✓**✗**✓ — `cv` fails at **N=6
+  only** (N=7 is denser and a clean 25/25), an N=6 hexagonal resonance (three exact head-on
+  pairs through the hub), the same N-parity texture the heterogeneous study saw in 2D. And
+  the collapse is **symmetry, not forecast**: a goal-*blind* `lateral_bias`=2 convention
+  lifts `cv` from 0/25 to 25/25 at N=6 (c=25/b=0, p=6×10⁻⁸), exactly as well as the
+  goal-aware predictor — so goal-aware prediction is *not* "required" at N=6 as the
+  dissolution result claimed; any symmetry-breaker fixes it. `gt_bias` stays 25/25
+  everywhere (convention harmless on the survivors).
 - **More-frequent replanning is never counterproductive — the `replan_period`
   "commitment" is not a safety mechanism.** Sweeping MPC's replan cadence on the
   dynamic-obstacle course (single drone, paired McNemar, n=60) refutes *both* the
