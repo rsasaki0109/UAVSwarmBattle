@@ -94,6 +94,7 @@ different strategies.
 - [The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
 - [The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet still rounds the hub](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
 - [The right-of-way convention has a density cliff — but a stronger bias pushes it out](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+- [The 3D antipodal collapse is a non-monotone resonance, not the even-N law](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6800,6 +6801,17 @@ cells cheap — a crossing succeeds in ~200 steps, a deadlock never recovers).
 
 ## The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock
 
+> **One correction, established below** (see [The 3D antipodal collapse is a non-monotone
+> resonance, not the even-N law](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)).
+> Extending the sweep to N=10 and N=12 refutes the "even-N≥6" generalization made in this
+> section: **N=10 (even, crowded) survives** for `cv` (25/25), so even rings do *not* uniformly
+> deadlock once crowded — the even map is 4 ✓ 6 ✗ 8 ✗ 10 ✓ 12 ✗, a non-monotone resonance with
+> no parity or density law. What *does* survive the extension are two robust invariants: the
+> convention rescues every N (100 % through N=12), and the `gt` forecast stays dead for all
+> N≥8. "The even-harsher parity is the real law" below is the over-generalization that N=10
+> refutes — the third correction of this same sub-finding, and the one that retires the attempt
+> to predict *which* N collapses.
+
 The [N=6 resonance section](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
 left one question open: is the 3D `cv` collapse a property of **N=6 specifically** (a single
 hexagonal resonance), or does it **recur at the next even N**? The hexagon mechanism — six
@@ -6980,3 +6992,61 @@ rotation speed to the load.
 Reproduce: `python scripts/antipodal_rightofway_phase.py --n-list 8 12 16 --bias 2 --episodes 40`
 then `--bias 4`; overlay the two with `--overlay results/conv_cliff_b2.json results/conv_cliff_b4.json`;
 calibrate the bias band with `--n-list 16 --bias-sweep 1 2 4 6 8 12`.
+
+## The 3D antipodal collapse is a non-monotone resonance, not the even-N law
+
+The [N=8 section](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
+saw `cv` collapse at N=6 and N=8 and concluded "even rings from N=6 up are pure symmetry
+deadlocks." That is the third reading of this one sub-finding — first a density wall, then
+N=6-only, then even-N≥6 — and each was an extrapolation from two or three points. The honest
+test is to keep going: run the *next two* even rings, N=10 and N=12.
+
+`scripts/antipodal_3d_symmetry_phase.py --n-list 8 10 12 --episodes 25` runs the same four arms
+in the same 3D voxel world (50×50×16, z=8, R=20), paired by seed, McNemar exact.
+
+| N | cv_b0 | cv_bias | gt_b0 | gt_bias | gt_b0 vs cv_b0 (c/b, p) |
+|---|-------|---------|-------|---------|--------------------------|
+| 8 | 0/25 (0 %) | 25/25 | 0/25 (0 %) | 25/25 | 0/0, 1.000 (tie) |
+| 10 | **25/25 (100 %)** | 25/25 | **0/25 (0 %)** | 25/25 | b=25/c=0, <1e-7 (cv wins) |
+| 12 | 0/25 (0 %) | 25/25 | 0/25 (0 %) | 25/25 | 0/0, 1.000 (tie) |
+
+Every cell is deterministic (0/25 or 25/25, no boundary), so these are facts, not noise. Three
+conclusions, the first of which retires a claim I made twice:
+
+- **The collapse is a non-monotone resonance — the even-N law is wrong.** `cv_b0` *survives* at
+  N=10 (25/25) between collapses at N=8 and N=12. With the earlier sweeps the even-N map is now
+  4 ✓ 6 ✗ 8 ✗ **10 ✓** 12 ✗ — no parity, density, or "exact-pairs" rule fits (N=10 is even,
+  crowded, and has five exact head-on diameter-pairs, yet threads through cleanly). Whatever
+  selects the collapsing N is a specific geometric resonance of the ring that these five points
+  do not pin down. The lesson the [N=6](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
+  and [N=8](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
+  corrections kept teaching — *do not extrapolate the collapse-N from a handful of points* — is
+  now load-bearing: we stop predicting which N collapses and report only the invariants that hold
+  across all of them.
+
+- **The forecast stays dead for all N≥8.** `gt_b0` = 0/25 at N=8, 10, *and* 12 — the goal-aware
+  predictor never recovers once the crowd passes N=6. This confirms and extends the N=8 result
+  that the forecast is a stopgap that runs out; at no tested high N does knowing peer
+  destinations resurrect a deadlocked fleet.
+
+- **The convention rescues every N — and the inversion reappears at N=10.** Both bias arms are
+  25/25 at every N (8, 10, 12): the right-of-way convention holds at 100 % across the whole
+  range, the one thing that is monotone here. And because `cv` survives while `gt` dies at N=10,
+  the *dumb* predictor beats the *smart* one 25/0 there — the
+  [goal-aware-predictor inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+  reappears in 3D at a single resonant N, a clean reminder that "smarter forecast" is not
+  monotonically safer. (The convention's *strength* requirement as the hub gets denser is a
+  separate axis, characterized in the [bias-scaling cliff study](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out);
+  here the strength is fixed at bias=2 and the question is only which N the *unbiased* fleet
+  survives.)
+
+The durable picture across the whole antipodal arc: which predictor wins and which N collapses
+form a messy non-monotone resonance that resists a tidy law, but the symmetry-breaking
+convention is 100 % everywhere regardless — the practical takeaway is to stop trying to predict
+the resonance and simply break the symmetry. Scope: N≤12 and the even rings; high-N odd rings
+and N≥14 are untested (the deadlocked cells are expensive), so the resonance's period, if it has
+one, is open.
+
+Reproduce: `python scripts/antipodal_3d_symmetry_phase.py --n-list 8 10 12 --episodes 25`
+(writes `results/antipodal_3d_cliff_phase.json`; `--max-steps 600` keeps the deadlocked cells
+cheap).
