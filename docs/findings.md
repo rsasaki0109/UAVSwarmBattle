@@ -98,6 +98,7 @@ different strategies.
 - [The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
 - [The convention cliff is hub density, not drone count — N and R collapse onto N/R](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
 - [Once the right-of-way convention is on, the predictor is free — cv and gt become identical](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical)
+- [A pairwise winding-number right-of-way strictly dominates the global veer-right](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7228,3 +7229,95 @@ convention cannot replace — see the
 
 Reproduce: `python scripts/antipodal_convention_predictor_phase.py --n-list 8 12 16 --bias 2 --episodes 40`
 (writes `results/antipodal_convention_predictor_phase.{json,png}`).
+
+## A pairwise winding-number right-of-way strictly dominates the global veer-right
+
+Every result above used one symmetry-breaker: `lateral_bias`, a **global** rule where each
+drone veers right of its *own goal heading* unconditionally. That unconditionality is its
+weakness, and we have proved two failure modes of it:
+
+- the [even-N resonance study](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
+  found a **harm**: in 3D at N=4 there is *no* deadlock (the free vertical axis resolves the
+  square, b0 = 30/30), yet turning the global bias on there drives success to **0/30** — a
+  goal-blind fleet that needed no help manufactures a coordinated in-plane pinwheel that
+  re-collides;
+- the [density-cliff study](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+  found a **cliff**: a *fixed* global bias decays as the [hub density N/R](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
+  rises, so you must keep cranking the single scalar to keep up.
+
+The 2025 literature argues the durable symmetry-breaker is **pairwise/relative**, not a global
+heading bias: [Winding Number-Aware MPC](https://arxiv.org/abs/2511.15239) (Nakao et al., 2025)
+has each agent target a per-pair *signed winding number*, and [Merry-Go-Round](https://arxiv.org/abs/2503.05848)
+(2025) forms an explicit roundabout only on a detected conflict. The common idea: act on the
+*actual pair geometry*, so an agent in no conflict is left alone and the rule scales with how
+many neighbours are really there. We reproduce that idea at the cost level — a new planner knob
+`pairwise_bias` (+ `pairwise_radius`): instead of veering right of its own heading, each drone
+prefers candidate directions that pass each **nearby neighbour** on a consistent relative side
+(the clockwise perpendicular of the bearing to that neighbour), weighted by `exp(−dist /
+pairwise_radius)`. Because the bearing reverses between the two drones of a pair, both pick
+compatible sides with no shared global heading; and far or mutually-cancelling neighbours
+contribute ≈0, so a drone in no conflict feels no bias. `scripts/antipodal_pairwise_convention_phase.py`
+runs three arms — `b0` (off), `global` (`lateral_bias`=2), `pairwise` (`pairwise_bias`=10,
+`pairwise_radius`=8) — on the same antipodal benchmark, paired by seed, cv predictor, McNemar exact.
+
+**3D — pairwise removes the global rule's harm and keeps its rescue (deterministic, n=30):**
+
+| N | b0 | global | pairwise | pairwise vs global (b/c, p) |
+|---|---|---|---|---|
+| **4** (no deadlock) | **30/30** | **0/30** | **30/30** | b=0/c=30, **p<1e-9** |
+| 6 (deadlock) | 0/30 | 30/30 | 30/30 | b=0/c=0, tie |
+| 8 (deadlock) | 0/30 | 30/30 | 30/30 | b=0/c=0, tie |
+
+Every cell is 0/30 or 30/30 — facts, not noise. The pairwise rule is a **strict Pareto
+improvement** over the global one: identical where the global convention helps (N=6, N=8 both
+lifted to 100 %), and strictly better where the global convention *harms* (N=4: 30/30 vs 0/30).
+The conditional rule keeps the rescue and drops the collateral damage, exactly because at the
+uncrowded N=4 square no neighbour is on a conflict course, so the bias never fires.
+
+**2D — pairwise pushes the density cliff out at fixed strength, and the gap widens with density
+(n=50):**
+
+| N | b0 | global | pairwise | pairwise vs global (b/c, p) |
+|---|---|---|---|---|
+| 16 | 7/50 (14 %) | 36/50 (72 %) | 46/50 (**92 %**) | b=4/c=14, **0.031** |
+| 20 | 2/50 (4 %) | 26/50 (52 %) | 41/50 (**82 %**) | b=4/c=19, **0.0026** |
+| 24 | 0/50 (0 %) | 12/50 (24 %) | 30/50 (**60 %**) | b=3/c=21, **0.0003** |
+
+(At the looser N=8 and N=12 both conventions sit near the ceiling — 28/30 vs 30/30 — so the
+difference only opens up once the hub is crowded.) Where the
+[global cliff study](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+pushed the cliff out by *cranking the global scalar*, the pairwise rule pushes it out at the
+**same** nominal strength, because its `exp(−dist/radius)` per-neighbour weight **auto-scales
+with crowding** — more drones at the hub means more close neighbours means more bias, applied
+exactly to the pairs that need it. The advantage grows with density (+20 → +30 → +36 pp from
+N=16 to N=24). Both rules still cliff eventually (pairwise reaches 60 % at N=24), so this is a
+*later, steeper-pushed* cliff, not its abolition — honest about the limit while pinning the
+mechanism.
+
+- **What this resolves.** Across the whole convention arc, the global `lateral_bias` had two
+  blemishes — it [harms where there is no deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
+  and it [needs ever-more strength as density rises](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out).
+  Both trace to the *same* root: a global rule fires unconditionally, so it both perturbs the
+  uninvolved and ignores the actual pair load. Making the rule **pairwise and
+  distance-weighted** fixes both at once — it is the global convention's strict upgrade, not a
+  different trade-off.
+
+- **Why "pass each neighbour on the right" is symmetry-breaking without communication.** The
+  bias direction is the clockwise perpendicular of the *bearing to the neighbour*, and that
+  bearing is exactly reversed for the other drone of the pair, so the two veer to opposite
+  world-frame sides — a consistent right-to-right pass — from the same local rule, no shared
+  heading and no message. This is the winding-number intuition (a consistent per-pair passing
+  side) realized as a one-line cost, without WNumMPC's learned target winding numbers.
+
+Net: a *pairwise* right-of-way is the convention the global `lateral_bias` should have been. It
+matches it where the global rule works, removes its 3D no-deadlock harm outright, and pushes its
+2D density cliff out at fixed strength because the per-neighbour weighting tracks the real hub
+load. Symmetry-breaking remains primary over forecast (the cv predictor carries all of this), but
+*how* you break the symmetry — globally vs per-pair — is itself a real, measurable lever.
+
+Reproduce:
+`python scripts/antipodal_pairwise_convention_phase.py --dim 3 --n-list 4 6 8 --episodes 30`
+and `--dim 2 --n-list 16 20 24 --episodes 50`
+(writes `results/antipodal_pairwise_convention*.json`). Demo:
+`examples/exp_multi_drone_antipodal_pairwise.yaml` (the N=4 cell — pairwise stays 100 % where
+`lateral_bias: 2.0` would collapse the same drones to 0 %).
