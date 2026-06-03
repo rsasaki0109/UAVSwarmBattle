@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: A pairwise winding-number right-of-way strictly dominates the global veer-right.**
+- **Latest: ORCA is the missing reciprocal baseline, and the right-of-way convention generalises
+  to it.** The whole convention arc was measured against sibling MPC arms, never the multi-agent
+  literature's canonical reactive baseline. Added a clean-room 2D **ORCA** (van den Berg 2011;
+  reference OSS [snape/RVO2](https://github.com/snape/RVO2)) as `planner.type: orca` — no forecast,
+  no sampling, just the reciprocal velocity-space LP. Out of the box it reproduces the canonical
+  antipodal failure (clears N≤4, **collides at the hub** for N≥6), sitting exactly where `mpc +
+  game_theoretic` sits. Porting the `lateral_bias` right-of-way knob to ORCA and sweeping it
+  (paired McNemar, n=40) **rescues the deadlock to 100 %** (N=8 best vs stock `c=40/b=0`,
+  p=1.8e-12) — so symmetry-breaking is planner-agnostic, not an artefact of our sampler. It is an
+  *inverted-U band*, double-edged: too little → collision at the hub, too much → timeout
+  (over-rotation orbits), and the band shifts right with hub density.
+- **A pairwise winding-number right-of-way strictly dominates the global veer-right.**
   Every convention result here used `lateral_bias` — a *global* rule (veer right of your own goal
   heading, unconditionally) with two proven blemishes: it *harms* where there is no deadlock (3D
   N=4, success 30/30 → 0/30) and it has a *density cliff* (a fixed bias decays as the hub fills).

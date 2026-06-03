@@ -98,6 +98,7 @@ different strategies.
 - [The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
 - [The convention cliff is hub density, not drone count — N and R collapse onto N/R](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
 - [Once the right-of-way convention is on, the predictor is free — cv and gt become identical](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical)
+- [ORCA is the missing reciprocal baseline, and the right-of-way convention generalises to it](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it)
 - [A pairwise winding-number right-of-way strictly dominates the global veer-right](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
 ## MPC compute Pareto
 
@@ -7229,6 +7230,69 @@ convention cannot replace — see the
 
 Reproduce: `python scripts/antipodal_convention_predictor_phase.py --n-list 8 12 16 --bias 2 --episodes 40`
 (writes `results/antipodal_convention_predictor_phase.{json,png}`).
+
+## ORCA is the missing reciprocal baseline, and the right-of-way convention generalises to it
+
+Every result in the convention arc above was measured against *other arms of this
+repo's own MPC stack* — never against the multi-agent literature's canonical
+reactive baseline, **ORCA** (van den Berg, Guy, Lin, Manocha, *Reciprocal n-Body
+Collision Avoidance*, ISRR 2009 / Robotics Research 2011; reference OSS:
+[snape/RVO2](https://github.com/snape/RVO2), Apache-2.0; pure-Python port
+[chengji253/RVO2-python](https://github.com/chengji253/RVO2-python), MIT). ORCA is
+the *reciprocal* school's answer to the same problem: no forecast, no sampling —
+each agent assumes every neighbour shares the avoidance effort 50/50, turns each
+pairwise encounter into a velocity-space half-plane, and solves a tiny 2D linear
+program for the velocity closest to its goal-seeking preference. It is famous for
+deadlocking on the antipodal swap, which is exactly this arc's benchmark. So ORCA
+is both the missing baseline **and** a clean test of whether the right-of-way
+convention is a property of *our planner* or of *the geometry*.
+
+A clean-room 2D ORCA was added as `planner.type: orca` (half-plane construction +
+the randomized-incremental `linearProgram1/2/3`, written from the published
+algorithm to fit the planner registry, not copied; 2D / agent-agent only). Out of
+the box it reproduces the canonical failure: on the fixed-`R=20` antipodal ring it
+clears `N=2` and `N=4` but **collides at the hub** for `N≥6` (the reciprocal dance
+converges every drone onto the centre). That places stock ORCA exactly where this
+repo's `mpc + game_theoretic` arm sits — symmetric convergence, not a planner bug.
+
+The headline test ports the MPC `lateral_bias` right-of-way knob to ORCA (tilt the
+*preferred* velocity to the ego's right by a fraction of cruise speed before the LP)
+and sweeps its strength at fixed `N`, paired by seed (n=40):
+
+![right-of-way convention ported to ORCA: an inverted-U band rescues the antipodal deadlock](images/orca_convention_band.png)
+
+| ORCA `lateral_bias` | 0 (stock) | 0.05 | 0.1 | 0.2–0.45 | 0.5 |
+|---|---|---|---|---|---|
+| N=6 joint success | 15 % | 80 % | **100 %** | 100 % | 0 % |
+| N=8 joint success | 0 %  | 52 % | 98 %  | **100 %** | 0 % |
+
+- **The convention generalises to ORCA.** Turning the right-of-way bias on lifts the
+  antipodal swap from a deadlock to 100 %: N=8 best(0.2) vs stock(0) is `c=40/b=0`,
+  `p=1.8e-12`; N=6 best(0.1) vs stock(0) is `c=34/b=0`, `p=1.2e-10`. The rescue is
+  not a property of our sampling MPC — a "veer right" rule breaks the symmetry of
+  the canonical reciprocal planner just as well. **Breaking the symmetry is the
+  whole game, independent of the planner family.**
+- **It is an inverted-U operating band, double-edged at both ends** — the same shape
+  as the [CHOMP clearance band](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
+  and the [convention density cliff](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out).
+  Best(0.2) vs over(0.5) is `c=40/b=0`, `p=1.8e-12`. The two cliffs have **distinct
+  failure modes**: too little convention (stock) fails by **collision** at the hub;
+  too much (0.5) fails by **timeout** — every drone spirals too wide and orbits
+  without ever converging on its goal. Too-little crashes, too-much never arrives.
+- **The band shifts right with density.** At N=6 a bias of 0.1 already reaches 100 %;
+  at N=8 the 0.1 cell is 98 % and full rescue needs 0.2. A denser hub needs a
+  stronger convention to fully resolve — the ORCA echo of
+  [the MPC density cliff that a stronger bias pushes out](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out).
+  The upper (over-rotation) cliff sits at the same place (~0.5) for both N.
+
+This is the first finding in the repo measured against the literature's canonical
+reciprocal baseline rather than a sibling MPC arm, and it strengthens the whole
+convention arc: the right-of-way symmetry-breaker is planner-agnostic — it rescues
+both the sampling-MPC and the reciprocal-LP families — but it is a *tunable band*,
+not a free primitive, on either.
+
+Reproduce: `python scripts/antipodal_orca_convention_phase.py --n-list 6 8 --bias-list 0 0.05 0.1 0.2 0.3 0.4 0.45 0.5 --episodes 40`
+(writes `results/antipodal_orca_convention_phase.{json,png}`).
 
 ## A pairwise winding-number right-of-way strictly dominates the global veer-right
 
