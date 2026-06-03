@@ -247,6 +247,18 @@ active findings are grouped this way:
   Placement-independent (block ≈ alternating, identical at N=3 despite opposite gt:cv ratios).
   Only the explicit `lateral_bias` right-of-way gets *both* — symmetry-breaking **and** kept
   intelligence — at 100 %.
+- **The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the
+  convention turns harmful where there is no deadlock.** Extending the four-arm sweep
+  (`scripts/antipodal_3d_symmetry_phase.py`, paired McNemar, n=30) to N=8 refines the N=6
+  result below. The 3D collapse is **even-N≥6, not N=6-only**: N=8 also collapses (map N=3–8
+  = ✓✓✓**✗**✓**✗**), so the even-harsher parity is the real law. Sharper still, at N=8 the
+  goal-aware `gt_b0` **also** collapses (0/30, where at N=6 it held 30/30) — four exact
+  head-on pairs overwhelm the forecast, so a smarter predictor is a **stopgap that runs out**
+  with crowd size, while `lateral_bias` lifts *both* predictors back to 30/30. And the
+  convention is **double-edged**: at N=4, where there is no deadlock, turning it on drives
+  `cv` from 30/30 to **0/30** (b=30/c=0, p<1e-9) — a goal-blind pinwheel — bounding the 2D
+  "safe everywhere" result. Right-of-way must be applied *where the deadlock is*, not always
+  on. Demo: `examples/exp_multi_drone_antipodal_3d_n8.yaml`.
 - **The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind
   right-of-way bias rescues it.** This corrects two claims from the 3D-dissolution result
   below. A four-arm sweep (`scripts/antipodal_3d_symmetry_phase.py`, paired McNemar) over
