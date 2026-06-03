@@ -234,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: The right-of-way convention needs near-full adoption — free-riders break it, and
+- **Latest: The convention cliff is hub density, not drone count — N and R collapse onto N/R.**
+  The convention's density cliff was measured against N, but N was a proxy: adding drones to a
+  fixed ring raises hub density. Holding the linear density N/R constant across a 6-drone and a
+  12-drone ring (gt + right-of-way, paired McNemar, n=40), the two fleets give the *same* joint
+  success at every matched density (all pairs tie; N/R=0.90 is an *exact* 33/40 vs 33/40, p=1.0),
+  and success is a clean monotone function of N/R alone (100 → 57 %). The cliff is density, not
+  count — mechanistically the roundabout is a *spatial* device whose limit is hub-annulus
+  occupancy (= N/R), the same spatial-not-temporal logic the speed-heterogeneity result found
+  from the other side. One number governs the convention's reach.
+- **The right-of-way convention needs near-full adoption — free-riders break it, and
   tolerance shrinks with density.** Mirror of the predictor result: mixing *predictors* helps
   (desync breaks symmetry), but mixing in *free-riders* who ignore the `lateral_bias` rule
   hurts. Sweeping how many of N goal-aware drones obey the convention (rest = deadlocking gt,

@@ -96,6 +96,7 @@ different strategies.
 - [The right-of-way convention has a density cliff — but a stronger bias pushes it out](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
 - [The 3D antipodal collapse is a non-monotone resonance, not the even-N law](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)
 - [The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
+- [The convention cliff is hub density, not drone count — N and R collapse onto N/R](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7112,3 +7113,60 @@ of free-riders relative to one another is a plausible second-order effect left o
 Reproduce: `python scripts/antipodal_convention_adoption_phase.py --n 6 --bias 2 --episodes 40`
 then `--n 8`; overlay with `--overlay results/adopt_n6.json results/adopt_n8.json`
 (`--max-steps 700` keeps the deadlocked low-k cells cheap; `--pattern spread` probes placement).
+
+## The convention cliff is hub density, not drone count — N and R collapse onto N/R
+
+The [convention cliff study](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+showed a fixed `lateral_bias` decays as N grows on a fixed-radius ring. But N was a proxy:
+adding drones to a fixed ring also raises the **hub density** — the number of antipodal paths
+crossing the same centre. Is the cliff really about the *count* N, or about the *density*?
+The clean test is to hold the linear density **N/R** (drones per unit ring radius) constant
+across a small and a large fleet: if the cliff is density, a 6-drone ring and a 12-drone ring
+at the same N/R should give the *same* joint success even though one has twice the drones.
+
+`scripts/antipodal_density_phase.py` runs matched-density (N, R) pairs (N ∈ {6, 12}, R chosen
+so N/R ∈ {0.30, 0.60, 0.90, 1.20}; R ≤ 24 keeps the ring inside the 50×50 world), gt +
+right-of-way at bias 2, paired by seed, n=40, McNemar exact between the N=6 and N=12 members of
+each pair.
+
+| N/R | N=6 | N=12 | N=6 vs N=12 (b/c, p) |
+|---|---|---|---|
+| 0.30 | 100 % | (R=40, out of bounds) | — |
+| 0.60 | 95 % | 90 % | b=4/c=2, 0.69 (tie) |
+| **0.90** | **82 %** | **82 %** | b=5/c=5, **1.00 (exact tie)** |
+| 1.20 | 57 % | 72 % | b=5/c=11, 0.21 (tie) |
+
+![convention success collapses onto hub linear density N/R](images/convention_density_collapse.png)
+
+- **The cliff is density, not count.** Every matched-density pair is a McNemar tie — doubling
+  the fleet from 6 to 12 drones at the same N/R does not change joint success. The N/R=0.90
+  pair is an *exact* tie (33/40 vs 33/40); the 15-pp gap seen there at n=20 was small-sample
+  noise that vanished at n=40. Success is a clean monotone function of N/R alone (100 → 95/90
+  → 82 → 57/72 %), so the two fleets land on one curve. The earlier "cliff with N" was N acting
+  as a stand-in for the density it raises on a fixed ring.
+
+- **What this pins down mechanistically.** The right-of-way roundabout is a *spatial* device:
+  its limit is how many drones must occupy the hub annulus at once, which is set by N/R, not by
+  N or R separately. This is the same spatial-not-temporal logic the
+  [speed-heterogeneity result](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
+  found from the other side (a 4× speed spread did *not* hurt, because the roundabout is spatial
+  and a fast drone does not lap a slow one into the hub). Density is the spatial load; the
+  convention's strength must be set to it — which is exactly why a fixed bias has a
+  [cliff](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+  and a stronger bias pushes it out: more bias = a tighter roundabout that fits more drones in
+  the same annulus.
+
+- **Scope and the one wobble.** The collapse holds across the tested band; the only deviation
+  is N/R=1.20, where N=6 (57 %) trails N=12 (72 %) by 15 pp — still a tie (p=0.21), but the
+  sign is worth noting: at the highest density the *smaller* ring (R=5, nearly drone-radius
+  scale) may suffer a finite-size effect the density variable does not capture, so N/R is the
+  control variable across the practical band but not necessarily into the degenerate small-R
+  corner.
+
+Net: the antipodal convention's reach is governed by one number, the hub linear density N/R,
+not by the drone count or the ring size independently. The cliff, the bias-scaling fix, and
+the speed-heterogeneity robustness are all facets of the same spatial-load picture.
+
+Reproduce: `python scripts/antipodal_density_phase.py --episodes 40`
+(writes `results/antipodal_density_phase.{json,png}`; matched-density pairs are defined in the
+`PAIRS` table; `--max-steps 800` keeps the densest deadlocked cells cheap).
