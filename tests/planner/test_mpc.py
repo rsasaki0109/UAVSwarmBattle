@@ -87,3 +87,44 @@ def test_mpc_uses_configured_predictor(tmp_path: Path) -> None:
     cfg.planner["predictor"] = {"type": "constant_velocity"}
     p = planner_cls.from_config(cfg.planner)
     assert isinstance(p._predictor, cv.ConstantVelocityPredictor)
+
+
+def test_mpc_pairwise_bias_off_is_noop(empty_grid_30) -> None:
+    """pairwise_bias=0 must leave the planner byte-for-byte as before."""
+    from uav_nav_lab.planner.mpc import SamplingMPCPlanner
+
+    occ = empty_grid_30
+    pos, goal = np.array([2.0, 15.0]), np.array([28.0, 15.0])
+    dyn = [{"position": [15.0, 15.0], "velocity": [-1.0, 0.0], "radius": 0.5}]
+    args = dict(max_speed=1.0, horizon=10, dt_plan=0.5, n_samples=64,
+                inflate=0, use_prediction=False)
+    base = SamplingMPCPlanner(**args).plan(pos, goal, occ, dynamic_obstacles=dyn)
+    off = SamplingMPCPlanner(pairwise_bias=0.0, **args).plan(
+        pos, goal, occ, dynamic_obstacles=dyn)
+    assert np.allclose(base.target_velocity, off.target_velocity)
+
+
+def test_mpc_pairwise_bias_compatible_passing(empty_grid_30) -> None:
+    """Two drones on a head-on course must veer to COMPATIBLE sides under the
+    pairwise convention: because the bearing to the neighbour reverses between
+    them, drone i steers one way and drone j the opposite way (in the world
+    frame), so they pass without a shared global heading."""
+    from uav_nav_lab.planner.mpc import SamplingMPCPlanner
+
+    occ = empty_grid_30
+    args = dict(max_speed=1.0, horizon=10, dt_plan=0.5, n_samples=64,
+                inflate=0, use_prediction=False, pairwise_bias=10.0,
+                pairwise_radius=10.0)
+    # i: left→right; its neighbour j sits ahead on the axis.
+    vi = SamplingMPCPlanner(**args).plan(
+        np.array([8.0, 15.0]), np.array([28.0, 15.0]), occ,
+        dynamic_obstacles=[{"position": [15.0, 15.0], "radius": 0.5}],
+    ).target_velocity
+    # j: right→left; its neighbour i sits ahead on the axis (reversed bearing).
+    vj = SamplingMPCPlanner(**args).plan(
+        np.array([22.0, 15.0]), np.array([2.0, 15.0]), occ,
+        dynamic_obstacles=[{"position": [15.0, 15.0], "radius": 0.5}],
+    ).target_velocity
+    # Compatible = opposite lateral (y) signs, both non-trivial.
+    assert vi[1] * vj[1] < 0
+    assert abs(vi[1]) > 0.05 and abs(vj[1]) > 0.05
