@@ -92,6 +92,7 @@ different strategies.
 - [Heterogeneous predictor swarms break the antipodal deadlock by desync, not by diversity](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
 - [The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind right-of-way bias rescues it](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
 - [The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
+- [The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet still rounds the hub](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6859,3 +6860,64 @@ it actively harms a ring that had no symmetry to break.
 Reproduce: `python scripts/antipodal_3d_symmetry_phase.py --n-list 4 6 8 --episodes 30`
 (writes `results/antipodal_3d_n8_resonance.json`; `--max-steps 800` keeps deadlocked cells
 cheap — the slowest crossing succeeds well under 800 steps, a deadlock never recovers).
+
+## The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet still rounds the hub
+
+The [right-of-way studies](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+proved the `lateral_bias` convention on a **homogeneous** fleet: every drone identical, same
+`max_speed`. But a clockwise roundabout implicitly assumes interchangeable agents that
+circulate at a compatible pace — a fast drone could lap a slow one straight into the hub and
+re-shatter the very symmetry the convention breaks. Real swarms are heterogeneous, so the
+honest question is whether right-of-way survives drones that are *not* interchangeable.
+
+`scripts/antipodal_hetero_dynamics_phase.py` stresses the cleanest axis — **speed spread** —
+with the fleet *mean* speed held fixed at 5.0 so the comparison is not confounded by an overall
+faster/slower fleet. At N=6 the ring alternates fast/slow (`max_speed` = 5 ± spread/2, carried
+per index by `planner.per_drone`), paired by seed, McNemar exact, n=40. One methodology note up
+front: the outcome is split into collision vs timeout, because a slow drone running out of clock
+is *not* a coordination failure — a first run with a tight step budget produced a false 0/3
+"timeout" purely because a speed-3 drone needs ~270 steps to cross; with a generous budget
+(every free drone finishes) a "timeout" can only mean a genuine jam.
+
+| arm (N=6) | speeds | success | coll / timeout | vs homo_b2 (c/b, p) |
+|-----------|--------|---------|----------------|----------------------|
+| homo_b2 | 5,5,5,5,5,5 | 39/40 | 1 / 0 | (reference) |
+| het2_b2 | 6,4,… | 40/40 | 0 / 0 | 1/0, 1.000 (tie) |
+| het4_b2 | 7,3,… | 40/40 | 0 / 0 | 1/0, 1.000 (tie) |
+| het6_b2 | 8,2,… | 40/40 | 0 / 0 | 1/0, 1.000 (tie) |
+| hetmax_b0 | 8,2,… (no bias) | 26/40 | **14** / 0 | b=14/c=1, **0.0010** |
+
+Two findings:
+
+- **The convention is fully robust to speed heterogeneity.** At *every* spread — up to an 8-vs-2,
+  **4× speed ratio** — the heterogeneous fleet with the convention scores 40/40, statistically
+  tied with the homogeneous fleet (39/40), with **zero collisions and zero timeouts**. The slow
+  drones all reach their goals; the fast drones flow around them rather than lapping them into the
+  hub. The roundabout absorbs the speed mismatch completely. (If anything the trend is the other
+  way: the one seed that *collides* under a homogeneous fleet — a perfect-symmetry tie at the hub
+  — is cleared once the speeds differ, the speed spread acting as a mild extra desync that
+  complements the convention. With c=1 this is not significant, but it is the opposite of the
+  feared degradation.)
+
+- **And the convention is still doing the work — heterogeneity alone does not fix it.** The same
+  maximally-mixed fleet *without* the bias (`hetmax_b0`) collides ~35 % of the time (26/40,
+  **14 collisions**, significantly worse than the homogeneous-with-convention reference,
+  p=0.0010); turning the convention on rescues it to 40/40 (c=14/b=0, p=0.0001). So speed
+  heterogeneity is *not* itself a sufficient symmetry-breaker — the desync it injects is too weak
+  to deconflict the hub on its own, and the right-of-way rule is what carries the mixed fleet
+  through. (Every `hetmax_b0` failure is a collision, not a timeout, confirming these are real
+  coordination breakdowns and not the clock artifact the methodology note guards against.)
+
+This **extends the [`lateral_bias`-is-safe-and-general result](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)
+to heterogeneous fleets**: the convention is not only safe on the homogeneous benchmarks and
+general across head-on topologies, it is robust to non-interchangeable drones — a fleet whose
+members fly at a 4× speed ratio rounds the hub as cleanly as identical drones. It also dovetails
+with the [heterogeneous-predictor result](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity):
+that study found that *desync* is what breaks the antipodal symmetry; here speed heterogeneity is
+a (weak) form of desync that helps at the margin but cannot replace the convention. Scope bound:
+this tests the *speed* axis only; heterogeneous radii or dynamics limits are left open.
+
+Reproduce: `python scripts/antipodal_hetero_dynamics_phase.py --n 6 --spreads 2 4 6 --episodes 40`
+(writes `results/antipodal_hetero_dynamics_phase.json`; `--max-steps 1000` gives the slowest
+arm ample clock so any timeout is a genuine jam). Demo:
+`examples/exp_multi_drone_antipodal_hetero_speed.yaml`.
