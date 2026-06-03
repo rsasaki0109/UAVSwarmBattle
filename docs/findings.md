@@ -89,6 +89,7 @@ different strategies.
 - [Right-of-way substitutes for the predictor at head-on, but not at the perpendicular crossing](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing)
 - [More-frequent replanning is never counterproductive — the replan_period "commitment" is not a safety mechanism](#more-frequent-replanning-is-never-counterproductive--the-replan_period-commitment-is-not-a-safety-mechanism)
 - [The antipodal predictor inversion is a 2D artifact — the vertical escape axis dissolves it, and at high density flips the predictor's sign](#the-antipodal-predictor-inversion-is-a-2d-artifact--the-vertical-escape-axis-dissolves-it-and-at-high-density-flips-the-predictors-sign)
+- [Heterogeneous predictor swarms break the antipodal deadlock by desync, not by diversity](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -6644,3 +6645,72 @@ caution against reading any planar swarm result as dimension-free.
 Reproduce: `python scripts/antipodal_3d_phase.py --n-list 3 4 5 6 --episodes 40`
 (writes `results/antipodal_3d_phase.json`; a runnable single demo is
 `examples/exp_multi_drone_antipodal_3d.yaml`).
+
+## Heterogeneous predictor swarms break the antipodal deadlock by desync, not by diversity
+
+The [antipodal inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+showed that when *every* drone runs the same goal-aware `game_theoretic` predictor, the
+N-drone swap deadlocks: all drones share the same symmetric forecast, all mirror-swerve into
+the same new arrangement, and re-collide at the hub (N=6: gt ≈ 1/40). The shipped fix is an
+*explicit* convention — [`planner.lateral_bias` right-of-way](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-),
+an asymmetry every drone obeys. That raises an *implicit* alternative: if the deadlock is
+caused by a **shared** symmetric forecast, simply making the forecasts **differ** should
+break the symmetry with no convention at all. Run half the fleet on `game_theoretic` and
+half on `constant_velocity` (via `planner.per_drone`) and the two groups predict their peers
+differently, desynchronise, and — the hypothesis — thread through the hub a uniform fleet
+jams in.
+
+`scripts/antipodal_heterogeneous_phase.py` runs three arms paired by seed on the same ring
+geometry / MPC / dynamics as the inversion study (CENTER=(25,25), RADIUS=20, `max_accel`=6,
+`start_jitter`=0.8): `all_cv` (every drone constant_velocity), `all_gt` (every drone
+game_theoretic — the deadlocking fleet), and `mixed` (half gt, half cv). Joint success = all
+drones reach goal with no inter-drone collision; n=40, McNemar exact.
+
+| N | all_cv | all_gt | mixed | mixed vs all_gt (c/b, p) | mixed vs all_cv (c/b, p) |
+|---|---|---|---|---|---|
+| 3 | 70.0 % | 37.5 % | **90.0 %** | 22/1, **0.0000** | 9/1, **0.0215** |
+| 4 | 80.0 % | 30.0 % | 50.0 % | 12/4, 0.0768 | 3/15, **0.0075** |
+| 5 | 85.0 % | 35.0 % | 72.5 % | 17/2, **0.0007** | 6/11, 0.3323 |
+| 6 | 65.0 % | 2.5 %  | 40.0 % | 15/0, **0.0001** | 4/14, **0.0309** |
+
+![heterogeneous vs uniform predictor swarms on the antipodal swap](images/antipodal_heterogeneous.png)
+
+Two things are true at once, and they are the whole story:
+
+- **Heterogeneity robustly rescues the deadlocked uniform-gt fleet.** `mixed` beats `all_gt`
+  at every N (significantly at N=3/5/6, and same-signed c=12/b=4 at N=4). The biggest swing
+  is the worst deadlock: at N=6 the uniform goal-aware fleet manages 1/40, the mix 16/40
+  (c=15/b=0, p=0.0001). This is a direct confirmation of the inversion's mechanism: the
+  failure really is the *shared symmetric forecast*, and breaking that sharing — even
+  crudely — lifts the deadlock. A swarm can self-desynchronise without any convention.
+
+- **But heterogeneity does not reliably beat a uniform dumb fleet.** `mixed` only out-scores
+  `all_cv` at N=3 (90 % vs 70 %, the one cell where it is the outright best of the three); at
+  N=4 and N=6 it is significantly *worse* than `all_cv`, and at N=5 it ties. The uniform
+  constant-velocity fleet is already symmetry-free — its myopic forecasts mispredict each
+  swerve and desync on their own — so a mix that keeps half the drones on the *correct*
+  symmetric forecast drags along exactly the coordinated-mirror-swerve component that caused
+  the deadlock. The symmetry-breaker that matters is **desync, not diversity**: dumb-but-
+  desynced beats half-smart-half-synced everywhere except the smallest swarm.
+
+**The effect is placement-independent.** Re-running the mix as `alternating` (gt,cv,gt,cv…
+around the ring) instead of `block` (one contiguous gt arc) reproduces every cell within
+noise — N=3 is identical at 36/40 even though the two placements there carry *opposite* gt:cv
+ratios (block = 1 gt + 2 cv, alternating = 2 gt + 1 cv). What matters is that the forecasts
+*differ at all*, not how they are arranged or in what proportion. The N-parity texture
+(odd-N kinder to the mix than even-N) survives both placements, so it is structural, not an
+artifact of one layout.
+
+This sharpens the inversion story and bounds the cheap fix. Mixing predictors is a real but
+*partial* symmetry-breaker — enough to prove the shared-forecast diagnosis and to rescue the
+catastrophic uniform-gt case, but not a free lunch: keeping any goal-aware drones in a
+symmetric swarm re-imports the very coordination they cannot resolve among themselves. The
+[`lateral_bias` convention](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+remains the only fix that gets *both* — it keeps every drone's goal-aware forecast and still
+reaches 100 %, because it breaks the symmetry without throwing away the prediction. Implicit
+desync (mixed predictors) and explicit convention (right-of-way) both defeat the deadlock;
+only the convention also keeps the intelligence.
+
+Reproduce: `python scripts/antipodal_heterogeneous_phase.py --n-list 3 4 5 6 --episodes 40`
+(calibrate with `--n-list 4 6 --episodes 20`; check placement-independence with
+`--mix-pattern alternating`; writes `results/antipodal_heterogeneous_phase.{json,png}`).
