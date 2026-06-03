@@ -234,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: The convention cliff is hub density, not drone count — N and R collapse onto N/R.**
+- **Latest: Once the right-of-way convention is on, the predictor is free — cv and gt become
+  identical.** On the bare antipodal swap the predictor is decisive (goal-aware `gt` deadlocks,
+  dumb `cv` partially threads through). Crossing predictor {cv, gt} × convention {off, on}
+  (paired McNemar, n=40), turning the `lateral_bias` convention on makes the forecast
+  *irrelevant*: `cv+row` and `gt+row` are a McNemar tie at every N (8/12/16), and if anything
+  dumb `cv+row` *edges* `gt+row` (consistent sign, NS) — the N-drone echo of the 2-drone
+  substitution result. What remains as N grows is the density cliff, identical for both
+  predictors. Symmetry-breaking is primary, forecast secondary: a decentralized convention makes
+  the predictor choice a non-decision.
+- **The convention cliff is hub density, not drone count — N and R collapse onto N/R.**
   The convention's density cliff was measured against N, but N was a proxy: adding drones to a
   fixed ring raises hub density. Holding the linear density N/R constant across a 6-drone and a
   12-drone ring (gt + right-of-way, paired McNemar, n=40), the two fleets give the *same* joint

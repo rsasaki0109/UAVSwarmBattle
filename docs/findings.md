@@ -97,6 +97,7 @@ different strategies.
 - [The 3D antipodal collapse is a non-monotone resonance, not the even-N law](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)
 - [The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
 - [The convention cliff is hub density, not drone count — N and R collapse onto N/R](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
+- [Once the right-of-way convention is on, the predictor is free — cv and gt become identical](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7170,3 +7171,60 @@ the speed-heterogeneity robustness are all facets of the same spatial-load pictu
 Reproduce: `python scripts/antipodal_density_phase.py --episodes 40`
 (writes `results/antipodal_density_phase.{json,png}`; matched-density pairs are defined in the
 `PAIRS` table; `--max-steps 800` keeps the densest deadlocked cells cheap).
+
+## Once the right-of-way convention is on, the predictor is free — cv and gt become identical
+
+Two threads meet here. The
+[goal-aware inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap)
+showed the *predictor* matters enormously on the bare antipodal swap — the smart `gt` forecast
+deadlocks (every drone shares it and mirror-swerves) while dumb `cv` partially threads through.
+The [right-of-way fix](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-)
+showed a convention rescues `gt`; at 2-drone head-on it even
+[*substitutes* for the predictor](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing).
+So which dominates in the N-drone crowd: does the convention merely *help* the predictor, or
+does it make the forecast **irrelevant**?
+
+`scripts/antipodal_convention_predictor_phase.py` crosses the two factors — predictor
+{cv, gt} × convention {off, on at bias 2} — on the antipodal ring (fixed R=20 so N sets hub
+density), four arms paired by seed, n=40, McNemar exact for the dominance test gt+row vs cv+row.
+
+| N | cv | gt | cv+row | gt+row | gt+row vs cv+row (c/b, p) |
+|---|---|---|---|---|---|
+| 8  | 60 % | 2 % | 100 % | 97 % | 0/1, 1.00 (tie) |
+| 12 | 30 % | 2 % | 95 %  | 90 % | 2/4, 0.69 (tie) |
+| 16 | 17 % | 0 % | 72 %  | 65 % | 7/10, 0.63 (tie) |
+
+![cv+row and gt+row overlap: the convention dominates the predictor](images/convention_predictor_dominance.png)
+
+- **The convention dominates the predictor — once it is on, the forecast is irrelevant.**
+  Without a convention the predictor is decisive: `gt` deadlocks (0–2 %), `cv` partially
+  survives (60→17 %, decaying with density). Turn the convention on and that entire distinction
+  vanishes — `cv+row` and `gt+row` are a McNemar tie at every N. Breaking the symmetry is the
+  whole game; given a convention, a clever destination-aware forecast buys nothing a dumb
+  coasting forecast doesn't already get.
+
+- **If anything, the dumb predictor is *better* under the convention.** `cv+row` edges `gt+row`
+  at all three N (100 vs 97, 95 vs 90, 72 vs 65) — never significant, but consistent in sign.
+  This is the N-drone echo of the
+  [2-drone substitution result](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing)
+  (where cv+row beat gt at 180°): once a global convention has set the passing side, a
+  goal-aware drone that keeps *re-forecasting* peers curving back toward their goals is solving
+  a problem the convention already solved, and that extra reactivity slightly hurts. The
+  symmetric forecast is the wrong tool precisely when a convention has made the geometry
+  symmetric-by-design.
+
+- **What is left is the density cliff, not the predictor.** Both `+row` arms fall together as N
+  rises (100/97 → 72/65), the same [density-driven decline](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
+  the cliff study isolated — and it is identical for cv and gt, confirming the residual failure
+  is spatial load, not forecast quality.
+
+This closes the convention/predictor loop. On the antipodal swarm the two are not complements
+but substitutes with a clear hierarchy: **symmetry-breaking is primary and forecast is
+secondary** — a decentralized convention makes the predictor choice a non-decision, and what
+remains is purely the hub's spatial density. (Scope: this is the *symmetric* antipodal geometry,
+where the inversion lives; on asymmetric encounters the predictor does independent work the
+convention cannot replace — see the
+[perpendicular-crossing cell](#right-of-way-substitutes-for-the-predictor-at-head-on-but-not-at-the-perpendicular-crossing).)
+
+Reproduce: `python scripts/antipodal_convention_predictor_phase.py --n-list 8 12 16 --bias 2 --episodes 40`
+(writes `results/antipodal_convention_predictor_phase.{json,png}`).
