@@ -257,6 +257,17 @@ active findings are grouped this way:
   Placement-independent (block ≈ alternating, identical at N=3 despite opposite gt:cv ratios).
   Only the explicit `lateral_bias` right-of-way gets *both* — symmetry-breaking **and** kept
   intelligence — at 100 %.
+- **The 3D antipodal collapse is a non-monotone resonance, not the even-N law — but the
+  convention holds at 100 % across all of it.** Extending the four-arm 3D sweep
+  (`scripts/antipodal_3d_symmetry_phase.py`, paired McNemar, n=25) to N=10 and N=12 *refutes*
+  the "even-N≥6 deadlocks" claim made for N=8: `cv` without bias **survives at N=10** (25/25)
+  between collapses at N=8 and N=12, so the even map is 4✓ 6✗ 8✗ **10✓** 12✗ — a geometric
+  resonance with no parity/density law (the third correction of this sub-finding, retiring the
+  attempt to predict *which* N collapses). What is robust: the goal-aware forecast stays **dead
+  for all N≥8** (so at N=10 the dumb predictor beats the smart one 25/0 — the inversion
+  reappears), and the right-of-way convention is **100 % at every N=8/10/12**. The practical
+  takeaway: stop predicting the resonance, just break the symmetry. (N≥14 and high-N odd rings
+  untested.)
 - **The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet
   still rounds the hub.** The `lateral_bias` right-of-way was proven on *homogeneous* fleets;
   a clockwise roundabout could in principle be shattered by a fast drone lapping a slow one
