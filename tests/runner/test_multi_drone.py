@@ -228,3 +228,35 @@ def test_build_multi_assigns_per_drone_components() -> None:
     advance_flags = [getattr(s, "_advance_scenario", True) for s in sims]
     assert advance_flags[0] is True
     assert all(f is False for f in advance_flags[1:])
+
+
+def test_build_multi_per_drone_planner_override() -> None:
+    """`planner.per_drone` shallow-merges a partial override per drone, so a
+    heterogeneous fleet can mix knobs and predictors; `{}` leaves the base."""
+    from uav_nav_lab.runner.multi import _build_multi
+
+    cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone.yaml")  # 2 drones
+    base_speed = float(cfg.planner["max_speed"])
+    cfg.planner["per_drone"] = [
+        {"max_speed": 3.0, "predictor": {"type": "game_theoretic"}},
+        {},  # drone 1 keeps the shared config unchanged
+    ]
+    _, _, planners, _ = _build_multi(cfg)
+
+    # Drone 0 took the override; drone 1 kept the shared config.
+    assert planners[0].max_speed == 3.0
+    assert planners[1].max_speed == base_speed
+    # Mixed predictors: the two drones forecast peers differently.
+    assert type(planners[0]._predictor) is not type(planners[1]._predictor)
+    # The override must not mutate the shared planner config in place.
+    assert "max_speed" in cfg.planner and cfg.planner["max_speed"] == base_speed
+
+
+def test_build_multi_rejects_per_drone_count_mismatch() -> None:
+    """`planner.per_drone` must match `scenario.n_drones` if provided."""
+    from uav_nav_lab.runner.multi import _build_multi
+
+    cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone.yaml")  # 2 drones
+    cfg.planner["per_drone"] = [{}]  # only 1 entry
+    with pytest.raises(ValueError, match="planner.per_drone"):
+        _build_multi(cfg)

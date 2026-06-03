@@ -24,7 +24,20 @@ def _build_multi(
     n = scenario.n_drones
 
     sim_cls = SIM_REGISTRY.get(cfg.simulator.get("type", "dummy_2d"))
-    planner_cls = PLANNER_REGISTRY.get(cfg.planner.get("type", "straight"))
+
+    # Heterogeneous fleets: `planner.per_drone` is an optional list of partial
+    # planner overrides applied by drone index — each entry is shallow-merged
+    # over the shared `planner` config (`{}` = use the shared config unchanged).
+    # This lets a multi-drone run mix predictors, planner types, or any planner
+    # knob per drone (e.g. half the swarm on `game_theoretic`, half on
+    # `constant_velocity`). When absent, every drone shares one planner config.
+    base_planner = {k: v for k, v in cfg.planner.items() if k != "per_drone"}
+    per_drone_planner = cfg.planner.get("per_drone") or []
+    if per_drone_planner and len(per_drone_planner) != n:
+        raise ValueError(
+            f"planner.per_drone has {len(per_drone_planner)} entries but the "
+            f"scenario has {n} drones"
+        )
 
     sensor_cfg = dict(cfg.sensor)
     sensor_cfg.setdefault("dt", cfg.simulator.get("dt", 0.05))
@@ -53,6 +66,10 @@ def _build_multi(
             sim.vehicle = vehicles_cfg[i]
         sim.set_goal(scenario.drones[i].goal)
         sims.append(sim)
-        planners.append(planner_cls.from_config(cfg.planner))
+        pcfg = base_planner
+        if per_drone_planner and per_drone_planner[i]:
+            pcfg = {**base_planner, **per_drone_planner[i]}
+        planner_cls = PLANNER_REGISTRY.get(pcfg.get("type", "straight"))
+        planners.append(planner_cls.from_config(pcfg))
         sensors.append(sensor_cls.from_config(sensor_cfg))
     return scenario, sims, planners, sensors
