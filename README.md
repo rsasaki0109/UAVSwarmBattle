@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: Heterogeneous predictor swarms break the antipodal deadlock by desync, not by
+- **Latest: The right-of-way convention has a density cliff — but a stronger bias pushes it
+  out.** The `lateral_bias` right-of-way fix reached 100 % on the antipodal swap at N≤6, but on
+  a fixed-radius ring raising N raises hub density. A *fixed* `bias`=2 then has a **density
+  cliff** — it decays monotonically (N=8 → 16: 97.5 → 90 → **65 %**) even as it keeps beating
+  the dumb `cv` baseline. Doubling to `bias`=4 **pushes the cliff out** (N=16: 65 → **97.5 %**,
+  c=39/b=0 vs the deadlocked predictor, c=32/b=0 vs `cv`, both p<1e-4): the required bias
+  *scales with density*. A preliminary N=16 sweep hints at an upper band too (a dip at bias=6),
+  so the convention is **tunable, not free** — a roundabout that clears any traffic only if you
+  set the rotation speed to the load. (2D bias-strength companion to the 3D on/off resonance
+  study.)
+- **Heterogeneous predictor swarms break the antipodal deadlock by desync, not by
   diversity.** When every drone runs the same goal-aware `game_theoretic` predictor the
   N-drone antipodal swap deadlocks (shared symmetric forecast → all mirror-swerve →
   re-collide; N=6: 1/40). Mixing half the fleet onto `constant_velocity` (`planner.per_drone`)
