@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: sensing noise restores the predictor's relevance under the convention.** With
+- **Latest: the convention is a consensus device — a split right/left rule is worse than no rule.**
+  Is the right-of-way's rescue from the *tilt* or from every drone *agreeing on the direction*?
+  Splitting the antipodal fleet (half veer right `+B`, half left `−B`) separates them: unanimous
+  tilting rescues (37/39/40 at N=4/6/8) but the split rule is far worse (consensus vs split p down to
+  <1e-9) — and at N=4/8 it is *worse than no convention at all* (18 vs 25, 9 vs 29). Opposite tilts
+  are opposite rotations: right-veerers circle the hub clockwise, left-veerers counter-clockwise,
+  and mixed they meet head-on. Like driving, a road where half keep right and half keep left is more
+  dangerous than one with no rule — the rule's whole job is to make the two directions *agree*. The
+  convention is a consensus on a single rotation sense, and that consensus is the entire mechanism.
+  See [docs/findings.md](docs/findings.md#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule).
+- **Sensing noise restores the predictor's relevance under the convention.** With
   ground-truth peer positions, turning the right-of-way convention on makes the predictor a
   non-decision (`cv+row` = `gt+row`, a tie). But that is a clean-sensing artefact. Add a noisy peer
   tracker (`noisy_tracker`, matched position/velocity noise) and the goal-aware forecast re-earns its

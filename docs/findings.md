@@ -120,6 +120,7 @@ different strategies.
 - [Priority deconfliction fails the symmetric hub — it trades deadlock for collision](#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision)
 - [Sensing noise restores the predictor's relevance under the convention](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
 - [Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture](#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture)
+- [The convention is a consensus device — a split right/left rule is worse than no rule](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8334,3 +8335,39 @@ The robust cross-scenario fix is symmetric participation.
 
 Reproduce: `python scripts/doorway_priority_phase.py --n 3 --gap-list 6 --episodes 30`
 (writes `results/doorway_priority_phase.json`).
+
+## The convention is a consensus device — a split right/left rule is worse than no rule
+
+The right-of-way rescues the antipodal hub by tilting every drone the same way (all RIGHT) into a
+clockwise roundabout. Is the rescue from the *tilt*, or from every drone *agreeing on the
+direction*? Splitting the fleet — half on `lateral_bias = +B` (veer right), half on `−B` (veer
+left), alternating around the ring — separates the two. MPC, antipodal, n=40:
+
+| N | stock | consensus (all +B) | split (±B) | consensus vs stock | consensus vs split |
+|---|---|---|---|---|---|
+| 4 | 25/40 | 37/40 | **18/40** | b=2/c=14, **0.004** | b=3/c=22, **2e-4** |
+| 6 | 20/40 | 39/40 | 31/40 | b=1/c=20, **<1e-9** | b=1/c=9, **0.022** |
+| 8 | 29/40 | 40/40 | **9/40** | b=0/c=11, **0.001** | b=0/c=31, **<1e-9** |
+
+- **The convention's power is consensus, not the tilt.** Unanimous tilting rescues (37/39/40); a
+  split rule is far worse at every N (consensus vs split significant throughout) — and at N=4 and
+  N=8 the split rule is *worse than doing nothing at all* (18 vs 25, 9 vs 29). Half the fleet
+  tilting each way is not half a convention; it is an anti-convention.
+
+- **Why: opposite tilts are opposite rotations.** A right-veerer circulates the hub clockwise, a
+  left-veerer counter-clockwise; mixed, they meet head-on inside the roundabout and collide. The
+  convention works only because everyone rotates the *same way* — like driving: a road where half
+  keep right and half keep left is more dangerous than one with no rule, because the rule's whole
+  job is to make the two directions *agree*.
+
+- **It mirrors the protocol-mismatch result at the rule level.** Just as mixing two reciprocal
+  *controllers* is [less safe than either alone](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone),
+  mixing two convention *directions* is less safe than either alone (or than none). Coordination is
+  a shared-agreement property; a half-adopted disagreement is worse than unanimous abstention.
+
+Net: the right-of-way is not a per-agent nudge that happens to help — it is a *consensus* on a
+single global rotation sense, and that consensus is the entire mechanism. A convention only works
+if everyone obeys the *same* one.
+
+Reproduce: `python scripts/antipodal_split_convention_phase.py --n-list 4 6 8 --bias 2 --episodes 40`
+(writes `results/antipodal_split_convention_phase.json`).
