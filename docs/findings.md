@@ -108,6 +108,7 @@ different strategies.
 - [In 3-D the in-plane convention rescues the reactive planner the extra dimension could not](#in-3-d-the-in-plane-convention-rescues-the-reactive-planner-the-extra-dimension-could-not)
 - [Two reciprocal collision avoiders are less safe mixed than either is alone](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
 - [On the symmetric hub, mixing reciprocal controllers HELPS — protocol heterogeneity is double-edged](#on-the-symmetric-hub-mixing-reciprocal-controllers-helps--protocol-heterogeneity-is-double-edged)
+- [The right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF](#the-right-of-way-convention-is-paradigm-agnostic--it-rescues-even-non-reciprocal-apf)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7790,3 +7791,47 @@ breaks a reciprocity that both pure fleets rely on. Same knob, opposite sign, se
 
 Reproduce: `python scripts/antipodal_hetero_controller_phase.py --n-list 4 6 8 --episodes 40 --seed 4000`
 (writes `results/antipodal_hetero_controller_phase.json`).
+
+## The right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF
+
+Every reactive baseline the convention has rescued so far is *reciprocal*: ORCA, CBF and BVC each
+assume a cooperating peer that takes its share of the avoidance. Is the right-of-way a
+reciprocal-family fix, or does it work for any planner? APF (`planner.type: apf`, Khatib 1986) is
+the test: a pure gradient controller — attract to goal, repel from peers — with **no model of the
+peer at all**. The symmetric antipodal hub is a stationary point of its field (attraction toward
+the antipode cancels the repulsion from converging peers); steering at cruise speed, the fleet
+plows into that point and collides.
+
+`scripts/antipodal_apf_phase.py`, paired by seed, McNemar exact:
+
+| N | apf_stock | apf + pairwise | pairwise vs stock (b/c, p) |
+|---|---|---|---|
+| 4 | 1/40 (39 coll) | **40/40** | b=0/c=39, **p<1e-9** |
+| 6 | 0/40 (40 coll) | **40/40** | b=0/c=40, **p<1e-9** |
+| 8 | 0/40 (40 coll) | **40/40** | b=0/c=40, **p<1e-9** |
+
+Deterministic: stock APF collides at the hub at every N; the in-plane convention lifts it to 40/40.
+
+- **The convention is *paradigm*-agnostic, not just family-agnostic.** It already worked on the
+  sampling MPC and the reciprocal velocity/position/barrier methods; APF has none of their
+  machinery (no velocity obstacle, no reciprocity split, no QP) — it is bare gradient descent — and
+  the same in-plane right-of-way still breaks the symmetric hub. What the convention fixes is the
+  *geometry* (a symmetric convergence has no preferred passing side), so it is indifferent to how
+  the underlying planner computes its motion.
+
+- **It needs no reciprocity to work.** That a non-reciprocal controller is rescued shows the
+  convention is not patching a broken reciprocity assumption (the way it is *not* a fix for the
+  [reciprocity mismatch of mixed controllers](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone));
+  it is a shared *external* tie-break that any goal-seeking planner can consume.
+
+- **APF's hub failure here is collision, not the textbook stall.** The constant-speed steering
+  variant plows through the field's stationary point; a variable-speed APF (`v ∝ F`) would instead
+  halt at the local minimum (timeout). Either reading, the symmetric hub defeats stock APF and the
+  convention breaks the symmetry that creates the stationary point.
+
+Net: across sampling MPC, three reciprocal reactive families (ORCA/CBF/BVC) and now a
+non-reciprocal gradient controller (APF), the decentralized in-plane right-of-way is the one fix
+that transfers everywhere — it is a property of the *encounter geometry*, not of the planner.
+
+Reproduce: `python scripts/antipodal_apf_phase.py --n-list 4 6 8 --episodes 40 --seed 4000`
+(writes `results/antipodal_apf_phase.json`).
