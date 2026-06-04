@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: explicit roundabout (Merry-Go-Round) vs implicit convention — density-invariant scaling
+- **Latest: the Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor.**
+  The explicit roundabout's makespan premium is the cost of *that* ring radius, not a fixed tax:
+  shrinking the ring from 20 to 10 cuts makespan 13.1→10.1 s (−23 %, a shorter arc). But the
+  circumference is the capacity, so each radius has an N-ceiling that shrinks with it — ring 10 is
+  fine to N=12 but collapses at N=24 (5/20), ring 14 holds to 19/20, only the full ring 20 is
+  unbounded over the tested range. And too small fails outright (ring 6: 0/20 at every N — no room
+  for a roundabout). Tuning rule: pick the smallest ring whose circumference holds your N. The
+  earlier density-invariance was the large-ring regime; in general the explicit roundabout slides
+  along a speed/capacity frontier. See
+  [docs/findings.md](docs/findings.md#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor).
+- **Explicit roundabout (Merry-Go-Round) vs implicit convention — density-invariant scaling
   at a fixed time premium.** A clean-room `roundabout` planner reproduces Merry-Go-Round (Zhou et
   al. 2025): all drones ride one shared CCW ring, collision-free by construction at any density. On
   the antipodal swap it is **100 % from N=6 to N=24 with a flat ~13.1 s makespan** — no cliff, no
