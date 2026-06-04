@@ -69,8 +69,36 @@ def test_pairwise_bias_does_not_tilt_a_lone_agent():
     np.testing.assert_allclose(v, [5.0, 0.0], atol=1e-6)
 
 
-def test_three_d_rejected():
+def test_3d_no_neighbours_goes_straight():
     p = _cbf()
-    p.set_current_state(np.zeros(3), np.zeros(3))
+    p.set_current_state(np.array([5.0, 25.0, 8.0]), np.zeros(3))
+    v = p.plan(np.array([5.0, 25.0, 8.0]), np.array([45.0, 25.0, 8.0]), None,
+               dynamic_obstacles=[]).target_velocity
+    assert v.shape == (3,)
+    np.testing.assert_allclose(v, [5.0, 0.0, 0.0], atol=1e-5)
+
+
+def test_3d_cbf_constraint_satisfied():
+    """In 3-D the barrier half-space (p_j-p_i)·v <= (p_j-p_i)·v_j + (alpha/2)·h
+    must hold for the chosen velocity — same guarantee as 2-D, now solved by the
+    Dykstra projection."""
+    pos = np.array([5.0, 25.0, 8.0])
+    peer = np.array([7.0, 25.0, 8.0])
+    v_peer = np.array([-5.0, 0.0, 0.0])
+    p = _cbf(reciprocal=False)
+    p.set_current_state(pos, np.array([5.0, 0.0, 0.0]))
+    v = p.plan(pos, np.array([45.0, 25.0, 8.0]), None,
+               dynamic_obstacles=[{"position": peer, "velocity": v_peer,
+                                   "radius": 0.4}]).target_velocity
+    a = peer - pos
+    r_safe = 0.4 + 0.4 + 0.1
+    h = float(a @ a) - r_safe ** 2
+    b = float(a @ v_peer) + 0.5 * 2.0 * h
+    assert float(a @ v) <= b + 1e-4
+    assert float(np.linalg.norm(v)) <= 5.0 + 1e-4
+
+
+def test_four_d_rejected():
+    p = _cbf()
     with pytest.raises(ValueError):
-        p.plan(np.zeros(3), np.array([1.0, 0.0, 1.0]), None, dynamic_obstacles=[])
+        p.plan(np.zeros(4), np.ones(4), None, dynamic_obstacles=[])
