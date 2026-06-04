@@ -109,6 +109,7 @@ different strategies.
 - [Two reciprocal collision avoiders are less safe mixed than either is alone](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
 - [On the symmetric hub, mixing reciprocal controllers HELPS — protocol heterogeneity is double-edged](#on-the-symmetric-hub-mixing-reciprocal-controllers-helps--protocol-heterogeneity-is-double-edged)
 - [The right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF](#the-right-of-way-convention-is-paradigm-agnostic--it-rescues-even-non-reciprocal-apf)
+- [Under noisy peer sensing the reactive ranking inverts — the soft field outlasts the tight geometry](#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7835,3 +7836,45 @@ that transfers everywhere — it is a property of the *encounter geometry*, not 
 
 Reproduce: `python scripts/antipodal_apf_phase.py --n-list 4 6 8 --episodes 40 --seed 4000`
 (writes `results/antipodal_apf_phase.json`).
+
+## Under noisy peer sensing the reactive ranking inverts — the soft field outlasts the tight geometry
+
+Every reactive-baseline result above used *perfect* peer observations. Real fleets track peers with
+error, and the three avoiders use peer state differently: ORCA builds a tight velocity obstacle
+from peer position+velocity, CBF a barrier with a safety-rate buffer, APF only a soft repulsion
+field from peer position. Feeding all three a Gaussian-noised peer tracker
+(`sensor: noisy_tracker`) on a perpendicular crossing, paired by seed (every method sees the *same*
+noise realisation per seed):
+
+| position noise σ (m) | orca | cbf | apf | apf vs orca | apf vs cbf |
+|---|---|---|---|---|---|
+| 0.0 | **36/40** | **36/40** | 27/40 | b=10/c=1, **0.012** (apf worse) | b=10/c=1, **0.012** |
+| 0.25 | 32/40 | 28/40 | 23/40 | b=11/c=2, **0.022** (apf worse) | b=10/c=5, 0.30 |
+| 0.5 | 21/40 | 12/40 | 22/40 | b=7/c=8, 1.0 (tie) | b=5/c=15, **0.041** (apf better) |
+| 0.75 | 4/40 | 10/40 | 11/40 | b=3/c=10, 0.092 (apf better) | b=6/c=7, 1.0 |
+| 1.0 | 3/40 | 9/40 | 9/40 | b=1/c=7, 0.070 (apf better) | b=6/c=6, 1.0 |
+
+- **The ranking inverts.** Under perfect sensing the geometric methods dominate and APF is worst
+  (36/36 vs 27, p=0.012). As noise grows the order flips: by σ=0.5 APF has overtaken CBF
+  (p=0.041) and matched ORCA, and by σ≥0.75 APF leads ORCA. Best-when-clean is worst-when-noisy.
+
+- **ORCA collapses fastest; APF degrades most gracefully.** ORCA falls 36 → 21 → **4 → 3** — its
+  tight velocity-obstacle margins are built on the peer's *exact* position and velocity, and noise
+  shatters them. APF falls only 27 → 22 → **11 → 9**: a soft `1/d` repulsion field has no sharp
+  margin to violate, so position noise just jitters a smooth gradient. CBF (36 → 12 → 9) sits
+  between — a barrier buffer is softer than a VO but still position-precise.
+
+- **Why.** Precision is a liability under noise. A method that reserves the *minimum* safe
+  manoeuvre (ORCA's reciprocal half of an exact VO) has no slack when its inputs are wrong; a
+  method that pushes *softly and early* over a wide field (APF) is sloppy when sensing is perfect
+  but keeps a margin when it is not. The accuracy that wins the clean benchmark is exactly what
+  fails first under noise — the reactive-controller version of the recurring
+  offline-accuracy-≠-closed-loop-robustness theme.
+
+Net: choosing a reactive avoider is sensing-dependent. With accurate tracking, take the tight
+geometric methods (ORCA/CBF); as tracking degrades, the soft potential field that looked worst on
+paper is the one still standing. There is no single best reactive avoider — only a best one *for a
+given sensing quality*.
+
+Reproduce: `python scripts/crossing_reactive_noise_phase.py --n 4 --noise-list 0 0.25 0.5 0.75 1.0 --episodes 40`
+(writes `results/crossing_reactive_noise_phase.json`).
