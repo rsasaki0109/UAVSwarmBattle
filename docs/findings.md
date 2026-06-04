@@ -103,6 +103,7 @@ different strategies.
 - [The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the roundabout it builds](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds)
 - [On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout cliff](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff)
 - [BVC and CBF: the convention rescues two more reactive families, and BVC needs a dynamics-aware buffer](#bvc-and-cbf-the-convention-rescues-two-more-reactive-families-and-bvc-needs-a-dynamics-aware-buffer)
+- [The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric one](#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7570,3 +7571,47 @@ convention's strength is a density-dependent knob, not a constant.
 Reproduce: `python scripts/antipodal_bvc_phase.py --n-list 6 8 12 --episodes 40 --seed 4000 --pairwise-bias 2.0`
 (writes `results/antipodal_bvc_phase.json`; `bvc_nobrake` = the textbook small buffer that
 overshoots, the other bvc arms use the brake-aware buffer).
+
+## The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric one
+
+The [predictor inversion dissolves in 3-D](#the-antipodal-predictor-inversion-is-a-2d-artifact--the-vertical-escape-axis-dissolves-it-and-at-high-density-flips-the-predictors-sign):
+lift the antipodal ring into a voxel world and the vertical axis gives every drone a symmetry
+escape, so the planar deadlock vanishes. That was shown with a *sampling* planner. Is the 3rd
+dimension itself the cure — or does the cure require a planner that *uses* it? The CBF safety
+filter (`planner.type: cbf`), now extended to 3-D (the barrier half-space algebra is
+dimension-agnostic; ndim=3 swaps the 2-D RVO2 linear program for a Dykstra projection QP), gives
+a clean control: a *reactive* controller dropped into the same voxel world.
+
+`scripts/antipodal_cbf_3d_phase.py`, paired by seed, McNemar exact, collision-vs-timeout split:
+
+| N | cbf 2-D | cbf 3-D | mpc 3-D | mpc vs cbf (3-D) |
+|---|---|---|---|---|
+| 4 | 5/40 (35 timeout) | 0/40 (40 timeout) | **40/40** | b=0/c=40, **p<1e-9** |
+| 6 | 10/40 (30 timeout) | 0/40 (40 timeout) | 0/40 (40 collision) | tie |
+| 8 | 2/40 (38 timeout) | 0/40 (40 timeout) | 0/40 (40 collision) | tie |
+
+- **The reactive deadlock does NOT dissolve in 3-D.** `cbf_3d` is 0/40 — all timeouts — at every
+  N, no better than `cbf_2d`. The extra dimension is *available* and goes completely unused.
+
+- **Mechanism: the reactive filter never leaves the start plane.** The CBF nominal velocity points
+  straight at the goal, which sits at the same altitude, so it has zero vertical component; the
+  barrier constraints only *subtract* velocity toward peers, they never *add* a vertical escape.
+  Directly verified: at a crowded 3-D hub the commanded velocity's z-component is exactly 0. The
+  drones stay in the z=mid plane and the problem collapses back to the 2-D deadlock.
+
+- **A planner that explores the vertical axis dissolves the very same deadlock.** The sampling MPC
+  (which samples 3-D directions, including up/down) clears N=4 at 40/40 where `cbf_3d` is 0/40
+  (p<1e-9). At N≥6 the constant-velocity MPC instead hits the separate
+  [3-D cv resonance](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)
+  (it *collides* rather than deadlocks — a different failure), so the clean dissolution contrast
+  is the N=4 cell; the N≥6 cells just confirm cv's own 3-D fragility, not a CBF rescue.
+
+Net: adding a dimension does not, by itself, break the symmetry — a planner has to *plan into it*.
+The 3-D escape that rescues the sampling/forecast planners is invisible to a reactive safety
+filter whose goal-seeking nominal stays in-plane. The dissolution is a property of the planner,
+not of the arena — which also means a decentralized convention (an explicit in-plane rule) and a
+free vertical axis are *complementary* escapes: the convention works for planners that stay
+planar, the dimension works only for planners that leave it.
+
+Reproduce: `python scripts/antipodal_cbf_3d_phase.py --n-list 4 6 8 --episodes 40 --seed 4000`
+(writes `results/antipodal_cbf_3d_phase.json`).

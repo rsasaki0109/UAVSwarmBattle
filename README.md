@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: BVC and CBF reactive baselines — the convention rescues two more families, and BVC
+- **Latest: the 3-D dissolution of the antipodal deadlock is a planner property, not a geometric
+  one.** The predictor inversion dissolves when the antipodal ring is lifted into a voxel world
+  (the vertical axis is a symmetry escape) — but only for a planner that *uses* it. Extending the
+  CBF safety filter to 3-D shows the reactive deadlock does **not** dissolve: `cbf_3d` is 0/40
+  (all timeouts) at every N, no better than 2-D, because its goal-seeking nominal points
+  in-plane and the barriers only subtract velocity toward peers — the commanded vertical velocity
+  is exactly 0, so the drones never leave the start plane (the free axis goes unused). A sampling
+  MPC that explores the vertical axis dissolves the same deadlock at N=4 (40/40 vs cbf 0/40,
+  p<1e-9). Adding a dimension does not break symmetry by itself — a planner has to plan into it.
+  See [docs/findings.md](docs/findings.md#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one).
+- **BVC and CBF reactive baselines — the convention rescues two more families, and BVC
   needs a dynamics-aware buffer.** Two more decentralized reactive avoiders beside ORCA: `bvc`
   (Buffered Voronoi Cells, position-space, collision-free by construction) and `cbf` (a
   control-barrier-function QP safety filter, the LivePoint/social-mini-games school). Both
