@@ -104,6 +104,7 @@ different strategies.
 - [On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout cliff](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff)
 - [BVC and CBF: the convention rescues two more reactive families, and BVC needs a dynamics-aware buffer](#bvc-and-cbf-the-convention-rescues-two-more-reactive-families-and-bvc-needs-a-dynamics-aware-buffer)
 - [The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric one](#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one)
+- [Pairwise's dominance over the global convention inverts under a hub-crossing obstacle](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7615,3 +7616,53 @@ planar, the dimension works only for planners that leave it.
 
 Reproduce: `python scripts/antipodal_cbf_3d_phase.py --n-list 4 6 8 --episodes 40 --seed 4000`
 (writes `results/antipodal_cbf_3d_phase.json`).
+
+## Pairwise's dominance over the global convention inverts under a hub-crossing obstacle
+
+Two earlier results pull in opposite directions. The
+[pairwise winding-number convention](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
+*strictly dominates* the global veer-right in an empty arena (no 3D N=4 harm, density cliff pushed
+out). But the global convention's remedy is a single coherent clockwise hub roundabout, and
+[a body crossing that hub caps it](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds).
+So: does the pairwise rule — which never builds one shared roundabout — *avoid* that chokepoint and
+stay robust to the hub obstacle, or does its very locality (no shared rotational current to absorb
+an external perturbation) make it *worse*?
+
+Each convention at a strength that solves the peers on its own (global `lateral_bias=4`, pairwise
+`pairwise_bias=8`; both ~100 % no-obstacle at N=6/8), crossed with obstacle ∈ {none, hub-crossing,
+far-corner}, MPC + game_theoretic, paired by seed (n=40).
+
+![pairwise dominates in an empty arena but the dominance inverts under a hub-crossing obstacle](images/convention_obstacle_robustness.png)
+
+| | N=6 global | N=6 pairwise | N=8 global | N=8 pairwise |
+|---|---|---|---|---|
+| no obstacle | 100 % | 98 % | 100 % | 98 % |
+| **hub-crossing** | **72 %** | **25 %** | **25 %** | **12 %** |
+| far corner | 100 % | 90 % | 100 % | 98 % |
+
+- **The dominance inverts.** With no obstacle the two conventions are matched (tie, p=1 at both N).
+  Add the hub-crossing obstacle and the *global* rule wins decisively at N=6 — 72 % vs 25 %,
+  `c=2/b=21` McNemar p=6.6e-5 — exactly reversing pairwise's empty-arena dominance. At N=8 the same
+  sign holds (25 % vs 12 %) but is only a trend (`b=5/c=0`, p=0.0625): the hub obstacle floors
+  *both* conventions so severely that the gap compresses below significance.
+- **It is hub-specific, not "pairwise is bad at obstacles" (move-the-stressor control).** A far-corner
+  obstacle of the *same* size/speed barely dents either convention (N=6 100 % vs 90 %, NS; N=8
+  100 % vs 98 %, tie). The global advantage appears *only* in the hub-crossing condition.
+- **Mechanism: coherence is the asset against an external perturbation.** The global rule funnels
+  every drone into one ordered clockwise current around the hub; that shared rotational flow yields
+  uniformly and re-forms when an obstacle punches through it. The pairwise rule resolves every
+  conflict *locally* (pass each neighbour — and the obstacle — on the right) with no shared heading,
+  so an external body injects local corrections that no global structure damps, and the fleet
+  shatters into peer collisions. The same coherence that is a *liability* without an obstacle (the
+  over-concentrated chokepoint of the
+  [peer-rule cap](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds))
+  becomes an *asset* with one.
+
+This bounds the pairwise-dominance result: pairwise is the better convention in the clean arena it
+was tuned for, but "strictly dominates" does not survive contact with an external hub obstacle —
+there the global roundabout's coherence is worth more than pairwise's locality. Which convention to
+prefer depends on whether the threat is purely the peers (pairwise) or includes a shared external
+hazard through the conflict point (global).
+
+Reproduce: `python scripts/antipodal_convention_obstacle_robustness_phase.py --n-list 6 8 --global-bias 4 --pairwise-bias 8 --episodes 40`
+(writes `results/antipodal_convention_obstacle_robustness_phase.{json,png}`).

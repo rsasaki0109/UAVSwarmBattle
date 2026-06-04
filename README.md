@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the 3-D dissolution of the antipodal deadlock is a planner property, not a geometric
+- **Latest: pairwise's dominance over the global convention inverts under a hub-crossing
+  obstacle.** The pairwise winding-number rule strictly dominates the global veer-right in an empty
+  arena, but the global rule's remedy is a single coherent clockwise hub roundabout. Cross each
+  convention (at matched ~100 % no-obstacle strength) with a body crossing the hub (MPC +
+  `game_theoretic`, paired McNemar, n=40): the dominance **reverses**. At N=6 the global rule wins
+  72 % vs 25 % (`c=2/b=21`, p=6.6e-5); at N=8 the same sign holds (25 % vs 12 %) but the obstacle
+  floors both, so it is only a trend. A far-corner obstacle of the same size barely dents either
+  (move-the-stressor control) — the global advantage is hub-specific. Mechanism: the shared
+  rotational current absorbs and re-forms around an external perturbation that pairwise's local,
+  un-coordinated passing cannot damp. The coherence that is a *liability* without an obstacle (the
+  over-concentrated chokepoint) is an *asset* with one.
+- **The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric
   one.** The predictor inversion dissolves when the antipodal ring is lifted into a voxel world
   (the vertical axis is a symmetry escape) — but only for a planner that *uses* it. Extending the
   CBF safety filter to 3-D shows the reactive deadlock does **not** dissolve: `cbf_3d` is 0/40
