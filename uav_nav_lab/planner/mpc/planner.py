@@ -268,8 +268,10 @@ class SamplingMPCPlanner(Planner):
         # the signed lateral offset of direction d from `base` is the z-cross
         # base × d = base_x·d_y − base_y·d_x (>0 = left/CCW). The term is in
         # [−lateral_bias, +lateral_bias], tiny next to the obstacle cost, so it
-        # only breaks near-symmetric ties.
-        if self.lateral_bias > 0.0 and ndim >= 2:
+        # only breaks near-symmetric ties. The knob is SIGNED: positive prefers
+        # the RIGHT, negative the LEFT (used to test a split convention where
+        # different drones obey opposite directions).
+        if self.lateral_bias != 0.0 and ndim >= 2:
             lateral = base[0] * directions[:, 1] - base[1] * directions[:, 0]
             costs = costs + self.lateral_bias * lateral
 
