@@ -234,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: protocol heterogeneity is double-edged — mixing ORCA and CBF *helps* on the symmetric
+- **Latest: the right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF.**
+  Every reactive baseline the convention has rescued so far (ORCA/CBF/BVC) is *reciprocal*. APF
+  (artificial potential field) is a pure gradient controller with **no model of the peer** — and
+  the symmetric antipodal hub is a stationary point of its field, so stock APF collides there
+  (0–1/40). The same in-plane `pairwise_bias` lifts it to **40/40 at every N=4/6/8** (deterministic,
+  p<1e-9). The convention fixes the *encounter geometry* (a symmetric convergence has no preferred
+  passing side), so it is indifferent to how the planner computes motion — it transfers across the
+  sampling MPC, three reciprocal reactive families, and now a non-reciprocal one. See
+  [docs/findings.md](docs/findings.md#the-right-of-way-convention-is-paradigm-agnostic--it-rescues-even-non-reciprocal-apf).
+- **Protocol heterogeneity is double-edged — mixing ORCA and CBF *helps* on the symmetric
   hub even though it *hurts* on the crossing.** The crossing result (below) showed mixing two
   reciprocal controllers is unsafe. But on the *symmetric* antipodal swap, where a homogeneous
   fleet deadlocks (ORCA collides, CBF times out), the same mismatch instead **desyncs** the
