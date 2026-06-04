@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: in 3-D the in-plane convention rescues the reactive planner the extra dimension could
+- **Latest: two reciprocal collision avoiders are less safe mixed than either is alone.** ORCA and
+  CBF each assume every peer runs the *same* rule and takes its share of the avoidance — true only
+  in a homogeneous fleet. On a perpendicular crossing where each homogeneous fleet is fine, putting
+  the +x stream on ORCA and the +y stream on CBF (every crossing ORCA-vs-CBF) makes the mixed fleet
+  **strictly worse** than either: −7 at N=4 (p=0.016), −11 at N=5/6 (p=0.001), every discordant seed
+  one-way (c=0), all collisions, the gap growing with crossing density. Reciprocity is a
+  shared-*protocol* assumption, not a per-agent property — each drone reserves the half a same-model
+  peer would leave, the other leaves a different half, and the two half-measures clip. A concrete
+  caution for heterogeneous-autonomy fleets. See
+  [docs/findings.md](docs/findings.md#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone).
+- **In 3-D the in-plane convention rescues the reactive planner the extra dimension could
   not.** The previous result showed the reactive CBF deadlock does *not* dissolve in 3-D (its
   nominal stays in-plane, vertical axis unused). So the cure in 3-D must be the same *in-plane*
   right-of-way that works in 2-D — and it is: the `pairwise_bias` convention, applied to the

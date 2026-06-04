@@ -106,6 +106,7 @@ different strategies.
 - [The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric one](#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one)
 - [Pairwise's dominance over the global convention inverts under a hub-crossing obstacle](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle)
 - [In 3-D the in-plane convention rescues the reactive planner the extra dimension could not](#in-3-d-the-in-plane-convention-rescues-the-reactive-planner-the-extra-dimension-could-not)
+- [Two reciprocal collision avoiders are less safe mixed than either is alone](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7705,3 +7706,47 @@ Deterministic: the in-plane roundabout lifts the 3-D reactive fleet from 0/40 to
 
 Reproduce: `python scripts/antipodal_cbf_3d_convention_phase.py --n-list 4 6 8 --episodes 40 --seed 4000 --pairwise-bias 0.5`
 (writes `results/antipodal_cbf_3d_convention_phase.json`).
+
+## Two reciprocal collision avoiders are less safe mixed than either is alone
+
+ORCA and CBF are both *reciprocal* avoiders: each assumes every peer runs the same rule and will
+take its share of the avoidance (ORCA splits the truncated velocity obstacle 50/50; CBF splits by
+the barrier rate). That assumption only holds in a homogeneous fleet. What happens when an ORCA
+drone meets a CBF drone — each correctly reciprocates for *its own* model, but the two models
+disagree on who moves where, so the gap one leaves is not the gap the other takes?
+
+A perpendicular crossing (one stream +x, one +y; no central hub, so each homogeneous fleet is
+fine) with the `+x` stream on ORCA and the `+y` stream on CBF — every crossing is ORCA-vs-CBF.
+`scripts/crossing_hetero_controller_phase.py`, 2N drones, paired by seed, McNemar exact:
+
+| N/stream | all_orca | all_cbf | mixed | mixed vs orca (b/c, p) | mixed vs cbf (b/c, p) |
+|---|---|---|---|---|---|
+| 3 | 38/40 | 37/40 | 34/40 | b=4/c=0, 0.125 | b=3/c=0, 0.25 |
+| 4 | 36/40 | 36/40 | 29/40 | b=7/c=0, **0.016** | b=7/c=0, **0.016** |
+| 5 | 33/40 | 33/40 | 22/40 | b=11/c=0, **0.001** | b=11/c=0, **0.001** |
+| 6 | 32/40 | 32/40 | 21/40 | b=11/c=0, **0.001** | b=11/c=0, **0.001** |
+
+- **Mixing two individually-safe reciprocal controllers is *strictly* worse than either alone.**
+  Every discordant seed goes one way — `b≥4, c=0` at every density — the mixed fleet never beats a
+  homogeneous one and is significantly worse from N=4 up. All failures are collisions (0 timeouts):
+  the mismatch crashes drones, it does not deadlock them.
+
+- **The penalty grows with crossing density.** The two homogeneous fleets degrade together and
+  identically (38/37 → 32/32 as the crossing tightens — ORCA and CBF are equally good head-to-head),
+  but the mixed gap widens (−4 → −7 → −11 → −11): the more ORCA-vs-CBF encounters per episode, the
+  more often the reciprocity mismatch bites.
+
+- **Why.** Reciprocity is a *shared-protocol* assumption, not a per-agent property. An ORCA drone
+  reserves exactly the half of the manoeuvre it expects an ORCA peer to leave; a CBF peer leaves a
+  differently-shaped half, so the two half-measures do not compose into a full avoidance and they
+  clip. Each drone is doing the "right" thing for a peer that isn't there. This bounds the
+  per-drone heterogeneity that rescues *coordination* elsewhere ([heterogeneous predictors](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity)
+  desync a shared forecast usefully) — heterogeneity of the *avoidance protocol itself* is the
+  opposite: it removes the shared assumption the safety rests on.
+
+Net: decentralized reciprocal collision avoidance needs a *common* protocol. A swarm that mixes
+ORCA and CBF drones is less safe than one running either everywhere, and the cost scales with how
+often the two schools actually meet — a concrete caution for heterogeneous-autonomy fleets.
+
+Reproduce: `python scripts/crossing_hetero_controller_phase.py --n-list 3 4 5 6 --episodes 40 --seed 4000`
+(writes `results/crossing_hetero_controller_phase.json`).
