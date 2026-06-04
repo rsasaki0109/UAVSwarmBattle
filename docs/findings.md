@@ -110,6 +110,7 @@ different strategies.
 - [On the symmetric hub, mixing reciprocal controllers HELPS — protocol heterogeneity is double-edged](#on-the-symmetric-hub-mixing-reciprocal-controllers-helps--protocol-heterogeneity-is-double-edged)
 - [The right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF](#the-right-of-way-convention-is-paradigm-agnostic--it-rescues-even-non-reciprocal-apf)
 - [Under noisy peer sensing the reactive ranking inverts — the soft field outlasts the tight geometry](#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry)
+- [There is no universal reactive robustness ranking — each method dies of its own sensing dependence](#there-is-no-universal-reactive-robustness-ranking--each-method-dies-of-its-own-sensing-dependence)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7878,3 +7879,57 @@ given sensing quality*.
 
 Reproduce: `python scripts/crossing_reactive_noise_phase.py --n 4 --noise-list 0 0.25 0.5 0.75 1.0 --episodes 40`
 (writes `results/crossing_reactive_noise_phase.json`).
+
+## There is no universal reactive robustness ranking — each method dies of its own sensing dependence
+
+The [position-noise crossover](#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry)
+showed *one* degradation mode reshuffles the ranking. But the three avoiders consume different
+peer state — ORCA a velocity obstacle (position **and** velocity), CBF a barrier (position, plus a
+velocity rate term), APF a soft repulsion field (**position only**) — so different degradation
+modes should hit different methods. Sweeping each mode separately on the crossing, paired by seed:
+
+**Velocity noise (σ, m/s):**
+
+| σ | orca | cbf | apf |
+|---|---|---|---|
+| 0 | 36/40 | 36/40 | 27/40 |
+| 1 | 17/40 | 33/40 | 27/40 |
+| 2 | 3/40 | 33/40 | 27/40 |
+| 3 | **0/40** | **34/40** | **27/40** |
+
+**Tracker delay (s):**
+
+| delay | orca | cbf | apf |
+|---|---|---|---|
+| 0 | 36/40 | 36/40 | 27/40 |
+| 0.05 | 36/40 | 36/40 | 27/40 |
+| 0.10 | 33/40 | **1/40** | 19/40 |
+| 0.15 | **0/40** | 0/40 | **9/40** |
+
+- **The ranking is mode-specific — there is no single most-robust reactive avoider.** Under
+  velocity noise ORCA collapses (36→0, apf overtakes it by σ≥1, p=0.041→<1e-9) while CBF barely
+  moves; under delay it is CBF that collapses first (36→1 at 0.10 s, apf>cbf c=18 p<1e-9) while
+  ORCA tolerates that lag; under [position noise](#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry)
+  ORCA fell fastest. Three modes, three different losers.
+
+- **Each method dies of the state it most relies on.** ORCA's velocity obstacle is built on the
+  peer's velocity, so **velocity noise is its poison** (36→0); CBF's discrete barrier extrapolates
+  the peer one step, so **stale (delayed) state is its poison** (36→1 at 0.10 s); APF reads only
+  the peer's position through a soft field, so it is **literally immune to velocity noise**
+  (deterministically flat at 27/40 across σ=0…3 — it never reads the noised channel) and the
+  last to fall under delay (the only survivor at 0.15 s, 9/40 vs 0/0).
+
+- **The soft field is the consistent survivor, not the consistent best.** APF is the *worst* under
+  perfect sensing on this crossing (27 vs 36) and never the outright best at low degradation, but
+  it is the one method still standing at the high end of *every* mode — its lack of precision is
+  the lack of a sharp dependence to corrupt.
+
+Net: "which reactive avoider is most robust" has no answer without naming the failure mode. A
+geometric method is fragile exactly along the axis it measures most precisely; the soft
+potential field, precise about nothing, degrades along none of them quickly. Match the avoider to
+the *dominant sensing error*, not to a clean-benchmark leaderboard.
+
+Reproduce:
+`python scripts/crossing_reactive_sensing_modes_phase.py --mode velocity --level-list 0 0.5 1 2 3 --episodes 40`
+and `--mode delay --level-list 0 0.05 0.1 0.15 --episodes 40`
+(writes `results/crossing_reactive_*_phase.json`).

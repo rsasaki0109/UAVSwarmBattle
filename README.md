@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: under noisy peer sensing the reactive ranking inverts — the soft field outlasts the
+- **Latest: there is no universal reactive robustness ranking — each method dies of its own
+  sensing dependence.** Extending the position-noise crossover to two more degradation modes, the
+  loser changes each time: under **velocity noise** ORCA collapses (36→0/40 at σ=3 — its velocity
+  obstacle is built on peer velocity) while CBF barely moves and APF is *literally immune*
+  (deterministically flat at 27/40, it never reads the noised channel); under **tracker delay**
+  it is CBF that collapses first (36→1/40 at 0.1 s) while ORCA tolerates that lag, and APF is the
+  only method still alive at 0.15 s (9/40 vs 0/0). Each method is fragile exactly along the axis
+  it measures most precisely; the soft potential field, precise about nothing, is the consistent
+  survivor (worst when clean, last to fall under every mode). Match the avoider to the *dominant
+  sensing error*, not a clean-benchmark leaderboard. See
+  [docs/findings.md](docs/findings.md#there-is-no-universal-reactive-robustness-ranking--each-method-dies-of-its-own-sensing-dependence).
+- **Under noisy peer sensing the reactive ranking inverts — the soft field outlasts the
   tight geometry.** Feeding ORCA/CBF/APF a Gaussian-noised peer tracker on a crossing (paired by
   seed): under perfect sensing the geometric methods dominate and APF is *worst* (36/36 vs 27/40,
   p=0.012), but as noise grows the order **flips** — ORCA collapses fastest (36 → 21 → **4 → 3** as
