@@ -105,6 +105,7 @@ different strategies.
 - [BVC and CBF: the convention rescues two more reactive families, and BVC needs a dynamics-aware buffer](#bvc-and-cbf-the-convention-rescues-two-more-reactive-families-and-bvc-needs-a-dynamics-aware-buffer)
 - [The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric one](#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one)
 - [Pairwise's dominance over the global convention inverts under a hub-crossing obstacle](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle)
+- [In 3-D the in-plane convention rescues the reactive planner the extra dimension could not](#in-3-d-the-in-plane-convention-rescues-the-reactive-planner-the-extra-dimension-could-not)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7666,3 +7667,41 @@ hazard through the conflict point (global).
 
 Reproduce: `python scripts/antipodal_convention_obstacle_robustness_phase.py --n-list 6 8 --global-bias 4 --pairwise-bias 8 --episodes 40`
 (writes `results/antipodal_convention_obstacle_robustness_phase.{json,png}`).
+
+## In 3-D the in-plane convention rescues the reactive planner the extra dimension could not
+
+The [previous result](#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one)
+left a sharp prediction. The reactive CBF deadlock does *not* dissolve in 3-D — its goal-seeking
+nominal stays in-plane, so the vertical escape goes unused (`cbf_3d` = 0/40 at every N). If the
+dimension is useless to a reactive controller, then the cure for it in 3-D must be the *same
+in-plane right-of-way* that works in 2-D, not the added axis. So the `pairwise_bias` convention is
+now applied to the horizontal components in 3-D as well (it never touches the vertical axis), and
+run on the 3-D antipodal swap:
+
+| N | cbf_3d (stock) | cbf_3d + pairwise | pairwise vs stock (b/c, p) |
+|---|---|---|---|
+| 4 | 0/40 (40 timeout) | **40/40** | b=0/c=40, **p<1e-9** |
+| 6 | 0/40 (40 timeout) | **40/40** | b=0/c=40, **p<1e-9** |
+| 8 | 0/40 (40 timeout) | **40/40** | b=0/c=40, **p<1e-9** |
+
+Deterministic: the in-plane roundabout lifts the 3-D reactive fleet from 0/40 to 40/40 at every N.
+
+- **Convention and dimension are complementary escapes, and they are *not* interchangeable.** The
+  free vertical axis dissolves the deadlock for a planner that *plans into it* (the sampling MPC)
+  but does nothing for a reactive filter that stays planar; the in-plane convention does the
+  reverse — it rescues the planar-staying reactive filter regardless of how many dimensions the
+  arena has. Each escape covers exactly the case the other misses.
+
+- **It confirms the previous result's mechanism by construction.** If `cbf_3d` deadlocked for any
+  reason *other* than "it never leaves the plane", a purely *horizontal* convention could not fix
+  it. That a horizontal-only roundabout restores 100 % is direct evidence that the 3-D reactive
+  failure is exactly the unused vertical axis — the planar deadlock, untouched by the extra
+  dimension, broken by the planar rule.
+
+- **The convention's reach is dimension-independent; the planner's is not.** The portable fix
+  across the whole reactive-baseline arc is the decentralized in-plane convention (it works on MPC,
+  ORCA, CBF, in 2-D and 3-D); relying on the geometry to break symmetry only pays off for planners
+  that explore that geometry.
+
+Reproduce: `python scripts/antipodal_cbf_3d_convention_phase.py --n-list 4 6 8 --episodes 40 --seed 4000 --pairwise-bias 0.5`
+(writes `results/antipodal_cbf_3d_convention_phase.json`).
