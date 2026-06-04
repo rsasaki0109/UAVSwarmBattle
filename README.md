@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: ORCA is the missing reciprocal baseline, and the right-of-way convention generalises
+- **Latest: The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the
+  roundabout it builds.** The whole convention arc lives on `obstacles: none`. Add a scene
+  dynamic obstacle that crosses the central hub while the antipodal fleet converges (MPC +
+  `game_theoretic`, N ∈ {6, 8}, paired McNemar, n=40), and three things hold: (1) the moving
+  obstacle is **not** a symmetry-breaker — the no-convention fleet still deadlocks 0/40 with it
+  present (so the asymmetry must be in the *policy*, not the environment); (2) the convention is
+  still primary (`bias=4` +obstacle beats stock decisively, N=6 `c=24/b=0` p=1.2e-7); (3) but a
+  **stronger bias cannot pay for it** — cranking the convention up rescues the *peer* deadlock to
+  100 % with no obstacle, yet the +obstacle curve caps at 60 % (N=6) / 28 % (N=8). That residual
+  gap is the cost of the wrong threat. A move-the-stressor control nails the mechanism: the *same*
+  obstacle circulating in a far corner does **zero** damage (40/40) — the harm is specific to the
+  hub-crossing geometry, because the convention funnels every drone into one clockwise hub
+  circulation and that concentration is exactly what a hub-crossing body exploits.
+- **ORCA is the missing reciprocal baseline, and the right-of-way convention generalises
   to it.** The whole convention arc was measured against sibling MPC arms, never the multi-agent
   literature's canonical reactive baseline. Added a clean-room 2D **ORCA** (van den Berg 2011;
   reference OSS [snape/RVO2](https://github.com/snape/RVO2)) as `planner.type: orca` — no forecast,
