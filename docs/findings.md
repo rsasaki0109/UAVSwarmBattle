@@ -111,6 +111,7 @@ different strategies.
 - [The right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF](#the-right-of-way-convention-is-paradigm-agnostic--it-rescues-even-non-reciprocal-apf)
 - [Under noisy peer sensing the reactive ranking inverts — the soft field outlasts the tight geometry](#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry)
 - [There is no universal reactive robustness ranking — each method dies of its own sensing dependence](#there-is-no-universal-reactive-robustness-ranking--each-method-dies-of-its-own-sensing-dependence)
+- [Sensing-independence is not robustness: the peer-aware convention pulls further ahead under noise](#sensing-independence-is-not-robustness-the-peer-aware-convention-pulls-further-ahead-under-noise)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7933,3 +7934,50 @@ Reproduce:
 `python scripts/crossing_reactive_sensing_modes_phase.py --mode velocity --level-list 0 0.5 1 2 3 --episodes 40`
 and `--mode delay --level-list 0 0.05 0.1 0.15 --episodes 40`
 (writes `results/crossing_reactive_*_phase.json`).
+
+## Sensing-independence is not robustness: the peer-aware convention pulls further ahead under noise
+
+The pairwise right-of-way [strictly dominates the global veer-right under perfect sensing](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff).
+The two decide the tilt from different state: **global** (`lateral_bias`) tilts right of the ego's
+own goal heading and reads *no peer state at all* — it is sensing-independent — while **pairwise**
+(`pairwise_bias`) tilts toward the bearing to each nearby peer, so a noisy tracker corrupts its
+input. The intuitive guess is that the sensing-independent global rule should be the more robust
+symmetry-breaker as peer sensing degrades. It is the opposite.
+
+Antipodal hub, ORCA, position noise on the peer tracker, paired by seed (the underlying avoidance
+reads noisy peers in both arms, so the gap is the convention's doing):
+
+| noise σ (m) | stock | global | pairwise (N=8) | stock | global | pairwise (N=10) |
+|---|---|---|---|---|---|---|
+| 0 | 0/40 | 40/40 | 40/40 | 0/40 | 40/40 | 40/40 |
+| 0.5 | 0/40 | 26/40 | **36/40** | 0/40 | 16/40 | **34/40** |
+| 1.0 | 0/40 | 24/40 | **35/40** | 0/40 | 11/40 | **25/40** |
+| 2.0 | 0/40 | 13/40 | **32/40** | 0/40 | 6/40 | **23/40** |
+| 3.0 | 0/40 | 17/40 | 23/40 | 0/40 | 5/40 | **20/40** |
+
+(McNemar pairwise-vs-global at N=10: σ0.5 b=18/c=0 p<1e-5; σ1 b=17/c=3 p=0.003; σ2 b=20/c=3 p=5e-4;
+σ3 b=16/c=1 p=3e-4. N=8 similar through σ=2.)
+
+- **Both conventions are far more robust than no convention** — stock collides 0/40 at every noise,
+  both conventions rescue. The deadlock-break itself is geometric, not a precise-sensing operation.
+
+- **But pairwise pulls *further ahead* of global as noise grows** — the clean tie (40/40 each)
+  opens to a large, significant pairwise lead by σ=0.5 and widens with noise (N=10: 34 vs 16, then
+  25 vs 11, 23 vs 6, 20 vs 5). The sensing-*independent* rule is the *more fragile* one.
+
+- **Why sensing-independence loses.** Under noise the underlying ORCA avoidance degrades in *both*
+  arms. The global tilt is blind and fixed — it cannot help the degraded avoidance, it just veers
+  everyone the same way regardless of where the (now uncertain) crowd actually is. The pairwise
+  tilt reads the peer bearings and, crucially, *averages* them through its `exp(−d/r)` sum over
+  neighbours, so per-peer position noise washes out and it still steers adaptively away from the
+  real crowding — actively compensating for the avoidance that noise weakened. A rule that *uses*
+  noisy information, averaged, beats one that uses *none*.
+
+Net: sensing-independence is not the same as robustness. The convention that ignores peers is the
+one that fails first under sensing noise, because it cannot adapt to the very crowding the noise
+makes the base avoider mishandle; the peer-aware rule, even on a noisy tracker, stays the better
+symmetry-breaker. The clean-sensing pairwise-over-global result is not just preserved under noise —
+it is amplified.
+
+Reproduce: `python scripts/antipodal_convention_noise_phase.py --n 10 --noise-list 0 0.5 1 2 3 --episodes 40`
+(writes `results/antipodal_convention_noise_phase.json`).

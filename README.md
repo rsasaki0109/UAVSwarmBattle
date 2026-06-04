@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: there is no universal reactive robustness ranking — each method dies of its own
+- **Latest: sensing-independence is not robustness — the peer-aware convention pulls further ahead
+  under noise.** The global veer-right (`lateral_bias`) reads *no peer state* (ego goal heading
+  only); the pairwise rule reads noisy peer bearings. Intuition says the sensing-independent rule
+  should be the more noise-robust symmetry-breaker — but the opposite holds: on the antipodal hub
+  under position noise, both rescue the deadlock (stock 0/40), yet pairwise pulls *further ahead*
+  of global as noise grows (N=10: 40/40 tie clean → 34 vs 16 at σ=0.5 → 20 vs 5 at σ=3, p≤3e-4).
+  The blind global tilt cannot help the noise-degraded base avoider, while the pairwise tilt
+  *averages* peer bearings through its `exp(−d/r)` sum (per-peer noise washes out) and still steers
+  adaptively away from the real crowding. A rule that uses noisy information, averaged, beats one
+  that uses none. See [docs/findings.md](docs/findings.md#sensing-independence-is-not-robustness-the-peer-aware-convention-pulls-further-ahead-under-noise).
+- **There is no universal reactive robustness ranking — each method dies of its own
   sensing dependence.** Extending the position-noise crossover to two more degradation modes, the
   loser changes each time: under **velocity noise** ORCA collapses (36→0/40 at σ=3 — its velocity
   obstacle is built on peer velocity) while CBF barely moves and APF is *literally immune*
