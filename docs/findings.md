@@ -117,6 +117,7 @@ different strategies.
 - [Explicit roundabout (Merry-Go-Round) vs implicit convention: density-invariant scaling at a fixed time premium](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
 - [The hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring one](#the-hub-obstacle-cap-is-temporal-for-a-transient-obstacle-spatial-for-a-recurring-one)
 - [The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor](#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor)
+- [Priority deconfliction fails the symmetric hub — it trades deadlock for collision](#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8203,3 +8204,45 @@ frontier the ring radius slides along.
 
 Reproduce: `python scripts/roundabout_radius_phase.py --radius-list 6 10 14 20 --n-list 6 12 24 --episodes 20`
 (writes `results/roundabout_radius_phase.json`).
+
+## Priority deconfliction fails the symmetric hub — it trades deadlock for collision
+
+The convention (veer right) and the [explicit roundabout](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
+break the antipodal deadlock by *symmetric participation* — every drone moves the same way. The
+classic third school of multi-robot deconfliction is the opposite: a *priority* total order in
+which lower-priority robots yield and higher-priority ones proceed (Erdmann & Lozano-Pérez). Does a
+priority order break the hub too? A new CBF flag `priority_yield` gives each drone a decentralized
+order from each peer's observable, fixed *goal* position (lexicographic): the ego avoids only
+higher-priority peers and ignores the rest, assuming they yield.
+
+Antipodal swap, CBF, n=40, paired by seed:
+
+| N | stock | priority | pairwise (convention) | priority vs stock | pairwise vs priority |
+|---|---|---|---|---|---|
+| 6 | 10/40 (30 timeout) | 14/40 (26 **collision**) | 40/40 | b=5/c=9, 0.42 (n.s.) | b=0/c=26, **<1e-9** |
+| 8 | 2/40 (38 timeout) | 4/40 (36 **collision**) | 40/40 | b=1/c=3, 0.62 (n.s.) | b=0/c=36, **<1e-9** |
+| 12 | 0/40 (40 timeout) | 0/40 (40 **collision**) | 40/40 | b=0/c=0, 1.0 | b=0/c=40, **<1e-9** |
+
+- **Priority does not solve the hub.** It is statistically no better than plain CBF at every N
+  (priority-vs-stock n.s.), while the symmetric convention rescues all of them to 40/40.
+
+- **Worse, it converts a safe failure into an unsafe one.** Stock CBF deadlocks *collision-free*
+  (timeout); priority turns that into almost-all-**collision** (26/36/40). It is a safety
+  regression for no success gain.
+
+- **Why a priority order is the wrong tool for simultaneous convergence.** Priority works when the
+  lower-priority agent can actually *yield* — wait, slow, give way — which needs time and somewhere
+  to go. At the antipodal hub every drone arrives at the centre at once: the ones a higher-priority
+  drone "ignores, assuming they yield" have nowhere to yield to, so the higher-priority drone drives
+  straight into them. Asymmetric ignoring presumes a sequential conflict; a radial convergence is
+  simultaneous. The convention and the roundabout work precisely because *everyone* participates —
+  no agent ignores any other.
+
+Net: this bounds the symmetry-breaker family. A total-order priority — the standard fix for
+sequential conflicts like doorways and intersections, where someone can wait — is not just
+ineffective but actively unsafe at a simultaneous radial hub. Breaking the antipodal symmetry needs
+*symmetric* participation (a shared convention or a shared roundabout), not a hierarchy in which
+some defer to others.
+
+Reproduce: `python scripts/antipodal_priority_phase.py --n-list 6 8 12 --episodes 40`
+(writes `results/antipodal_priority_phase.json`).

@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring
+- **Latest: priority deconfliction fails the symmetric hub — it trades deadlock for collision.**
+  The convention and the roundabout break the antipodal deadlock by *symmetric participation*; the
+  classic third school is a *priority* total order in which lower-priority robots yield. A new CBF
+  `priority_yield` (decentralized order from each peer's observable goal) does **not** solve the hub
+  — statistically no better than plain CBF at every N — and it converts the collision-free deadlock
+  into almost-all-**collision** (26/36/40 at N=6/8/12) while the convention rescues to 40/40
+  (p<1e-9). Why: priority needs the lower-priority agent to be able to *yield*, but at a radial hub
+  everyone arrives at once and the ignored peers have nowhere to go, so the higher-priority drone
+  drives into them. A hierarchy fits sequential conflicts (doorways); a simultaneous convergence
+  needs everyone to participate. See
+  [docs/findings.md](docs/findings.md#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision).
+- **The hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring
   one.** *Why* does a hub-crossing obstacle cap the convention? Decompose it with a peer-neutral
   temporal desynchroniser — per-drone speed heterogeneity (3/7, mean 5; 40/40 no-obstacle, so it
   does not touch the peers) — against a single-pass obstacle (crosses the hub once = transient) vs a
