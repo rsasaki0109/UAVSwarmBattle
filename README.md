@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: sensing-independence is not robustness — the peer-aware convention pulls further ahead
+- **Latest: the convention generalises to the doorway bottleneck — but only if the gap fits a
+  lane.** Beyond the antipodal *hub*, the other canonical hard scenario (the social-mini-games /
+  CBF doorway) is a wall with a narrow gap two opposing streams must funnel through. Stock MPC
+  head-on-jams in the gap (2–4/40, almost all collisions); the pairwise right-of-way makes a lane
+  and nearly solves a moderate gap (39/40 at gap=6 vs stock 4/40, p<1e-9) — so the convention is a
+  general fix for *symmetric head-on* conflict, not a hub-specific trick. But at a too-tight gap=4
+  (barely two drone-widths) both conventions only partially help (≈10–13/40): there is no room for
+  two lanes, so the bottleneck width, not the convention, binds. The right-of-way can *organise* a
+  flow but cannot create space that is not there. See
+  [docs/findings.md](docs/findings.md#the-convention-generalises-to-the-doorway-bottleneck--but-only-if-the-gap-fits-a-lane).
+- **Sensing-independence is not robustness — the peer-aware convention pulls further ahead
   under noise.** The global veer-right (`lateral_bias`) reads *no peer state* (ego goal heading
   only); the pairwise rule reads noisy peer bearings. Intuition says the sensing-independent rule
   should be the more noise-robust symmetry-breaker — but the opposite holds: on the antipodal hub

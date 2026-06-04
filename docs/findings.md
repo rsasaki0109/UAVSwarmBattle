@@ -112,6 +112,7 @@ different strategies.
 - [Under noisy peer sensing the reactive ranking inverts — the soft field outlasts the tight geometry](#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry)
 - [There is no universal reactive robustness ranking — each method dies of its own sensing dependence](#there-is-no-universal-reactive-robustness-ranking--each-method-dies-of-its-own-sensing-dependence)
 - [Sensing-independence is not robustness: the peer-aware convention pulls further ahead under noise](#sensing-independence-is-not-robustness-the-peer-aware-convention-pulls-further-ahead-under-noise)
+- [The convention generalises to the doorway bottleneck — but only if the gap fits a lane](#the-convention-generalises-to-the-doorway-bottleneck--but-only-if-the-gap-fits-a-lane)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7981,3 +7982,45 @@ it is amplified.
 
 Reproduce: `python scripts/antipodal_convention_noise_phase.py --n 10 --noise-list 0 0.5 1 2 3 --episodes 40`
 (writes `results/antipodal_convention_noise_phase.json`).
+
+## The convention generalises to the doorway bottleneck — but only if the gap fits a lane
+
+The entire convention arc lives on the antipodal *hub*, a radial symmetric convergence. The other
+canonical hard multi-robot scenario — the **doorway** of the social-mini-games / discrete-time-CBF
+deadlock papers — is geometrically different: a wall with a narrow gap that two opposing streams
+must funnel through, with the conflict a head-on jam *inside* the gap rather than at a point. Does
+the same in-plane right-of-way break it, by splitting the opposing streams onto consistent sides of
+the gap (a lane)? (The reactive baselines ignore static occupancy, so this uses the static-aware
+sampling MPC; the wall is explicit `cells`, 2N=6 drones cross both ways.)
+
+| gap (cells) | stock | global | pairwise | global vs stock | pairwise vs stock |
+|---|---|---|---|---|---|
+| 4 | 2/40 (38 coll) | 13/40 (27 coll) | 10/40 (27c/3t) | b=0/c=11, **0.001** | b=2/c=10, **0.039** |
+| 6 | 4/40 (36 coll) | 22/40 (18 coll) | **39/40** (1 coll) | b=4/c=22, **5e-4** | b=1/c=36, **<1e-9** |
+
+- **Stock MPC head-on-jams at the doorway** (2–4/40, almost all collisions): two opposing streams
+  meet in the gap and neither yields. The same symmetric-conflict failure as the hub, in a
+  bottleneck.
+
+- **The convention makes a lane, and at a moderate gap nearly solves it.** At gap=6 the pairwise
+  right-of-way reaches 39/40 (vs stock 4/40, p<1e-9) — the opposing streams keep right and pass on
+  consistent sides of the gap. So the convention is not a hub-specific trick: it generalises to the
+  second canonical hard geometry, wherever a *symmetric head-on* is the failure.
+
+- **But the gap must fit a lane.** At gap=4 (barely two drone-widths) both conventions only
+  partially help (13/40, 10/40) — there is no room for two passing lanes, so the bottleneck width,
+  not the convention, becomes the binding constraint. The convention can *organise* a flow but
+  cannot manufacture space that is not there; below ~2 lane-widths the right-of-way has nowhere to
+  put the second lane.
+
+- **pairwise ≥ global where there is room; global ≈ pairwise where there is not.** At the workable
+  gap=6 pairwise dominates (39 vs 22), consistent with the rest of the arc; at the too-tight gap=4
+  the simpler global rule edges it (13 vs 10) — when only one lane fits, the adaptive per-neighbour
+  tilt has no advantage to exploit.
+
+Net: the right-of-way convention is a general fix for *symmetric head-on* conflict — it breaks the
+doorway jam as it breaks the hub deadlock — but it works by lane-splitting, so it is gated by
+whether the bottleneck is wide enough to hold the lanes it creates.
+
+Reproduce: `python scripts/doorway_convention_phase.py --n 3 --gap-list 4 6 --episodes 40`
+(writes `results/doorway_convention_phase.json`).
