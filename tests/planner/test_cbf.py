@@ -117,3 +117,22 @@ def test_four_d_rejected():
     p = _cbf()
     with pytest.raises(ValueError):
         p.plan(np.zeros(4), np.ones(4), None, dynamic_obstacles=[])
+
+
+def test_priority_yield_ignores_lower_priority_peer():
+    # With priority_yield, a peer whose GOAL is lexicographically LOWER than the
+    # ego's is lower-priority and ignored (assumed to yield): the ego keeps
+    # heading to its goal. A peer with a HIGHER goal is avoided.
+    pos = np.array([5.0, 25.0]); goal = np.array([45.0, 25.0])  # ego goal key (45,25)
+    low = {"position": [9.0, 25.0], "velocity": [0.0, 0.0], "radius": 0.4,
+           "goal": [5.0, 25.0]}    # lower goal -> ignored
+    high = {"position": [9.0, 25.0], "velocity": [0.0, 0.0], "radius": 0.4,
+            "goal": [46.0, 25.0]}  # higher goal -> avoided
+    p = _cbf(priority_yield=True)
+    p.set_current_state(pos, np.array([5.0, 0.0]))
+    v_low = p.plan(pos, goal, None, dynamic_obstacles=[low]).target_velocity
+    v_high = p.plan(pos, goal, None, dynamic_obstacles=[high]).target_velocity
+    # ignored low-priority peer: drive straight at goal (full +x, no avoidance)
+    np.testing.assert_allclose(v_low, [5.0, 0.0], atol=1e-6)
+    # higher-priority peer: must back off the collision axis (not full +x)
+    assert v_high[0] < 5.0 - 1e-3

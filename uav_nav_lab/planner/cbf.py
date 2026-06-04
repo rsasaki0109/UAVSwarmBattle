@@ -196,6 +196,7 @@ class CBFPlanner(Planner):
         lateral_bias: float = 0.0,
         pairwise_bias: float = 0.0,
         pairwise_radius: float = 5.0,
+        priority_yield: bool = False,
     ) -> None:
         self.max_speed = float(max_speed)
         self.radius = float(radius)
@@ -208,6 +209,14 @@ class CBFPlanner(Planner):
         self.lateral_bias = float(lateral_bias)
         self.pairwise_bias = float(pairwise_bias)
         self.pairwise_radius = max(1e-6, float(pairwise_radius))
+        # Priority deconfliction: a decentralized total order from each peer's
+        # (observable, fixed) GOAL position, lexicographic. The ego avoids only
+        # HIGHER-priority peers (goal lexicographically greater) and ignores
+        # lower-priority ones, assuming they yield. A fixed goal-key order is
+        # consistent (unlike a current-position order, which flips when agents
+        # cross), so it breaks the symmetric deadlock by a social hierarchy
+        # rather than a geometric convention or a shared roundabout. 0 = off.
+        self.priority_yield = bool(priority_yield)
         self._cur_vel: np.ndarray | None = None
 
     @classmethod
@@ -224,6 +233,7 @@ class CBFPlanner(Planner):
             lateral_bias=float(cfg.get("lateral_bias", 0.0)),
             pairwise_bias=float(cfg.get("pairwise_bias", 0.0)),
             pairwise_radius=float(cfg.get("pairwise_radius", 5.0)),
+            priority_yield=bool(cfg.get("priority_yield", False)),
         )
 
     def reset(self) -> None:
@@ -291,10 +301,19 @@ class CBFPlanner(Planner):
         # One CBF half-space per peer: (p_j - p_i)·v <= (p_j-p_i)·v_j + (alpha/2)·h,
         # h = |p_j-p_i|^2 - R^2. Identical algebra in 2-D and 3-D — only the
         # vector dimension changes.
+        ego_key = (round(float(gl[0]), 3), round(float(gl[1]), 3)) if ndim >= 2 else (0.0, 0.0)
         cons = []  # (a, b): a·v <= b
         for ob in (dynamic_obstacles or []):
             p_other = np.asarray(ob["position"], dtype=float)[:ndim]
             v_other = np.asarray(ob.get("velocity", np.zeros(ndim)), dtype=float)[:ndim]
+            # Priority deconfliction: avoid only peers of higher priority (goal
+            # lexicographically greater); assume lower-priority peers yield. A
+            # peer with no reported goal is always avoided (cannot rank it).
+            if self.priority_yield and "goal" in ob:
+                g = np.asarray(ob["goal"], dtype=float)
+                peer_key = (round(float(g[0]), 3), round(float(g[1]), 3))
+                if peer_key <= ego_key:
+                    continue
             a = p_other - pos
             an = float(np.linalg.norm(a))
             if an < _EPS or an > self.neighbor_dist:
