@@ -234,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: two reciprocal collision avoiders are less safe mixed than either is alone.** ORCA and
+- **Latest: protocol heterogeneity is double-edged — mixing ORCA and CBF *helps* on the symmetric
+  hub even though it *hurts* on the crossing.** The crossing result (below) showed mixing two
+  reciprocal controllers is unsafe. But on the *symmetric* antipodal swap, where a homogeneous
+  fleet deadlocks (ORCA collides, CBF times out), the same mismatch instead **desyncs** the
+  mirror-symmetric convergence: alternating ORCA/CBF around the ring reaches 23/40 at N=6, beating
+  *both* homogeneous fleets (6/40 orca, 11/40 cbf; +18 p=1e-4, +15 p=0.0075). Same double-edged law
+  as predictor heterogeneity — heterogeneity helps where the failure is *symmetry* and hurts where
+  it is *coordination*; the geometry sets the sign. See
+  [docs/findings.md](docs/findings.md#on-the-symmetric-hub-mixing-reciprocal-controllers-helps--protocol-heterogeneity-is-double-edged).
+- **Two reciprocal collision avoiders are less safe mixed than either is alone.** ORCA and
   CBF each assume every peer runs the *same* rule and takes its share of the avoidance — true only
   in a homogeneous fleet. On a perpendicular crossing where each homogeneous fleet is fine, putting
   the +x stream on ORCA and the +y stream on CBF (every crossing ORCA-vs-CBF) makes the mixed fleet
