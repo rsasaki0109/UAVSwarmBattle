@@ -107,6 +107,7 @@ different strategies.
 - [Pairwise's dominance over the global convention inverts under a hub-crossing obstacle](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle)
 - [In 3-D the in-plane convention rescues the reactive planner the extra dimension could not](#in-3-d-the-in-plane-convention-rescues-the-reactive-planner-the-extra-dimension-could-not)
 - [Two reciprocal collision avoiders are less safe mixed than either is alone](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
+- [On the symmetric hub, mixing reciprocal controllers HELPS — protocol heterogeneity is double-edged](#on-the-symmetric-hub-mixing-reciprocal-controllers-helps--protocol-heterogeneity-is-double-edged)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7750,3 +7751,42 @@ often the two schools actually meet — a concrete caution for heterogeneous-aut
 
 Reproduce: `python scripts/crossing_hetero_controller_phase.py --n-list 3 4 5 6 --episodes 40 --seed 4000`
 (writes `results/crossing_hetero_controller_phase.json`).
+
+## On the symmetric hub, mixing reciprocal controllers HELPS — protocol heterogeneity is double-edged
+
+Mixing ORCA and CBF is [unsafe on a crossing](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
+— but that geometry has no symmetry to break. The antipodal swap is the opposite: a *symmetric*
+convergence where a homogeneous reactive fleet deadlocks (ORCA collides at the hub, CBF times out).
+There the protocol mismatch that *crashes* drones on a crossing should instead *desync* the
+mirror-symmetric manoeuvre — the same way [mixing predictors does](#heterogeneous-predictor-swarms-break-the-antipodal-deadlock-by-desync-not-by-diversity).
+N drones alternating ORCA / CBF around the ring, default replan cadence (so both homogeneous fleets
+reproduce the deadlock), paired by seed:
+
+| N | all_orca | all_cbf | mixed | mixed vs orca (b/c, p) | mixed vs cbf (b/c, p) |
+|---|---|---|---|---|---|
+| 4 | 36/40 | 8/40 (32 timeout) | 39/40 | b=1/c=4, 0.375 | b=0/c=31, **<1e-9** |
+| 6 | 6/40 (34 coll) | 11/40 (29 timeout) | **23/40** | b=1/c=18, **0.0001** | b=3/c=15, **0.0075** |
+| 8 | 0/40 (40 coll) | 1/40 (39 timeout) | 4/40 | b=0/c=4, 0.125 | b=1/c=4, 0.375 |
+
+- **At N=6, mixing beats BOTH homogeneous fleets.** `all_orca` deadlocks by collision (6/40),
+  `all_cbf` by timeout (11/40), and the alternating mix reaches 23/40 — significantly above each
+  (+18 vs orca p=1e-4, +15 vs cbf p=0.0075). The same ORCA-vs-CBF mismatch that is a *liability* on
+  the crossing is an *asset* here: it perturbs the symmetric hub convergence that traps a uniform
+  fleet, exactly the desync mechanism behind heterogeneous-predictor swarms.
+
+- **It is the same double-edged law as predictor heterogeneity, now at the controller level.**
+  Heterogeneity helps where the failure is *symmetry* (the antipodal hub) and hurts where the
+  failure is *coordination/safety* (the crossing). Whether a mixed fleet is safer or more dangerous
+  than a uniform one is set by the geometry, not by the mix.
+
+- **Moderate-density gated.** The help is strongest at N=6, where both homogeneous fleets robustly
+  deadlock; at N=4 ORCA alone already clears the hub (so the mix only rescues CBF), and at N=8 the
+  hub is too crowded for the desync to resolve (mixed 4/40, both homogeneous ~0) — the same
+  density ceiling the convention shows.
+
+Net: protocol heterogeneity is not good or bad per se — it is a *symmetry-breaker*. On the
+symmetric swap it desyncs a deadlock that defeats either pure fleet; on the asymmetric crossing it
+breaks a reciprocity that both pure fleets rely on. Same knob, opposite sign, set by geometry.
+
+Reproduce: `python scripts/antipodal_hetero_controller_phase.py --n-list 4 6 8 --episodes 40 --seed 4000`
+(writes `results/antipodal_hetero_controller_phase.json`).
