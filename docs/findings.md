@@ -118,6 +118,7 @@ different strategies.
 - [The hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring one](#the-hub-obstacle-cap-is-temporal-for-a-transient-obstacle-spatial-for-a-recurring-one)
 - [The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor](#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor)
 - [Priority deconfliction fails the symmetric hub — it trades deadlock for collision](#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision)
+- [Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture](#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8246,3 +8247,41 @@ some defer to others.
 
 Reproduce: `python scripts/antipodal_priority_phase.py --n-list 6 8 12 --episodes 40`
 (writes `results/antipodal_priority_phase.json`).
+
+## Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture
+
+The [hub result](#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision)
+conjectured that priority deconfliction, useless at a *simultaneous* radial hub, would be the right
+tool for *sequential* conflicts like a doorway, where one party can wait its turn. Testing that
+conjecture refutes it. Porting `priority_yield` to the static-aware MPC and running the doorway
+bottleneck (a wall with a gap, two opposing streams; n=30):
+
+| gap | stock | priority | pairwise (convention) | priority vs stock | pairwise vs stock |
+|---|---|---|---|---|---|
+| 6 | 4/30 (26 coll) | **0/30 (30 coll)** | 29/30 (1 coll) | b=4/c=0, 0.125 (worse) | b=1/c=26, **<1e-9** |
+
+- **Priority fails the doorway too — in fact it is *worse* than doing nothing** (0/30 vs stock
+  4/30, all collisions), while the symmetric convention nearly solves it (29/30).
+
+- **Why the sequential-conflict intuition was wrong.** A *decentralized goal-priority* does not
+  produce clean turn-taking. The higher-priority stream "ignores, assuming they yield" the oncoming
+  lower-priority drones — but in the narrow gap those drones have nowhere to yield to, so the
+  high-priority drones plow into them, exactly as at the hub. And the per-drone goal order also
+  ranks drones *within* each stream (their goals differ in y), manufacturing intra-stream conflicts
+  on top. "Yielding" needs space and coordination the bottleneck does not hand out for free; an
+  ignore-the-lower-priority rule provides neither.
+
+- **Symmetric participation wins at *both* canonical hard scenarios.** Across the hub and the
+  doorway, the convention (everyone follows the same in-plane rule) succeeds (40/40 and 29/30) and
+  decentralized priority (some defer to others) fails (collisions at both). The lesson generalises:
+  what breaks these symmetric multi-robot conflicts is *every agent participating in the same
+  manoeuvre*, not a hierarchy in which some agents stand aside. (Clean turn-taking at a doorway is
+  achievable, but it needs *explicit, stream-level* coordination — a negotiated schedule — not a
+  per-agent priority order.)
+
+Net: this corrects the hub finding's parenthetical hope. Decentralized priority deconfliction is
+not the sequential-conflict complement to the convention; it fails the doorway as it fails the hub.
+The robust cross-scenario fix is symmetric participation.
+
+Reproduce: `python scripts/doorway_priority_phase.py --n 3 --gap-list 6 --episodes 30`
+(writes `results/doorway_priority_phase.json`).

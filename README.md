@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: priority deconfliction fails the symmetric hub — it trades deadlock for collision.**
+- **Latest: priority fails the doorway too — correcting the "priority is for sequential conflicts"
+  conjecture.** The hub result conjectured priority deconfliction would be the right tool for
+  *sequential* conflicts (doorways, where one can wait). It is not: porting `priority_yield` to the
+  static-aware MPC, a decentralized goal-priority is **worse than nothing** at the doorway (0/30 vs
+  stock 4/30, all collisions) while the convention nearly solves it (29/30, p<1e-9). The
+  higher-priority stream "ignores, assuming they yield" the oncoming drones, which in the narrow gap
+  have nowhere to yield → it plows into them, exactly as at the hub. Symmetric participation wins at
+  *both* canonical hard scenarios (hub and doorway); decentralized hierarchy fails both. Clean
+  turn-taking at a doorway needs *explicit stream-level* coordination, not a per-agent priority
+  order. See [docs/findings.md](docs/findings.md#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture).
+- **Priority deconfliction fails the symmetric hub — it trades deadlock for collision.**
   The convention and the roundabout break the antipodal deadlock by *symmetric participation*; the
   classic third school is a *priority* total order in which lower-priority robots yield. A new CBF
   `priority_yield` (decentralized order from each peer's observable goal) does **not** solve the hub
