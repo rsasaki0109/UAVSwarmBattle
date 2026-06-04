@@ -30,6 +30,14 @@
 # Sweep / reproduce the full table:
 #   python scripts/antipodal_obstacle_convention_phase.py --n-list 6 8 \
 #       --bias-list 0 1 2 4 --episodes 40
+#
+# FOLLOW-UP (docs/findings.md "Pairwise's dominance over the global convention
+# inverts under a hub-crossing obstacle"): swapping this global lateral_bias for
+# the pairwise_bias winding-number rule does NOT help here — under this same
+# hub-crossing obstacle the global roundabout's coherence beats pairwise
+# (N=6: 72 % vs 25 %, p=6.6e-5), reversing pairwise's empty-arena dominance.
+#   python scripts/antipodal_convention_obstacle_robustness_phase.py \
+#       --n-list 6 8 --global-bias 4 --pairwise-bias 8 --episodes 40
 name: antipodal_obstacle_demo
 seed: 6000
 num_episodes: 20

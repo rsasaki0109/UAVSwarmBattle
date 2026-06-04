@@ -272,10 +272,6 @@ class CBFPlanner(Planner):
                 gdir = gdir / gn
         v_nom = gdir * self.max_speed
 
-        if self._cur_vel is not None and self._cur_vel.shape[0] >= ndim:
-            v_cur = self._cur_vel[:ndim]
-        else:
-            v_cur = np.zeros(ndim)
         share = 0.5 if self.reciprocal else 1.0
 
         # One CBF half-space per peer: (p_j - p_i)·v <= (p_j-p_i)·v_j + (alpha/2)·h,
