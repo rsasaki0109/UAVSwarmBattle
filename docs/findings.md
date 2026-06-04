@@ -115,6 +115,7 @@ different strategies.
 - [The convention generalises to the doorway bottleneck — but only if the gap fits a lane](#the-convention-generalises-to-the-doorway-bottleneck--but-only-if-the-gap-fits-a-lane)
 - [The price of the convention: a cheap roundabout, and a speed-vs-reliability split between the two rules](#the-price-of-the-convention-a-cheap-roundabout-and-a-speed-vs-reliability-split-between-the-two-rules)
 - [Explicit roundabout (Merry-Go-Round) vs implicit convention: density-invariant scaling at a fixed time premium](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
+- [The hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring one](#the-hub-obstacle-cap-is-temporal-for-a-transient-obstacle-spatial-for-a-recurring-one)
 - [The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor](#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor)
 ## MPC compute Pareto
 
@@ -8118,6 +8119,53 @@ makes the roundabout a hard, density-free guarantee.
 
 Reproduce: `python scripts/antipodal_roundabout_phase.py --n-list 6 12 16 --episodes 20`
 (writes `results/antipodal_roundabout_phase.json`).
+
+## The hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring one
+
+The [peer-rule cap](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds)
+showed a hub-crossing obstacle caps the convention below its obstacle-free ceiling. *Why* — is the
+cap **temporal** (the convention makes everyone arrive at the hub at the same instant, so a crossing
+body hits the whole synchronized cluster) or **spatial** (the hub is one point every drone must
+cross, so timing is irrelevant)? Decompose it with a temporal desynchroniser that is peer-neutral on
+its own — per-drone speed heterogeneity, alternating `max_speed` 3 / 7 (mean 5; 40/40 no-obstacle,
+exactly like the homogeneous fleet, so it does not touch the peers) — crossed with a **single-pass**
+obstacle (`reflect: false`, crosses the hub once and leaves = TRANSIENT) vs a **reflecting** one
+(bounces in the box, returns to the hub repeatedly = RECURRING). MPC + game_theoretic + global
+`lateral_bias=4`, paired by seed (n=40).
+
+![speed desync dodges a transient hub crossing but not a recurring one](images/desync_obstacle_decomposition.png)
+
+| obstacle | N=6 homo | N=6 speed-het | N=8 homo | N=8 speed-het |
+|---|---|---|---|---|
+| none | 100 % | 100 % | 100 % | 100 % |
+| single-pass (transient) | 68 % | **100 %** | 25 % | 35 % |
+| reflecting (recurring) | 68 % | 88 % | 25 % | 32 % |
+
+- **The transient cap is temporal — desync fully breaks it (N=6).** Against a single-pass obstacle,
+  spreading the fleet's hub-arrival times lifts success from 68 % to **100 %** (`c=13/b=0`,
+  p=2.4e-4). With staggered arrivals the drones cross the hub at different moments and dodge the
+  one-time pass; synchronized, they all meet it at once.
+- **The recurring cap is spatial — the same desync cannot break it.** Against a reflecting obstacle
+  the identical speed-het is only a non-significant trend (68 % → 88 %, p=0.077): the obstacle keeps
+  returning to the hub, so no arrival schedule avoids it. The hub is a point every drone must cross,
+  and a persistent body owns it.
+- **Desync is peer-neutral, so this isolates the obstacle axis.** With no obstacle the het and homo
+  fleets are identical (40/40 both N) — the speed spread changes *when* drones reach the hub, not
+  *whether* they coordinate, so the single-pass gain is purely obstacle-dodging, not a peer effect.
+- **The temporal escape narrows with density (N=8).** At N=8 the cap is so deep (homo 25 %) that even
+  the transient-obstacle desync is only a same-direction trend (35 %, p=0.29). A denser hub leaves
+  less arrival-time slack to spread into, so the temporal component shrinks and the spatial one
+  dominates — the [density cliff](#the-convention-cliff-is-hub-density-not-drone-count--n-and-r-collapse-onto-nr)
+  reaching into the obstacle axis.
+
+This refines the peer-rule cap: it is not one wall but two. A *persistent* external hazard through
+the conflict point is spatial and desync-proof (which is why the reflecting obstacle in the original
+cap result held); a *transient* one is temporal and dissolved by a peer-neutral arrival stagger, at
+least until the hub is dense enough to remove the slack. (Scope: a moderate 3/7 spread; extreme
+spreads collapse the peers on their own under this strong bias and are out of scope.)
+
+Reproduce: `python scripts/antipodal_desync_obstacle_phase.py --n-list 6 8 --episodes 40`
+(writes `results/antipodal_desync_obstacle_phase.{json,png}`).
 
 ## The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor
 
