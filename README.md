@@ -234,7 +234,16 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF.**
+- **Latest: under noisy peer sensing the reactive ranking inverts — the soft field outlasts the
+  tight geometry.** Feeding ORCA/CBF/APF a Gaussian-noised peer tracker on a crossing (paired by
+  seed): under perfect sensing the geometric methods dominate and APF is *worst* (36/36 vs 27/40,
+  p=0.012), but as noise grows the order **flips** — ORCA collapses fastest (36 → 21 → **4 → 3** as
+  σ goes 0→1 m, its exact velocity-obstacle margins shatter) while APF degrades most gracefully
+  (27 → 22 → **11 → 9**, its soft `1/d` field has no sharp margin to violate), overtaking CBF by
+  σ=0.5 (p=0.041) and ORCA by σ≥0.75. Precision is a liability under noise: best-when-clean is
+  worst-when-noisy. There is no single best reactive avoider — only a best one *for a given sensing
+  quality*. See [docs/findings.md](docs/findings.md#under-noisy-peer-sensing-the-reactive-ranking-inverts--the-soft-field-outlasts-the-tight-geometry).
+- **The right-of-way convention is paradigm-agnostic — it rescues even non-reciprocal APF.**
   Every reactive baseline the convention has rescued so far (ORCA/CBF/BVC) is *reciprocal*. APF
   (artificial potential field) is a pure gradient controller with **no model of the peer** — and
   the symmetric antipodal hub is a stationary point of its field, so stock APF collides there
