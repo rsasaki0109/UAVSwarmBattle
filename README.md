@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the convention is a consensus device — a split right/left rule is worse than no rule.**
+- **Latest: the convention is for symmetric convergence only — on unstructured traffic it is a net
+  liability.** All convention results live on structured symmetric tasks; the boundary test is
+  random-derangement traffic (N drones to a random permutation of positions, no symmetric hub). With
+  no symmetry to break the right-of-way is gratuitous, and at density it drags success *below* doing
+  nothing: the global veer collapses at N=16 (31→7/40, all collisions) and the pairwise rule at N=12
+  (39→15/40, mostly timeouts). The tilt perturbs ordinary pairwise crossings the planner already
+  handles — global turns them into collisions, pairwise (summing many uncorrelated neighbour tilts)
+  into stalls. So the right-of-way is a *targeted* fix for a symmetric convergence, not a general
+  traffic primitive: deploy it only at a hub/head-on, switch it off for point-to-point traffic. This
+  bounds even the "always-safe" pairwise rule. See
+  [docs/findings.md](docs/findings.md#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability).
+- **The convention is a consensus device — a split right/left rule is worse than no rule.**
   Is the right-of-way's rescue from the *tilt* or from every drone *agreeing on the direction*?
   Splitting the antipodal fleet (half veer right `+B`, half left `−B`) separates them: unanimous
   tilting rescues (37/39/40 at N=4/6/8) but the split rule is far worse (consensus vs split p down to

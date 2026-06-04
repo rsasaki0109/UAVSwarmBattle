@@ -121,6 +121,7 @@ different strategies.
 - [Sensing noise restores the predictor's relevance under the convention](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
 - [Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture](#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture)
 - [The convention is a consensus device — a split right/left rule is worse than no rule](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
+- [The convention is for symmetric convergence only — on unstructured traffic it is a net liability](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8371,3 +8372,43 @@ if everyone obeys the *same* one.
 
 Reproduce: `python scripts/antipodal_split_convention_phase.py --n-list 4 6 8 --bias 2 --episodes 40`
 (writes `results/antipodal_split_convention_phase.json`).
+
+## The convention is for symmetric convergence only — on unstructured traffic it is a net liability
+
+Every convention result lives on a *structured symmetric* task (antipodal hub, doorway, crossing).
+The closing boundary question: what does the right-of-way do on *unstructured* traffic — N drones
+at random positions crossing to a random derangement of those positions, many uncorrelated pairwise
+conflicts with no single symmetric hub to break? MPC, paired by seed, n=40:
+
+| N | stock | global (lateral_bias) | pairwise | global vs stock | pairwise vs stock |
+|---|---|---|---|---|---|
+| 8 | 34/40 | 39/40 | 37/40 | b=1/c=6, 0.125 | b=2/c=5, 0.45 |
+| 12 | 39/40 | 38/40 | **15/40** (8c, 17 to) | b=1/c=0, 1.0 | b=24/c=0, **<1e-9** |
+| 16 | 31/40 | **7/40** (33c) | 18/40 (22c) | b=25/c=1, **<1e-9** | b=15/c=2, **0.002** |
+
+- **With no symmetry to break, the convention is gratuitous — and at density it *harms*.** When
+  the traffic is sparse (N=8) it is roughly neutral, but as it thickens both conventions drag
+  success *below* doing nothing: the global rule collapses at N=16 (31→7, all collisions) and the
+  pairwise rule at N=12 (39→15, mostly *timeouts*). The tilt perturbs drones whose conflicts are
+  ordinary pairwise crossings the base planner already handles, manufacturing the collisions and
+  jams it was meant to prevent.
+
+- **The two fail in their characteristic ways.** The unconditional global veer turns clean
+  crossings into collisions (it pushes everyone the same way into each other); the pairwise rule,
+  summing tilts over many uncorrelated neighbours, points nowhere coherent and *stalls* (timeouts).
+  Neither has a symmetric convergence to convert into a roundabout, so both just add noise.
+
+- **This bounds the whole convention arc — and even the "always-safe" pairwise rule.** The
+  right-of-way (in any form) is a targeted fix for a *symmetric convergence*; it is not a general
+  traffic primitive and must not be left always-on. The earlier
+  [pairwise-is-safe](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
+  result held on structured cells; dense *unstructured* traffic is where even the conditional
+  pairwise rule regresses. Deploy the convention only where the conflict actually is a symmetric
+  hub or head-on; switch it off for general point-to-point traffic.
+
+Net: the convention's value and its harm are two sides of one fact — it imposes a global rotational
+order. Where the conflict *is* a symmetric convergence that order is the cure; where it is not, the
+order is just an unwanted bias that costs collisions (global) or deadlocks (pairwise).
+
+Reproduce: `python scripts/unstructured_convention_phase.py --n-list 8 12 16 --episodes 40`
+(writes `results/unstructured_convention_phase.json`).
