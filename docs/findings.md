@@ -101,6 +101,7 @@ different strategies.
 - [ORCA is the missing reciprocal baseline, and the right-of-way convention generalises to it](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it)
 - [A pairwise winding-number right-of-way strictly dominates the global veer-right](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
 - [The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the roundabout it builds](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds)
+- [On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout cliff](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7437,3 +7438,73 @@ same "clearance for the wrong threat" shape as the
 
 Reproduce: `python scripts/antipodal_obstacle_convention_phase.py --n-list 6 8 --bias-list 0 1 2 4 --episodes 40`
 (writes `results/antipodal_obstacle_convention_phase.{json,png}`).
+
+## On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout cliff
+
+The [ORCA baseline result](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it)
+showed the global `lateral_bias` right-of-way generalises from the sampling MPC to the
+reciprocal ORCA controller, but in an **inverted-U band**: stock ORCA collides at the antipodal
+hub, the convention rescues for `lateral_bias` ∈ [0.1, 0.45], and **too much (≥0.5) over-rotates**
+— every drone veers so hard it orbits the hub and never reaches goal, so the failure flips from
+collision to *timeout*. That upper cliff is the ORCA face of the same defect the
+[pairwise winding-number study](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
+found on the MPC: the global rule tilts the preferred velocity right of the goal heading
+*unconditionally* — it veers even with no peer around — so a strong setting makes a drone that
+has already cleared the hub keep curving, into an orbit.
+
+This ports the pairwise knob to ORCA: `planner.pairwise_bias` tilts the preferred velocity
+toward the sum over nearby peers of "pass this peer on the right" (clockwise perpendicular of
+the bearing), weighted `exp(−dist / pairwise_radius)`. With no peer in conflict the tilt
+vanishes, so a drone past the hub re-aims at its goal instead of orbiting. The prediction: the
+pairwise rule has **no over-rotation timeout cliff** — it rescues the deadlock across a far
+wider strength range than the global one. `scripts/antipodal_orca_pairwise_phase.py`, ORCA at
+the #85 operating point, paired by seed, McNemar exact, collision-vs-timeout breakdown.
+
+**Strength sweep at N=8 (n=40) — the global cliff vs the pairwise plateau:**
+
+| strength | global `lateral_bias` | pairwise `pairwise_bias` |
+|---|---|---|
+| 0   | 0/40 (deadlock, 40 collisions) | 0/40 (40 collisions) |
+| 0.1 | 39/40 | 20/40 |
+| 0.2 | 40/40 | 39/40 |
+| 0.3 | — | 40/40 |
+| 0.45| 40/40 | — |
+| **0.5** | **0/40 (40 timeouts)** | **40/40** |
+| **1.0** | **0/40 (40 timeouts)** | **40/40** |
+| 2.0 | — | 40/40 |
+
+The global rule works only inside [0.1, 0.45] and falls off an over-rotation **timeout** cliff
+at 0.5; the pairwise rule reaches 100 % by 0.3 and **stays there through 2.0** — at least a 4×
+wider operating range, with no upper cliff. (Both fail the same way when far too weak — the hub
+collision they are there to prevent.)
+
+**Across N at the cliff strength 0.5 (n=40):** at the exact strength where the global rule has
+over-rotated, the pairwise rule is still perfect everywhere.
+
+| N | stock | global @0.5 | pairwise @0.5 | pairwise vs global (b/c, p) |
+|---|---|---|---|---|
+| 6 | 6/40 (34 coll) | 0/40 (40 timeout) | 40/40 | b=0/c=40, **<1e-9** |
+| 8 | 0/40 (40 coll) | 0/40 (40 timeout) | 40/40 | b=0/c=40, **<1e-9** |
+| 12 | 0/40 (40 coll) | 28/40 (12 timeout) | 40/40 | b=0/c=12, **5e-4** |
+
+(At N=12 the global cliff has shifted right with density — 0.5 is closer to in-band there, the
+same density-dependence the [global ORCA band](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it)
+shows — but the pairwise rule, whose per-peer `exp(−d/r)` weight auto-scales with the hub crowd,
+is 40/40 at every N without retuning.)
+
+- **Same mechanism as the MPC pairwise result, a different controller.** On the MPC the global
+  rule's flaw showed up as a *no-deadlock harm* (it broke an uncrowded square that needed no
+  help); on ORCA it shows up as an *over-rotation timeout cliff* (a strong unconditional tilt
+  orbits). Both are the unconditional global tilt acting where it should not, and the
+  neighbour-conditional pairwise rule removes both — third controller family (MPC, ORCA) on which
+  "pass each *nearby* peer on the right" beats "always veer right".
+
+- **It widens the usable band, which is the practical win.** A convention you must tune into a
+  narrow [0.1, 0.45] window (and retune as density moves the window) is fragile; one that is flat
+  from 0.3 to ≥2.0 across N is set-and-forget. The conditionality buys robustness, not just a
+  higher peak.
+
+Reproduce:
+`python scripts/antipodal_orca_pairwise_phase.py --mode strength --n 8 --episodes 40 --seed 4000`
+and `--mode nscale --n-list 6 8 12 --best-global 0.5 --best-pairwise 0.5 --episodes 40 --seed 4000`
+(writes `results/orca_pairwise_*.json`).

@@ -196,7 +196,25 @@ class ORCAPlanner(Planner):
                          deadlock. This is the ORCA port of the MPC
                          ``planner.lateral_bias`` right-of-way knob — included
                          to test whether that convention generalises beyond the
-                         sampling planner to the canonical reciprocal one.
+                         sampling planner to the canonical reciprocal one. It is
+                         a GLOBAL rule: the tilt fires whenever the agent is
+                         moving toward goal, even with no neighbour around, which
+                         is why too large a value over-rotates into an orbit
+                         (timeout) — see ``pairwise_bias``.
+    ``pairwise_bias``  : PAIRWISE right-of-way strength (default 0 = off). The
+                         ORCA port of the MPC ``planner.pairwise_bias`` knob.
+                         Instead of tilting toward a fixed global "right of goal"
+                         heading, it tilts the preferred velocity toward the sum
+                         over nearby neighbours of "pass this neighbour on the
+                         right" (clockwise perpendicular of the bearing to it),
+                         each weighted ``exp(-dist / pairwise_radius)``. With no
+                         neighbour in conflict (or neighbours that cancel by
+                         symmetry) the tilt vanishes, so unlike ``lateral_bias``
+                         it does not over-rotate a lone agent — testing whether
+                         the pairwise rule removes the global rule's
+                         over-rotation timeout cliff on ORCA as it removes its
+                         no-deadlock harm on the MPC.
+    ``pairwise_radius``: neighbour-conflict falloff length (m) for pairwise_bias.
     """
 
     def __init__(
@@ -209,6 +227,8 @@ class ORCAPlanner(Planner):
         safety_margin: float = 0.0,
         goal_radius: float = 1.5,
         lateral_bias: float = 0.0,
+        pairwise_bias: float = 0.0,
+        pairwise_radius: float = 5.0,
     ) -> None:
         self.max_speed = float(max_speed)
         self.radius = float(radius)
@@ -218,6 +238,8 @@ class ORCAPlanner(Planner):
         self.safety_margin = float(safety_margin)
         self.goal_radius = float(goal_radius)
         self.lateral_bias = float(lateral_bias)
+        self.pairwise_bias = float(pairwise_bias)
+        self.pairwise_radius = max(1e-6, float(pairwise_radius))
         self._cur_vel: np.ndarray | None = None
 
     @classmethod
@@ -231,6 +253,8 @@ class ORCAPlanner(Planner):
             safety_margin=float(cfg.get("safety_margin", 0.0)),
             goal_radius=float(cfg.get("goal_radius", 1.5)),
             lateral_bias=float(cfg.get("lateral_bias", 0.0)),
+            pairwise_bias=float(cfg.get("pairwise_bias", 0.0)),
+            pairwise_radius=float(cfg.get("pairwise_radius", 5.0)),
         )
 
     def reset(self) -> None:
@@ -275,6 +299,27 @@ class ORCAPlanner(Planner):
                 right = np.array([gdir[1], -gdir[0]])
                 v_pref = v_pref + self.lateral_bias * self.max_speed * right
                 v_pref = v_pref / _norm(v_pref) * self.max_speed
+            if self.pairwise_bias > 0.0 and dynamic_obstacles:
+                # PAIRWISE right-of-way: tilt the preferred velocity toward the
+                # sum of "pass each nearby neighbour on the right" (clockwise
+                # perpendicular of the bearing to it), weighted exp(-d/radius).
+                # Conditional on real neighbours, so a lone agent (or one whose
+                # neighbours cancel by symmetry) is not tilted and cannot
+                # over-rotate into an orbit — the ORCA port of the MPC pairwise
+                # knob.
+                tilt = np.zeros(2)
+                for d in dynamic_obstacles:
+                    rel = np.asarray(d["position"], dtype=float)[:2] - pos
+                    dn = _norm(rel)
+                    if dn < _EPS:
+                        continue
+                    nrel = rel / dn
+                    cw = np.array([nrel[1], -nrel[0]])  # right of the neighbour
+                    tilt = tilt + np.exp(-dn / self.pairwise_radius) * cw
+                v_pref = v_pref + self.pairwise_bias * self.max_speed * tilt
+                vp = _norm(v_pref)
+                if vp > _EPS:
+                    v_pref = v_pref / vp * self.max_speed
 
         lines: list[_Line] = []
         inv_th = 1.0 / self.time_horizon
