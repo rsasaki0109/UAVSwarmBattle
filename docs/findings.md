@@ -115,6 +115,7 @@ different strategies.
 - [The convention generalises to the doorway bottleneck — but only if the gap fits a lane](#the-convention-generalises-to-the-doorway-bottleneck--but-only-if-the-gap-fits-a-lane)
 - [The price of the convention: a cheap roundabout, and a speed-vs-reliability split between the two rules](#the-price-of-the-convention-a-cheap-roundabout-and-a-speed-vs-reliability-split-between-the-two-rules)
 - [Explicit roundabout (Merry-Go-Round) vs implicit convention: density-invariant scaling at a fixed time premium](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
+- [The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor](#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8117,3 +8118,40 @@ makes the roundabout a hard, density-free guarantee.
 
 Reproduce: `python scripts/antipodal_roundabout_phase.py --n-list 6 12 16 --episodes 20`
 (writes `results/antipodal_roundabout_phase.json`).
+
+## The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor
+
+The [explicit roundabout](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
+pays its ~63 % makespan premium because it rides a half-circumference arc of the radius-R ring. A
+*smaller* ring is a shorter arc (faster) but packs the same N drones onto a shorter circumference
+(tighter, so it should collide at high density). Sweeping `ring_radius` × N on the antipodal swap
+(starts at radius 20; success ; makespan, ideal 8.0 s; arc estimate πR/speed):
+
+| ring R | N=6 | N=12 | N=24 | arc ≈ |
+|---|---|---|---|---|
+| 6 | **0/20** | **0/20** | **0/20** | 3.8 s |
+| 10 | 20/20 · 10.1 s | 20/20 · 10.1 s | **5/20** · 10.2 s | 6.3 s |
+| 14 | 20/20 · 11.0 s | 20/20 · 11.0 s | 19/20 · 11.1 s | 8.8 s |
+| 20 | 20/20 · 13.1 s | 20/20 · 13.1 s | 20/20 · 13.2 s | 12.6 s |
+
+- **Radius is a speed knob.** Makespan tracks the arc length: shrinking the ring from 20 to 10
+  cuts makespan from 13.1 s to 10.1 s (−23 %), because the drones ride a shorter circle before
+  peeling off. The +63 % premium of the full ring is not fixed — it is the cost of *that* radius.
+
+- **But each radius has an N-capacity ceiling that shrinks with it.** Ring 10 is fast and fine to
+  N=12 but collapses at N=24 (5/20 — too many drones for the short circumference); ring 14 holds
+  almost to N=24 (19/20); only the full ring 20 is unbounded over the tested range (20/20 at N=24).
+  The circumference is the capacity, so the safe radius *grows with the crowd*.
+
+- **And there is a floor.** Ring 6 fails at *every* N (0/20): too small to hold even six drones,
+  and the deep radial dive to a tiny inner circle and back manufactures its own conflict near the
+  centre. The roundabout needs a minimum radius to be a roundabout at all.
+
+So the practical tuning rule for Merry-Go-Round is **pick the smallest ring whose circumference
+holds your N** — that minimises the makespan premium while staying collision-free; default to the
+full start-radius ring only when N is unknown or maximal. The density-invariance of the previous
+result was the *large-ring* regime; in general the explicit roundabout has a speed/capacity
+frontier the ring radius slides along.
+
+Reproduce: `python scripts/roundabout_radius_phase.py --radius-list 6 10 14 20 --n-list 6 12 24 --episodes 20`
+(writes `results/roundabout_radius_phase.json`).
