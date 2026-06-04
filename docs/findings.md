@@ -100,6 +100,7 @@ different strategies.
 - [Once the right-of-way convention is on, the predictor is free — cv and gt become identical](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical)
 - [ORCA is the missing reciprocal baseline, and the right-of-way convention generalises to it](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it)
 - [A pairwise winding-number right-of-way strictly dominates the global veer-right](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
+- [The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the roundabout it builds](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7385,3 +7386,54 @@ and `--dim 2 --n-list 16 20 24 --episodes 50`
 (writes `results/antipodal_pairwise_convention*.json`). Demo:
 `examples/exp_multi_drone_antipodal_pairwise.yaml` (the N=4 cell — pairwise stays 100 % where
 `lateral_bias: 2.0` would collapse the same drones to 0 %).
+
+## The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the roundabout it builds
+
+Every convention result above lives on `obstacles: none`: the antipodal swap is a *peer*
+coordination problem in an empty arena. This adds the one thing that arena never had — a scene
+**dynamic obstacle** that crosses the central hub while the fleet converges — and asks whether the
+right-of-way convention still earns its keep. MPC + `game_theoretic`, `N ∈ {6, 8}` at fixed R=20,
+a single reflecting body entering from the bottom edge and crossing the hub (`start [25, 2]`,
+`velocity [0, 4.5]`, `radius 1.5`), `lateral_bias ∈ {0, 1, 2, 4}`, paired by seed (n=40).
+
+![a stronger convention rescues the deadlock but cannot pay for a hub-crossing obstacle](images/obstacle_convention_cap.png)
+
+| `lateral_bias` | N=6 no-obstacle | N=6 +obstacle | N=8 no-obstacle | N=8 +obstacle |
+|---|---|---|---|---|
+| 0 (stock) | 0 % | 0 % | 0 % | 0 % |
+| 1 | 50 % | 20 % | 42 % | 0 % |
+| 2 | 100 % | 55 % | 88 % | 8 % |
+| 4 | 100 % | 60 % | 100 % | 28 % |
+
+- **A moving obstacle is NOT a symmetry-breaker.** With no convention (`bias=0`) the fleet
+  deadlocks 0/40 *with or without* the obstacle (both N, McNemar tie). A third body crossing the
+  hub does not break the symmetric peer convergence — it is just another threat, not a tie-breaker.
+  This refutes the tempting "any asymmetry lifts the deadlock" intuition: the asymmetry has to be
+  *in the fleet's own policy* (the convention), not in the environment.
+- **The convention is still primary with the obstacle present.** At the strongest bias the
+  obstacle-laden fleet still beats the no-convention fleet decisively: N=6 `c=24/b=0` p=1.2e-7,
+  N=8 `c=11/b=0` p=9.8e-4. Breaking the peer symmetry remains the first-order win.
+- **But the obstacle degrades the convention at every strength, and a stronger bias cannot pay
+  for it.** Turning the obstacle on is a significant loss at *every* positive bias (every cell
+  `c=0`, `b` large, p ≤ 5e-4). Crucially, cranking the convention up rescues the *peer* deadlock
+  completely — no-obstacle reaches 100 % at `bias=4` for both N — yet the +obstacle curve stays
+  far below (60 % at N=6, 28 % at N=8). That residual 40–72 pp gap is **the cost of the wrong
+  threat**: the right-of-way rule is a *peer* convention, so however strong you make it, it cannot
+  prevent collisions with a body that is not a peer. Success caps below the obstacle-free ceiling.
+- **The mechanism is the roundabout itself, not "obstacles are hard" (move-the-stressor control).**
+  At N=6, `bias=4`: no obstacle 40/40; the *same* obstacle crossing the hub 24/40; the *same*
+  obstacle (same size, speed, reflect) circulating in a far corner **40/40** — zero degradation.
+  The harm is specific to the hub-crossing geometry. The convention's remedy is to funnel every
+  drone into a tight clockwise circulation *at the hub*; that concentration is exactly what a
+  hub-crossing body exploits. The convention trades a distributed deadlock for a shared
+  spatiotemporal chokepoint — safe against peers, maximally exposed to an external hub threat.
+
+This bounds the whole convention arc: the right-of-way rule (and, by the
+[ORCA result](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it),
+any reciprocal planner it ports to) solves the *peer* symmetry problem and only that. It is the
+same "clearance for the wrong threat" shape as the
+[CHOMP band capping below RRT](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt)
+(static clearance, dynamic failure), here in the swarm: peer convention, external-obstacle failure.
+
+Reproduce: `python scripts/antipodal_obstacle_convention_phase.py --n-list 6 8 --bias-list 0 1 2 4 --episodes 40`
+(writes `results/antipodal_obstacle_convention_phase.{json,png}`).

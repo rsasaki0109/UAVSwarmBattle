@@ -1,0 +1,87 @@
+# Antipodal swap (6 drones) + right-of-way convention + a hub-crossing obstacle.
+#
+# Six drones cross to their antipodes through the central hub (the canonical
+# swarm deadlock benchmark), and a single moving obstacle crosses that same hub
+# while they converge. obstacles:none is static-empty; the threat is the one
+# DYNAMIC body plus the peers.
+#
+# THE POINT (docs/findings.md "The right-of-way convention is a peer rule — a
+# hub-crossing obstacle defeats the roundabout it builds"): the whole convention
+# arc was measured in an EMPTY arena. The right-of-way lateral_bias solves the
+# *peer* symmetry problem completely (bias=4, no obstacle -> 100 %). But it is a
+# PEER rule: add a body crossing the hub and success caps far below the
+# obstacle-free ceiling (N=6 -> 60 %, N=8 -> 28 %), and a STRONGER bias cannot
+# buy it back — the residual gap is collisions with a threat that is not a peer.
+#
+# Mechanism (move-the-stressor control): the SAME obstacle circulating in a far
+# corner does ZERO damage (40/40). The harm is specific to the hub-crossing
+# geometry — the convention funnels every drone into one tight clockwise hub
+# circulation, and that concentration is exactly what a hub-crossing body
+# exploits. The convention trades a distributed deadlock for a shared chokepoint.
+#
+# Also: the moving obstacle is NOT a symmetry-breaker — with lateral_bias 0 the
+# fleet still deadlocks (0 %) whether or not the obstacle is present. The
+# asymmetry has to be in the fleet's own policy.
+#
+# Try it: flip lateral_bias (0 = deadlock, 4 = peers solved but obstacle-capped)
+# and delete the dynamic_obstacles block (peers-only -> 100 % at bias 4):
+#   uav-nav run examples/exp_multi_drone_antipodal_obstacle.yaml
+#   uav-nav eval results/antipodal_obstacle_demo
+# Sweep / reproduce the full table:
+#   python scripts/antipodal_obstacle_convention_phase.py --n-list 6 8 \
+#       --bias-list 0 1 2 4 --episodes 40
+name: antipodal_obstacle_demo
+seed: 6000
+num_episodes: 20
+
+scenario:
+  type: multi_drone_grid
+  size: [50, 50]
+  resolution: 1.0
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - start: [25.0, 2.0]       # enters from the bottom edge
+      velocity: [0.0, 4.5]     # crosses the hub vertically
+      radius: 1.5
+      reflect: true            # bounces inside the box -> sustained hub threat
+  drones:
+    - {name: d0, start: [45.0, 25.0],   goal: [5.0, 25.0],    radius: 0.4, start_jitter: 0.8}
+    - {name: d1, start: [35.0, 42.32],  goal: [15.0, 7.68],   radius: 0.4, start_jitter: 0.8}
+    - {name: d2, start: [15.0, 42.32],  goal: [35.0, 7.68],   radius: 0.4, start_jitter: 0.8}
+    - {name: d3, start: [5.0, 25.0],    goal: [45.0, 25.0],   radius: 0.4, start_jitter: 0.8}
+    - {name: d4, start: [15.0, 7.68],   goal: [35.0, 42.32],  radius: 0.4, start_jitter: 0.8}
+    - {name: d5, start: [35.0, 7.68],   goal: [15.0, 42.32],  radius: 0.4, start_jitter: 0.8}
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 1000
+  max_accel: 6.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  lateral_bias: 4.0      # 0 = deadlock; 4 = peers solved (obstacle still caps success)
+  predictor:
+    type: game_theoretic
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/antipodal_obstacle_demo
