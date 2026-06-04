@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: pairwise's dominance over the global convention inverts under a hub-crossing
+- **Latest: in 3-D the in-plane convention rescues the reactive planner the extra dimension could
+  not.** The previous result showed the reactive CBF deadlock does *not* dissolve in 3-D (its
+  nominal stays in-plane, vertical axis unused). So the cure in 3-D must be the same *in-plane*
+  right-of-way that works in 2-D — and it is: the `pairwise_bias` convention, applied to the
+  horizontal components (never the vertical), lifts `cbf_3d` from 0/40 to **40/40 at every N=4/6/8**
+  (deterministic, p<1e-9). Convention and dimension are **complementary, non-interchangeable**
+  escapes: the free axis rescues planners that plan into it (sampling MPC), the in-plane rule
+  rescues planners that stay planar (reactive filters) — and a horizontal-only fix restoring 100 %
+  is direct proof the 3-D reactive failure *was* the unused vertical axis. See
+  [docs/findings.md](docs/findings.md#in-3-d-the-in-plane-convention-rescues-the-reactive-planner-the-extra-dimension-could-not).
+- **Pairwise's dominance over the global convention inverts under a hub-crossing
   obstacle.** The pairwise winding-number rule strictly dominates the global veer-right in an empty
   arena, but the global rule's remedy is a single coherent clockwise hub roundabout. Cross each
   convention (at matched ~100 % no-obstacle strength) with a body crossing the hub (MPC +

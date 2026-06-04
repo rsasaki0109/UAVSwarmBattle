@@ -98,6 +98,21 @@ def test_3d_cbf_constraint_satisfied():
     assert float(np.linalg.norm(v)) <= 5.0 + 1e-4
 
 
+def test_3d_pairwise_tilts_in_plane_only():
+    """In 3-D the right-of-way convention is an in-plane rule: with a nearby
+    peer it tilts the horizontal (xy) heading but leaves the vertical (z)
+    component untouched (the reactive filter's escape is the in-plane roundabout,
+    not the vertical axis)."""
+    p = _cbf(pairwise_bias=0.5, pairwise_radius=8.0)
+    pos = np.array([28.0, 25.0, 8.0])
+    p.set_current_state(pos, np.array([-5.0, 0.0, 0.0]))
+    v = p.plan(pos, np.array([5.0, 25.0, 8.0]), None,
+               dynamic_obstacles=[{"position": [22.0, 25.0, 8.0],
+                                   "velocity": [5.0, 0.0, 0.0], "radius": 0.4}]).target_velocity
+    assert abs(v[2]) < 1e-9          # convention never adds vertical motion
+    assert abs(v[1]) > 1e-3          # but it does tilt the horizontal heading
+
+
 def test_four_d_rejected():
     p = _cbf()
     with pytest.raises(ValueError):

@@ -32,9 +32,12 @@ half-space algebra is identical in any dimension; in 2-D the min-distance-to-
 nominal QP is solved with the standard randomized-incremental linear program
 (van den Berg 2011 / RVO2), in 3-D with a dimension-agnostic Dykstra projection
 onto the half-spaces and the speed ball. The right-of-way conventions
-(``lateral_bias`` / ``pairwise_bias``) are an in-plane rule and apply only in 2-D
-— in 3-D the vertical axis already supplies the symmetry escape (see findings.md
-"the antipodal inversion dissolves in 3-D").
+(``lateral_bias`` / ``pairwise_bias``) are an in-plane rule applied to the
+horizontal (xy) components in both 2-D and 3-D: the 3-D vertical escape that
+dissolves the deadlock for a *sampling* planner is unused by this reactive filter
+(its goal-seeking nominal stays in-plane — see findings.md "the 3-D dissolution
+is a planner property"), so the in-plane convention is what restores liveness to
+a reactive controller in 3-D as well as 2-D.
 """
 
 from __future__ import annotations
@@ -250,24 +253,35 @@ class CBFPlanner(Planner):
                         target_velocity=np.zeros(ndim), meta={"planner": "cbf"})
 
         gdir = to_goal / dist
-        # Right-of-way conventions are an in-plane rule (a clockwise pass); they
-        # are defined only for the 2-D swarm. In 3-D the vertical axis already
-        # provides the symmetry escape (see findings.md), so no in-plane tilt.
-        if ndim == 2 and self.lateral_bias > 0.0:
-            right = np.array([gdir[1], -gdir[0]])
-            gdir = gdir + self.lateral_bias * right
-            gdir = gdir / _norm(gdir)
-        if ndim == 2 and self.pairwise_bias > 0.0 and dynamic_obstacles:
+        # Right-of-way conventions are an IN-PLANE rule (a clockwise pass in the
+        # horizontal plane). They apply in 2-D and, in 3-D, to the horizontal
+        # (xy) components — leaving the vertical axis alone. The 3-D vertical
+        # escape that dissolves the deadlock for a *sampling* planner is unused
+        # by this reactive filter (its nominal stays in-plane; see findings.md
+        # "the 3-D dissolution is a planner property"), so the in-plane
+        # convention is exactly what a reactive controller needs in 3-D too.
+        if self.lateral_bias > 0.0:
+            g2 = gdir[:2]
+            n2 = _norm(g2)
+            if n2 > _EPS:
+                right = np.array([g2[1], -g2[0]]) / n2
+                gdir = gdir.copy()
+                gdir[:2] = gdir[:2] + self.lateral_bias * right
+                gn = float(np.linalg.norm(gdir))
+                if gn > _EPS:
+                    gdir = gdir / gn
+        if self.pairwise_bias > 0.0 and dynamic_obstacles:
             tilt = np.zeros(2)
             for d in dynamic_obstacles:
-                rel = np.asarray(d["position"], dtype=float)[:2] - pos
+                rel = np.asarray(d["position"], dtype=float)[:2] - pos[:2]
                 dn = _norm(rel)
                 if dn < _EPS:
                     continue
                 nr = rel / dn
                 tilt = tilt + np.exp(-dn / self.pairwise_radius) * np.array([nr[1], -nr[0]])
-            gdir = gdir + self.pairwise_bias * tilt
-            gn = _norm(gdir)
+            gdir = gdir.copy()
+            gdir[:2] = gdir[:2] + self.pairwise_bias * tilt
+            gn = float(np.linalg.norm(gdir))
             if gn > _EPS:
                 gdir = gdir / gn
         v_nom = gdir * self.max_speed
