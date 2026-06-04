@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: explicit roundabout (Merry-Go-Round) vs implicit convention — density-invariant scaling
+- **Latest: the hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring
+  one.** *Why* does a hub-crossing obstacle cap the convention? Decompose it with a peer-neutral
+  temporal desynchroniser — per-drone speed heterogeneity (3/7, mean 5; 40/40 no-obstacle, so it
+  does not touch the peers) — against a single-pass obstacle (crosses the hub once = transient) vs a
+  reflecting one (returns repeatedly = recurring). At N=6 the desync **fully breaks** the transient
+  cap (68 % → 100 %, `c=13/b=0`, p=2.4e-4) — staggered arrivals dodge the one-time crossing — but
+  only trends against the recurring obstacle (88 %, p=0.077): a persistent body owns the hub point no
+  arrival schedule can avoid. The cap is two walls: a *temporal* one (dissolved by desync) and a
+  *spatial* one (desync-proof). The temporal escape narrows with density (N=8 single-pass only a
+  trend, p=0.29 — a denser hub leaves no arrival slack to spread into).
+- **Explicit roundabout (Merry-Go-Round) vs implicit convention — density-invariant scaling
   at a fixed time premium.** A clean-room `roundabout` planner reproduces Merry-Go-Round (Zhou et
   al. 2025): all drones ride one shared CCW ring, collision-free by construction at any density. On
   the antipodal swap it is **100 % from N=6 to N=24 with a flat ~13.1 s makespan** — no cliff, no
