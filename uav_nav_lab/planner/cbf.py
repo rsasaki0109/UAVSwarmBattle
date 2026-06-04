@@ -27,10 +27,14 @@ proven planner-agnostic for MPC (#68/#84), ORCA (#85) and BVC are ported here
 (``lateral_bias`` / ``pairwise_bias``) to test whether they generalise to a
 fourth controller.
 
-Scope: 2-D, agent-agent only (static occupancy ignored); raises on ndim != 2.
-The half-plane QP reuses the standard randomized-incremental 2-D linear program
-(van den Berg 2011 / RVO2), which solves exactly this min-distance-to-nominal
-problem under linear velocity constraints.
+Scope: 2-D and 3-D, agent-agent only (static occupancy ignored). The CBF
+half-space algebra is identical in any dimension; in 2-D the min-distance-to-
+nominal QP is solved with the standard randomized-incremental linear program
+(van den Berg 2011 / RVO2), in 3-D with a dimension-agnostic Dykstra projection
+onto the half-spaces and the speed ball. The right-of-way conventions
+(``lateral_bias`` / ``pairwise_bias``) are an in-plane rule and apply only in 2-D
+— in 3-D the vertical axis already supplies the symmetry escape (see findings.md
+"the antipodal inversion dissolves in 3-D").
 """
 
 from __future__ import annotations
@@ -127,6 +131,31 @@ def _lp3(lines, begin, radius, result):
     return result
 
 
+def _solve_qp_nd(v_nom, cons, vmax, iters=40):
+    """Closest velocity to ``v_nom`` in the intersection of the half-spaces
+    ``a·v <= b`` (``cons`` = list of (a, b)) and the speed ball ``|v| <= vmax``,
+    by Dykstra's alternating projection. Dimension-agnostic — the CBF-QP solver
+    used for ndim != 2 (the 2-D path keeps the exact RVO2 linear program above so
+    the merged 2-D behaviour is unchanged)."""
+    x = np.array(v_nom, dtype=float)
+    corr = [np.zeros_like(x) for _ in cons]
+    bcorr = np.zeros_like(x)
+    for _ in range(iters):
+        for k, (a, b) in enumerate(cons):
+            y = x + corr[k]
+            a2 = float(a @ a)
+            viol = float(a @ y) - b
+            x_new = y - (viol / a2) * a if (viol > 0.0 and a2 > _EPS) else y
+            corr[k] = y - x_new
+            x = x_new
+        y = x + bcorr
+        n = float(np.linalg.norm(y))
+        x_new = y * (vmax / n) if n > vmax else y
+        bcorr = y - x_new
+        x = x_new
+    return x
+
+
 @PLANNER_REGISTRY.register("cbf")
 class CBFPlanner(Planner):
     """Control-Barrier-Function QP safety filter; 2-D, agent-agent only.
@@ -199,7 +228,7 @@ class CBFPlanner(Planner):
 
     def set_current_state(self, position, velocity=None) -> None:
         if velocity is not None:
-            self._cur_vel = np.asarray(velocity, dtype=float)[:2]
+            self._cur_vel = np.asarray(velocity, dtype=float)
 
     def plan(
         self,
@@ -210,24 +239,25 @@ class CBFPlanner(Planner):
         dynamic_obstacles: list[dict] | None = None,
     ) -> Plan:
         pos = np.asarray(observation, dtype=float)
-        if pos.shape[0] != 2:
-            raise ValueError(
-                f"CBFPlanner is 2-D only; got {pos.shape[0]}-D observation. "
-                "Use a sampling planner (mpc/mppi) for 3-D swarms."
-            )
-        gl = np.asarray(goal, dtype=float)[:2]
+        ndim = pos.shape[0]
+        if ndim not in (2, 3):
+            raise ValueError(f"CBFPlanner supports 2-D/3-D; got {ndim}-D observation.")
+        gl = np.asarray(goal, dtype=float)[:ndim]
         to_goal = gl - pos
-        dist = _norm(to_goal)
+        dist = float(np.linalg.norm(to_goal))
         if dist < self.goal_radius:
             return Plan(waypoints=np.asarray([pos], dtype=float),
-                        target_velocity=np.zeros(2), meta={"planner": "cbf"})
+                        target_velocity=np.zeros(ndim), meta={"planner": "cbf"})
 
         gdir = to_goal / dist
-        if self.lateral_bias > 0.0:
+        # Right-of-way conventions are an in-plane rule (a clockwise pass); they
+        # are defined only for the 2-D swarm. In 3-D the vertical axis already
+        # provides the symmetry escape (see findings.md), so no in-plane tilt.
+        if ndim == 2 and self.lateral_bias > 0.0:
             right = np.array([gdir[1], -gdir[0]])
             gdir = gdir + self.lateral_bias * right
             gdir = gdir / _norm(gdir)
-        if self.pairwise_bias > 0.0 and dynamic_obstacles:
+        if ndim == 2 and self.pairwise_bias > 0.0 and dynamic_obstacles:
             tilt = np.zeros(2)
             for d in dynamic_obstacles:
                 rel = np.asarray(d["position"], dtype=float)[:2] - pos
@@ -242,39 +272,41 @@ class CBFPlanner(Planner):
                 gdir = gdir / gn
         v_nom = gdir * self.max_speed
 
-        v_cur = self._cur_vel if self._cur_vel is not None else np.zeros(2)
+        if self._cur_vel is not None and self._cur_vel.shape[0] >= ndim:
+            v_cur = self._cur_vel[:ndim]
+        else:
+            v_cur = np.zeros(ndim)
         share = 0.5 if self.reciprocal else 1.0
 
-        # CBF half-plane per peer: (p_j - p_i)·v <= (p_j-p_i)·v_j + (alpha/2)·h.
-        # Encoded as an ORCA-style line (point, direction): the boundary is the
-        # set { v : a·v = b }; feasible region a·v <= b is to the LEFT of
-        # direction = (-a)/|a| rotated... we store direction so that the LP's
-        # "left of direction" test selects a·v <= b. With direction d s.t.
-        # det(d, p - v) > 0 means infeasible, choose point on the boundary and
-        # direction = unit(a) rotated -90deg.
-        lines = []
+        # One CBF half-space per peer: (p_j - p_i)·v <= (p_j-p_i)·v_j + (alpha/2)·h,
+        # h = |p_j-p_i|^2 - R^2. Identical algebra in 2-D and 3-D — only the
+        # vector dimension changes.
+        cons = []  # (a, b): a·v <= b
         for ob in (dynamic_obstacles or []):
-            p_other = np.asarray(ob["position"], dtype=float)[:2]
-            v_other = np.asarray(ob.get("velocity", (0.0, 0.0)), dtype=float)[:2]
+            p_other = np.asarray(ob["position"], dtype=float)[:ndim]
+            v_other = np.asarray(ob.get("velocity", np.zeros(ndim)), dtype=float)[:ndim]
             a = p_other - pos
-            an = _norm(a)
+            an = float(np.linalg.norm(a))
             if an < _EPS or an > self.neighbor_dist:
                 continue
             r_safe = self.radius + float(ob.get("radius", 0.5)) + self.safety_margin
             h = an * an - r_safe * r_safe
-            # a·v <= b
             b = share * (float(a @ v_other) + 0.5 * self.alpha * h)
-            n = a / an                      # unit normal (a = n * an)
-            boundary_pt = n * (b / an)      # a point with a·pt = b
-            # LP feasibility is det(direction, point - v) <= 0; with this
-            # direction that reduces to a·v <= b (verified in tests).
-            direction = np.array([-n[1], n[0]])
-            lines.append((boundary_pt, direction))
+            cons.append((a, b))
 
-        cnt, v = _lp2(lines, self.max_speed, v_nom, False)
-        if cnt < len(lines):
-            v = _lp3(lines, cnt, self.max_speed, v)
+        if ndim == 2:
+            # Keep the exact RVO2 2-D linear program (merged behaviour).
+            lines = []
+            for a, b in cons:
+                an = _norm(a)
+                n = a / an
+                lines.append((n * (b / an), np.array([-n[1], n[0]])))
+            cnt, v = _lp2(lines, self.max_speed, v_nom, False)
+            if cnt < len(lines):
+                v = _lp3(lines, cnt, self.max_speed, v)
+        else:
+            v = _solve_qp_nd(v_nom, cons, self.max_speed)
 
         wp = pos + v * self.time_step
         return Plan(waypoints=np.asarray([wp], dtype=float), target_velocity=v,
-                    meta={"planner": "cbf", "n_lines": len(lines)})
+                    meta={"planner": "cbf", "n_lines": len(cons)})
