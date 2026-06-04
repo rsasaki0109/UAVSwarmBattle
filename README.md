@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the convention generalises to the doorway bottleneck — but only if the gap fits a
+- **Latest: the price of the convention — a cheap roundabout, and a speed-vs-reliability split.**
+  The whole convention arc scored only binary success; measuring makespan (`final_t`) adds the
+  cost axis. Both conventions lift the antipodal swap from deadlock to ~100 % for only +0.3…+1.1 s
+  over the 8.0 s free-flight ideal (4–13 % — the roundabout is a slight detour, not a large one).
+  But the two rules split: the **global** veer-right makes a tighter, *faster* roundabout (faster
+  per seed at every N, sign p down to <1e-9), while the **pairwise** rule is the more *reliable*
+  (40/40 at every N vs global's 38–39/40), its time penalty growing with density (+0.03 s at N=2 →
+  +0.42 s at N=6, as its adaptive tilt steers a wider berth). This refines pairwise-dominates-global
+  into a Pareto trade-off: pairwise wins on safety/liveness, global on efficiency. See
+  [docs/findings.md](docs/findings.md#the-price-of-the-convention-a-cheap-roundabout-and-a-speed-vs-reliability-split-between-the-two-rules).
+- **The convention generalises to the doorway bottleneck — but only if the gap fits a
   lane.** Beyond the antipodal *hub*, the other canonical hard scenario (the social-mini-games /
   CBF doorway) is a wall with a narrow gap two opposing streams must funnel through. Stock MPC
   head-on-jams in the gap (2–4/40, almost all collisions); the pairwise right-of-way makes a lane

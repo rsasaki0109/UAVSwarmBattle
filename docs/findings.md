@@ -113,6 +113,7 @@ different strategies.
 - [There is no universal reactive robustness ranking — each method dies of its own sensing dependence](#there-is-no-universal-reactive-robustness-ranking--each-method-dies-of-its-own-sensing-dependence)
 - [Sensing-independence is not robustness: the peer-aware convention pulls further ahead under noise](#sensing-independence-is-not-robustness-the-peer-aware-convention-pulls-further-ahead-under-noise)
 - [The convention generalises to the doorway bottleneck — but only if the gap fits a lane](#the-convention-generalises-to-the-doorway-bottleneck--but-only-if-the-gap-fits-a-lane)
+- [The price of the convention: a cheap roundabout, and a speed-vs-reliability split between the two rules](#the-price-of-the-convention-a-cheap-roundabout-and-a-speed-vs-reliability-split-between-the-two-rules)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8024,3 +8025,46 @@ whether the bottleneck is wide enough to hold the lanes it creates.
 
 Reproduce: `python scripts/doorway_convention_phase.py --n 3 --gap-list 4 6 --episodes 40`
 (writes `results/doorway_convention_phase.json`).
+
+## The price of the convention: a cheap roundabout, and a speed-vs-reliability split between the two rules
+
+The whole convention arc scored only binary success. But the right-of-way works by turning a
+head-on convergence into a roundabout, which is a detour — so the fleets it rescues pay in
+completion *time*. Measuring the makespan (joint `final_t`, when the last drone reaches goal) of
+the convention-rescued antipodal fleet against the free-flight ideal (a drone crossing the diameter
+2R at cruise speed, 8.0 s here), MPC, n=40:
+
+| N | global succ / makespan / overhead | pairwise succ / makespan / overhead | faster per seed (g/p, sign p) |
+|---|---|---|---|
+| 2 | 40/40 · 8.34 s · +0.34 | 40/40 · 8.37 s · +0.37 | global 21 / pairwise 9, 0.043 |
+| 3 | 40/40 · 8.53 s · +0.53 | 40/40 · 8.57 s · +0.57 | global 22 / 7, 0.008 |
+| 4 | 38/40 · 8.42 s · +0.42 | 40/40 · 8.65 s · +0.65 | global 38 / 0, **<1e-9** |
+| 5 | 39/40 · 8.61 s · +0.61 | 40/40 · 8.85 s · +0.85 | global 39 / 0, **<1e-9** |
+| 6 | 40/40 · 8.64 s · +0.64 | 40/40 · 9.06 s · +1.06 | global 40 / 0, **<1e-9** |
+
+- **The roundabout is cheap.** Both conventions lift the antipodal swap from deadlock to ~100 %
+  for a makespan overhead of only +0.3…+1.1 s over the 8.0 s ideal — 4–13 %. Breaking the
+  symmetry buys near-total liveness at a small, sub-second time cost; the convention is not a
+  large detour, it is a slight one.
+
+- **Global vs pairwise is a speed-vs-reliability split.** The two are indistinguishable on success
+  at low N but the makespan separates them at *every* N: the **global** veer-right is faster
+  (it makes a tighter, uniform roundabout — faster on 21/22 then 38/39/40 of the shared-success
+  seeds, sign p from 0.04 down to <1e-9), while the **pairwise** rule is the more reliable
+  (40/40 at every N vs global's 38–39/40 at N=4,5). Same success, different cost — and where
+  success differs, it is pairwise that holds.
+
+- **The pairwise time penalty grows with density.** The makespan gap is ~0.03 s at N=2 but widens
+  to +0.42 s by N=6 (global 8.64 vs pairwise 9.06). Pairwise's adaptive per-neighbour tilt steers
+  a *wider* berth around the crowd as it thickens — more reliable, but a longer way round — while
+  the global rule's fixed tilt keeps the same tight ring regardless.
+
+Net: this refines the [pairwise-dominates-global](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff)
+result into a genuine Pareto trade-off. On *safety/liveness* the adaptive pairwise rule wins (no
+over-rotation cliff, more reliable, more noise-robust); on *efficiency* the blind global rule wins
+(a tighter, faster roundabout). The convention to pick depends on whether you are optimising for
+getting-everyone-through or getting-through-fast — and either way the cost over free flight is
+small.
+
+Reproduce: `python scripts/antipodal_convention_makespan_phase.py --n-list 2 3 4 5 6 --episodes 40`
+(writes `results/antipodal_convention_makespan_phase.json`).
