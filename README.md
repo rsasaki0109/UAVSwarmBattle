@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the
+- **Latest: On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout
+  cliff.** Porting the global `lateral_bias` to ORCA ([#85](docs/findings.md#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it))
+  rescues the antipodal deadlock only in a narrow band [0.1, 0.45] — too much (≥0.5) over-rotates
+  every drone into an orbit (failure flips from collision to *timeout*), because the global tilt
+  veers right of the goal heading even with no peer near. The neighbour-conditional `pairwise_bias`
+  (the ORCA port of the [MPC pairwise knob](docs/findings.md#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right))
+  vanishes once a drone has cleared the hub, so it has **no over-rotation cliff**: at N=8 it is
+  100 % from 0.3 through ≥2.0 (global cliffs at 0.5), and at the cliff strength 0.5 it is 40/40 at
+  N=6/8/12 while global has over-rotated (0/0/28; pairwise vs global +40/+40/+12, p<1e-9..5e-4).
+  Third controller family on which "pass each *nearby* peer on the right" beats "always veer
+  right". See [docs/findings.md](docs/findings.md#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff).
+- **The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the
   roundabout it builds.** The whole convention arc lives on `obstacles: none`. Add a scene
   dynamic obstacle that crosses the central hub while the antipodal fleet converges (MPC +
   `game_theoretic`, N ∈ {6, 8}, paired McNemar, n=40), and three things hold: (1) the moving
