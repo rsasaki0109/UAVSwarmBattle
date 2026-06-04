@@ -114,6 +114,7 @@ different strategies.
 - [Sensing-independence is not robustness: the peer-aware convention pulls further ahead under noise](#sensing-independence-is-not-robustness-the-peer-aware-convention-pulls-further-ahead-under-noise)
 - [The convention generalises to the doorway bottleneck — but only if the gap fits a lane](#the-convention-generalises-to-the-doorway-bottleneck--but-only-if-the-gap-fits-a-lane)
 - [The price of the convention: a cheap roundabout, and a speed-vs-reliability split between the two rules](#the-price-of-the-convention-a-cheap-roundabout-and-a-speed-vs-reliability-split-between-the-two-rules)
+- [Explicit roundabout (Merry-Go-Round) vs implicit convention: density-invariant scaling at a fixed time premium](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8068,3 +8069,51 @@ small.
 
 Reproduce: `python scripts/antipodal_convention_makespan_phase.py --n-list 2 3 4 5 6 --episodes 40`
 (writes `results/antipodal_convention_makespan_phase.json`).
+
+## Explicit roundabout (Merry-Go-Round) vs implicit convention: density-invariant scaling at a fixed time premium
+
+The lab's `lateral_bias` / `pairwise_bias` break the antipodal deadlock *implicitly* — a small cost
+nudge that lets the base planner find a roundabout — and [cheaply](#the-price-of-the-convention-a-cheap-roundabout-and-a-speed-vs-reliability-split-between-the-two-rules)
+(~8 % makespan), but with a [density cliff](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out).
+Merry-Go-Round (Zhou et al. 2025, arXiv:2503.05848; `planner.type: roundabout`) does it
+*explicitly*: all drones ride one shared CCW ring around a common centre, peeling off to goal when
+aligned. Spread on one ring, all turning the same way, they keep their angular spacing and cannot
+collide — collision-free *by construction* at any density — at the price of a half-circumference
+arc instead of the diameter. Head to head on the antipodal swap (success ; mean makespan, ideal
+8.0 s):
+
+| N | roundabout | mpc_global (lateral_bias) | mpc_pairwise |
+|---|---|---|---|
+| 6 | 20/20 · **13.06 s** | 20/20 · 8.62 s | 20/20 · 9.06 s |
+| 12 | 20/20 · 13.11 s | 20/20 · 9.64 s | 20/20 · 10.59 s |
+| 16 | 20/20 · 13.13 s | **16/20** · 10.01 s | 20/20 · 10.65 s |
+
+(And the explicit ring keeps going: in a standalone check it is 8/8 at N=6, 12, 16, **24** with the
+*same* ~13.1 s makespan — it does not have an N ceiling to find.)
+
+- **The explicit roundabout is density-invariant.** Success stays 100 % and makespan stays flat at
+  ~13.1 s from N=6 to N=24 — adding drones just packs the ring tighter without changing the
+  coordinated rotation. There is no cliff and no slow-down: the shared geometry *is* the
+  guarantee, independent of crowd size.
+
+- **The implicit conventions are cheaper at low N but degrade with it — on both axes.** At N=6 the
+  cost-bias is far faster (8.6–9.1 s vs 13.1 s). But as the hub fills, the implicit makespan
+  *climbs* (global 8.6 → 10.0 s) — the base planner spends longer negotiating the denser hub — and
+  reliability *cracks*: global already cliffs at N=16 (16/20), the same density wall a fixed bias
+  always hits. The implicit roundabout slows down and eventually fails exactly where the explicit
+  one is unmoved.
+
+- **The trade-off, made concrete.** The explicit ring pays a *fixed* ~63 % makespan premium to buy
+  *unconditional* scaling; the implicit nudge pays *almost nothing* at low density but a *growing*
+  premium plus an eventual cliff as density rises. Their makespans even converge (implicit 10.6 s
+  at N=16 vs the ring's 13.1 s) — the explicit method's relative cost *shrinks* as the crowd grows,
+  so the denser the swarm, the better the explicit roundabout looks. Pick the implicit convention
+  for light traffic and the explicit ring for guaranteed dense-hub throughput.
+
+Net: implicit and explicit roundabouts sit at opposite ends of a scaling/efficiency curve — the
+cost-nudge is a cheap fix that frays with density, the shared ring is a costly fix that is
+indifferent to it. Both reproduce the "turn the jam into a roundabout" idea; only the explicit one
+makes the roundabout a hard, density-free guarantee.
+
+Reproduce: `python scripts/antipodal_roundabout_phase.py --n-list 6 12 16 --episodes 20`
+(writes `results/antipodal_roundabout_phase.json`).

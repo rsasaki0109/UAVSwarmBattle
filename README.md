@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the price of the convention — a cheap roundabout, and a speed-vs-reliability split.**
+- **Latest: explicit roundabout (Merry-Go-Round) vs implicit convention — density-invariant scaling
+  at a fixed time premium.** A clean-room `roundabout` planner reproduces Merry-Go-Round (Zhou et
+  al. 2025): all drones ride one shared CCW ring, collision-free by construction at any density. On
+  the antipodal swap it is **100 % from N=6 to N=24 with a flat ~13.1 s makespan** — no cliff, no
+  slow-down. The implicit cost-bias conventions are far cheaper at low N (8.6–9.1 s) but degrade on
+  both axes as the hub fills: makespan climbs (global 8.6→10.0 s) and reliability cracks (global
+  cliffs to 16/20 at N=16). The explicit ring pays a *fixed* ~63 % makespan premium to buy
+  *unconditional* scaling; the implicit nudge pays almost nothing at low density but a growing
+  premium plus an eventual cliff. Their makespans converge as density grows, so the denser the
+  swarm the better the explicit ring looks. See
+  [docs/findings.md](docs/findings.md#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium).
+- **The price of the convention — a cheap roundabout, and a speed-vs-reliability split.**
   The whole convention arc scored only binary success; measuring makespan (`final_t`) adds the
   cost axis. Both conventions lift the antipodal swap from deadlock to ~100 % for only +0.3…+1.1 s
   over the 8.0 s free-flight ideal (4–13 % — the roundabout is a slight detour, not a large one).
