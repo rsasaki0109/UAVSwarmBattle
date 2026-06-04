@@ -102,6 +102,7 @@ different strategies.
 - [A pairwise winding-number right-of-way strictly dominates the global veer-right](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
 - [The right-of-way convention is a peer rule — a hub-crossing obstacle defeats the roundabout it builds](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds)
 - [On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout cliff](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff)
+- [BVC and CBF: the convention rescues two more reactive families, and BVC needs a dynamics-aware buffer](#bvc-and-cbf-the-convention-rescues-two-more-reactive-families-and-bvc-needs-a-dynamics-aware-buffer)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -7508,3 +7509,64 @@ Reproduce:
 `python scripts/antipodal_orca_pairwise_phase.py --mode strength --n 8 --episodes 40 --seed 4000`
 and `--mode nscale --n-list 6 8 12 --best-global 0.5 --best-pairwise 0.5 --episodes 40 --seed 4000`
 (writes `results/orca_pairwise_*.json`).
+
+## BVC and CBF: the convention rescues two more reactive families, and BVC needs a dynamics-aware buffer
+
+[ORCA](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it)
+is the velocity-obstacle school's reactive baseline. Two more decentralized reactive families now
+sit beside it, each a clean-room 2-D implementation (`planner.type: bvc` / `cbf`):
+
+- **BVC** (Buffered Voronoi Cells, Zhou et al. 2017) — *position* space. Each agent confines its
+  next position to its Voronoi cell shrunk by a safety buffer; the cells are disjoint, so it is
+  collision-free *by construction* (a hard geometric guarantee ORCA's reciprocal split only
+  approximates).
+- **CBF** (Control-Barrier-Function QP, the LivePoint / social-mini-games school) — *velocity*
+  space. One barrier half-plane per peer from `h = dist² − R²` and the discrete CBF condition
+  `ḣ + α·h ≥ 0`, then the safety-filter QP `min |v − v_nom|²` s.t. the barriers and the speed cap.
+
+Both deadlock on the symmetric antipodal swap, and the pairwise right-of-way
+([MPC](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right) /
+[ORCA](#on-orca-too-a-pairwise-right-of-way-removes-the-global-rules-over-rotation-timeout-cliff)
+ports) rescues them — at the moderate hub sizes. `scripts/antipodal_bvc_phase.py`, paired by
+seed, McNemar exact, collision-vs-timeout breakdown:
+
+| N | bvc (stock) | bvc + pairwise | cbf (stock) | cbf + pairwise |
+|---|---|---|---|---|
+| 6 | 0/40 (6 coll, 34 timeout) | **40/40** (c=40, p<1e-9) | 10/40 (30 timeout) | **40/40** (c=30, p<1e-9) |
+| 8 | 0/40 (1 coll, 39 timeout) | **36/40** (c=36, p<1e-9) | 2/40 (38 timeout) | **40/40** (c=38, p<1e-9) |
+| 12 | 0/40 (38 timeout) | 0/40 (17 coll, 23 timeout) | 0/40 (40 timeout) | 1/40 (23 coll) |
+
+- **Stock deadlock is collision-free here — it fails by *timeout*, not collision.** Both BVC and
+  CBF brake at the hub and stall (the barrier / cell constraints zero the goal-ward velocity),
+  the opposite signature to ORCA's reciprocal funnel-into-collision. Two reactive schools, two
+  failure modes, on the same swap.
+
+- **The convention generalises to both — a third and fourth controller family** (after MPC and
+  ORCA) on which "pass each nearby peer on the right" lifts a deadlock to ~100 % at N=6, 8.
+
+- **But it is *not* unconditional — strength must scale with hub density.** A fixed
+  `pairwise_bias` tuned for N=6, 8 *over-rotates* at N=12 and drives drones into each other (BVC
+  0/40 with 17 collisions, CBF 1/40 with 23) — the same
+  [convention-strength-vs-density](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+  ceiling seen on the MPC, now reproduced on two reactive baselines.
+
+- **BVC's textbook collision-free guarantee assumes single-integrator dynamics — and breaks under
+  acceleration limits.** With the small "textbook" buffer, BVC plans to the cell edge assuming it
+  can stop instantly; in the accel-limited sim (`max_accel = 6`, stopping distance ≈ v²/2a ≈
+  2.1 m) it overshoots the buffer and **collides** (`bvc_nobrake`: 40/40 collisions at every N).
+  A brake-aware buffer restores collision-freedom — but too large a buffer makes the cell go
+  empty so early that the agent halts before the convention can route it (the convention then
+  cannot rescue it at all). So BVC has a **buffer sweet spot**: too small overshoots and crashes,
+  too large halts immune to the convention, and only a middle band both (mostly) avoids and stays
+  routable. This is the same inverted-U shape as the
+  [CHOMP clearance band](#chomps-explicit-clearance-band-has-a-sweet-spot--but-the-cap-breaks-only-when-you-seed-it-with-rrt),
+  here induced by vehicle inertia rather than obstacle geometry.
+
+Net: symmetry-breaking is planner-agnostic across the *velocity*-space reactive families (MPC,
+ORCA, CBF) at moderate density; the *position*-space BVC adds a dynamics caveat (it needs a
+buffer that covers braking, and that very buffer fights the convention), and on every family the
+convention's strength is a density-dependent knob, not a constant.
+
+Reproduce: `python scripts/antipodal_bvc_phase.py --n-list 6 8 12 --episodes 40 --seed 4000 --pairwise-bias 2.0`
+(writes `results/antipodal_bvc_phase.json`; `bvc_nobrake` = the textbook small buffer that
+overshoots, the other bvc arms use the brake-aware buffer).
