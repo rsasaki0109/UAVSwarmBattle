@@ -101,3 +101,42 @@ def test_three_d_rejected():
     p.set_current_state(np.zeros(3), np.zeros(3))
     with pytest.raises(ValueError):
         p.plan(np.zeros(3), np.array([1.0, 0.0, 1.0]), None, dynamic_obstacles=[])
+
+
+def test_pairwise_bias_does_not_tilt_a_lone_agent():
+    # The defining contrast with the GLOBAL lateral_bias: with no neighbour the
+    # pairwise tilt vanishes, so a lone agent flies straight to goal (this is
+    # why pairwise cannot over-rotate into an orbit). Compare with
+    # test_lateral_bias_tilts_preferred_velocity_right, where a lone agent IS
+    # tilted by the global rule.
+    p = _orca(pairwise_bias=10.0, pairwise_radius=8.0)
+    p.set_current_state(np.zeros(2), np.zeros(2))
+    plan = p.plan(np.zeros(2), np.array([10.0, 0.0]), None, dynamic_obstacles=[])
+    np.testing.assert_allclose(plan.target_velocity, [5.0, 0.0], atol=1e-6)
+
+
+def test_pairwise_bias_tilts_toward_neighbour_side():
+    # With a neighbour ahead, the pairwise tilt veers to the ego's right of the
+    # bearing to it (-y here), at cruise speed.
+    p = _orca(pairwise_bias=10.0, pairwise_radius=8.0)
+    p.set_current_state(np.zeros(2), np.array([5.0, 0.0]))
+    plan = p.plan(np.zeros(2), np.array([10.0, 0.0]), None,
+                  dynamic_obstacles=[{"position": [6.0, 0.0],
+                                      "velocity": [-5.0, 0.0], "radius": 0.4}])
+    v = plan.target_velocity
+    assert v[1] < -1e-3
+    assert np.linalg.norm(v) <= 5.0 + 1e-6
+
+
+def test_zero_pairwise_bias_is_stock_orca():
+    p = _orca(pairwise_bias=0.0)
+    p.set_current_state(np.zeros(2), np.zeros(2))
+    plan = p.plan(np.zeros(2), np.array([10.0, 0.0]), None,
+                  dynamic_obstacles=[{"position": [6.0, 0.0],
+                                      "velocity": [-5.0, 0.0], "radius": 0.4}])
+    stock = _orca(pairwise_bias=0.0)
+    stock.set_current_state(np.zeros(2), np.zeros(2))
+    plan2 = stock.plan(np.zeros(2), np.array([10.0, 0.0]), None,
+                       dynamic_obstacles=[{"position": [6.0, 0.0],
+                                           "velocity": [-5.0, 0.0], "radius": 0.4}])
+    np.testing.assert_allclose(plan.target_velocity, plan2.target_velocity, atol=1e-9)
