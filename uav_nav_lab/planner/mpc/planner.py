@@ -66,6 +66,7 @@ class SamplingMPCPlanner(Planner):
         lateral_bias: float = 0.0,
         pairwise_bias: float = 0.0,
         pairwise_radius: float = 5.0,
+        priority_yield: bool = False,
         predictor: Predictor | None = None,
     ) -> None:
         self.max_speed = float(max_speed)
@@ -110,6 +111,12 @@ class SamplingMPCPlanner(Planner):
         # around (it harms the 3D no-deadlock regime, see findings.md). 0 = off.
         self.pairwise_bias = float(pairwise_bias)
         self.pairwise_radius = max(1e-6, float(pairwise_radius))
+        # Priority deconfliction: avoid only peers whose (observable, fixed) GOAL
+        # is lexicographically greater than the ego's (higher priority); ignore
+        # lower-priority peers, assuming they yield. A social-hierarchy
+        # symmetry-breaker — distinct from the convention; see docs/findings.md
+        # "Priority deconfliction fails the symmetric hub". 0 = off.
+        self.priority_yield = bool(priority_yield)
         self._predictor: Predictor = predictor if predictor is not None else build_predictor(None)
         self._prev_action: np.ndarray | None = None
         # Per-episode caches: ctg / static-occ depend only on the static
@@ -140,6 +147,7 @@ class SamplingMPCPlanner(Planner):
             lateral_bias=float(cfg.get("lateral_bias", 0.0)),
             pairwise_bias=float(cfg.get("pairwise_bias", 0.0)),
             pairwise_radius=float(cfg.get("pairwise_radius", 5.0)),
+            priority_yield=bool(cfg.get("priority_yield", False)),
             predictor=build_predictor(cfg.get("predictor")),
         )
 
@@ -160,6 +168,20 @@ class SamplingMPCPlanner(Planner):
     ) -> Plan:
         occ_raw = np.asarray(obstacle_map, dtype=bool)
         ndim = occ_raw.ndim
+        # Priority deconfliction (see __init__): keep only higher-priority peers
+        # (goal lexicographically greater than the ego's); drop lower-priority
+        # ones so the ego does not plan around them (it assumes they yield).
+        if self.priority_yield and dynamic_obstacles:
+            _g = np.asarray(goal, dtype=float)
+            ego_key = (round(float(_g[0]), 3), round(float(_g[1]), 3))
+            kept = []
+            for d in dynamic_obstacles:
+                if "goal" in d:
+                    pg = np.asarray(d["goal"], dtype=float)
+                    if (round(float(pg[0]), 3), round(float(pg[1]), 3)) <= ego_key:
+                        continue
+                kept.append(d)
+            dynamic_obstacles = kept
         # Pre-compute predicted dynamic-obstacle trajectories once per replan
         # (rather than per-sample × per-step) via the configured predictor.
         # Shape: [n_obs, horizon, ndim]; r2_arr: [n_obs] of squared radii.
