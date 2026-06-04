@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout
+- **Latest: BVC and CBF reactive baselines — the convention rescues two more families, and BVC
+  needs a dynamics-aware buffer.** Two more decentralized reactive avoiders beside ORCA: `bvc`
+  (Buffered Voronoi Cells, position-space, collision-free by construction) and `cbf` (a
+  control-barrier-function QP safety filter, the LivePoint/social-mini-games school). Both
+  deadlock on the antipodal swap by *timeout* (collision-free stall — the opposite signature to
+  ORCA's funnel-into-collision), and the pairwise right-of-way rescues both at N=6/8 (BVC 40/40,
+  CBF 40/40 vs stock deadlock, p<1e-9). Two caveats: (1) BVC's textbook collision-free guarantee
+  assumes single-integrator dynamics — under the accel-limited sim a small buffer overshoots the
+  stopping distance and *collides*; a brake-aware buffer fixes it, but too large a buffer halts so
+  early the convention can't route — a **buffer sweet spot** (cf the CHOMP band); (2) the
+  convention's strength must scale with density — a fixed `pairwise_bias` that rescues N=6/8
+  over-rotates into collisions at N=12. See
+  [docs/findings.md](docs/findings.md#bvc-and-cbf-the-convention-rescues-two-more-reactive-families-and-bvc-needs-a-dynamics-aware-buffer).
+- **On ORCA too, a pairwise right-of-way removes the global rule's over-rotation timeout
   cliff.** Porting the global `lateral_bias` to ORCA ([#85](docs/findings.md#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it))
   rescues the antipodal deadlock only in a narrow band [0.1, 0.45] — too much (≥0.5) over-rotates
   every drone into an orbit (failure flips from collision to *timeout*), because the global tilt
