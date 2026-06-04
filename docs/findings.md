@@ -118,6 +118,7 @@ different strategies.
 - [The hub-obstacle cap is temporal for a transient obstacle, spatial for a recurring one](#the-hub-obstacle-cap-is-temporal-for-a-transient-obstacle-spatial-for-a-recurring-one)
 - [The Merry-Go-Round ring radius is a capacity-vs-speed knob — and there is a floor](#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor)
 - [Priority deconfliction fails the symmetric hub — it trades deadlock for collision](#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision)
+- [Sensing noise restores the predictor's relevance under the convention](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8246,3 +8247,51 @@ some defer to others.
 
 Reproduce: `python scripts/antipodal_priority_phase.py --n-list 6 8 12 --episodes 40`
 (writes `results/antipodal_priority_phase.json`).
+
+## Sensing noise restores the predictor's relevance under the convention
+
+[Once the convention is on, the predictor is free](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical):
+with ground-truth peer positions, `cv+row` and `gt+row` are a McNemar tie at every N — symmetry-
+breaking is the whole game and the forecast buys nothing. But decentralized swarms track peers with
+noisy sensors. The two predictors degrade differently: `game_theoretic` anchors each peer on its
+*exact* goal (runner-provided) and only uses the noisy position as a start point, so its forecast
+direction stays roughly right; `constant_velocity` extrapolates the noisy position **and** velocity
+directly, so its error grows with the noise. Convention always on (`lateral_bias=4`), sensor =
+`noisy_tracker` with matched position/velocity noise, arms cv+row vs gt+row, paired by seed (n=40).
+
+![the convention makes the predictor irrelevant only under clean sensing](images/convention_predictor_noise.png)
+
+| noise σ | N=8 cv+row | N=8 gt+row | gt vs cv | N=12 cv+row | N=12 gt+row | gt vs cv |
+|---|---|---|---|---|---|---|
+| 0   | 100 % | 100 % | tie | 95 % | 100 % | tie |
+| 0.5 | 82 %  | 98 %  | p=0.031 | 22 % | 78 % | p=3.0e-6 |
+| 1   | 65 %  | 98 %  | p=2.4e-4 | 15 % | 52 % | p=1.5e-3 |
+| 1.5 | 55 %  | 95 %  | p=1.5e-4 | 20 % | 40 % | p=0.077 |
+| 2   | 42 %  | 78 %  | p=5.2e-4 | 20 % | 30 % | p=0.29 |
+| 3   | 55 %  | 70 %  | p=0.21 | 15 % | 20 % | ns |
+| 5   | 42 %  | 50 %  | p=0.61 | 15 % | 25 % | ns |
+
+- **The published tie is a clean-sensing artefact.** At σ=0 cv+row = gt+row (reproducing the result),
+  but it is *only* a σ=0 fact. The convention's dominance over the predictor does not survive contact
+  with a noisy peer tracker.
+- **A mid-noise band where the goal-aware forecast re-earns its keep.** At N=8, gt+row significantly
+  beats cv+row across σ ∈ [0.5, 2] — up to 65 % vs 98 % at σ=1 (`c=13/b=0`, p=2.4e-4). The exact-goal
+  anchor keeps gt's forecast usable when the position is unreliable; cv, extrapolating the corrupted
+  state, degrades far faster. So forecast quality *is* a decision again — exactly where the published
+  result said it was not — once the sensing is realistic.
+- **It is stress-gated on both ends.** Below the band (σ=0) both are at the clean ceiling (tie);
+  above it (σ ≥ 3) the noise drowns even gt's goal anchor and both floor (tie). The forecast helps
+  only in the window where the position is noisy enough to hurt cv but not so noisy that gt's anchor
+  fails too.
+- **Density shifts the band left and narrows it.** At N=12 the denser hub makes noise bite at once —
+  the largest gap is at σ=0.5 (22 % vs 78 %, p=3.0e-6) and the band has collapsed by σ=2. A crowded
+  hub has less spatial slack, so a given position error is more often fatal, and it reaches gt's
+  anchor-failure floor sooner.
+
+This bounds [the predictor-dominance result](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical):
+the convention makes the predictor irrelevant **only under perfect sensing**. Under a realistic noisy
+peer tracker, symmetry-breaking and a good forecast are *complementary* again — the convention sets
+the passing side, and the goal-anchored forecast is what keeps the fleet from colliding while it does.
+
+Reproduce: `python scripts/antipodal_convention_predictor_noise_phase.py --n-list 8 12 --noise-list 0 0.5 1 1.5 2 3 5 --episodes 40`
+(writes `results/antipodal_convention_predictor_noise_phase.{json,png}`).

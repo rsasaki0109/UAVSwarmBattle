@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: priority deconfliction fails the symmetric hub — it trades deadlock for collision.**
+- **Latest: sensing noise restores the predictor's relevance under the convention.** With
+  ground-truth peer positions, turning the right-of-way convention on makes the predictor a
+  non-decision (`cv+row` = `gt+row`, a tie). But that is a clean-sensing artefact. Add a noisy peer
+  tracker (`noisy_tracker`, matched position/velocity noise) and the goal-aware forecast re-earns its
+  keep: `game_theoretic` anchors each peer on its *exact* goal, so a noisy position still yields a
+  usable forecast, while `constant_velocity` extrapolates the corrupted state and degrades fast. At
+  N=8 gt+row beats cv+row across σ ∈ [0.5, 2] (65 % vs 98 % at σ=1, `c=13/b=0`, p=2.4e-4); at N=12 the
+  denser hub makes the gap appear at once (22 % vs 78 % at σ=0.5, p=3.0e-6). It is stress-gated: a tie
+  at σ=0 (clean ceiling) and again at σ ≥ 3 (noise drowns even gt's anchor — both floor). Symmetry-
+  breaking and a good forecast are *complementary* once sensing is realistic.
+- **Priority deconfliction fails the symmetric hub — it trades deadlock for collision.**
   The convention and the roundabout break the antipodal deadlock by *symmetric participation*; the
   classic third school is a *priority* total order in which lower-priority robots yield. A new CBF
   `priority_yield` (decentralized order from each peer's observable goal) does **not** solve the hub

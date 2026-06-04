@@ -123,7 +123,8 @@ def test_priority_yield_ignores_lower_priority_peer():
     # With priority_yield, a peer whose GOAL is lexicographically LOWER than the
     # ego's is lower-priority and ignored (assumed to yield): the ego keeps
     # heading to its goal. A peer with a HIGHER goal is avoided.
-    pos = np.array([5.0, 25.0]); goal = np.array([45.0, 25.0])  # ego goal key (45,25)
+    pos = np.array([5.0, 25.0])
+    goal = np.array([45.0, 25.0])  # ego goal key (45,25)
     low = {"position": [9.0, 25.0], "velocity": [0.0, 0.0], "radius": 0.4,
            "goal": [5.0, 25.0]}    # lower goal -> ignored
     high = {"position": [9.0, 25.0], "velocity": [0.0, 0.0], "radius": 0.4,
