@@ -37,6 +37,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.collections import LineCollection
 
 from uav_nav_lab.planner import PLANNER_REGISTRY
 
@@ -110,8 +111,22 @@ def _h_ok(v):
     return float(np.hypot(v[0], v[1])) > 0.1
 
 
+def _candidate_fan(planner, pos_i, goal_i, horizon, stride):
+    """The planner's sampled candidate velocities, rolled out at constant velocity
+    for `horizon` steps from pos_i — the "considered futures" the sampler scores."""
+    to_goal = np.asarray(goal_i, float) - pos_i
+    dist = float(np.linalg.norm(to_goal))
+    if dist < 1e-6 or not hasattr(planner, "_candidates"):
+        return []
+    v_pref = to_goal / dist * SPEED
+    cands = planner._candidates(v_pref)[::stride]
+    steps = np.arange(1, horizon + 1)[:, None] * DT
+    return [pos_i + steps * v for v in cands]  # each (horizon, 2)
+
+
 def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
-              n_obstacles=0, wind_base=None, wind_gust=0.0):
+              n_obstacles=0, wind_base=None, wind_gust=0.0,
+              record_fans=False, fan_horizon=12, fan_stride=2):
     rng = random.Random(seed)
     starts, goals = _layout(scenario, n, rng)
     m = len(starts)
@@ -122,6 +137,7 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
     traj = [[p.copy() for p in pos]]
     obstacles = _spawn_obstacles(n_obstacles, rng) if n_obstacles else []
     obs_traj = [[o["position"].copy() for o in obstacles]]
+    fans = [None]  # per-frame: None (reuse previous) or list-per-drone of segment lists
     rp_steps = max(1, round(replan_period / DT))
     for step in range(max_steps):
         t = step * DT
@@ -132,6 +148,7 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
                     o["velocity"][d] *= -1
                 if o["position"][d] > 46.0 and o["velocity"][d] > 0:
                     o["velocity"][d] *= -1
+        frame_fan = None
         if step % rp_steps == 0:
             peers = [{"position": pos[j].copy(), "velocity": vel[j].copy(), "radius": 0.4}
                      for j in range(m)]
@@ -143,6 +160,9 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
                 plan[i].set_current_state(pos[i], vel[i])
                 others = [peers[j] for j in range(m) if j != i] + obs_dicts
                 vel[i] = plan[i].plan(pos[i], goals[i], None, dynamic_obstacles=others).target_velocity
+            if record_fans:
+                frame_fan = [_candidate_fan(plan[i], pos[i], goals[i], fan_horizon, fan_stride)
+                             if not arrived[i] else [] for i in range(m)]
         w = _wind(t, wind_base, wind_gust)
         for i in range(m):
             if not arrived[i]:
@@ -151,9 +171,12 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
                     arrived[i] = True
         traj.append([p.copy() for p in pos])
         obs_traj.append([o["position"].copy() for o in obstacles])
+        fans.append(frame_fan)
         if all(arrived):
             break
-    return np.array(traj), np.array(goals), np.array(obs_traj) if obstacles else None
+    return (np.array(traj), np.array(goals),
+            np.array(obs_traj) if obstacles else None,
+            fans if record_fans else None)
 
 
 def main():
@@ -168,11 +191,15 @@ def main():
     ap.add_argument("--gust", type=float, default=0.0)
     ap.add_argument("--fps", type=int, default=25)
     ap.add_argument("--trail", type=int, default=40)
+    ap.add_argument("--rollouts", action="store_true",
+                    help="draw each drone's sampled candidate-velocity fan (MPPI-style cloud)")
+    ap.add_argument("--rollout-horizon", type=int, default=12)
     ap.add_argument("--out", default="docs/images/swarm.gif")
     args = ap.parse_args()
 
     sims = [_simulate(k, args.scenario, args.n, args.seed, replan_period=args.replan_period,
-                      n_obstacles=args.obstacles, wind_base=args.wind, wind_gust=args.gust)
+                      n_obstacles=args.obstacles, wind_base=args.wind, wind_gust=args.gust,
+                      record_fans=args.rollouts, fan_horizon=args.rollout_horizon)
             for k in args.arms]
     T = max(s[0].shape[0] for s in sims)
     m = sims[0][0].shape[1]
@@ -189,8 +216,16 @@ def main():
     xlo, ylo = allpts.min(0) - pad
     xhi, yhi = allpts.max(0) + pad
 
+    def _forward_fill(fans):
+        out, last = [], None
+        for fr in fans:
+            if fr is not None:
+                last = fr
+            out.append(last)
+        return out
+
     arts = []
-    for ax, kind, (traj, goals, obs_traj) in zip(axes, args.arms, sims):
+    for ax, kind, (traj, goals, obs_traj, fans) in zip(axes, args.arms, sims):
         ax.set_facecolor("#0d1117")
         ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi)
         ax.set_aspect("equal"); ax.set_xticks([]); ax.set_yticks([])
@@ -201,6 +236,8 @@ def main():
             title += "  +wind"
         if args.obstacles:
             title += f"  +{args.obstacles} obstacles"
+        if args.rollouts:
+            title += "  +rollouts"
         ax.set_title(title, color="#e6edf3", fontsize=15, pad=10, fontweight="bold")
         ax.scatter(goals[:, 0], goals[:, 1], marker="x", s=70, c=colors, linewidths=2.0, alpha=0.5)
         if args.wind is not None and (args.wind[0] or args.wind[1]):
@@ -208,6 +245,15 @@ def main():
             ax.annotate("", xy=(xlo + 5 + wn[0] * 3, ylo + 4 + wn[1] * 3),
                         xytext=(xlo + 5, ylo + 4),
                         arrowprops=dict(arrowstyle="-|>", color="#58a6ff", lw=2.5, alpha=0.85))
+        # candidate-fan clouds (one LineCollection per drone, drawn under everything)
+        fan_cols = None
+        ff = None
+        if fans is not None:
+            ff = _forward_fill(fans)
+            fan_cols = [LineCollection([], colors=[colors[i]], linewidths=0.7, alpha=0.18, zorder=1)
+                        for i in range(m)]
+            for lc in fan_cols:
+                ax.add_collection(lc)
         trails = [ax.plot([], [], "-", lw=2.0, color=colors[i], alpha=0.6)[0] for i in range(m)]
         dots = ax.scatter([s[0] for s in traj[0]], [s[1] for s in traj[0]],
                           s=130, c=colors, edgecolors="white", linewidths=1.0, zorder=5)
@@ -215,11 +261,11 @@ def main():
         obs_dots = ax.scatter([], [], s=900, facecolors="#da3633", edgecolors="#ff7b72",
                               linewidths=1.5, alpha=0.85, zorder=4) if n_obs else None
         flash = ax.scatter([], [], s=420, facecolors="none", edgecolors="#ffd33d", linewidths=3.0, zorder=6)
-        arts.append((traj, obs_traj, trails, dots, obs_dots, flash))
+        arts.append((traj, obs_traj, trails, dots, obs_dots, flash, fan_cols, ff))
 
     def update(f):
         out = []
-        for (traj, obs_traj, trails, dots, obs_dots, flash) in arts:
+        for (traj, obs_traj, trails, dots, obs_dots, flash, fan_cols, ff) in arts:
             tt = min(f, traj.shape[0] - 1)
             cur = traj[tt]
             dots.set_offsets(cur)
@@ -227,6 +273,11 @@ def main():
             for i in range(m):
                 seg = traj[lo:tt + 1, i, :]
                 trails[i].set_data(seg[:, 0], seg[:, 1])
+            if fan_cols is not None:
+                frame_fan = ff[min(tt, len(ff) - 1)]
+                for i in range(m):
+                    fan_cols[i].set_segments(frame_fan[i] if frame_fan else [])
+                out += fan_cols
             ocur = None
             if obs_dots is not None:
                 ocur = obs_traj[min(tt, obs_traj.shape[0] - 1)]

@@ -32,12 +32,17 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 
 ## Gallery
 
-| | | |
-|---|---|---|
-| <img src="docs/images/swarm_big_roundabout.gif" width="270"><br><sub>**18-drone roundabout** — an explicit shared ring (Merry-Go-Round) clears the hub collision-free at any density.</sub> | <img src="docs/images/swarm_obstacle_gauntlet.gif" width="270"><br><sub>**Obstacle gauntlet** — a dozen drones weave through six fast-sweeping bodies.</sub> | <img src="docs/images/swarm_wind.gif" width="270"><br><sub>**Flying a crosswind** — a gusting wind field bows every track; the reactive avoider keeps correcting.</sub> |
-| <img src="docs/images/swarm_crossing_rvo_vs_orca.gif" width="270"><br><sub>**RVO's reciprocal dance vs ORCA's glide** — RVO's tracks kink, ORCA's stay smooth.</sub> | <img src="docs/images/compare_rrt_vs_rrt_star.gif" width="270"><br><sub>**RRT vs RRT\*** — the "optimal" path drives straight into the moving obstacle.</sub> | <img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" width="270"><br><sub>**GPU-MPPI vs MPC in 3-D**, sampled rollouts visualised.</sub> |
+<div align="center">
+<img src="docs/images/swarm_flagship_all.gif" width="680" alt="16 drones cross while four bodies sweep the field and a gusting crosswind bows every track">
+<br><sub><b>Everything at once</b> — 16 drones cross while four bodies sweep the field and a gusting crosswind bows every track.</sub>
+</div>
 
-Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed); the 3-D / photorealistic ones use the [AirSim](docs/images/demo_airsim_multi.gif) backend.
+| | | | |
+|---|---|---|---|
+| <img src="docs/images/swarm_big_roundabout.gif" width="210"><br><sub>**18-drone roundabout** — an explicit shared ring clears the hub collision-free at any density.</sub> | <img src="docs/images/swarm_rollout_cloud.gif" width="210"><br><sub>**Sampling cloud** — each drone's fan of scored candidate velocities.</sub> | <img src="docs/images/swarm_obstacle_gauntlet.gif" width="210"><br><sub>**Obstacle gauntlet** — a dozen drones weave through six sweeping bodies.</sub> | <img src="docs/images/swarm_wind.gif" width="210"><br><sub>**Crosswind** — a gusting wind field bows every track.</sub> |
+| <img src="docs/images/swarm_crossing_rvo_vs_orca.gif" width="210"><br><sub>**RVO dance vs ORCA glide** — RVO's tracks kink, ORCA's stay smooth.</sub> | <img src="docs/images/swarm_antipodal_orca_vs_hrvo.gif" width="210"><br><sub>**ORCA vs HRVO** at the hub — collide vs roundabout.</sub> | <img src="docs/images/compare_rrt_vs_rrt_star.gif" width="210"><br><sub>**RRT vs RRT\*** — the "optimal" path drives into the obstacle.</sub> | <img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" width="210"><br><sub>**GPU-MPPI vs MPC in 3-D**, rollouts visualised.</sub> |
+
+Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `--obstacles`, `--wind`, `--rollouts` flags); the 3-D / photorealistic ones use the [AirSim](docs/images/demo_airsim_multi.gif) backend.
 
 ## Quick start
 
