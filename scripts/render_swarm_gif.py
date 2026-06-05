@@ -69,6 +69,19 @@ def _planner(kind, extra=None):
     return p
 
 
+GAP_HALF = 3.0  # doorway gap half-width
+
+
+def _wall():
+    """A vertical wall at x=CX of static circles, with a gap around y=CY."""
+    cells, y = [], 6.0
+    while y <= 44.0:
+        if abs(y - CY) > GAP_HALF:
+            cells.append(np.array([CX, y]))
+        y += 1.3
+    return cells
+
+
 def _layout(scenario, n, rng):
     starts, goals = [], []
     if scenario == "antipodal":
@@ -78,6 +91,16 @@ def _layout(scenario, n, rng):
             r = ring + rng.uniform(-0.4, 0.4)
             starts.append(np.array([CX + r * math.cos(a), CY + r * math.sin(a)]))
             goals.append(np.array([CX - r * math.cos(a), CY - r * math.sin(a)]))
+    elif scenario == "doorway":  # two opposing streams funnel through one gap
+        gap, lo, hi = 2.2, 7.0, 43.0
+        span = (n - 1) * gap
+        base = CY - span / 2.0
+        for i in range(n):  # left stream -> right
+            y = base + i * gap + rng.uniform(-0.3, 0.3)
+            starts.append(np.array([lo, y])); goals.append(np.array([hi, y]))
+        for i in range(n):  # right stream -> left
+            y = base + i * gap + rng.uniform(-0.3, 0.3)
+            starts.append(np.array([hi, y])); goals.append(np.array([lo, y]))
     else:  # crossing: two perpendicular streams
         gap, lo, hi = 2.6, 8.0, 42.0
         span = (n - 1) * gap
@@ -147,6 +170,8 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
     traj = [[p.copy() for p in pos]]
     obstacles = _spawn_obstacles(n_obstacles, rng) if n_obstacles else []
     obs_traj = [[o["position"].copy() for o in obstacles]]
+    wall = _wall() if scenario == "doorway" else []
+    wall_dicts = [{"position": c, "velocity": np.zeros(2), "radius": 0.7} for c in wall]
     fans = [None]  # per-frame: None (reuse previous) or list-per-drone of segment lists
     rp_steps = max(1, round(replan_period / DT))
     for step in range(max_steps):
@@ -168,7 +193,7 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
                 if arrived[i]:
                     vel[i] = np.zeros(2); continue
                 plan[i].set_current_state(pos[i], vel[i])
-                others = [peers[j] for j in range(m) if j != i] + obs_dicts
+                others = [peers[j] for j in range(m) if j != i] + obs_dicts + wall_dicts
                 vel[i] = plan[i].plan(pos[i], goals[i], None, dynamic_obstacles=others).target_velocity
             if record_fans:
                 frame_fan = [_candidate_fan(plan[i], pos[i], goals[i], fan_horizon, fan_stride)
@@ -186,12 +211,13 @@ def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
             break
     return (np.array(traj), np.array(goals),
             np.array(obs_traj) if obstacles else None,
-            fans if record_fans else None)
+            fans if record_fans else None,
+            np.array(wall) if wall else None)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scenario", choices=["antipodal", "crossing"], default="antipodal")
+    ap.add_argument("--scenario", choices=["antipodal", "crossing", "doorway"], default="antipodal")
     ap.add_argument("--arms", nargs="+", default=["orca", "hrvo"])
     ap.add_argument("--n", type=int, default=6)
     ap.add_argument("--seed", type=int, default=4017)
@@ -217,15 +243,18 @@ def main():
     cmap = plt.get_cmap("turbo")
     colors = [cmap(i / max(m - 1, 1)) for i in range(m)]
 
-    fig, axes = plt.subplots(1, len(args.arms), figsize=(5.2 * len(args.arms), 5.2))
+    pad = 3.0
+    pt_sets = [s[0].reshape(-1, 2) for s in sims]
+    pt_sets += [s[4] for s in sims if s[4] is not None]  # include wall extent
+    allpts = np.vstack(pt_sets)
+    xlo, ylo = allpts.min(0) - pad
+    xhi, yhi = allpts.max(0) + pad
+    aspect = float(np.clip((xhi - xlo) / (yhi - ylo), 0.7, 1.9))
+
+    fig, axes = plt.subplots(1, len(args.arms), figsize=(5.2 * aspect * len(args.arms), 5.2))
     if len(args.arms) == 1:
         axes = [axes]
     fig.patch.set_facecolor("#0d1117")
-
-    pad = 3.0
-    allpts = np.vstack([s[0].reshape(-1, 2) for s in sims])
-    xlo, ylo = allpts.min(0) - pad
-    xhi, yhi = allpts.max(0) + pad
 
     def _forward_fill(fans):
         out, last = [], None
@@ -236,7 +265,7 @@ def main():
         return out
 
     arts = []
-    for ax, arm, (base, _extra), (traj, goals, obs_traj, fans) in zip(axes, args.arms, parsed, sims):
+    for ax, arm, (base, _extra), (traj, goals, obs_traj, fans, wall) in zip(axes, args.arms, parsed, sims):
         ax.set_facecolor("#0d1117")
         ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi)
         ax.set_aspect("equal"); ax.set_xticks([]); ax.set_yticks([])
@@ -251,6 +280,9 @@ def main():
             title += "  +rollouts"
         ax.set_title(title, color="#e6edf3", fontsize=15, pad=10, fontweight="bold")
         ax.scatter(goals[:, 0], goals[:, 1], marker="x", s=70, c=colors, linewidths=2.0, alpha=0.5)
+        if wall is not None:
+            ax.scatter(wall[:, 0], wall[:, 1], marker="s", s=130, c="#484f58",
+                       edgecolors="#6e7681", linewidths=0.5, zorder=3)
         if args.wind is not None and (args.wind[0] or args.wind[1]):
             wn = np.array(args.wind, float); wn = wn / (np.linalg.norm(wn) + 1e-9)
             ax.annotate("", xy=(xlo + 5 + wn[0] * 3, ylo + 4 + wn[1] * 3),
