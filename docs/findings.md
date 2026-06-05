@@ -123,6 +123,7 @@ different strategies.
 - [The convention is a consensus device — a split right/left rule is worse than no rule](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
 - [The convention is for symmetric convergence only — on unstructured traffic it is a net liability](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability)
 - [A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not](#a-sensing-defect-taxonomy-noise-restores-the-predictor-under-the-convention-delay-does-not)
+- [The convention is robust to physical heterogeneity (size) but not to coordination heterogeneity](#the-convention-is-robust-to-physical-heterogeneity-size-but-not-to-coordination-heterogeneity)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8457,3 +8458,44 @@ choice; measurement noise is the thing that brings the goal-aware forecast back.
 
 Reproduce: `python scripts/antipodal_sensing_defect_phase.py --n 8 --noise-list 0 1 2 --delay-list 0 0.05 0.1 --episodes 40`
 (writes `results/antipodal_sensing_defect_phase.{json,png}`).
+
+## The convention is robust to physical heterogeneity (size) but not to coordination heterogeneity
+
+The convention's robustness to *speed* heterogeneity is established (a 4× spread is fine); mixing
+*controllers* or *directions* is not (those break it). The remaining physical axis is **size**: a
+roundabout sized for uniform drones must also hold the bigger ones, which need more clearance. Does
+a mixed big/small fleet still round the antipodal hub? (This required first fixing the peer-collision
+check, which used a *shared* radius for one side of every pair — a no-op for uniform fleets but
+wrong for heterogeneous ones; each drone is now checked with its own radius.) MPC, antipodal N=6,
+alternating big/small radii (mean 0.4 m; each drone's `safety_margin` scaled to its own size), n=40:
+
+| spread | radii (big/small) | het, no convention | het + pairwise | pairwise vs none |
+|---|---|---|---|---|
+| 0.0 | 0.40 / 0.40 | 24/40 | **40/40** | b=0/c=16, **<1e-9** |
+| 0.3 | 0.55 / 0.25 | 26/40 | **40/40** | b=0/c=14, **1e-4** |
+| 0.6 | 0.70 / 0.20 | 23/40 | **40/40** | b=0/c=17, **<1e-9** |
+| 0.9 | 0.85 / 0.20 | 26/40 | **40/40** | b=0/c=14, **1e-4** |
+
+- **The convention is robust to size heterogeneity — completely.** A fleet mixing 0.85 m and 0.20 m
+  drones (a 4.25× radius ratio) rounds the hub at 40/40 under the convention, identical to the
+  uniform fleet, at every spread tested. The roundabout spaces the drones out enough that the size
+  mix is irrelevant once each keeps its own clearance.
+
+- **This sharpens the heterogeneity dichotomy.** The convention shrugs off *physical* heterogeneity
+  — different speeds (a 4× spread, prior result) and now different sizes (a 4× ratio) — because
+  those do not change which way each drone should rotate. But it is broken by *coordination*
+  heterogeneity — mixed [reciprocal controllers](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
+  or [mixed convention directions](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
+  — because those break the shared agreement the convention rests on. Heterogeneity in *what the
+  drones are* is fine; heterogeneity in *what rule they follow* is fatal.
+
+- **(Fix.)** The peer-collision check now uses each drone's own radius (`radii[i] + radii[j]`); it
+  previously used a shared `drone_radius` on the i-side — invisible for uniform fleets but it would
+  let an oversized drone overlap a peer undetected. Any future heterogeneous-size work depends on it.
+
+Net: the right-of-way is robust to *who* is in the fleet (fast/slow, big/small) and fragile only to
+*disagreement about the rule* — exactly the profile of a coordination convention rather than a
+physical avoidance trick.
+
+Reproduce: `python scripts/antipodal_hetero_radii_phase.py --n 6 --spread-list 0 0.3 0.6 0.9 --episodes 40`
+(writes `results/antipodal_hetero_radii_phase.json`).

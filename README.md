@@ -234,7 +234,19 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: a sensing-defect taxonomy — noise restores the predictor under the convention, delay
+- **Latest: the convention is robust to physical heterogeneity (size) but not to coordination
+  heterogeneity.** The remaining heterogeneity axis is drone *size*: does a mixed big/small fleet
+  still round the antipodal hub? Yes — completely. Mixing 0.85 m and 0.20 m drones (a 4.25× radius
+  ratio), the convention rescues 40/40 at every spread, identical to a uniform fleet (vs ~24/40
+  without it, p≤1e-4). This sharpens the dichotomy: the convention shrugs off *physical*
+  heterogeneity (speed, size — they don't change which way to rotate) but is broken by *coordination*
+  heterogeneity (mixed [controllers](docs/findings.md#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
+  or [directions](docs/findings.md#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule),
+  which break the shared agreement). Heterogeneity in *what the drones are* is fine; in *what rule
+  they follow* is fatal. (Also fixes the peer-collision check to use each drone's own radius — a
+  no-op for uniform fleets, needed for heterogeneous ones.) See
+  [docs/findings.md](docs/findings.md#the-convention-is-robust-to-physical-heterogeneity-size-but-not-to-coordination-heterogeneity).
+- **A sensing-defect taxonomy — noise restores the predictor under the convention, delay
   does not.** Position *noise* re-opens the gt+row > cv+row gap that perfect sensing closes; is that
   general to tracking error or specific to noise? Crossing position noise (σ) × perception delay (τ)
   on the antipodal swarm (N=8, convention on, paired McNemar, n=40): every σ>0 cell is a significant
