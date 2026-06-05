@@ -128,6 +128,7 @@ different strategies.
 - [The reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed: reciprocity buys safety, the half-plane LP buys smoothness](#the-reciprocal-avoidance-lineage-vorvoorca-decomposed-reciprocity-buys-safety-the-half-plane-lp-buys-smoothness)
 - [ORCA's cure is the half-plane structure, not continuity: refining RVO's sampling does not reduce its oscillation](#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation)
 - [HRVO confirms it constructively: a side-commitment fixes RVO's oscillation and safety while staying sampled; ORCA's LP only polishes the residual](#hrvo-confirms-it-constructively-a-side-commitment-fixes-rvos-oscillation-and-safety-while-staying-sampled-orcas-lp-only-polishes-the-residual)
+- [HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8701,3 +8702,47 @@ add the commitment and the same coarse grid is already smooth.
 
 Reproduce: `python scripts/hrvo_oscillation_phase.py --n 4 --episodes 40 --workers 6`
 (writes `results/hrvo_oscillation_phase.json`).
+
+## HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention
+
+HRVO cures RVO's oscillation by committing each agent to *one side* of every obstacle. A side-commitment
+is itself a local symmetry-breaker — and symmetry is exactly what the antipodal hub (N drones on a
+ring, each heading to the diametrically opposite point) breaks reactive avoiders on. The whole
+right-of-way convention line of work exists to inject an *explicit* symmetry-breaking rule there. So a
+sharp question bridges the two threads: does HRVO's commitment dissolve the antipodal deadlock *for
+free*, with no explicit convention? Self-contained antipodal sim (same single-integrator dynamics;
+**replan_period = 0.5 s** — the commitment operating point at which the hub deadlock appears, since
+full per-step reactivity hides it), arms rvo / hrvo / orca, small per-seed ring jitter, paired by
+seed, n=40:
+
+| N | rvo | hrvo | orca | hrvo vs orca |
+|---|---|---|---|---|
+| 4 | 5/40 | **31/40** | 19/40 | +16/−4, p=0.012 |
+| 6 | 1/40 | **11/40** | 0/40 | +11/−0, p=9.8e-4 |
+| 8 | 0/40 | 3/40 | 0/40 | +3/−0, p=0.25 (ns) |
+| 10 | 0/40 | 0/40 | 0/40 | tie |
+
+Every failure is a collision (zero timeouts anywhere): these reactive planners drive into the hub and
+touch, they do not freeze.
+
+- **The side-commitment partially breaks the deadlock — and beats ORCA at it.** At N=4 HRVO reaches
+  31/40 vs ORCA's 19 and RVO's 5; at N=6, 11/40 vs 0–1 for both. HRVO is significantly safer than both
+  the reciprocal baselines at the hub for N≤6 (vs RVO p=2e-7/2e-3; vs ORCA p=0.012/9.8e-4). The same
+  structural commitment that smooths the reciprocal dance also does real symmetry-breaking work — it is
+  not only an oscillation fix.
+
+- **But it is partial, and decays with density.** The advantage shrinks to a non-significant 3/40 at
+  N=8 and vanishes entirely at N=10, where all three collapse to 0/40. The commitment is *local and
+  pairwise* — each agent picks a side per neighbour — and at the all-converge-at-once hub it is
+  overwhelmed as the crowd grows: too many simultaneous pairwise side-choices cannot compose into a
+  globally consistent rotation.
+
+- **So HRVO is no substitute for an explicit convention.** The right-of-way rule reaches 100% at the
+  same crowded hubs (via a *global* "everyone veers the same way" agreement); HRVO's per-pair
+  commitment gets part of the way and no further. HRVO sits *between* a stock reactive avoider and a
+  convention: it has a built-in, density-limited symmetry-breaker, where the explicit convention has a
+  global one. This connects the two arcs — the oscillation cure (#110–#113) and the symmetry/convention
+  line — and locates exactly where local structure stops and a global rule becomes necessary.
+
+Reproduce: `python scripts/antipodal_vo_family_phase.py --n-list 4 6 8 10 --episodes 40 --workers 6`
+(writes `results/antipodal_vo_family_phase.json`).
