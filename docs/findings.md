@@ -129,6 +129,7 @@ different strategies.
 - [ORCA's cure is the half-plane structure, not continuity: refining RVO's sampling does not reduce its oscillation](#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation)
 - [HRVO confirms it constructively: a side-commitment fixes RVO's oscillation and safety while staying sampled; ORCA's LP only polishes the residual](#hrvo-confirms-it-constructively-a-side-commitment-fixes-rvos-oscillation-and-safety-while-staying-sampled-orcas-lp-only-polishes-the-residual)
 - [HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention)
+- [A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8746,3 +8747,44 @@ touch, they do not freeze.
 
 Reproduce: `python scripts/antipodal_vo_family_phase.py --n-list 4 6 8 10 --episodes 40 --workers 6`
 (writes `results/antipodal_vo_family_phase.json`).
+
+## A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides
+
+The right-of-way convention was proved planner-agnostic one controller at a time — it rescues the
+antipodal deadlock for the sampling MPC, for [ORCA](#orca-is-the-missing-reciprocal-baseline-and-the-right-of-way-convention-generalises-to-it),
+for BVC and CBF. But a real swarm is *mixed*: different vehicles run different stacks. Do controllers
+with incompatible avoidance styles coordinate when they share only the convention? MPC is
+predict-then-optimize (forecast each peer, score sampled trajectories); ORCA is reciprocal
+velocity-obstacle (assume every neighbour takes half the avoidance via a velocity half-plane). Mixed,
+they mis-model each other — the MPC drone does not honour ORCA's reciprocity, so ORCA's half-measure
+is too little. Four arms on the antipodal swap (paired, n=40), each controller at its own calibrated
+convention strength (MPC `lateral_bias=4`, ORCA `lateral_bias=0.2`):
+
+![a shared convention lets MPC and ORCA interoperate; without it the mixed fleet collides](images/heterogeneous_controller_interop.png)
+
+| N | homo MPC+row | homo ORCA+row | mix MPC/ORCA, no convention | mix MPC/ORCA + row |
+|---|---|---|---|---|
+| 6 | 100 % | 100 % | 18 % | 100 % |
+| 8 | 100 % | 100 % | 10 % | 100 % |
+| 12 | 100 % | 100 % | 2 % | 100 % |
+
+- **A mixed fleet collides without the convention, worse with density.** Alternating MPC/ORCA with no
+  right-of-way drops to 18 % at N=6 and *falls* to 2 % at N=12 — the two controllers' incompatible
+  avoidance styles fail to coordinate, and the incompatibility compounds as the hub fills. (Each
+  controller *alone* would merely deadlock here; mixed, they actively collide.)
+- **The shared convention rescues the mix to the homogeneous ceiling.** mix+row = 100 % at every N
+  (vs mix-off: `c=33/b=0` p=2.3e-10 at N=6, rising to `c=39/b=0` p=3.6e-12 at N=12). The *same*
+  "veer right" rule, expressed in each controller's own cost/preference, is enough for a
+  predict-optimize planner and a reciprocal-LP planner to share a hub.
+- **Mixing is penalty-free once the rule is shared.** mix+row is a McNemar tie with both homogeneous
+  fleets (`b=0/c=0`, p=1 at every N) — a heterogeneous swarm under the convention is exactly as
+  reliable as a uniform one.
+
+This is the fleet-level capstone of the planner-agnostic thread: the convention is not just a
+per-controller fix but a **common protocol**. Controllers that cannot read each other's intent still
+coordinate if they agree on a side. The decentralized win the convention buys — no communication, no
+shared planner — extends to no *shared controller* either; only a shared *rule*. (Scope: MPC + ORCA,
+the predict-optimize / reciprocal-LP pair; the same construction extends to the BVC and CBF ports.)
+
+Reproduce: `python scripts/antipodal_heterogeneous_controller_phase.py --n-list 6 8 12 --episodes 40`
+(writes `results/antipodal_heterogeneous_controller_phase.{json,png}`).

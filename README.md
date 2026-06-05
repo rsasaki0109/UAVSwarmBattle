@@ -234,7 +234,17 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low
+- **Latest: a shared convention lets heterogeneous controllers interoperate; without it a mixed
+  fleet collides.** The right-of-way convention was proved planner-agnostic one controller at a time;
+  but a real swarm is *mixed*. An alternating MPC/ORCA fleet (predict-optimize + reciprocal-LP, two
+  incompatible avoidance styles) on the antipodal swap *collides* without a convention — 18 % at N=6,
+  falling to 2 % at N=12 as the incompatibility compounds with density. The *same* "veer right" rule,
+  expressed in each controller's own cost, restores it to the homogeneous **100 %** at every N
+  (`c=39/b=0`, p=3.6e-12 at N=12), and mixing is a McNemar tie with both homogeneous fleets — *zero*
+  penalty. The convention is a **common protocol**: controllers that cannot read each other's intent
+  still coordinate if they agree on a side. The decentralized win extends to no shared *controller*,
+  only a shared *rule*.
+- **HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low
   density, but no substitute for an explicit convention.** Bridging the oscillation arc to the
   symmetry/convention line: HRVO cures RVO's oscillation by committing each agent to one side of every
   obstacle, and a side-commitment is itself a local symmetry-breaker — so does it dissolve the
