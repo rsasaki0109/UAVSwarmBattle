@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed — reciprocity buys safety, the
+- **Latest: ORCA's cure is the half-plane structure, not continuity — refining RVO's sampling does
+  not reduce its oscillation (and costs safety).** The previous result attributed RVO's oscillation to
+  its *discrete sampled* selection and claimed ORCA cures it by being *continuous*. That claim is
+  falsifiable, so it was tested: sweeping RVO's velocity-sampling grid over a 16× range (n_angles
+  6→96). Refining it does **not** reduce the oscillation — rvo@6 vs rvo@96 is a per-seed wash
+  (p=0.86), non-monotone, and at 16× resolution RVO still oscillates **38× more than ORCA** (p=1.9e-9),
+  never approaching the continuous floor. Worse, finer sampling *costs* safety: success falls
+  monotonically (30→21/30; rvo@6 beats rvo@96 on 9 seeds, 0 reversals, McNemar p=3.9e-3) because more
+  candidates let RVO hug the collision boundary. So oscillation is intrinsic to the per-step
+  penalty-argmin selection, not its granularity; **ORCA's advantage is the half-plane *structure*, not
+  continuity.** This corrects the prior section's mechanism clause (the safety ladder and
+  two-rungs-decomposition stand). See
+  [docs/findings.md](docs/findings.md#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation).
+- **The reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed — reciprocity buys safety, the
   half-plane LP buys smoothness.** With the RVO→ORCA step reproduced, the foundational ancestor **VO**
   (Velocity Obstacles, Fiorini & Shiller 1998 — non-reciprocal, each agent assumes full
   responsibility) is now added as `planner.type: vo` to complete the three-rung lineage. The textbook
