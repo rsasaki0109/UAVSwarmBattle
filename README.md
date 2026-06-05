@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: HRVO confirms the cure is structure — a side-commitment fixes RVO's oscillation and
+- **Latest: HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low
+  density, but no substitute for an explicit convention.** Bridging the oscillation arc to the
+  symmetry/convention line: HRVO cures RVO's oscillation by committing each agent to one side of every
+  obstacle, and a side-commitment is itself a local symmetry-breaker — so does it dissolve the
+  antipodal hub deadlock for free? Self-contained antipodal sim at the commitment operating point
+  (replan_period=0.5, where the hub deadlock appears), arms rvo/hrvo/orca, n=40. Partially, and it
+  beats both reciprocal baselines: at N=4 HRVO reaches 31/40 vs ORCA 19 vs RVO 5; at N=6, 11/40 vs 0–1
+  (hrvo>orca p=0.012/9.8e-4). But the advantage decays with density — 3/40 at N=8 (ns), all three
+  collapse to 0/40 at N=10. The commitment is local and pairwise, so the crowded all-converge hub
+  overwhelms it; the explicit right-of-way convention (global rotation) reaches 100% there where HRVO
+  cannot. HRVO sits *between* a stock reactive avoider and a convention — a built-in but
+  density-limited symmetry-breaker. All failures are collisions (zero timeouts). See
+  [docs/findings.md](docs/findings.md#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention).
+- **HRVO confirms the cure is structure — a side-commitment fixes RVO's oscillation and
   safety while staying sampled; ORCA's LP only polishes the residual.** The previous result refuted
   "continuity is the cure" negatively; HRVO (Hybrid Reciprocal Velocity Obstacle, Snape et al.
   2009/2011 — the oscillation fix that predates ORCA) tests the positive form, added as
