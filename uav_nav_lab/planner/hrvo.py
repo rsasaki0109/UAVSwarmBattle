@@ -67,6 +67,9 @@ class HRVOPlanner(Planner):
         n_angles: int = 24,
         w_collision: float = 2.0,
         time_step: float = 0.05,
+        lateral_bias: float = 0.0,
+        pairwise_bias: float = 0.0,
+        pairwise_radius: float = 5.0,
     ) -> None:
         self.max_speed = float(max_speed)
         self.radius = float(radius)
@@ -78,6 +81,12 @@ class HRVOPlanner(Planner):
         self.n_angles = int(n_angles)
         self.w_collision = float(w_collision)
         self.time_step = float(time_step)
+        # Right-of-way convention knobs (default 0 = off), ported from ORCA/MPC.
+        # The side-commitment in the HRVO cone fixes oscillation; these tilt the
+        # *preferred* velocity so the swarm also breaks the antipodal symmetry.
+        self.lateral_bias = float(lateral_bias)
+        self.pairwise_bias = float(pairwise_bias)
+        self.pairwise_radius = max(1e-6, float(pairwise_radius))
         self._cur_vel: np.ndarray | None = None
 
     @classmethod
@@ -93,6 +102,9 @@ class HRVOPlanner(Planner):
             n_angles=int(cfg.get("n_angles", 24)),
             w_collision=float(cfg.get("w_collision", 2.0)),
             time_step=float(cfg.get("time_step", cfg.get("dt", 0.05))),
+            lateral_bias=float(cfg.get("lateral_bias", 0.0)),
+            pairwise_bias=float(cfg.get("pairwise_bias", 0.0)),
+            pairwise_radius=float(cfg.get("pairwise_radius", 5.0)),
         )
 
     def reset(self) -> None:
@@ -130,6 +142,29 @@ class HRVOPlanner(Planner):
             return Plan(waypoints=np.asarray([pos], dtype=float),
                         target_velocity=np.zeros(2), meta={"planner": "hrvo"})
         v_pref = to_goal / dist * self.max_speed
+
+        # Right-of-way convention: tilt the preferred velocity (the side-committing
+        # HRVO cone still resolves the pairwise choice; this breaks the swarm-level
+        # antipodal symmetry). Mirrors the ORCA port exactly.
+        if self.lateral_bias != 0.0:
+            gdir = to_goal / dist
+            right = np.array([gdir[1], -gdir[0]])
+            v_pref = v_pref + self.lateral_bias * self.max_speed * right
+            v_pref = v_pref / _norm(v_pref) * self.max_speed
+        if self.pairwise_bias > 0.0 and dynamic_obstacles:
+            tilt = np.zeros(2)
+            for d in dynamic_obstacles:
+                rel = np.asarray(d["position"], dtype=float)[:2] - pos
+                dn = _norm(rel)
+                if dn < _EPS:
+                    continue
+                nrel = rel / dn
+                cw = np.array([nrel[1], -nrel[0]])  # pass on the neighbour's right
+                tilt = tilt + math.exp(-dn / self.pairwise_radius) * cw
+            v_pref = v_pref + self.pairwise_bias * self.max_speed * tilt
+            vp = _norm(v_pref)
+            if vp > _EPS:
+                v_pref = v_pref / vp * self.max_speed
 
         # Precompute per-neighbour HRVO cones (apex, axis u, half-angle theta).
         cones = []

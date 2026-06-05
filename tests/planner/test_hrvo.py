@@ -63,3 +63,29 @@ def test_three_d_rejected():
     p = _hrvo()
     with pytest.raises(ValueError):
         p.plan(np.zeros(3), np.array([1.0, 0.0, 1.0]), None, dynamic_obstacles=[])
+
+
+def test_pairwise_bias_tilts_toward_convention():
+    # With a neighbour ahead, pairwise_bias should tilt the chosen velocity to a
+    # consistent side vs the unbiased planner (the right-of-way convention).
+    obs = [{"position": [12.0, 25.0], "velocity": [0.0, 0.0], "radius": 0.4}]
+    base = _hrvo()
+    base.set_current_state(np.array([5.0, 25.0]), np.array([5.0, 0.0]))
+    vb = base.plan(np.array([5.0, 25.0]), np.array([45.0, 25.0]), None, dynamic_obstacles=obs).target_velocity
+    conv = _hrvo(pairwise_bias=0.6, pairwise_radius=6.0)
+    conv.set_current_state(np.array([5.0, 25.0]), np.array([5.0, 0.0]))
+    vc = conv.plan(np.array([5.0, 25.0]), np.array([45.0, 25.0]), None, dynamic_obstacles=obs).target_velocity
+    # convention tilts to the neighbour's right (clockwise => negative y here)
+    assert vc[1] < vb[1] - 1e-3
+
+
+def test_lateral_bias_zero_is_stock():
+    # A zero convention must be identical to omitting it.
+    obs = [{"position": [10.0, 25.0], "velocity": [-5.0, 0.0], "radius": 0.4}]
+    a = _hrvo()
+    a.set_current_state(np.array([5.0, 25.0]), np.array([5.0, 0.0]))
+    va = a.plan(np.array([5.0, 25.0]), np.array([45.0, 25.0]), None, dynamic_obstacles=obs).target_velocity
+    b = _hrvo(lateral_bias=0.0, pairwise_bias=0.0)
+    b.set_current_state(np.array([5.0, 25.0]), np.array([5.0, 0.0]))
+    vb = b.plan(np.array([5.0, 25.0]), np.array([45.0, 25.0]), None, dynamic_obstacles=obs).target_velocity
+    np.testing.assert_allclose(va, vb, atol=1e-9)
