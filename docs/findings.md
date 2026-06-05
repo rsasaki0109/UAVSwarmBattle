@@ -127,6 +127,7 @@ different strategies.
 - [Reproducing the RVO→ORCA improvement: ORCA removes RVO's oscillation (the reciprocal dance)](#reproducing-the-rvoorca-improvement-orca-removes-rvos-oscillation-the-reciprocal-dance)
 - [The reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed: reciprocity buys safety, the half-plane LP buys smoothness](#the-reciprocal-avoidance-lineage-vorvoorca-decomposed-reciprocity-buys-safety-the-half-plane-lp-buys-smoothness)
 - [ORCA's cure is the half-plane structure, not continuity: refining RVO's sampling does not reduce its oscillation](#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation)
+- [HRVO confirms it constructively: a side-commitment fixes RVO's oscillation and safety while staying sampled; ORCA's LP only polishes the residual](#hrvo-confirms-it-constructively-a-side-commitment-fixes-rvos-oscillation-and-safety-while-staying-sampled-orcas-lp-only-polishes-the-residual)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8654,3 +8655,49 @@ the continuous reference; oscillation as a rate (rad/s), paired by seed, 2N=8, n
 
 Reproduce: `python scripts/rvo_resolution_phase.py --angles 6 12 24 48 96 --episodes 30 --workers 6`
 (writes `results/rvo_resolution_phase.json`).
+
+## HRVO confirms it constructively: a side-commitment fixes RVO's oscillation and safety while staying sampled; ORCA's LP only polishes the residual
+
+The resolution sweep refuted "continuity is the cure" *negatively* (refining RVO does not help). The
+positive form of the corrected claim — that the cure is a *structural commitment to one side of the
+obstacle* — has a clean constructive test, and it happens to be a real published method that predates
+ORCA: **HRVO** (Hybrid Reciprocal Velocity Obstacle, Snape, van den Berg, Guy, Manocha 2009/2011),
+added here as `planner.type: hrvo`. HRVO keeps the RVO leg on the side the agent is already favouring
+but swaps in the non-reciprocal VO leg on the other side, shifting the cone apex so that switching
+sides is costly — the agent commits. Crucially it is evaluated in the **same sampled framework** as
+VO/RVO (the identical 98-candidate set; no half-plane LP, no finer sampling). If the structural
+commitment is what cures the oscillation, HRVO should collapse it toward ORCA's level *without* either
+of the things ORCA changes. Same self-contained crossing, oscillation as a rate (rad/s), 2N=8, n=40:
+
+| arm | success | oscillation rate (rad/s) |
+|---|---|---|
+| vo | 23/40 | 0.968 |
+| rvo | 36/40 | 0.527 |
+| **hrvo** | **40/40** | **0.128** |
+| orca | 40/40 | 0.017 |
+
+- **The structural commitment is the cure — confirmed constructively.** HRVO cuts RVO's oscillation
+  **4.1×** (0.527 → 0.128; rvo>hrvo on 40/40 seeds, p=1.8e-12) *while staying a sampled selector with
+  the same candidate grid*. So the bulk of the RVO→ORCA smoothness gain is reproducible without
+  continuity and without the LP — exactly what the corrected mechanism predicts, and exactly what the
+  resolution sweep could not get by refining alone.
+
+- **And the commitment delivers all of the safety.** HRVO reaches **40/40**, tying ORCA (McNemar
+  p=1.0) and fixing RVO's four collision episodes (hrvo-only 4, rvo-only 0). The reciprocal dance was
+  not just ugly — its side-ambiguity was the safety hole, and committing closes it.
+
+- **What's left for the LP is polish.** HRVO does *not* fully reach ORCA's floor: it still oscillates
+  **7.5× more** than ORCA (0.128 vs 0.017; hrvo>orca on 40/40, p=1.8e-12). That residual is the
+  sampling chatter HRVO still has and ORCA's continuous convex projection removes.
+
+This completes and decomposes the velocity-obstacle lineage **VO → RVO → HRVO → ORCA**. The 31×
+RVO→ORCA oscillation gap splits cleanly into two mechanisms in order of importance: a **structural
+side-commitment** (HRVO) that recovers 4.1× of it *and all of the safety* while remaining sampled,
+and **continuity** (ORCA's LP) that polishes the remaining 7.5×. The earlier section's instinct was
+half-right — continuity does help — but only as the second-order finish; the first-order cure, and
+the entire safety benefit, is structure. It also explains why the resolution sweep failed: RVO has no
+side-commitment, so more candidates just supply more mirror-image velocities to flip between;
+add the commitment and the same coarse grid is already smooth.
+
+Reproduce: `python scripts/hrvo_oscillation_phase.py --n 4 --episodes 40 --workers 6`
+(writes `results/hrvo_oscillation_phase.json`).
