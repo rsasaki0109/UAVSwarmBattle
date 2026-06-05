@@ -33,6 +33,11 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 ## Gallery
 
 <div align="center">
+<img src="docs/images/swarm_airsim_dashboard.gif" width="840" alt="Foxglove-style live dashboard from one AirSim flight: FPV camera, LiDAR top-down, 4-drone scene, and min-separation telemetry">
+<br><sub><b>Live AirSim dashboard</b> — one flight, four synced panels: Drone1's FPV camera, its LiDAR top-down, the 4-drone scene, and min-separation telemetry (the closest approach dips to ~2 m at the hub, above the 0.8 m collision line).</sub>
+</div>
+
+<div align="center">
 <table>
 <tr>
 <td align="center"><img src="docs/images/swarm_airsim_topdown.gif" width="300"><br><sub><b>Photorealistic AirSim</b> — 4 real quadrotors cross one hub in Unreal Engine, top-down chase-cam.</sub></td>
@@ -52,7 +57,7 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 | <img src="docs/images/swarm_obstacle_gauntlet.gif" width="240"><br><sub>**Obstacle gauntlet** — a dozen drones weave through six sweeping bodies.</sub> | <img src="docs/images/swarm_wind.gif" width="240"><br><sub>**Crosswind** — a gusting wind field bows every track.</sub> | <img src="docs/images/swarm_antipodal_orca_vs_hrvo.gif" width="240"><br><sub>**ORCA vs HRVO** at the hub — collide vs roundabout.</sub> |
 | <img src="docs/images/swarm_crossing_rvo_vs_orca.gif" width="240"><br><sub>**RVO dance vs ORCA glide** — RVO's tracks kink, ORCA's stay smooth.</sub> | <img src="docs/images/compare_rrt_vs_rrt_star.gif" width="240"><br><sub>**RRT vs RRT\*** — the "optimal" path drives into the obstacle.</sub> | <img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" width="240"><br><sub>**GPU-MPPI vs MPC in 3-D**, rollouts visualised.</sub> |
 
-Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `antipodal` / `crossing` / `doorway` scenarios, `--obstacles`, `--wind`, `--rollouts`, `+row` convention flags) — and the 3-D sphere/field is `scripts/render_swarm_3d_gif.py`. The photorealistic clips are real [AirSim](https://github.com/microsoft/AirSim) (Unreal Engine), recorded against a running Blocks server with `scripts/record_airsim_topdown_live.py` (top-down) and `scripts/record_airsim_lidar_live.py` (onboard LiDAR point cloud).
+Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `antipodal` / `crossing` / `doorway` scenarios, `--obstacles`, `--wind`, `--rollouts`, `+row` convention flags) — and the 3-D sphere/field is `scripts/render_swarm_3d_gif.py`. The photorealistic clips are real [AirSim](https://github.com/microsoft/AirSim) (Unreal Engine), recorded against a running Blocks server with `scripts/record_airsim_topdown_live.py` (top-down), `scripts/record_airsim_lidar_live.py` (onboard LiDAR point cloud), and `scripts/record_airsim_dashboard.py` (the Foxglove-style multi-panel dashboard).
 
 ## Quick start
 
