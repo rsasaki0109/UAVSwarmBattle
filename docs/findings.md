@@ -130,6 +130,7 @@ different strategies.
 - [HRVO confirms it constructively: a side-commitment fixes RVO's oscillation and safety while staying sampled; ORCA's LP only polishes the residual](#hrvo-confirms-it-constructively-a-side-commitment-fixes-rvos-oscillation-and-safety-while-staying-sampled-orcas-lp-only-polishes-the-residual)
 - [HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention)
 - [A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
+- [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8788,3 +8789,45 @@ the predict-optimize / reciprocal-LP pair; the same construction extends to the 
 
 Reproduce: `python scripts/antipodal_heterogeneous_controller_phase.py --n-list 6 8 12 --episodes 40`
 (writes `results/antipodal_heterogeneous_controller_phase.{json,png}`).
+
+## A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment
+
+HRVO's side-commitment partially breaks the antipodal deadlock on its own but tops out as the crowd
+grows — a *local, pairwise* symmetry-breaker. The right-of-way convention is a *global* rotation rule
+that scales further. The natural hope is that they **compose**: a planner that already commits to a
+side locally, plus a global rule, should push the density cliff further out than the rule alone. So
+the convention (`pairwise_bias`) is wired into HRVO and compared, on the antipodal hub across density,
+against ORCA + the same convention (ORCA has no local commitment — it is the pure-convention control).
+Self-contained sim at the commitment operating point (replan_period=0.5), paired by seed, n=40:
+
+| N | hrvo | hrvo + row | orca | orca + row | hrvo+row vs orca+row |
+|---|---|---|---|---|---|
+| 8 | 0/40 | **40/40** | 0/40 | **40/40** | tie (0/0, p=1.0) |
+| 12 | 0/40 | **40/40** | 0/40 | **40/40** | tie (0/0, p=1.0) |
+| 16 | 0/40 | 38/40 | 0/40 | 39/40 | tie (1/2, p=1.0) |
+
+<div align="center"><img src="images/swarm_hrvo_convention.gif" width="720"><br>
+<sub><b>N=12.</b> HRVO's side-commitment alone (left) still piles into the hub; the same planner with the
+right-of-way convention (right) spirals into a roundabout — exactly as ORCA does with the rule.</sub></div>
+
+- **The convention rescues HRVO, decisively and planner-agnostically.** `hrvo + row` lifts the deadlock
+  from 0/40 to 40/40 at N=8 and 12 (and 38/40 at 16) — `c=37/b=0` to `c=40/b=0`, p<1e-11 at every N.
+  The right-of-way now generalises to a fifth controller family (MPC, ORCA, BVC, CBF, and HRVO).
+
+- **But the local commitment and the global rule do NOT compose.** `hrvo + row` and `orca + row` are a
+  McNemar **tie at every density** (0/0, 0/0, 1/2; p=1.0), and they crack at the *same* place (38–39/40
+  at N=16). HRVO brings a local side-commitment that ORCA lacks, yet once the global convention is on
+  it buys *nothing* — the two hit an identical density cliff. The commitment is not additive with the
+  rule; it is **subsumed** by it.
+
+- **Same domination pattern, a third mechanism.** This is the side-commitment echo of "once the
+  convention is on, the predictor is free" — there a smarter *forecast* became redundant under the
+  rule; here a local *structural commitment* does. A global rotational convention is the primary
+  symmetry-breaker, and it makes whatever local cleverness a planner carries — better prediction
+  ([#83](#once-the-right-of-way-convention-is-on-the-predictor-is-free--cv-and-gt-become-identical)) or
+  side-commitment (here) — a non-decision on the symmetric hub. It refines the
+  [partial-breaker result](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention):
+  HRVO's commitment is not just *weaker* than the convention, it is *redundant* once the convention is present.
+
+Reproduce: `python scripts/antipodal_hrvo_convention_phase.py --n-list 8 12 16 --episodes 40 --workers 6`
+(writes `results/antipodal_hrvo_convention_phase.json`).
