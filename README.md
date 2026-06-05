@@ -25,6 +25,7 @@ Most planning repos *ship* a method. This one *interrogates* it. Every headline 
 - **The classical-planner ladder is a clearance ladder.** straight < astar < rrt\_star < rrt < mpc tracks path *directness*, not cleverness — the two "optimal" planners are the straightest and collide most.
 - **Smarter prediction backfires under symmetry.** A goal-aware predictor wins head-on (+26 pp) but *inverts* on the antipodal swap (down to 1/40) — a correct shared symmetric forecast makes every drone mirror-swerve into the same hub.
 - **The fix is a convention, not a better forecast.** A decentralised right-of-way (everyone veers the same way) turns the deadlock into a roundabout and reaches 100 %; once it is on, the predictor is *free* — smart and dumb forecasts tie.
+- **"Team-size-agnostic" carrying is geometric, not learned.** Interrogating [TeamHOI](https://splionar.github.io/TeamHOI/) (CVPR 2026): N drones carry a rigid beam through a doorway. A *fixed* formation collapses to 0/60 for every N≥3 (the beam outgrows the gap); one that *reorients* the beam holds 57–60/60 flat across N=2–8 (p≤1.7e-18). What makes cooperative carrying scale to any team size is active formation reshaping — and it costs runway, not cleverness.
 - **ORCA's edge over RVO is structure, not continuity.** Refining RVO's sampling never smooths it; HRVO's side-commitment recovers 4.1× of the gain *and all the safety* while staying sampled — ORCA's LP only polishes the residual.
 - **Risk-aversion's win is just ensembling.** CVaR-MPPI's collision drop is captured entirely by averaging sampled futures; the worst-case tail adds nothing significant.
 
@@ -35,6 +36,11 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 <div align="center">
 <img src="docs/images/swarm_airsim_dashboard.gif" width="840" alt="Foxglove-style live dashboard from one AirSim flight: FPV camera, LiDAR top-down, 4-drone scene, and min-separation telemetry">
 <br><sub><b>Live AirSim dashboard</b> — one flight, four synced panels: Drone1's FPV camera, its LiDAR top-down, the 4-drone scene, and min-separation telemetry (the closest approach dips to ~2 m at the hub, above the 0.8 m collision line).</sub>
+</div>
+
+<div align="center">
+<img src="docs/images/swarm_transport_doorway.gif" width="840" alt="Five drones carry a rigid beam through a doorway: held perpendicular the beam slams the wall; allowed to reorient, the same team rotates it to align with travel and threads the same gap">
+<br><sub><b>Cooperative carrying through a doorway</b> — five drones carry a rigid beam, same seed both sides. <b>Fixed</b> orientation (left) slams the wall; <b>reorienting</b> (right) the beam to align with travel threads the same gap. The mechanism behind "team-size-agnostic" carrying (<a href="docs/findings.md#cooperative-carrying-scales-to-any-team-size-only-if-the-formation-can-reorient--testing-teamhois-size-agnostic-claim">TeamHOI probe</a>).</sub>
 </div>
 
 <div align="center">

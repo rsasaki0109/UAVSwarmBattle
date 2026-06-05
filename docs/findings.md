@@ -130,6 +130,7 @@ different strategies.
 - [HRVO confirms it constructively: a side-commitment fixes RVO's oscillation and safety while staying sampled; ORCA's LP only polishes the residual](#hrvo-confirms-it-constructively-a-side-commitment-fixes-rvos-oscillation-and-safety-while-staying-sampled-orcas-lp-only-polishes-the-residual)
 - [HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention)
 - [A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
+- [Cooperative carrying scales to any team size only if the formation can reorient (testing TeamHOI's "size-agnostic" claim)](#cooperative-carrying-scales-to-any-team-size-only-if-the-formation-can-reorient--testing-teamhois-size-agnostic-claim)
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 ## MPC compute Pareto
 
@@ -8831,3 +8832,89 @@ right-of-way convention (right) spirals into a roundabout — exactly as ORCA do
 
 Reproduce: `python scripts/antipodal_hrvo_convention_phase.py --n-list 8 12 16 --episodes 40 --workers 6`
 (writes `results/antipodal_hrvo_convention_phase.json`).
+
+## Cooperative carrying scales to any team size only if the formation can reorient — testing TeamHOI's "size-agnostic" claim
+
+[TeamHOI](https://splionar.github.io/TeamHOI/) (CVPR 2026) learns a single
+decentralized policy for cooperative human-object interaction advertised as
+"team-size- and shape-agnostic": one policy carries an object with 2–8 agents
+(zero-shot 12/16) at >97.5 % success. What *makes* a rigid carried payload
+size-agnostic? We isolate the mechanism on the canonical hard case — threading a
+doorway — where the **geometry of the formation**, not the policy, decides.
+
+Self-contained virtual-structure sim (`scripts/_coop_transport.py`): N drones
+rigidly carry a beam from start to goal through a wall with one gap. Two arms,
+paired by seed, McNemar-exact — identical translational control (goal + doorway
+y-centring); the *only* difference is whether the beam may rotate:
+
+- **fixed** — beam held perpendicular to travel (its initial pose)
+- **adaptive** — beam reorients to align with travel near the doorway, shrinking
+  the cross-aperture footprint so it can slip through
+
+![cooperative transport through a doorway: a fixed-orientation beam slams the wall while the reorienting team threads the same gap](images/swarm_transport_doorway.gif)
+
+**Team-size axis (the TeamHOI cell).** Fixed doorway (6 m), beam length grows with
+the team (`2.5·(N−1)` m), 60 seeds:
+
+| N | beam | fixed | adaptive | b | c | p |
+|---|---|---|---|---|---|---|
+| 2 | 2.5 | 60/60 | 60/60 | 0 | 0 | 1.0 |
+| 3 | 5.0 | 0/60 | 60/60 | 0 | 60 | 1.7e-18 |
+| 4 | 7.5 | 0/60 | 60/60 | 0 | 60 | 1.7e-18 |
+| 5 | 10.0 | 0/60 | 60/60 | 0 | 60 | 1.7e-18 |
+| 6 | 12.5 | 0/60 | 60/60 | 0 | 60 | 1.7e-18 |
+| 8 | 17.5 | 0/60 | 57/60 | 0 | 57 | 1.4e-17 |
+
+- **A fixed formation's required aperture scales with team size.** At a doorway a
+  2-drone beam clears, the fixed-orientation team *collapses to 0/60 for every
+  N≥3* — the beam is now wider than the gap. The "size-agnostic" success TeamHOI
+  reports is **not free from the formation geometry**: hold the shape rigid and
+  the carried payload's footprint, hence its minimum passable aperture, grows
+  linearly with the crowd.
+- **Reorientation removes the team-size dependence.** The adaptive arm holds
+  57–60/60 flat across N=2–8 (strict Pareto, `b=0`). The mechanism that makes
+  cooperative carrying size-agnostic is **active formation reorientation**, not a
+  size-agnostic policy per se: aligning the beam with travel collapses its
+  cross-aperture footprint regardless of how many drones are on it.
+
+**Doorway-width axis (the geometric cliff).** N=4, beam 10 m, sweep gap:
+
+| gap | fixed | adaptive |
+|---|---|---|
+| 2–11 m | 0/60 | 46→60/60 |
+| 12 m | 60/60 | 60/60 |
+
+Fixed succeeds *only* once the gap exceeds the full beam length (12 m > 10 m +
+2·radius); adaptive threads down to 2 m (46/60). The separation is geometric and
+near-deterministic — this is the principle, not a tuned knob.
+
+**Runway axis (reorientation is not a free lunch).** N=5, beam 10 m, narrow gap
+4 m, sweep the wall's distance from the start:
+
+| runway | fixed | adaptive | c | p |
+|---|---|---|---|---|
+| 3–7 m | 0/60 | 0/60 | 0 | 1.0 |
+| 8 m | 0/60 | 12/60 | 12 | 4.9e-04 |
+| 9 m | 0/60 | 46/60 | 46 | 2.8e-14 |
+| 10 m | 0/60 | 57/60 | 57 | 1.4e-17 |
+| ≥14 m | 0/60 | 58–60/60 | — | — |
+
+- **The adaptive win is conditional on runway.** Reorienting a 10 m beam needs
+  ≈8–10 m of approach to complete the turn; place the wall closer and the smarter
+  arm *also* fails (0/60 at runway ≤7 m), with a genuine stochastic transition
+  band at 8–9 m (12/60, 46/60). The same boundary appears on the turn-rate knob
+  (`k_rot`: 0/60 at 0.5–1.0, 32/60 at 1.5, 57/60 at ≥2.5). Reorientation trades a
+  *spatial* requirement (a wide gap) for a *temporal/spatial* one (room and time
+  to rotate) — it does not abolish the constraint, it moves it.
+
+**Takeaway.** TeamHOI's size-agnostic carrying is real but its enabling mechanism
+is geometric: a rigid formation can only be size- and shape-agnostic if it
+**actively reshapes to the aperture**. Hold the shape fixed and the minimum
+passable gap scales with the team; allow reorientation and it does not — provided
+there is runway to reshape. This is the cooperative-carrying analogue of the
+lab's clearance/convention findings, where the cure is always *structure* (here,
+formation geometry) rather than a cleverer per-agent policy.
+
+Reproduce: `python scripts/coop_transport_doorway_phase.py --mode team --episodes 60`
+(`--mode gap` / `--mode runway` for the other two axes);
+`python scripts/render_transport_gif.py` for the figure.
