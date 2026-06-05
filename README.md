@@ -234,7 +234,20 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: reproducing the RVO→ORCA improvement — ORCA removes RVO's oscillation by 29.6×.** The
+- **Latest: the reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed — reciprocity buys safety, the
+  half-plane LP buys smoothness.** With the RVO→ORCA step reproduced, the foundational ancestor **VO**
+  (Velocity Obstacles, Fiorini & Shiller 1998 — non-reciprocal, each agent assumes full
+  responsibility) is now added as `planner.type: vo` to complete the three-rung lineage. The textbook
+  story is a monotone oscillation ladder; the pre-registered hypothesis (VO over-reacts, so oscillates
+  more than RVO) is **refuted** — VO vs RVO oscillation-rate is a per-seed coin-flip (22/40, p=0.64).
+  The real structure: success is a *clean safety ladder* (VO 23/40 < RVO 36/40 < ORCA 40/40), and the
+  oscillation collapse is concentrated at *one* rung — RVO→ORCA drops the rate 31× (p=1.8e-12) while
+  VO→RVO barely moves it. The two rungs fixed different things: reciprocity (VO→RVO) bought *safety*;
+  the continuous half-plane projection (RVO→ORCA) bought *smoothness*. Mechanism: VO and RVO share the
+  *sampled* selection, so their jitter is dominated by discretization; reciprocity changes the
+  magnitude of avoidance, not its discreteness — only ORCA's continuous LP removes the chatter. See
+  [docs/findings.md](docs/findings.md#the-reciprocal-avoidance-lineage-vorvoorca-decomposed-reciprocity-buys-safety-the-half-plane-lp-buys-smoothness).
+- **Reproducing the RVO→ORCA improvement — ORCA removes RVO's oscillation by 29.6×.** The
   lab's reciprocal baseline is ORCA (2011); its published contribution over its precursor RVO (2008)
   was eliminating RVO's *oscillation* (the "reciprocal dance" of two agents flipping between
   mirror-image sampled velocities). RVO is now implemented as its own planner (`planner.type: rvo`,

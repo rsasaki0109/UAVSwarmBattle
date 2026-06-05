@@ -125,6 +125,7 @@ different strategies.
 - [A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not](#a-sensing-defect-taxonomy-noise-restores-the-predictor-under-the-convention-delay-does-not)
 - [The convention is robust to physical heterogeneity (size) but not to coordination heterogeneity](#the-convention-is-robust-to-physical-heterogeneity-size-but-not-to-coordination-heterogeneity)
 - [Reproducing the RVO→ORCA improvement: ORCA removes RVO's oscillation (the reciprocal dance)](#reproducing-the-rvoorca-improvement-orca-removes-rvos-oscillation-the-reciprocal-dance)
+- [The reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed: reciprocity buys safety, the half-plane LP buys smoothness](#the-reciprocal-avoidance-lineage-vorvoorca-decomposed-reciprocity-buys-safety-the-half-plane-lp-buys-smoothness)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8547,3 +8548,58 @@ asserted.
 
 Reproduce: `python scripts/rvo_orca_oscillation_phase.py --n 4 --episodes 40`
 (writes `results/rvo_orca_oscillation_phase.json`).
+
+## The reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed: reciprocity buys safety, the half-plane LP buys smoothness
+
+The previous section reproduced the RVO→ORCA step. The full lineage has three rungs, and the
+foundational one is **VO** (Velocity Obstacles, Fiorini & Shiller 1998) — the non-reciprocal
+ancestor, now added as `planner.type: vo`. A VO agent avoids as if it *alone* is responsible: it
+assumes every neighbour holds its current velocity. RVO (2008) split that responsibility in half
+(the reciprocal half-velocity construction); ORCA (2011) replaced the sampled choice with a
+per-neighbour half-plane LP. The textbook telling is a monotone oscillation ladder — each rung
+smoother than the last. Is it?
+
+The pre-registered hypothesis was that VO, over-reacting because it assumes full responsibility,
+oscillates *more* than RVO. The same self-contained single-integrator crossing as the RVO→ORCA study,
+all three arms, 2N=8, n=40 — and because the non-reciprocal VO collides more, and a collided run
+*ends sooner* (so it accumulates less total heading variation regardless of how jittery it is),
+oscillation is reported as a **rate** (rad/s) to remove that early-termination confound:
+
+| arm | success | oscillation (rad) | oscillation rate (rad/s) | mean makespan |
+|---|---|---|---|---|
+| vo | 23/40 | 4.68 | 0.968 | 7.70 s |
+| rvo | 36/40 | 3.76 | 0.527 | 7.81 s |
+| orca | **40/40** | 0.13 | **0.017** | 7.45 s |
+
+Per-seed paired sign tests on the oscillation rate: vo>rvo on 22/40 seeds (vs 18, **p=0.64**);
+rvo>orca on **40/40** (vs 0, **p=1.8e-12**, 31×); vo>orca on 33/40 (vs 7, **p=4.2e-5**, 57×).
+
+- **The hypothesis is refuted, and the result is sharper for it.** VO does *not* robustly oscillate
+  more than RVO: the mean rate leans that way (0.97 vs 0.53, 1.8×), but per-seed it is a coin-flip
+  (22 vs 18, p=0.64). Adding reciprocity did not measurably smooth the tracks.
+
+- **The lineage is a clean SAFETY ladder.** Success is monotone — VO 23/40 < RVO 36/40 < ORCA
+  40/40. The non-reciprocal VO is markedly the least safe: assuming full responsibility makes both
+  agents over-avoid the *same* encounter, and the over-reaction shows up as collisions, not as
+  sustained jitter.
+
+- **The oscillation collapse is concentrated at one rung — the half-plane LP.** It is not spread
+  along the ladder: VO→RVO is a wash on smoothness, and essentially all of the smoothness is the
+  RVO→ORCA step (31× drop, p=1.8e-12). So the two rungs fixed *different* things — **reciprocity
+  (VO→RVO) bought safety; the continuous half-plane projection (RVO→ORCA) bought smoothness.**
+
+- **Mechanism.** VO and RVO share the *sampled* selection (same candidate set, same penalty; only
+  the assumed responsibility differs), so the oscillation both suffer is dominated by the
+  discretization they have in common — chattering between adjacent sampled velocities. Reciprocity
+  changes the *magnitude* of the avoidance, not its discreteness, so it leaves the jitter largely
+  intact. ORCA removes the jitter by making the choice *continuous* (a convex projection onto a
+  half-plane). The lesson the lineage actually teaches, measured rather than assumed: in this family
+  oscillation is a property of discrete sampled selection, and the cure is continuity, not reciprocity.
+
+(Scope: VO and RVO are implemented in their standard pedagogical *sampled* form, so the
+"reciprocity-does-not-smooth" finding is a statement about sampled selectors; the comparison is
+apples-to-apples — both sampled with identical machinery — so the attribution of the smoothness jump
+to ORCA's continuous LP is sound within this controlled setup.)
+
+Reproduce: `python scripts/vo_rvo_orca_ladder_phase.py --n 4 --episodes 40`
+(writes `results/vo_rvo_orca_ladder_phase.json`).
