@@ -54,8 +54,9 @@ def _check_peer_collision(
     n = len(states)
     hit = [False] * n
     for i in range(n):
+        ri = radii[i] if i < len(radii) else drone_radius
         for j in range(i + 1, n):
-            r = drone_radius + radii[j]  # treat both with their own radii
+            r = ri + radii[j]  # each drone with its OWN radius (heterogeneous-safe)
             d2 = float(np.sum((states[i].position - states[j].position) ** 2))
             if d2 <= r * r:
                 hit[i] = True
