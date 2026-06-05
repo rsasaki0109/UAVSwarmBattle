@@ -124,6 +124,7 @@ different strategies.
 - [The convention is for symmetric convergence only — on unstructured traffic it is a net liability](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability)
 - [A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not](#a-sensing-defect-taxonomy-noise-restores-the-predictor-under-the-convention-delay-does-not)
 - [The convention is robust to physical heterogeneity (size) but not to coordination heterogeneity](#the-convention-is-robust-to-physical-heterogeneity-size-but-not-to-coordination-heterogeneity)
+- [Reproducing the RVO→ORCA improvement: ORCA removes RVO's oscillation (the reciprocal dance)](#reproducing-the-rvoorca-improvement-orca-removes-rvos-oscillation-the-reciprocal-dance)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8499,3 +8500,50 @@ physical avoidance trick.
 
 Reproduce: `python scripts/antipodal_hetero_radii_phase.py --n 6 --spread-list 0 0.3 0.6 0.9 --episodes 40`
 (writes `results/antipodal_hetero_radii_phase.json`).
+
+## Reproducing the RVO→ORCA improvement: ORCA removes RVO's oscillation (the reciprocal dance)
+
+The lab's reciprocal baseline is **ORCA** (Optimal Reciprocal Collision Avoidance, van den Berg
+2011). ORCA's published contribution was not collision avoidance *per se* — its direct precursor
+**RVO** (Reciprocal Velocity Obstacles, van den Berg 2008) already avoided reciprocally — but the
+elimination of RVO's **oscillation**. RVO picks the new velocity by *sampling* candidates and scoring
+each by a penalty (distance-to-preferred traded against time-to-collision); two reciprocating agents
+can flip between mirror-image candidates step after step — the "reciprocal dance" — so their tracks
+jitter. ORCA replaced the sampled choice with a per-neighbour linear *half-plane* of permitted
+velocities and a tiny LP, making the choice a smooth convex projection that does not chatter.
+
+To reproduce and quantify that classic improvement, RVO is implemented as its own planner
+(`planner.type: rvo`, a clean-room version of the published sampled-velocity selection with the
+reciprocal half-velocity penalty) and run head-to-head with ORCA on the same crossing. Both methods
+assume single-integrator dynamics, so the comparison uses a self-contained single-integrator sim
+where the full velocity trajectory is observable; the **oscillation** of each drone is the total
+absolute heading variation of its velocity over the run (radians). Perpendicular crossing of 2N=8
+drones, jittered per seed, paired by seed, n=40:
+
+| arm | success | mean oscillation (rad) | mean makespan |
+|---|---|---|---|
+| rvo | 36/40 | **3.76** | 7.81 s |
+| orca | **40/40** | **0.13** | 7.45 s |
+
+- **ORCA removes the oscillation — by 29.6×.** RVO accumulates 3.76 rad of heading variation per
+  drone; ORCA, 0.13 rad. RVO oscillates more than ORCA on **every one of the 40 seeds** (sign test
+  p = 1.8e-12) — a clean, deterministic reproduction of the headline RVO→ORCA result, not a
+  marginal seed-dependent effect.
+
+- **The oscillation is not free.** RVO's jitter costs it 4 episodes (36/40 vs 40/40) — the reciprocal
+  dance occasionally chatters two drones into contact at the hub — and a slightly slower makespan
+  (7.81 s vs 7.45 s). The smooth choice is both safer and faster here, which is exactly why ORCA
+  superseded RVO as the standard reciprocal avoider.
+
+- **Same paradigm, different selection rule.** Both planners use the identical reciprocal premise
+  (each agent takes half the avoidance, hence the half-velocity / half-plane construction); the only
+  difference is *sampled penalty minimum* (RVO) vs *convex half-plane projection* (ORCA). The 29.6×
+  oscillation gap is therefore attributable to the selection mechanism alone, isolating precisely
+  what the 2011 paper changed over the 2008 one.
+
+This makes the lab's reciprocal-avoidance lineage explicit: RVO (2008, the precursor) and ORCA (2011,
+the standard) are both present, and the reason the standard is the standard is measured rather than
+asserted.
+
+Reproduce: `python scripts/rvo_orca_oscillation_phase.py --n 4 --episodes 40`
+(writes `results/rvo_orca_oscillation_phase.json`).

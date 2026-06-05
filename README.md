@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the convention is robust to physical heterogeneity (size) but not to coordination
+- **Latest: reproducing the RVO→ORCA improvement — ORCA removes RVO's oscillation by 29.6×.** The
+  lab's reciprocal baseline is ORCA (2011); its published contribution over its precursor RVO (2008)
+  was eliminating RVO's *oscillation* (the "reciprocal dance" of two agents flipping between
+  mirror-image sampled velocities). RVO is now implemented as its own planner (`planner.type: rvo`,
+  a clean-room version of the sampled-velocity selection), and run head-to-head with ORCA on the same
+  crossing in a single-integrator sim that exposes the velocity trajectory. RVO accumulates 3.76 rad
+  of heading variation per drone vs ORCA's 0.13 rad — 29.6× more, on *every* one of 40 seeds
+  (p=1.8e-12) — and the jitter is not free: it costs RVO 4 episodes (36/40 vs 40/40) and a slower
+  makespan. Same reciprocal premise, different selection rule (sampled penalty minimum vs convex
+  half-plane projection): the gap isolates exactly what the 2011 paper changed. See
+  [docs/findings.md](docs/findings.md#reproducing-the-rvoorca-improvement-orca-removes-rvos-oscillation-the-reciprocal-dance).
+- **The convention is robust to physical heterogeneity (size) but not to coordination
   heterogeneity.** The remaining heterogeneity axis is drone *size*: does a mixed big/small fleet
   still round the antipodal hub? Yes — completely. Mixing 0.85 m and 0.20 m drones (a 4.25× radius
   ratio), the convention rescues 40/40 at every spread, identical to a uniform fleet (vs ~24/40
