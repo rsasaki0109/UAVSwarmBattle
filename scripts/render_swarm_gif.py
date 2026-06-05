@@ -50,10 +50,20 @@ LABELS = {"vo": "VO (1998)", "rvo": "RVO (2008)", "hrvo": "HRVO (2009)",
           "orca": "ORCA (2011)", "roundabout": "Merry-Go-Round", "mpc": "MPC"}
 
 
-def _planner(kind):
+def _parse_arm(arm):
+    """'orca' -> ('orca', {}); 'orca+row' -> ('orca', {pairwise_bias...}) (right-of-way)."""
+    if arm.endswith("+row"):
+        base = arm[:-4]
+        return base, {"pairwise_bias": 0.5, "pairwise_radius": 6.0}
+    return arm, {}
+
+
+def _planner(kind, extra=None):
     c = {"max_speed": SPEED, "radius": 0.4, "safety_margin": 0.1, "time_horizon": 2.0,
          "neighbor_dist": 15.0, "goal_radius": 1.5, "time_step": DT,
          "center": (CX, CY), "ring_radius": 16.0}
+    if extra:
+        c.update(extra)
     p = PLANNER_REGISTRY.get(kind).from_config(c)
     p.reset()
     return p
@@ -126,13 +136,13 @@ def _candidate_fan(planner, pos_i, goal_i, horizon, stride):
 
 def _simulate(kind, scenario, n, seed, max_steps=400, replan_period=0.5,
               n_obstacles=0, wind_base=None, wind_gust=0.0,
-              record_fans=False, fan_horizon=12, fan_stride=2):
+              record_fans=False, fan_horizon=12, fan_stride=2, extra=None):
     rng = random.Random(seed)
     starts, goals = _layout(scenario, n, rng)
     m = len(starts)
     pos = [s.copy() for s in starts]
     vel = [np.zeros(2) for _ in range(m)]
-    plan = [_planner(kind) for _ in range(m)]
+    plan = [_planner(kind, extra) for _ in range(m)]
     arrived = [False] * m
     traj = [[p.copy() for p in pos]]
     obstacles = _spawn_obstacles(n_obstacles, rng) if n_obstacles else []
@@ -197,10 +207,11 @@ def main():
     ap.add_argument("--out", default="docs/images/swarm.gif")
     args = ap.parse_args()
 
-    sims = [_simulate(k, args.scenario, args.n, args.seed, replan_period=args.replan_period,
+    parsed = [_parse_arm(a) for a in args.arms]
+    sims = [_simulate(base, args.scenario, args.n, args.seed, replan_period=args.replan_period,
                       n_obstacles=args.obstacles, wind_base=args.wind, wind_gust=args.gust,
-                      record_fans=args.rollouts, fan_horizon=args.rollout_horizon)
-            for k in args.arms]
+                      record_fans=args.rollouts, fan_horizon=args.rollout_horizon, extra=extra)
+            for (base, extra) in parsed]
     T = max(s[0].shape[0] for s in sims)
     m = sims[0][0].shape[1]
     cmap = plt.get_cmap("turbo")
@@ -225,13 +236,13 @@ def main():
         return out
 
     arts = []
-    for ax, kind, (traj, goals, obs_traj, fans) in zip(axes, args.arms, sims):
+    for ax, arm, (base, _extra), (traj, goals, obs_traj, fans) in zip(axes, args.arms, parsed, sims):
         ax.set_facecolor("#0d1117")
         ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi)
         ax.set_aspect("equal"); ax.set_xticks([]); ax.set_yticks([])
         for sp in ax.spines.values():
             sp.set_color("#30363d")
-        title = LABELS.get(kind, kind)
+        title = LABELS.get(base, base) + ("  + right-of-way" if arm.endswith("+row") else "")
         if args.wind is not None and (args.wind[0] or args.wind[1]):
             title += "  +wind"
         if args.obstacles:

@@ -11,9 +11,9 @@ Swap planners, sensors and swarm rules in YAML; settle every claim with seed-pai
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
 
-<img src="docs/images/swarm_antipodal_orca_vs_hrvo.gif" alt="Six drones swap to antipodal goals through one hub: ORCA piles into the centre and collides; HRVO's side-commitment turns the convergence into a roundabout" width="820">
+<img src="docs/images/swarm_convention_compare.gif" alt="Twelve drones swap across one hub: stock ORCA piles into the centre and collides; with a decentralised right-of-way the same fleet spirals into a clean roundabout" width="840">
 
-<i><b>Same antipodal swap, two reciprocal planners.</b> Six drones cross one hub. <b>ORCA</b> (left) piles into the centre and collides; <b>HRVO</b>'s side-commitment (right) turns the convergence into a roundabout. One of ~40 seed-paired findings — <a href="docs/findings.md">see them all</a>.</i>
+<i><b>One rule turns a pile-up into a roundabout.</b> Twelve drones swap across a single hub. <b>Stock ORCA</b> (left) drives every path into the centre and collides; add a decentralised <b>right-of-way</b> (right) — each drone passes neighbours on a consistent side — and the same fleet spirals into a clean roundabout, collision-free. One of ~40 seed-paired findings — <a href="docs/findings.md">see them all</a>.</i>
 
 </div>
 
