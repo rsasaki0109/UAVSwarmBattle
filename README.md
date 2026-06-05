@@ -34,8 +34,9 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 
 <div align="center">
 <table><tr>
-<td align="center"><img src="docs/images/swarm_flagship_all.gif" width="430"><br><sub><b>Everything at once</b> — 16 drones cross while four bodies sweep the field and a gusting crosswind bows every track.</sub></td>
-<td align="center"><img src="docs/images/swarm_3d_sphere.gif" width="360"><br><sub><b>Full 3-D</b> — 14 drones swap across a sphere through one centre, avoiding in 3-D, camera orbiting.</sub></td>
+<td align="center"><img src="docs/images/swarm_flagship_all.gif" width="320"><br><sub><b>Everything at once</b> — 16 drones, four sweeping bodies, a gusting crosswind.</sub></td>
+<td align="center"><img src="docs/images/swarm_3d_field.gif" width="300"><br><sub><b>3-D asteroid field</b> — 12 drones thread a drifting field of obstacles in full 3-D.</sub></td>
+<td align="center"><img src="docs/images/swarm_3d_sphere.gif" width="300"><br><sub><b>3-D sphere swap</b> — 14 drones cross one centre, camera orbiting.</sub></td>
 </tr></table>
 </div>
 
