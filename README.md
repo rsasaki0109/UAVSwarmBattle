@@ -40,9 +40,10 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="docs/images/swarm_airsim_cinematic.gif" width="300"><br><sub><b>AirSim chase-cam</b> — an external camera trails the lead quadrotor through the Unreal world as the fleet crosses.</sub></td>
-<td align="center"><img src="docs/images/swarm_airsim_topdown.gif" width="300"><br><sub><b>AirSim top-down</b> — the same 4-drone hub crossing from a fixed overhead chase-cam.</sub></td>
-<td align="center"><img src="docs/images/swarm_airsim_lidar.gif" width="300"><br><sub><b>AirSim onboard LiDAR</b> — the 16-beam sensor reconstructs the world as a 3-D point cloud mid-flight.</sub></td>
+<td align="center"><img src="docs/images/swarm_airsim_cinematic.gif" width="225"><br><sub><b>AirSim chase-cam</b> — an external camera trails the lead quadrotor as the fleet crosses.</sub></td>
+<td align="center"><img src="docs/images/swarm_airsim_orbit.gif" width="225"><br><sub><b>AirSim orbit</b> — the camera circles the fleet centroid as all four converge.</sub></td>
+<td align="center"><img src="docs/images/swarm_airsim_topdown.gif" width="225"><br><sub><b>AirSim top-down</b> — the 4-drone hub crossing from a fixed overhead cam.</sub></td>
+<td align="center"><img src="docs/images/swarm_airsim_lidar.gif" width="225"><br><sub><b>AirSim onboard LiDAR</b> — the 16-beam sensor reconstructs the world as a 3-D point cloud.</sub></td>
 </tr>
 <tr>
 <td align="center"><img src="docs/images/swarm_flagship_all.gif" width="300"><br><sub><b>Everything at once</b> — 16 drones, four sweeping bodies, a gusting crosswind.</sub></td>
@@ -58,7 +59,7 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 | <img src="docs/images/swarm_obstacle_gauntlet.gif" width="240"><br><sub>**Obstacle gauntlet** — a dozen drones weave through six sweeping bodies.</sub> | <img src="docs/images/swarm_wind.gif" width="240"><br><sub>**Crosswind** — a gusting wind field bows every track.</sub> | <img src="docs/images/swarm_antipodal_orca_vs_hrvo.gif" width="240"><br><sub>**ORCA vs HRVO** at the hub — collide vs roundabout.</sub> |
 | <img src="docs/images/swarm_crossing_rvo_vs_orca.gif" width="240"><br><sub>**RVO dance vs ORCA glide** — RVO's tracks kink, ORCA's stay smooth.</sub> | <img src="docs/images/compare_rrt_vs_rrt_star.gif" width="240"><br><sub>**RRT vs RRT\*** — the "optimal" path drives into the obstacle.</sub> | <img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" width="240"><br><sub>**GPU-MPPI vs MPC in 3-D**, rollouts visualised.</sub> |
 
-Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `antipodal` / `crossing` / `doorway` scenarios, `--obstacles`, `--wind`, `--rollouts`, `+row` convention flags) — and the 3-D sphere/field is `scripts/render_swarm_3d_gif.py`. The photorealistic clips are real [AirSim](https://github.com/microsoft/AirSim) (Unreal Engine), recorded against a running Blocks server with `scripts/record_airsim_cinematic.py` (chase-cam), `scripts/record_airsim_topdown_live.py` (top-down), `scripts/record_airsim_lidar_live.py` (onboard LiDAR point cloud), and `scripts/record_airsim_dashboard.py` (the Foxglove-style multi-panel dashboard).
+Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `antipodal` / `crossing` / `doorway` scenarios, `--obstacles`, `--wind`, `--rollouts`, `+row` convention flags) — and the 3-D sphere/field is `scripts/render_swarm_3d_gif.py`. The photorealistic clips are real [AirSim](https://github.com/microsoft/AirSim) (Unreal Engine), recorded against a running Blocks server with `scripts/record_airsim_cinematic.py` (`--mode chase`/`orbit`), `scripts/record_airsim_topdown_live.py` (top-down), `scripts/record_airsim_lidar_live.py` (onboard LiDAR point cloud), and `scripts/record_airsim_dashboard.py` (the Foxglove-style multi-panel dashboard).
 
 ## Quick start
 
