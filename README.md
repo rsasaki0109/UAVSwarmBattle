@@ -234,7 +234,21 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: ORCA's cure is the half-plane structure, not continuity — refining RVO's sampling does
+- **Latest: HRVO confirms the cure is structure — a side-commitment fixes RVO's oscillation and
+  safety while staying sampled; ORCA's LP only polishes the residual.** The previous result refuted
+  "continuity is the cure" negatively; HRVO (Hybrid Reciprocal Velocity Obstacle, Snape et al.
+  2009/2011 — the oscillation fix that predates ORCA) tests the positive form, added as
+  `planner.type: hrvo`. HRVO commits the agent to one side of the obstacle (RVO leg on the favoured
+  side, VO leg on the other, apex shifted) and is evaluated in the **same sampled framework** as
+  VO/RVO — no LP, no finer grid. Result (2N=8, n=40, oscillation rate rad/s): vo 0.968 → rvo 0.527 →
+  **hrvo 0.128** → orca 0.017. HRVO cuts RVO's oscillation **4.1×** (40/40 seeds, p=1.8e-12) *while
+  staying sampled*, and reaches **40/40 success, tying ORCA** (McNemar p=1.0) — the side-ambiguity was
+  the safety hole. It does **not** reach ORCA's floor (still 7.5× higher, p=1.8e-12): that residual is
+  the sampling chatter ORCA's continuous projection removes. So the 31× RVO→ORCA gap splits into a
+  **structural side-commitment** (4.1×, *and all the safety*, no continuity needed) and **continuity**
+  (the remaining 7.5×, polish). Completes the lineage **VO→RVO→HRVO→ORCA**. See
+  [docs/findings.md](docs/findings.md#hrvo-confirms-it-constructively-a-side-commitment-fixes-rvos-oscillation-and-safety-while-staying-sampled-orcas-lp-only-polishes-the-residual).
+- **ORCA's cure is the half-plane structure, not continuity — refining RVO's sampling does
   not reduce its oscillation (and costs safety).** The previous result attributed RVO's oscillation to
   its *discrete sampled* selection and claimed ORCA cures it by being *continuous*. That claim is
   falsifiable, so it was tested: sweeping RVO's velocity-sampling grid over a 16× range (n_angles
