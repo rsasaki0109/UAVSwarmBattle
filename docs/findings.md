@@ -122,6 +122,7 @@ different strategies.
 - [Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture](#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture)
 - [The convention is a consensus device — a split right/left rule is worse than no rule](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
 - [The convention is for symmetric convergence only — on unstructured traffic it is a net liability](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability)
+- [A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not](#a-sensing-defect-taxonomy-noise-restores-the-predictor-under-the-convention-delay-does-not)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8412,3 +8413,47 @@ order is just an unwanted bias that costs collisions (global) or deadlocks (pair
 
 Reproduce: `python scripts/unstructured_convention_phase.py --n-list 8 12 16 --episodes 40`
 (writes `results/unstructured_convention_phase.json`).
+
+## A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not
+
+[Sensing noise restores the predictor's relevance under the convention](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
+showed that position *noise* re-opens a gt+row > cv+row gap that perfect sensing closes. Is that a
+property of tracking error in general, or specific to noise? Cross the two canonical tracking defects
+— position noise (σ) and a fixed perception delay (τ; position lagged by a ring buffer, velocity
+passes through) — on the same antipodal swarm (N=8, convention on, cv+row vs gt+row, paired, n=40).
+The mechanism predicts they differ: noise corrupts the position so gt's *exact-goal anchor* beats
+cv's extrapolation of the corrupted state, but delay leaves both predictors reading the *same* stale
+position — and the one channel delay keeps clean (the true velocity) is the very one cv uses — so
+they should degrade together.
+
+![noise restores the predictor up the sigma axis; delay does not across the tau axis](images/sensing_defect_taxonomy.png)
+
+cv+row % / gt+row %, `*` = gt+row significantly better (McNemar p<0.05):
+
+| σ \ τ | 0 | 0.05 | 0.1 |
+|---|---|---|---|
+| **0** | 100 / 100 (tie) | 100 / 100 (tie) | 50 / 42 (tie, p=0.55) |
+| **1** | 65 / 97 \* (p=2.4e-4) | 65 / 97 \* (p=2.4e-4) | 62 / 87 \* (p=0.013) |
+| **2** | 42 / 77 \* (p=5.2e-4) | 42 / 77 \* (p=5.2e-4) | 62 / 95 \* (p=9.8e-4) |
+
+- **Noise restores the predictor; delay does not.** Every σ>0 cell is a significant gt+row win
+  *regardless of τ*; the entire τ axis at σ=0 is a flat tie (even at τ=0.1, where success has fallen
+  to ~50 %, gt+row and cv+row are indistinguishable, p=0.55). The restoration is driven by the noise
+  axis alone. Perception latency hurts — it halves success at τ=0.1 — but it hurts the two predictors
+  *equally*, so it never makes the forecast a decision.
+- **The mechanism is confirmed by the contrast.** gt's advantage is the exact-goal anchor surviving a
+  *corrupted* position. Delay does not corrupt the position (it shifts both predictors' input by the
+  same lag) and leaves the true velocity intact (cv's channel), so it differentiates nothing. Noise
+  is the only defect that degrades cv's state-extrapolation while sparing gt's goal anchor.
+- **The noise advantage survives delay.** In the combined cells (σ>0, τ>0) gt+row still wins
+  (σ=1, τ=0.1: p=0.013; σ=2, τ=0.1: p=9.8e-4) — a realistic tracker with both defects keeps the
+  goal-aware forecast's edge. (Absolute levels wobble — σ=2,τ=0.1 sits higher than σ=2,τ=0 — because
+  a little lag damps the noise-driven jitter; but the gt-over-cv gap is consistent across the grid.)
+
+This makes the [predictor-restoration result](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
+a precise statement: under the convention the forecast earns its keep specifically when the peer
+*position* is noisy, not merely when sensing is degraded. Latency is a red herring for the predictor
+choice; measurement noise is the thing that brings the goal-aware forecast back.
+
+Reproduce: `python scripts/antipodal_sensing_defect_phase.py --n 8 --noise-list 0 1 2 --delay-list 0 0.05 0.1 --episodes 40`
+(writes `results/antipodal_sensing_defect_phase.{json,png}`).
