@@ -126,6 +126,7 @@ different strategies.
 - [The convention is robust to physical heterogeneity (size) but not to coordination heterogeneity](#the-convention-is-robust-to-physical-heterogeneity-size-but-not-to-coordination-heterogeneity)
 - [Reproducing the RVO→ORCA improvement: ORCA removes RVO's oscillation (the reciprocal dance)](#reproducing-the-rvoorca-improvement-orca-removes-rvos-oscillation-the-reciprocal-dance)
 - [The reciprocal-avoidance lineage (VO→RVO→ORCA) decomposed: reciprocity buys safety, the half-plane LP buys smoothness](#the-reciprocal-avoidance-lineage-vorvoorca-decomposed-reciprocity-buys-safety-the-half-plane-lp-buys-smoothness)
+- [ORCA's cure is the half-plane structure, not continuity: refining RVO's sampling does not reduce its oscillation](#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -8595,6 +8596,12 @@ rvo>orca on **40/40** (vs 0, **p=1.8e-12**, 31×); vo>orca on 33/40 (vs 7, **p=4
   intact. ORCA removes the jitter by making the choice *continuous* (a convex projection onto a
   half-plane). The lesson the lineage actually teaches, measured rather than assumed: in this family
   oscillation is a property of discrete sampled selection, and the cure is continuity, not reciprocity.
+  **(Correction — this last clause is wrong.** A follow-up sweep of RVO's sampling resolution
+  [refutes it](#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation): refining the grid 16× does *not* reduce RVO's oscillation toward ORCA's
+  floor, and actually *costs* safety. The oscillation is intrinsic to the per-step penalty-argmin
+  selection, not to its granularity; ORCA's cure is the half-plane *structure*, not continuity. The
+  rest of this section — the safety ladder and the two-rungs-fix-different-things decomposition —
+  stands.)
 
 (Scope: VO and RVO are implemented in their standard pedagogical *sampled* form, so the
 "reciprocity-does-not-smooth" finding is a statement about sampled selectors; the comparison is
@@ -8603,3 +8610,47 @@ to ORCA's continuous LP is sound within this controlled setup.)
 
 Reproduce: `python scripts/vo_rvo_orca_ladder_phase.py --n 4 --episodes 40`
 (writes `results/vo_rvo_orca_ladder_phase.json`).
+
+## ORCA's cure is the half-plane structure, not continuity: refining RVO's sampling does not reduce its oscillation
+
+The lineage section above closed with a mechanism claim — that RVO's oscillation is a property of the
+*discrete sampled* selection, so ORCA cures it by being *continuous*. That claim is falsifiable, and
+worth falsifying before building on it: if oscillation is a discretization artifact, then **refining
+RVO's velocity-sampling grid should drive its oscillation down toward ORCA's continuous floor.** This
+sweeps RVO's `n_angles` over a 16× range (6 → 96) on the same self-contained crossing, with ORCA as
+the continuous reference; oscillation as a rate (rad/s), paired by seed, 2N=8, n=30:
+
+| arm | success | oscillation rate (rad/s) |
+|---|---|---|
+| rvo@6 | 30/30 | 0.512 |
+| rvo@12 | 29/30 | 0.171 |
+| rvo@24 | 26/30 | 0.533 |
+| rvo@48 | 21/30 | 0.959 |
+| rvo@96 | 21/30 | 0.658 |
+| orca | 30/30 | **0.017** |
+
+- **The claim is refuted: refining the grid does not reduce the oscillation.** rvo@6 vs rvo@96 is a
+  per-seed wash (16/30 vs 14, p=0.86), and the rate is non-monotone in resolution — it does not trend
+  down at all. At 16× the angular resolution, rvo@96 still oscillates **38× more than ORCA** (30/30
+  seeds, p=1.9e-9). The continuous floor is never approached. So oscillation is *not* a discretization
+  artifact; it is intrinsic to the per-step penalty-argmin selection, where each agent independently
+  re-picks the minimum-penalty velocity every step and two reciprocators flip between near-tied
+  mirror-image choices regardless of how finely the candidates are spaced.
+
+- **Worse, refining the grid *costs* safety.** Success falls monotonically with resolution (30 → 29
+  → 26 → 21 → 21): rvo@6 succeeds on 9 seeds where rvo@96 fails, with zero reversals (McNemar
+  p=3.9e-3). More candidates let RVO find velocities that hug the collision boundary — lower penalty
+  by staying closer to the preferred velocity while just barely passing the time-to-collision test —
+  which shrinks the safety margin and collides when the reciprocal assumption breaks. Coarse
+  sampling forces more conservative, well-separated choices.
+
+- **Correction to the previous section's mechanism.** ORCA's advantage over RVO is therefore **the
+  half-plane *structure* — committing to a single convex feasible region and projecting onto it — not
+  continuity or resolution per se.** Granularity is not the lever (and pushing it the "smooth"
+  direction backfires on safety). This corrects the final clause of the lineage section; the safety
+  ladder and the two-rungs-fix-different-things decomposition there are unaffected. It is also a
+  reminder of the lab's recurring theme: a plausible mechanism story (here, "smoother = finer") has
+  to be swept before it is trusted — the offline intuition and the closed-loop behaviour disagree.
+
+Reproduce: `python scripts/rvo_resolution_phase.py --angles 6 12 24 48 96 --episodes 30 --workers 6`
+(writes `results/rvo_resolution_phase.json`).
