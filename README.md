@@ -234,7 +234,18 @@ Full long-form write-ups in [`docs/findings.md`](docs/findings.md);
 the working paper draft is under [`docs/paper_a/`](docs/paper_a/). The
 active findings are grouped this way:
 
-- **Latest: the convention is for symmetric convergence only — on unstructured traffic it is a net
+- **Latest: a sensing-defect taxonomy — noise restores the predictor under the convention, delay
+  does not.** Position *noise* re-opens the gt+row > cv+row gap that perfect sensing closes; is that
+  general to tracking error or specific to noise? Crossing position noise (σ) × perception delay (τ)
+  on the antipodal swarm (N=8, convention on, paired McNemar, n=40): every σ>0 cell is a significant
+  gt+row win *regardless of τ*, while the entire τ axis at σ=0 is a flat tie (even at τ=0.1, where
+  success has halved, gt+row≈cv+row, p=0.55). Delay hurts — but it hurts both predictors equally, so
+  it never makes the forecast a decision. The mechanism: gt's advantage is its exact-goal anchor
+  surviving a *corrupted* position; delay shifts both inputs by the same lag and leaves the true
+  velocity (cv's channel) clean, so it differentiates nothing. The noise advantage survives delay in
+  the combined cells. Latency is a red herring for the predictor choice; measurement noise is what
+  brings the goal-aware forecast back.
+- **The convention is for symmetric convergence only — on unstructured traffic it is a net
   liability.** All convention results live on structured symmetric tasks; the boundary test is
   random-derangement traffic (N drones to a random permutation of positions, no symmetric hub). With
   no symmetry to break the right-of-way is gratuitous, and at density it drags success *below* doing
