@@ -135,6 +135,7 @@ different strategies.
 - [A teammate-token policy is only as symmetry-breaking as its teacher (distilling the convention transfers the antipodal cure)](#a-teammate-token-policy-is-only-as-symmetry-breaking-as-its-teacher--distilling-the-convention-transfers-the-antipodal-cure-distilling-a-symmetric-avoider-reimports-and-amplifies-the-deadlock)
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 - [A decentralized Merry-Go-Round negotiates its ring from sensing alone — agents agree on the symmetric hub, but the same local agreement is what fails on unstructured traffic](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
+- [The Merry-Go-Round's unstructured-traffic collapse is over-triggering, not disagreement — a symmetry gate restores the off-switch](#the-merry-go-rounds-unstructured-traffic-collapse-is-over-triggering-not-disagreement--a-symmetry-gate-restores-the-off-switch)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9163,3 +9164,61 @@ Reproduce: `python scripts/antipodal_mgr_phase.py --n-list 4 6 8 12 16 20 --epis
 `python scripts/unstructured_mgr_phase.py --n-list 8 12 16 --episodes 40`
 (writes `results/unstructured_mgr_phase.json`);
 `python scripts/render_mgr_gif.py --n 8` for the figure.
+
+## The Merry-Go-Round's unstructured-traffic collapse is over-triggering, not disagreement — a symmetry gate restores the off-switch
+
+The [decentralized Merry-Go-Round](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
+collapsed on dense unstructured traffic (N=16: 5/40, worse than the stock CBF it
+sits on), and the read was ambiguous between two mechanisms: **(H1)** the local
+ring centres *disagree* without a symmetric hub, so a consensus protocol is needed;
+or **(H2)** the trigger simply *fires where it should not* — a roundabout is the
+wrong manoeuvre for an asymmetric jam, and the cure is better *discrimination*, not
+agreement. These predict different fixes, so they are separable: add a **symmetry
+gate** (`require_convergence`) that engages the roundabout only on a genuine *shared
+hub* — the ego **and** ≥`min_converging` cluster peers must each *cross* the cluster
+centroid (each one's goal on the far side of it, the signature of a head-on
+convergence). It changes *when* the roundabout fires, nothing about *how* the ring is
+built or shared. If discrimination alone fixes the collapse, H2 is right.
+
+It does. Unstructured random-derangement traffic, CBF family, n=40 paired:
+
+| N | cbf (stock) | mgr (no gate) | mgr_sym (gate) | mgr vs cbf | mgr_sym vs cbf |
+|---|---|---|---|---|---|
+| 8 | 40/40 | 36/40 [0c/4t] | **39/40** [0c/1t] | b=0 c=4 0.125 | b=0 c=1 1.00 |
+| 12 | 40/40 | 40/40 | 40/40 | b=0 c=0 1.00 | b=0 c=0 1.00 |
+| 16 | 36/40 [0c/4t] | 5/40 [0c/35t] | **32/40** [0c/8t] | b=0 c=31 **<1e-4** | b=3 c=7 0.34 |
+
+…and the antipodal cure is untouched — `mgr_sym` is **40/40 at every N=4–20** (tying
+the fixed-centre roundabout, `b=0 c=0 p=1.0`), exactly like the ungated `mgr`, at the
+same makespan (the gate still fires on the real hub, where every drone crosses the
+centroid by construction):
+
+| N | 4 | 6 | 8 | 12 | 16 | 20 |
+|---|---|---|---|---|---|---|
+| mgr_sym success | 40/40 | 40/40 | 40/40 | 40/40 | 40/40 | 40/40 |
+| makespan (s) | 11.1 | 11.2 | 11.7 | 17.3 | 18.3 | 20.8 |
+
+- **The collapse was over-triggering — H2, not H1.** A pure discrimination change, with
+  *no* consensus mechanism, lifts the N=16 catastrophe from 5/40 to **32/40 — a tie with
+  stock CBF** (`b=3 c=7, p=0.34`, no longer the `c=31, p<1e-4` harm). The drones were not
+  failing to agree on a ring; they were building rings where none should exist. Tell the
+  trigger to fire only on a genuine shared hub and the harm is gone.
+- **The cure is preserved because the gate is true on the hub by construction.** On the
+  antipodal swap every drone's goal is its antipode, which lies across the cluster centroid,
+  so the convergence test passes for all of them — `mgr_sym` keeps the full 40/40 cure at
+  every N and even trims a little makespan (it skips the few spurious mid-flight engagements
+  the ungated version made). The gate costs nothing where the roundabout is the right answer.
+- **This is the off-switch the always-on convention could not have.** A *global* cost bias is
+  on everywhere by definition; the triggered roundabout can ask "is this conflict actually the
+  symmetric convergence I cure?" and stand down when it is not. With the gate, `mgr_sym` both
+  cures the symmetric hub (40/40) **and** is harmless on unstructured traffic (tie at every N) —
+  the combination neither the always-on conventions nor the ungated trigger achieved.
+
+Net: the decentralized roundabout's unstructured-traffic liability was a *detection* failure,
+not a *coordination* one. Gating the trigger on a local shared-hub signature — ego and peers
+all crossing the cluster centroid — makes the triggered Merry-Go-Round a clean conditional
+primitive: it fires exactly on the symmetric convergence it was built to cure, and nowhere else.
+
+Reproduce: `python scripts/antipodal_mgr_phase.py --n-list 4 6 8 12 16 20 --episodes 40`
+and `python scripts/unstructured_mgr_phase.py --n-list 8 12 16 --episodes 40` (both now
+include the `mgr_sym` arm; the gate is `planner.require_convergence: true`).

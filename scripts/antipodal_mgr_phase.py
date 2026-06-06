@@ -41,7 +41,7 @@ SPEED = 5.0
 CX, CY = 25.0, 25.0
 RADIUS = 20.0
 IDEAL = 2 * RADIUS / SPEED
-ARMS = ["cbf", "cbf_global", "cbf_pairwise", "mgr", "roundabout"]
+ARMS = ["cbf", "cbf_global", "cbf_pairwise", "mgr", "mgr_sym", "roundabout"]
 
 
 def _cbf_base(replan):
@@ -59,6 +59,8 @@ def _planner(arm, gb, pb, replan):
         p = _cbf_base(replan); p["pairwise_bias"] = pb; p["pairwise_radius"] = 8.0; return p
     if arm == "mgr":
         p = _cbf_base(replan); p["type"] = "mgr"; return p
+    if arm == "mgr_sym":
+        p = _cbf_base(replan); p["type"] = "mgr"; p["require_convergence"] = True; return p
     if arm == "roundabout":
         return {"type": "roundabout", "max_speed": SPEED, "replan_period": 0.05,
                 "center": [CX, CY], "ring_radius": RADIUS, "exit_angle": 0.35,
