@@ -137,6 +137,7 @@ different strategies.
 - [A decentralized Merry-Go-Round negotiates its ring from sensing alone — agents agree on the symmetric hub, but the same local agreement is what fails on unstructured traffic](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
 - [The Merry-Go-Round's unstructured-traffic collapse is over-triggering, not disagreement — a symmetry gate restores the off-switch](#the-merry-go-rounds-unstructured-traffic-collapse-is-over-triggering-not-disagreement--a-symmetry-gate-restores-the-off-switch)
 - [A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient](#a-learned-convention-also-needs-a-representation-that-can-represent-handedness--the-teacher-carrying-it-is-necessary-but-not-sufficient)
+- [RL discovers the right-of-way convention from a symmetric reward — and, like BC transfer, only with a chirality-capable representation](#rl-discovers-the-right-of-way-convention-from-a-symmetric-reward--and-like-bc-transfer-only-with-a-chirality-capable-representation)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9284,3 +9285,58 @@ representation, not just one.
 
 Reproduce: `python scripts/swarm_bc_chirality_phase.py --episodes 60`
 (writes `results/swarm_bc_chirality_phase.json`).
+
+## RL discovers the right-of-way convention from a symmetric reward — and, like BC transfer, only with a chirality-capable representation
+
+The two BC results — [a teammate-token policy is only as symmetry-breaking as its
+teacher](#a-teammate-token-policy-is-only-as-symmetry-breaking-as-its-teacher--distilling-the-convention-transfers-the-antipodal-cure-distilling-a-symmetric-avoider-reimports-and-amplifies-the-deadlock)
+and [it also needs a representation that can represent handedness](#a-learned-convention-also-needs-a-representation-that-can-represent-handedness--the-teacher-carrying-it-is-necessary-but-not-sufficient)
+— are both about *transporting* a convention the teacher already demonstrated. The
+open question: is the symmetry-breaking *learnable from scratch*? Train the SAME deep
+set by **REINFORCE** (`scripts/_swarm_rl.py`) on a reflection-**symmetric** reward
+(progress − collision + goal — no built-in handedness), so any convention the policy
+ends up with is self-generated; the only seed of asymmetry is the random init +
+exploration noise (spontaneous symmetry breaking). 6 training seeds per arm, closed-loop
+antipodal success (out of 30 eval seeds, mean[min..max] over training seeds); handedness
+consistency = |mean ego-lateral| / mean|ego-lateral| (1 = a single self-generated side):
+
+| arm | N=4 | N=6 | N=8 | handedness consistency |
+|---|---|---|---|---|
+| RL standard (chirality-capable) | **24.8** [9..30] | **14.3** [0..30] | **9.3** [0..28] | **0.97** [0.83..1.00] |
+| RL reflect (chirality-free) | 14.7 [0..30] | 0.5 [0..3] | 0.0 [0..0] | 0.75 [0.01..1.00] |
+| BC student←plain (floor) | 4/30 | 0/30 | 0/30 | — |
+| BC student←conv (ceiling) | 30/30 | 29/30 | 20/30 | — |
+
+- **The convention is discoverable, not merely teachable.** RL from a symmetric reward,
+  in the chirality-capable frame, clears far above the symmetric-teacher BC floor (24.8 vs
+  4 at N=4; 14.3 vs 0; 9.3 vs 0) and settles on a clean self-generated handedness
+  (consistency 0.97). No teacher demonstrated "right"; the shared policy broke the left/right
+  symmetry on its own — each run seeded by its random init + exploration. Where BC *needs* a
+  teacher that already broke the symmetry, policy gradient breaks it itself: spontaneous
+  symmetry breaking on a symmetric objective.
+- **But the representation condition from BC holds for discovery too.** The chirality-free
+  reflection-canonical frame — the one that collapsed BC transfer to the floor — collapses RL
+  discovery just as hard: 0.5/0.0 at N≥6, barely above the floor. A representation that has
+  quotiented out the mirror cannot *hold* a fixed convention whether that convention is taught
+  (BC) or found (RL). #135's necessary condition is about the representation, not the learning
+  mode. (The wide reflect spread at N=4 — [0..30] — is a weak low-density configuration
+  response that does not scale; it is not a coordinated convention, and it vanishes by N=6.)
+- **Discovery is real but does not reach the taught ceiling.** RL standard tops out well below
+  BC-from-convention at scale (N=8: 9.3 vs 20) and is high-variance across seeds (N=6 ranges
+  0..30 — not every run discovers it). Finding the convention from reward is harder and less
+  reliable than distilling it from a teacher who has it — but it is possible, which a symmetric
+  teacher's distillation never is.
+- **Methodology note: a single seed lied.** The first single-seed run had the reflect frame
+  *beating* standard (an apparent inversion of #135); six seeds reversed it cleanly. Another
+  "don't read one cell" — spontaneous-symmetry-breaking outcomes are seed-dependent and must
+  be read over a seed ensemble.
+
+Net: completing the neta-A arc — a teammate-token policy carries a right-of-way convention
+when the symmetry-breaker is present in *any* of its three possible sources (a teacher's demos,
+or a reward via spontaneous breaking) **provided** the representation can represent handedness.
+The representation degree of freedom (#135) is the common necessary condition across both
+*transferred* and *discovered* conventions; the difference is only where the broken symmetry
+comes from. Taught is stronger than found; neither beats the representational requirement.
+
+Reproduce: `python scripts/swarm_rl_emergence_phase.py --train-seeds 6 --iters 250`
+(writes `results/swarm_rl_emergence_phase.json`).
