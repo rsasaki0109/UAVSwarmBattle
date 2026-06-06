@@ -56,6 +56,11 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 </div>
 
 <div align="center">
+<img src="docs/images/swarm_airsim_policy.gif" width="840" alt="The learned teammate-token policy flown in photorealistic AirSim Blocks: four quadrotors swap across one hub and spiral into the convention's roundabout, rotors and shadows visible">
+<br><sub><b>The lab's first learned policy, flown in photoreal 3-D.</b> The <b>same</b> convention-distilled teammate-token deep set above — now driving four quadrotors in <a href="https://github.com/microsoft/AirSim">AirSim</a> (Unreal Engine). The planar policy's rollout is replayed on the fleet while an external camera orbits the converging swarm: the <b>learned right-of-way roundabout</b>, in photorealistic 3-D (<code>scripts/record_airsim_swarm_policy.py</code>).</sub>
+</div>
+
+<div align="center">
 <table>
 <tr>
 <td align="center"><img src="docs/images/swarm_airsim_cinematic.gif" width="225"><br><sub><b>AirSim chase-cam</b> — an external camera trails the lead quadrotor as the fleet crosses.</sub></td>
@@ -77,7 +82,7 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 | <img src="docs/images/swarm_obstacle_gauntlet.gif" width="240"><br><sub>**Obstacle gauntlet** — a dozen drones weave through six sweeping bodies.</sub> | <img src="docs/images/swarm_wind.gif" width="240"><br><sub>**Crosswind** — a gusting wind field bows every track.</sub> | <img src="docs/images/swarm_antipodal_orca_vs_hrvo.gif" width="240"><br><sub>**ORCA vs HRVO** at the hub — collide vs roundabout.</sub> |
 | <img src="docs/images/swarm_crossing_rvo_vs_orca.gif" width="240"><br><sub>**RVO dance vs ORCA glide** — RVO's tracks kink, ORCA's stay smooth.</sub> | <img src="docs/images/compare_rrt_vs_rrt_star.gif" width="240"><br><sub>**RRT vs RRT\*** — the "optimal" path drives into the obstacle.</sub> | <img src="docs/images/compare_gpu_mppi_vs_mpc_3d.gif" width="240"><br><sub>**GPU-MPPI vs MPC in 3-D**, rollouts visualised.</sub> |
 
-Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `antipodal` / `crossing` / `doorway` scenarios, `--obstacles`, `--wind`, `--rollouts`, `+row` convention flags) — and the 3-D sphere/field is `scripts/render_swarm_3d_gif.py`. The photorealistic clips are real [AirSim](https://github.com/microsoft/AirSim) (Unreal Engine), recorded against a running Blocks server with `scripts/record_airsim_cinematic.py` (`--mode chase`/`orbit`), `scripts/record_airsim_topdown_live.py` (top-down), `scripts/record_airsim_lidar_live.py` (onboard LiDAR point cloud), and `scripts/record_airsim_dashboard.py` (the Foxglove-style multi-panel dashboard).
+Every 2-D swarm clip above is one command — `scripts/render_swarm_gif.py` (no AirSim needed; `antipodal` / `crossing` / `doorway` scenarios, `--obstacles`, `--wind`, `--rollouts`, `+row` convention flags) — and the 3-D sphere/field is `scripts/render_swarm_3d_gif.py`. The photorealistic clips are real [AirSim](https://github.com/microsoft/AirSim) (Unreal Engine), recorded against a running Blocks server with `scripts/record_airsim_cinematic.py` (`--mode chase`/`orbit`), `scripts/record_airsim_topdown_live.py` (top-down), `scripts/record_airsim_lidar_live.py` (onboard LiDAR point cloud), `scripts/record_airsim_dashboard.py` (the Foxglove-style multi-panel dashboard), and `scripts/record_airsim_swarm_policy.py` (the learned teammate-token policy replayed on the fleet).
 
 ## Quick start
 
