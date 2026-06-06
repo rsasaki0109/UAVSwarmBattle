@@ -137,6 +137,35 @@ def test_transient_stall_resets_debounce():
     assert p._stall_count == 0 and p._mode == "free"
 
 
+def test_symmetry_gate_blocks_asymmetric_stall():
+    """With require_convergence, a stalled ego whose peer is NOT crossing the
+    cluster centroid (a mere passer-by) must NOT engage the roundabout."""
+    p = _mgr(trigger_persist=1, require_convergence=True, min_converging=1)
+    pos = np.array([25.0, 25.0])
+    goal = np.array([45.0, 25.0])
+    # peer ahead and close (so the base deadlock fires) but its goal is on the
+    # SAME side as its position relative to the centroid -> not crossing.
+    dyn = [{"position": [26.5, 25.0], "velocity": [0.0, 0.0], "radius": 0.4,
+            "goal": [30.0, 25.0]}]
+    p.set_current_state(pos, np.zeros(2))
+    p.plan(pos, goal, None, dynamic_obstacles=dyn)
+    assert p._mode == "free"  # gate shut: not a shared hub
+
+
+def test_symmetry_gate_allows_crossing_hub():
+    """A symmetric head-on (ego and peer goals each across the centroid) passes
+    the gate and engages."""
+    p = _mgr(trigger_persist=1, require_convergence=True, min_converging=1)
+    pos = np.array([25.0, 25.0])
+    goal = np.array([45.0, 25.0])           # ego heads +x; centroid ~ +x of ego
+    # peer just ahead, heading back toward ego's side (antipodal crossing)
+    dyn = [{"position": [27.0, 25.0], "velocity": [-5.0, 0.0], "radius": 0.4,
+            "goal": [7.0, 25.0]}]           # peer's goal across the centroid
+    p.set_current_state(pos, np.zeros(2))
+    p.plan(pos, goal, None, dynamic_obstacles=dyn)
+    assert p._mode == "orbit"  # gate open: a genuine shared hub
+
+
 def test_reset_clears_mode():
     p = _mgr()
     p._mode = "orbit"

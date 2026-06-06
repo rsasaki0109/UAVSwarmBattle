@@ -60,6 +60,13 @@ class MerryGoRoundPlanner(CBFPlanner):
         detect_dist: float = 5.0,
         stall_frac: float = 0.5,
         trigger_persist: int = 4,
+        # --- symmetry gate (opt-in): only engage on a genuine SHARED hub, where
+        #     the ego and >= min_converging peers must each CROSS the cluster
+        #     centroid (goal on the far side of it). Filters dense asymmetric
+        #     gridlock, where a roundabout is the wrong manoeuvre and the local
+        #     centroids do not agree. Off by default (stock decentralized MGR).
+        require_convergence: bool = False,
+        min_converging: int = 2,
         # --- local ring construction ---
         cluster_dist: float = 15.0,
         ring_min: float = 4.0,
@@ -75,6 +82,8 @@ class MerryGoRoundPlanner(CBFPlanner):
         self.detect_dist = float(detect_dist)
         self.stall_frac = float(stall_frac)
         self.trigger_persist = int(trigger_persist)
+        self.require_convergence = bool(require_convergence)
+        self.min_converging = int(min_converging)
         self.cluster_dist = float(cluster_dist)
         self.ring_min = float(ring_min)
         self.ring_gap = float(ring_gap)
@@ -94,6 +103,8 @@ class MerryGoRoundPlanner(CBFPlanner):
             detect_dist=float(cfg.get("detect_dist", 5.0)),
             stall_frac=float(cfg.get("stall_frac", 0.5)),
             trigger_persist=int(cfg.get("trigger_persist", 4)),
+            require_convergence=bool(cfg.get("require_convergence", False)),
+            min_converging=int(cfg.get("min_converging", 2)),
             cluster_dist=float(cfg.get("cluster_dist", 15.0)),
             ring_min=float(cfg.get("ring_min", 4.0)),
             ring_gap=float(cfg.get("ring_gap", 1.6)),
@@ -125,11 +136,26 @@ class MerryGoRoundPlanner(CBFPlanner):
         antipodal hub the CBF base brakes everyone to exactly this state."""
         if float(v_cur @ gdir) >= self.stall_frac * self.max_speed:
             return False
-        for pj, _vj, _rj in peers:
+        for pj, _vj, _rj, _gj in peers:
             rel = pj - pos
             if _norm(rel) <= self.detect_dist and float(rel @ gdir) > 0.0:
                 return True
         return False
+
+    def _is_convergence(self, cluster, center) -> bool:
+        """Shared-hub signature: the ego AND >= min_converging cluster peers must
+        each CROSS the centroid (goal on its far side, dot < 0). On a symmetric
+        hub every member traverses the centre; in asymmetric gridlock most peers
+        are merely passing by, so the gate stays shut and the roundabout (the
+        wrong manoeuvre there) is never engaged."""
+        ego_pos, ego_goal = cluster[0]
+        if ego_goal is None or float((ego_goal - center) @ (ego_pos - center)) >= 0.0:
+            return False
+        cross = 0
+        for pj, gj in cluster[1:]:
+            if gj is not None and float((gj - center) @ (pj - center)) < 0.0:
+                cross += 1
+        return cross >= self.min_converging
 
     def _ring_radius(self) -> float:
         """Capacity-tiered radius: circumference must hold the cluster."""
@@ -165,7 +191,7 @@ class MerryGoRoundPlanner(CBFPlanner):
             return True
         gdir = to_goal / dist
         cos_sec = math.cos(self.exit_sector)
-        for pj, _vj, _rj in peers:
+        for pj, _vj, _rj, _gj in peers:
             relp = pj - pos
             dp = _norm(relp)
             if dp <= self.exit_range and float(relp @ gdir) / max(dp, _EPS) > cos_sec:
@@ -187,7 +213,9 @@ class MerryGoRoundPlanner(CBFPlanner):
         for d in dynamic_obstacles or []:
             pj = np.asarray(d["position"], dtype=float)[:2]
             vj = np.asarray(d.get("velocity", (0.0, 0.0)), dtype=float)[:2]
-            peers.append((pj, vj, float(d.get("radius", 0.5))))
+            g = d.get("goal")
+            gj = np.asarray(g, dtype=float)[:2] if g is not None else None
+            peers.append((pj, vj, float(d.get("radius", 0.5)), gj))
 
         if self._mode == "free":
             # Debounce: engage only after the deadlock has PERSISTED for several
@@ -200,10 +228,13 @@ class MerryGoRoundPlanner(CBFPlanner):
             else:
                 self._stall_count = 0
             if self._stall_count >= self.trigger_persist:
-                pts = [pos2] + [pj for pj, _, _ in peers if _norm(pj - pos2) < self.cluster_dist]
-                self._center = np.mean(np.asarray(pts), axis=0)
-                self._cluster_n = len(pts)
-                self._mode = "orbit"
+                cluster = [(pos2, gl2)] + [(pj, gj) for pj, _, _, gj in peers
+                                           if _norm(pj - pos2) < self.cluster_dist]
+                center = np.mean(np.asarray([p for p, _ in cluster]), axis=0)
+                if not self.require_convergence or self._is_convergence(cluster, center):
+                    self._center = center
+                    self._cluster_n = len(cluster)
+                    self._mode = "orbit"
                 self._stall_count = 0
 
         if self._mode == "orbit":

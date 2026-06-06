@@ -38,7 +38,7 @@ from uav_nav_lab.analysis.joint_stats import mcnemar_exact_p
 
 SPEED = 5.0
 LO, HI = 8.0, 42.0
-ARMS = ["cbf", "cbf_global", "cbf_pairwise", "mgr"]
+ARMS = ["cbf", "cbf_global", "cbf_pairwise", "mgr", "mgr_sym"]
 
 
 def _cbf_base(replan):
@@ -56,6 +56,8 @@ def _planner(arm, gb, pb, replan):
         p = _cbf_base(replan); p["pairwise_bias"] = pb; p["pairwise_radius"] = 8.0; return p
     if arm == "mgr":
         p = _cbf_base(replan); p["type"] = "mgr"; return p
+    if arm == "mgr_sym":
+        p = _cbf_base(replan); p["type"] = "mgr"; p["require_convergence"] = True; return p
     raise ValueError(arm)
 
 
@@ -145,8 +147,8 @@ def main():
               "replan": args.replan, "episodes": args.episodes, "cells": []}
     print(f"\nUnstructured random-derangement traffic: is triggered MGR the off-switch? "
           f"(CBF, n={args.episodes}, paired; succ [coll/timeout])")
-    print(f"{'N':>2} | {'cbf':>13} | {'cbf_global':>13} | {'cbf_pairwise':>13} | {'mgr':>13} | "
-          f"{'glob vs cbf':>15} | {'pw vs cbf':>15} | {'mgr vs cbf':>15}")
+    print(f"{'N':>2} | {'cbf':>13} | {'cbf_pairwise':>13} | {'mgr':>13} | {'mgr_sym':>13} | "
+          f"{'pw vs cbf':>15} | {'mgr vs cbf':>15} | {'mgrsym vs cbf':>15}")
     print("-" * 120)
     for n in sorted(cells):
         c = cells[n]
@@ -158,13 +160,15 @@ def main():
         bg, cg, pg = _mc(c["cbf_global"], c["cbf"], seeds)
         bp, cp, pp = _mc(c["cbf_pairwise"], c["cbf"], seeds)
         bm, cm, pm = _mc(c["mgr"], c["cbf"], seeds)
-        print(f"{n:>2} | {cell('cbf'):>13} | {cell('cbf_global'):>13} | {cell('cbf_pairwise'):>13} | "
-              f"{cell('mgr'):>13} | b={bg:>2} c={cg:>2} {pg:>6.4f} | b={bp:>2} c={cp:>2} {pp:>6.4f} | "
-              f"b={bm:>2} c={cm:>2} {pm:>6.4f}")
+        bs, cs, ps = _mc(c["mgr_sym"], c["cbf"], seeds)
+        print(f"{n:>2} | {cell('cbf'):>13} | {cell('cbf_pairwise'):>13} | {cell('mgr'):>13} | "
+              f"{cell('mgr_sym'):>13} | b={bp:>2} c={cp:>2} {pp:>6.4f} | b={bm:>2} c={cm:>2} {pm:>6.4f} | "
+              f"b={bs:>2} c={cs:>2} {ps:>6.4f}")
         row = {"n": n, "m": m,
                "global_vs_cbf": {"b": bg, "c": cg, "p": pg},
                "pairwise_vs_cbf": {"b": bp, "c": cp, "p": pp},
-               "mgr_vs_cbf": {"b": bm, "c": cm, "p": pm}}
+               "mgr_vs_cbf": {"b": bm, "c": cm, "p": pm},
+               "mgr_sym_vs_cbf": {"b": bs, "c": cs, "p": ps}}
         for a in ARMS:
             cc, to = _brk(c[a], seeds)
             row[a] = _succ(c[a], seeds)
