@@ -131,6 +131,7 @@ different strategies.
 - [HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention)
 - [A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
 - [Cooperative carrying scales to any team size only if the formation can reorient (testing TeamHOI's "size-agnostic" claim)](#cooperative-carrying-scales-to-any-team-size-only-if-the-formation-can-reorient--testing-teamhois-size-agnostic-claim)
+- [Reorientation makes a straight doorway size-agnostic — an L-corner imposes a hard ceiling no reshaping beats](#reorientation-makes-a-straight-doorway-size-agnostic--an-l-corner-imposes-a-hard-ceiling-no-reshaping-beats)
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 ## MPC compute Pareto
 
@@ -8918,3 +8919,73 @@ formation geometry) rather than a cleverer per-agent policy.
 Reproduce: `python scripts/coop_transport_doorway_phase.py --mode team --episodes 60`
 (`--mode gap` / `--mode runway` for the other two axes);
 `python scripts/render_transport_gif.py` for the figure.
+
+## Reorientation makes a straight doorway size-agnostic — an L-corner imposes a hard ceiling no reshaping beats
+
+The [doorway result](#cooperative-carrying-scales-to-any-team-size-only-if-the-formation-can-reorient--testing-teamhois-size-agnostic-claim)
+showed that letting a carried beam reorient makes cooperative transport
+team-size-agnostic — adaptive holds ~100 % flat across N=2–8. That is a property
+of a **convex** aperture. A right-angle corridor junction is *non-convex*, and a
+rigid segment rounding it obeys the classical "ladder around a corner" (piano-mover)
+bound: it can be maneuvered through iff its length is at most
+
+    L_max = (a^(2/3) + b^(2/3))^(3/2)        (corridors of width a, b)
+
+No reorientation beats this — a beam longer than L_max cannot round the corner in
+*any* sequence of moves. Since beam length grows with the team, the corner caps
+the maximum team size, however the formation reshapes.
+
+![carrying a beam around an L-corner: a short team rounds it, a longer team jams at the critical 45° configuration](images/swarm_transport_corner.gif)
+
+`scripts/_coop_transport.simulate_corner` rounds the beam through the optimal
+(tangent-to-inner-corner) motion; success is the analytic ladder bound on the
+footprint-inflated length, with per-seed corridor-width jitter for the McNemar.
+
+**Team-size ceiling.** Corridor width 4 m (`L_max = 11.3 m`), beam `2.5·(N−1)` m,
+60 seeds, paired against the straight-doorway adaptive arm (b = corner-only,
+c = doorway-only):
+
+| N | beam | doorway | corner | c | p |
+|---|---|---|---|---|---|
+| 2 | 2.5 | 60/60 | 60/60 | 0 | 1.0 |
+| 4 | 7.5 | 60/60 | 60/60 | 0 | 1.0 |
+| 5 | 10.0 | 60/60 | 36/60 | 24 | 1.2e-07 |
+| 6 | 12.5 | 60/60 | 0/60 | 60 | 1.7e-18 |
+| 8 | 17.5 | 57/60 | 0/60 | 57 | 1.4e-17 |
+
+Where the doorway stays flat (the adaptive size-agnostic result), the corner
+**cliffs at N≈5–6**: it ties the doorway up to N=4, drops through a genuine
+stochastic transition at N=5 (`36/60`, the beam's inflated length `11.0 m` sits
+right at `L_max = 11.3 m`), and collapses to `0/60` for every N≥6. The ceiling is
+`N_max ≈ L_max/spacing + 1 ≈ 5.5` here.
+
+**The ceiling scales with corridor width.** N=6 (beam 12.5 m, footprint-inflated
+13.5 m), sweep width:
+
+| width | L_max | corner | c | p |
+|---|---|---|---|---|
+| 3.0 | 8.5 | 0/60 | 60 | 1.7e-18 |
+| 4.0 | 11.3 | 0/60 | 60 | 1.7e-18 |
+| 4.5 | 12.7 | 11/60 | 49 | 3.6e-15 |
+| 5.0 | 14.1 | 46/60 | 14 | 1.2e-04 |
+| 5.5 | 15.6 | 59/60 | 1 | 1.0 |
+| 6.0 | 17.0 | 60/60 | 0 | 1.0 |
+
+The corner is restored exactly as `L_max(w) = 2.83·w` crosses the beam's inflated
+length (13.5 m at `w ≈ 4.77 m`): widen the corridor and the same team passes again.
+
+**Takeaway.** "Team-size-agnostic" cooperative carrying is bounded by the
+*topology* of the workspace. Reorientation removes the size dependence at a convex
+aperture (a doorway) but not at a non-convex one (an L-corner), where a hard
+geometric ceiling `N_max = 2.83·w/spacing + 1` caps the team no reshaping can lift.
+This sharpens the doorway finding: the cure (active formation reshaping) works only
+where the obstacle geometry admits it — a corner needs a *wider corridor*, not a
+bigger or cleverer team. (The montage below shows the convex case for contrast:
+fixed carrying collapses with N while reorienting threads at every team size.)
+
+![team-size montage: fixed-orientation carrying collapses as the team grows, reorienting threads at every size](images/swarm_transport_montage.gif)
+
+Reproduce: `python scripts/coop_transport_corner_phase.py --mode ceiling --episodes 60`
+(`--mode width` for the width sweep);
+`python scripts/render_transport_corner_gif.py` and
+`python scripts/render_transport_montage_gif.py` for the figures.
