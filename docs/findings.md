@@ -132,6 +132,7 @@ different strategies.
 - [A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
 - [Cooperative carrying scales to any team size only if the formation can reorient (testing TeamHOI's "size-agnostic" claim)](#cooperative-carrying-scales-to-any-team-size-only-if-the-formation-can-reorient--testing-teamhois-size-agnostic-claim)
 - [Reorientation makes a straight doorway size-agnostic — an L-corner imposes a hard ceiling no reshaping beats](#reorientation-makes-a-straight-doorway-size-agnostic--an-l-corner-imposes-a-hard-ceiling-no-reshaping-beats)
+- [A teammate-token policy is only as symmetry-breaking as its teacher (distilling the convention transfers the antipodal cure)](#a-teammate-token-policy-is-only-as-symmetry-breaking-as-its-teacher--distilling-the-convention-transfers-the-antipodal-cure-distilling-a-symmetric-avoider-reimports-and-amplifies-the-deadlock)
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 ## MPC compute Pareto
 
@@ -8989,3 +8990,76 @@ Reproduce: `python scripts/coop_transport_corner_phase.py --mode ceiling --episo
 (`--mode width` for the width sweep);
 `python scripts/render_transport_corner_gif.py` and
 `python scripts/render_transport_montage_gif.py` for the figures.
+
+## A teammate-token policy is only as symmetry-breaking as its teacher — distilling the convention transfers the antipodal cure, distilling a symmetric avoider reimports (and amplifies) the deadlock
+
+[TeamHOI](https://splionar.github.io/TeamHOI/) (CVPR 2026) learns one decentralized
+**teammate-token** policy (each agent attends to a permutation-invariant set of
+teammate tokens) that scales to any team size. The lab's recurring result is that the
+symmetric antipodal hub deadlocks every *symmetric* reactive avoider, and the cure is
+an explicit right-of-way **convention** that breaks the left/right symmetry. So: does
+the permutation-equivariant teammate-token *architecture* create or cure the deadlock —
+or does it just transport whatever symmetry-breaking its teacher had?
+
+We distill two closed-form teachers into the **same** NumPy deep-set policy (per-peer
+encoder → permutation-invariant mean-pool over teammate tokens → readout, in the
+ego-goal frame — the essence of teammate-token attention), by behavioral cloning on
+**random scenes only (no antipodal ever seen)**, then evaluate closed-loop on the
+unseen antipodal hub (`scripts/_swarm_policy.py`, `scripts/swarm_bc_symmetry_phase.py`):
+
+- **teacher_plain** — goal + symmetric peer repulsion (deadlocks on antipodal)
+- **teacher_conv** — plain + a right-of-way convention (clears the hub)
+
+![same teammate-token deep set, two teachers: distilled from a symmetric avoider it piles into the hub and collides; distilled from a convention teacher the same architecture spirals into a clean roundabout](images/swarm_bc_convention.gif)
+
+Both students reach `bc_mse ≈ 1e-4` — near-perfect imitation of the teacher's per-step
+action. Closed-loop antipodal success (60 eval seeds, disjoint from training):
+
+| N | teacher_plain | student←plain | teacher_conv | student←conv |
+|---|---|---|---|---|
+| 4 | 58/60 | **8/60** | 60/60 | **60/60** |
+| 6 | 45/60 | **1/60** | 60/60 | **58/60** |
+| 8 | 10/60 | **0/60** | 59/60 | **41/60** |
+
+McNemar-exact, paired by eval seed:
+
+| N | comparison | b | c | p |
+|---|---|---|---|---|
+| 4 | student←conv vs student←plain | 52 | 0 | 4.4e-16 |
+| 6 | student←conv vs student←plain | 57 | 0 | 1.4e-17 |
+| 8 | student←conv vs student←plain | 41 | 0 | 9.1e-13 |
+| 4 | student←plain vs teacher_plain | 0 | 50 | 1.8e-15 |
+| 6 | student←plain vs teacher_plain | 0 | 44 | 1.1e-13 |
+| 8 | student←plain vs teacher_plain | 0 | 10 | 2.0e-03 |
+| 8 | student←conv vs teacher_conv | 1 | 19 | 4.0e-05 |
+
+- **The architecture neither creates nor cures the deadlock — it transports the
+  teacher's convention.** Same deep set, same BC objective, identical `bc_mse` — yet
+  student←conv beats student←plain at *every* N (`b=52/57/41`, `c=0`, p≤9e-13). The
+  decisive variable is not the teammate-token network but whether the teacher's
+  demonstrations broke the symmetry.
+- **Distilled from a symmetric avoider, the policy AMPLIFIES the deadlock.**
+  student←plain is *significantly worse than its own teacher* (`8/1/0` vs `58/45/10`;
+  c=50/44/10, p≤2e-3) — the smooth network averages away the discrete teacher's
+  *incidental* asymmetries, producing a cleaner symmetry and a harder deadlock. This is
+  the lab's "offline accuracy ≠ closed-loop outcome" theme, now for a *learned* policy:
+  `bc_mse=1e-4` is identical for both students and tells you nothing about the hub.
+- **Distilled from the convention, it generalizes the cure zero-shot.** Trained on
+  random scenes with N≤6, student←conv clears the *unseen* antipodal hub and extends to
+  **N=8 > the training maximum** (the mean-pool deep set is team-size-agnostic by
+  construction): tie with teacher_conv at N=4/6, mild decay only at the zero-shot N=8
+  (`b=1/c=19`, 41/60). This is exactly TeamHOI's "any team size" claim — and it works.
+
+**Takeaway.** A teammate-token policy is only as symmetry-breaking as its teacher. The
+permutation-equivariant architecture faithfully transports whatever convention the
+training signal contained — and, lacking one, reimports and even *sharpens* the
+antipodal deadlock the whole lab has documented for symmetric reactive methods. This
+**bounds TeamHOI**: its size-agnostic success on a *symmetric* task must originate in a
+symmetry-breaker somewhere in the training signal (reward, demonstrations, the masked
+AMP prior), not in the teammate-token architecture per se. The learned-policy twin of
+the planner/predictor symmetry findings — the cure is still a convention, whoever
+carries it.
+
+Reproduce: `python scripts/swarm_bc_symmetry_phase.py --episodes 60`
+(trains both students on random scenes, evaluates on antipodal, prints the McNemar
+table, and caches the models); `python scripts/render_swarm_bc_gif.py` for the figure.
