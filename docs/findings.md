@@ -9060,6 +9060,15 @@ AMP prior), not in the teammate-token architecture per se. The learned-policy tw
 the planner/predictor symmetry findings — the cure is still a convention, whoever
 carries it.
 
+![the learned teammate-token policy flown in photorealistic AirSim Blocks: four quadrotors swap across one hub and spiral into the convention's roundabout](images/swarm_airsim_policy.gif)
+
+*The convention-distilled policy, flown in photoreal 3-D.* The lab's first learned
+policy is not confined to the 2-D figure above: the same `student←conv` rollout
+(N=4 antipodal) is replayed on four AirSim quadrotors while an external camera orbits
+the fleet, so the learned right-of-way roundabout reads in photorealistic 3-D
+(`scripts/record_airsim_swarm_policy.py`, against a running Blocks server).
+
 Reproduce: `python scripts/swarm_bc_symmetry_phase.py --episodes 60`
 (trains both students on random scenes, evaluates on antipodal, prints the McNemar
-table, and caches the models); `python scripts/render_swarm_bc_gif.py` for the figure.
+table, and caches the models); `python scripts/render_swarm_bc_gif.py` for the figure,
+`python scripts/record_airsim_swarm_policy.py` for the AirSim render.
