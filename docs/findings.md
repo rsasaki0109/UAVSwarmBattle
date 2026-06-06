@@ -136,6 +136,7 @@ different strategies.
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 - [A decentralized Merry-Go-Round negotiates its ring from sensing alone — agents agree on the symmetric hub, but the same local agreement is what fails on unstructured traffic](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
 - [The Merry-Go-Round's unstructured-traffic collapse is over-triggering, not disagreement — a symmetry gate restores the off-switch](#the-merry-go-rounds-unstructured-traffic-collapse-is-over-triggering-not-disagreement--a-symmetry-gate-restores-the-off-switch)
+- [A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient](#a-learned-convention-also-needs-a-representation-that-can-represent-handedness--the-teacher-carrying-it-is-necessary-but-not-sufficient)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9222,3 +9223,64 @@ primitive: it fires exactly on the symmetric convergence it was built to cure, a
 Reproduce: `python scripts/antipodal_mgr_phase.py --n-list 4 6 8 12 16 20 --episodes 40`
 and `python scripts/unstructured_mgr_phase.py --n-list 8 12 16 --episodes 40` (both now
 include the `mgr_sym` arm; the gate is `planner.require_convergence: true`).
+
+## A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient
+
+[A teammate-token policy is only as symmetry-breaking as its teacher](#a-teammate-token-policy-is-only-as-symmetry-breaking-as-its-teacher--distilling-the-convention-transfers-the-antipodal-cure-distilling-a-symmetric-avoider-reimports-and-amplifies-the-deadlock)
+showed the deep set transports whatever convention its *teacher* had: distilling the
+right-of-way clears the antipodal hub, distilling a symmetric avoider reimports the
+deadlock. But that used the ego-goal frame — a pure *rotation*, which preserves
+chirality, so "right" is a single direction every agent shares. Is that shared
+handedness reference necessary, or could the convention ride a chirality-free
+representation? It is the dual question to the teacher one: #131 fixed the teacher and
+varied nothing about the representation; here we fix the (convention) teacher and vary
+*only* the representation's symmetry.
+
+Distil the **same** convention teacher into the **same** deep set under two
+featurizations, plus the symmetric-teacher floor:
+
+  - `conv_std` — ego-goal frame (rotation only; chirality preserved) — the #131 winner;
+  - `conv_refl` — ego-goal frame **+ reflection canonicalization**: the y-axis is
+    flipped so the peers' lateral sum is non-negative, making the frame invariant to a
+    left/right mirror, so "−y = right" no longer names a globally-consistent rotational
+    sense (each agent flips on its own local peer layout);
+  - `plain_std` — the symmetric teacher in the standard frame (the deadlock floor).
+
+Closed-loop antipodal, 60 eval seeds (unseen in training), models trained once, paired
+McNemar-exact:
+
+| N | conv_std | conv_refl | plain_std | conv_std vs conv_refl | conv_refl vs plain_std |
+|---|---|---|---|---|---|
+| 4 | **60/60** | 2/60 | 8/60 | b=58 c=0 **6.9e-18** | b=0 c=6 0.031 |
+| 6 | **58/60** | 4/60 | 1/60 | b=54 c=0 **1.1e-16** | b=4 c=1 0.375 |
+| 8 | **41/60** | 0/60 | 0/60 | b=41 c=0 **9.1e-13** | b=0 c=0 1.00 |
+
+(BC fit is identical across arms: `bc_mse` = 1e-4 / 2e-4 / 1e-4.)
+
+- **Removing chirality from the representation erases the convention entirely.** Same
+  teacher, same architecture, same BC objective (all `bc_mse ~1e-4`) — the *only* change
+  is whether the frame quotients out the left/right mirror. `conv_std` clears the hub
+  (60/58/41); `conv_refl` collapses to 2/4/0 (`b≥41, c=0, p<1e-12` at every N). The
+  representation must be able to *represent* a global handedness, or the convention
+  cannot be carried no matter how cleanly the teacher demonstrates it.
+- **The chirality-free convention student is just the deadlock floor.** `conv_refl` is
+  statistically *indistinguishable from* the symmetric-teacher student `plain_std` at
+  N=6 (p=0.375) and N=8 (exact tie, 0/0) — and at N=4 it is even a touch *below* it
+  (`c=6, p=0.031`). Quotient out the mirror and a convention teacher buys you nothing
+  over a symmetric one: the cure is fully gone.
+- **Another offline≠closed-loop, driven purely by representation symmetry.** `conv_refl`
+  fits its targets to `bc_mse=2e-4` — a near-perfect regression — yet deadlocks, because
+  in a reflection-invariant frame those perfectly-fit targets no longer encode a
+  consistent global "right." The handedness was never in the *loss*; it lived in the
+  frame, and the frame quotiented it away.
+
+Net: a learned teammate-token policy carries a right-of-way convention **iff both** the
+teacher demonstrates it (#131) **and** the representation can represent handedness
+(here). They are two independent necessary conditions; remove either — a symmetric
+teacher, or a chirality-free frame — and the same architecture reimports the antipodal
+deadlock at the same `bc_mse`. This sharpens the bound on "size-agnostic" teammate-token
+learning: the symmetry-breaker must be present in *both* the training signal and the
+representation, not just one.
+
+Reproduce: `python scripts/swarm_bc_chirality_phase.py --episodes 60`
+(writes `results/swarm_bc_chirality_phase.json`).
