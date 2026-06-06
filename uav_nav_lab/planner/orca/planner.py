@@ -266,6 +266,55 @@ class ORCAPlanner(Planner):
         if velocity is not None:
             self._cur_vel = np.asarray(velocity, dtype=float)[:2]
 
+    def _preferred_velocity(
+        self,
+        pos: np.ndarray,
+        gl: np.ndarray,
+        v_cur: np.ndarray,
+        dynamic_obstacles: list[dict] | None,
+    ) -> np.ndarray:
+        """Preferred velocity fed to the ORCA LP.
+
+        Straight to goal at cruise speed (zero inside the goal disc), optionally
+        tilted by the global / pairwise right-of-way convention. Factored out so
+        subclasses can inject a different reference (e.g. the Merry-Go-Round
+        roundabout tangent) while reusing the reciprocal LP safety layer below.
+        """
+        to_goal = gl - pos
+        dist = _norm(to_goal)
+        if dist < self.goal_radius:
+            return np.zeros(2)
+        v_pref = to_goal / dist * self.max_speed
+        if self.lateral_bias > 0.0:
+            # Right-of-way: tilt the preferred velocity to the ego's right
+            # (clockwise perpendicular = (y, -x) of the goal direction), then
+            # renormalise to cruise speed. Turns a symmetric head-on into a
+            # consistent clockwise pass.
+            gdir = to_goal / dist
+            right = np.array([gdir[1], -gdir[0]])
+            v_pref = v_pref + self.lateral_bias * self.max_speed * right
+            v_pref = v_pref / _norm(v_pref) * self.max_speed
+        if self.pairwise_bias > 0.0 and dynamic_obstacles:
+            # PAIRWISE right-of-way: tilt toward the sum of "pass each nearby
+            # neighbour on the right" (clockwise perpendicular of the bearing to
+            # it), weighted exp(-d/radius). Conditional on real neighbours, so a
+            # lone agent (or one whose neighbours cancel by symmetry) is not
+            # tilted and cannot over-rotate into an orbit.
+            tilt = np.zeros(2)
+            for d in dynamic_obstacles:
+                rel = np.asarray(d["position"], dtype=float)[:2] - pos
+                dn = _norm(rel)
+                if dn < _EPS:
+                    continue
+                nrel = rel / dn
+                cw = np.array([nrel[1], -nrel[0]])  # right of the neighbour
+                tilt = tilt + np.exp(-dn / self.pairwise_radius) * cw
+            v_pref = v_pref + self.pairwise_bias * self.max_speed * tilt
+            vp = _norm(v_pref)
+            if vp > _EPS:
+                v_pref = v_pref / vp * self.max_speed
+        return v_pref
+
     def plan(
         self,
         observation: np.ndarray,
@@ -283,43 +332,7 @@ class ORCAPlanner(Planner):
         gl = np.asarray(goal, dtype=float)[:2]
         v_cur = self._cur_vel if self._cur_vel is not None else np.zeros(2)
 
-        # Preferred velocity: straight to goal at cruise speed; stop in goal disc.
-        to_goal = gl - pos
-        dist = _norm(to_goal)
-        if dist < self.goal_radius:
-            v_pref = np.zeros(2)
-        else:
-            v_pref = to_goal / dist * self.max_speed
-            if self.lateral_bias > 0.0:
-                # Right-of-way: tilt the preferred velocity to the ego's right
-                # (clockwise perpendicular = (y, -x) of the goal direction),
-                # then renormalise to cruise speed. Turns a symmetric head-on
-                # into a consistent clockwise pass.
-                gdir = to_goal / dist
-                right = np.array([gdir[1], -gdir[0]])
-                v_pref = v_pref + self.lateral_bias * self.max_speed * right
-                v_pref = v_pref / _norm(v_pref) * self.max_speed
-            if self.pairwise_bias > 0.0 and dynamic_obstacles:
-                # PAIRWISE right-of-way: tilt the preferred velocity toward the
-                # sum of "pass each nearby neighbour on the right" (clockwise
-                # perpendicular of the bearing to it), weighted exp(-d/radius).
-                # Conditional on real neighbours, so a lone agent (or one whose
-                # neighbours cancel by symmetry) is not tilted and cannot
-                # over-rotate into an orbit — the ORCA port of the MPC pairwise
-                # knob.
-                tilt = np.zeros(2)
-                for d in dynamic_obstacles:
-                    rel = np.asarray(d["position"], dtype=float)[:2] - pos
-                    dn = _norm(rel)
-                    if dn < _EPS:
-                        continue
-                    nrel = rel / dn
-                    cw = np.array([nrel[1], -nrel[0]])  # right of the neighbour
-                    tilt = tilt + np.exp(-dn / self.pairwise_radius) * cw
-                v_pref = v_pref + self.pairwise_bias * self.max_speed * tilt
-                vp = _norm(v_pref)
-                if vp > _EPS:
-                    v_pref = v_pref / vp * self.max_speed
+        v_pref = self._preferred_velocity(pos, gl, v_cur, dynamic_obstacles)
 
         lines: list[_Line] = []
         inv_th = 1.0 / self.time_horizon
@@ -382,5 +395,6 @@ class ORCAPlanner(Planner):
         return Plan(
             waypoints=np.asarray([wp], dtype=float),
             target_velocity=new_vel,
-            meta={"planner": "orca", "n_lines": len(lines)},
+            meta={"planner": getattr(self, "_planner_name", "orca"),
+                  "n_lines": len(lines), "mode": getattr(self, "_mode", None)},
         )

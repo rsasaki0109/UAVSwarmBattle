@@ -243,33 +243,19 @@ class CBFPlanner(Planner):
         if velocity is not None:
             self._cur_vel = np.asarray(velocity, dtype=float)
 
-    def plan(
-        self,
-        observation: np.ndarray,
-        goal: np.ndarray,
-        obstacle_map: Any,
-        *,
-        dynamic_obstacles: list[dict] | None = None,
-    ) -> Plan:
-        pos = np.asarray(observation, dtype=float)
-        ndim = pos.shape[0]
-        if ndim not in (2, 3):
-            raise ValueError(f"CBFPlanner supports 2-D/3-D; got {ndim}-D observation.")
-        gl = np.asarray(goal, dtype=float)[:ndim]
-        to_goal = gl - pos
-        dist = float(np.linalg.norm(to_goal))
-        if dist < self.goal_radius:
-            return Plan(waypoints=np.asarray([pos], dtype=float),
-                        target_velocity=np.zeros(ndim), meta={"planner": "cbf"})
+    def _nominal_velocity(self, pos, gl, dynamic_obstacles):
+        """Nominal (pre-filter) velocity the CBF QP is projected onto: straight
+        to goal at cruise speed, optionally tilted by the in-plane right-of-way
+        convention. Factored out so subclasses can inject a different reference
+        (e.g. the Merry-Go-Round roundabout tangent) and reuse the barrier QP.
 
-        gdir = to_goal / dist
-        # Right-of-way conventions are an IN-PLANE rule (a clockwise pass in the
-        # horizontal plane). They apply in 2-D and, in 3-D, to the horizontal
-        # (xy) components — leaving the vertical axis alone. The 3-D vertical
-        # escape that dissolves the deadlock for a *sampling* planner is unused
-        # by this reactive filter (its nominal stays in-plane; see findings.md
-        # "the 3-D dissolution is a planner property"), so the in-plane
-        # convention is exactly what a reactive controller needs in 3-D too.
+        Right-of-way conventions are an IN-PLANE rule (a clockwise pass in the
+        horizontal plane): in 3-D they tilt only the (xy) components, leaving the
+        vertical axis alone (the 3-D vertical escape is a sampling-planner
+        property, unused by this reactive filter).
+        """
+        to_goal = gl - pos
+        gdir = to_goal / float(np.linalg.norm(to_goal))
         if self.lateral_bias > 0.0:
             g2 = gdir[:2]
             n2 = _norm(g2)
@@ -294,7 +280,29 @@ class CBFPlanner(Planner):
             gn = float(np.linalg.norm(gdir))
             if gn > _EPS:
                 gdir = gdir / gn
-        v_nom = gdir * self.max_speed
+        return gdir * self.max_speed
+
+    def plan(
+        self,
+        observation: np.ndarray,
+        goal: np.ndarray,
+        obstacle_map: Any,
+        *,
+        dynamic_obstacles: list[dict] | None = None,
+    ) -> Plan:
+        pos = np.asarray(observation, dtype=float)
+        ndim = pos.shape[0]
+        if ndim not in (2, 3):
+            raise ValueError(f"CBFPlanner supports 2-D/3-D; got {ndim}-D observation.")
+        gl = np.asarray(goal, dtype=float)[:ndim]
+        to_goal = gl - pos
+        dist = float(np.linalg.norm(to_goal))
+        if dist < self.goal_radius:
+            return Plan(waypoints=np.asarray([pos], dtype=float),
+                        target_velocity=np.zeros(ndim),
+                        meta={"planner": getattr(self, "_planner_name", "cbf")})
+
+        v_nom = self._nominal_velocity(pos, gl, dynamic_obstacles)
 
         share = 0.5 if self.reciprocal else 1.0
 
@@ -338,4 +346,5 @@ class CBFPlanner(Planner):
 
         wp = pos + v * self.time_step
         return Plan(waypoints=np.asarray([wp], dtype=float), target_velocity=v,
-                    meta={"planner": "cbf", "n_lines": len(cons)})
+                    meta={"planner": getattr(self, "_planner_name", "cbf"),
+                          "n_lines": len(cons), "mode": getattr(self, "_mode", None)})

@@ -134,6 +134,7 @@ different strategies.
 - [Reorientation makes a straight doorway size-agnostic — an L-corner imposes a hard ceiling no reshaping beats](#reorientation-makes-a-straight-doorway-size-agnostic--an-l-corner-imposes-a-hard-ceiling-no-reshaping-beats)
 - [A teammate-token policy is only as symmetry-breaking as its teacher (distilling the convention transfers the antipodal cure)](#a-teammate-token-policy-is-only-as-symmetry-breaking-as-its-teacher--distilling-the-convention-transfers-the-antipodal-cure-distilling-a-symmetric-avoider-reimports-and-amplifies-the-deadlock)
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
+- [A decentralized Merry-Go-Round negotiates its ring from sensing alone — agents agree on the symmetric hub, but the same local agreement is what fails on unstructured traffic](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9072,3 +9073,93 @@ Reproduce: `python scripts/swarm_bc_symmetry_phase.py --episodes 60`
 (trains both students on random scenes, evaluates on antipodal, prints the McNemar
 table, and caches the models); `python scripts/render_swarm_bc_gif.py` for the figure,
 `python scripts/record_airsim_swarm_policy.py` for the AirSim render.
+
+## A decentralized Merry-Go-Round negotiates its ring from sensing alone — agents agree on the symmetric hub, but the same local agreement is what fails on unstructured traffic
+
+The lab's [`roundabout`](#explicit-roundabout-merry-go-round-vs-implicit-convention-density-invariant-scaling-at-a-fixed-time-premium)
+planner is the *simplified* Merry-Go-Round (Zhou et al. 2025, arXiv:2503.05848): an
+always-on ring around a **fixed centre handed in by symmetry** (the arena middle).
+Its own docstring punts on the parts that make the method *decentralized* — "the
+centre would be negotiated per conflict cluster (not modelled here)." The new
+`mgr` planner implements exactly those parts: it **triggers** only on a locally
+detected deadlock (the ego braked to a near-stop with a peer close ahead,
+debounced so a transient stall does not count), negotiates the ring **centre as
+the centroid of its own conflict cluster** (sensing only, no global hub knowledge),
+**tiers the radius** with the cluster size, and **peels off** when its bearing
+reaches the goal's with the exit cone clear — all on a CBF barrier-QP base avoider
+(the base whose antipodal failure is a *safe timeout*, giving the detector a clean
+stall to fire on). Two questions: **(Q1)** can independent agents *agree* on a
+common ring from local sensing, reproducing the clean fixed-centre result without
+the symmetry cheat? **(Q2)** does triggering give the always-on convention the
+"off-switch" it lacks on unstructured traffic?
+
+![the antipodal swap: plain CBF freezes in a deadlocked clump at the hub while the triggered Merry-Go-Round forms a decentralized roundabout and clears](images/swarm_mgr_roundabout.gif)
+
+**Q1 — antipodal swap, CBF family, n=40 paired (success [coll/timeout]; makespan, ideal 8.0 s):**
+
+| N | cbf (stock) | cbf_global | cbf_pairwise | mgr | roundabout (fixed centre) | mgr vs cbf | mgr vs roundabout |
+|---|---|---|---|---|---|---|---|
+| 4 | 5/40 [0c/35t] 13.0 | 40/40 9.3 | 40/40 8.7 | **40/40** 11.1 | 40/40 13.0 | b=35 c=0 **<1e-4** | b=0 c=0 1.00 |
+| 6 | 10/40 [0c/30t] 15.5 | 40/40 9.3 | 40/40 9.0 | **40/40** 11.2 | 40/40 13.0 | b=30 c=0 **<1e-4** | b=0 c=0 1.00 |
+| 8 | 1/40 [0c/39t] 15.3 | 40/40 9.4 | 40/40 9.4 | **40/40** 11.7 | 40/40 13.1 | b=39 c=0 **<1e-4** | b=0 c=0 1.00 |
+| 12 | 0/40 [0c/40t] | 40/40 10.0 | 40/40 11.2 | **40/40** 17.5 | 40/40 13.1 | b=40 c=0 **<1e-4** | b=0 c=0 1.00 |
+| 16 | 0/40 [0c/40t] | 40/40 10.5 | 40/40 13.2 | **40/40** 18.7 | 40/40 13.1 | b=40 c=0 **<1e-4** | b=0 c=0 1.00 |
+| 20 | 0/40 [0c/40t] | 40/40 11.4 | 34/40 23.7 | **40/40** 21.5 | 40/40 13.2 | b=40 c=0 **<1e-4** | b=0 c=0 1.00 |
+
+- **Local negotiation reproduces the fixed-centre result exactly — no handed symmetry.**
+  Stock CBF safely deadlocks the hub (timeout, deepening with N: 5/40 → 0/40, zero
+  collisions); `mgr` clears it to **40/40 at every N=4–20** (`b≥30, c=0, p<1e-4`),
+  and **ties the fixed-centre `roundabout` at every N** (`b=0 c=0 p=1.0`). The clean
+  density-invariant roundabout result *survives removing the symmetry cheat*:
+  independent agents converge on a common ring from sensing alone. **Why** it works
+  is the symmetry — on the antipodal hub every drone's conflict cluster is ~the whole
+  fleet, so every locally-computed centroid coincides at the hub, and agreement is
+  handed over for free.
+- **The locally-sized ring is faster at low density, slower at high.** `mgr`'s
+  capacity-tiered radius is a *small* ring near the bunched hub, so at low N it beats
+  the handed radius-20 ring on makespan (N=4: 11.1 s vs 13.0 s). But the small ring
+  crowds as the fleet grows and the makespan climbs past it (N=20: 21.5 s vs the fixed
+  ring's flat 13.1 s) — a tighter ring trades throughput for capacity, the dual of the
+  [ring-radius capacity knob](#the-merry-go-round-ring-radius-is-a-capacity-vs-speed-knob--and-there-is-a-floor).
+
+**Q2 — unstructured random-derangement traffic, CBF family, n=40 paired:**
+
+| N | cbf (stock) | cbf_global | cbf_pairwise | mgr | global vs cbf | pairwise vs cbf | mgr vs cbf |
+|---|---|---|---|---|---|---|---|
+| 8 | 40/40 | 40/40 | 0/40 [0c/40t] | 36/40 [0c/4t] | b=0 c=0 1.00 | b=0 c=40 **<1e-4** | b=0 c=4 0.125 |
+| 12 | 40/40 | 40/40 | 0/40 [4c/36t] | 40/40 | b=0 c=0 1.00 | b=0 c=40 **<1e-4** | b=0 c=0 1.00 |
+| 16 | 36/40 [0c/4t] | 40/40 | 0/40 [0c/40t] | 5/40 [0c/35t] | b=4 c=0 0.125 | b=0 c=36 **<1e-4** | b=0 c=31 **<1e-4** |
+
+- **Triggering is a *partial* off-switch — far better than the always-on rule, not a
+  cure.** The always-on conditional rule (`cbf_pairwise`) collapses on unstructured
+  traffic at *every* density (0/40, mostly timeouts) — the CBF echo of
+  ["the convention is a net liability on unstructured traffic"](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability).
+  `mgr` is *harmless* where that rule is fatal: a non-significant 36/40 at N=8 (p=0.125)
+  and an exact tie at N=12 — because no symmetric stall fires it, and the debounce drops
+  the transient stalls of ordinary crossings.
+- **But it cannot tell a dense gridlock from a symmetric deadlock.** At N=16 the
+  unstructured traffic is dense enough to produce *persistent* stalls, which the trigger
+  fires on — and now there is no symmetric hub, so the local centroids *disagree* and the
+  drones build competing rings: `mgr` collapses to 5/40 (`c=31, p<1e-4`), as badly as the
+  always-on rule, while stock CBF still manages 36/40. The mild global rule (`cbf_global`)
+  is the only arm harmless everywhere here.
+- **The mechanism is one fact with two faces.** Local-centroid agreement is what makes
+  the decentralized roundabout work — and symmetry is what supplies that agreement. On the
+  hub (Q1) symmetry hands it over and `mgr` matches the centre it was never told; off the
+  hub at density (Q2) there is no symmetry, the centroids disagree, and the same mechanism
+  turns a working CBF into a gridlock. The roundabout needs precisely the symmetric
+  convergence it was built for.
+
+Net: a faithful *decentralized* Merry-Go-Round reproduces the paper's headline — a ring
+negotiated locally from sensing, with no global hub knowledge, breaks the antipodal deadlock
+at any tested density and even beats the fixed ring on makespan at low N — but its triggered
+design only *partially* fixes the always-on convention's unstructured-traffic liability: it
+is safe until the traffic is dense enough that persistent stalls fire a roundabout where no
+shared centre exists. Triggering narrows the harm; it does not make the roundabout a general
+traffic primitive.
+
+Reproduce: `python scripts/antipodal_mgr_phase.py --n-list 4 6 8 12 16 20 --episodes 40`
+(writes `results/antipodal_mgr_phase.json`) and
+`python scripts/unstructured_mgr_phase.py --n-list 8 12 16 --episodes 40`
+(writes `results/unstructured_mgr_phase.json`);
+`python scripts/render_mgr_gif.py --n 8` for the figure.

@@ -28,6 +28,7 @@ Most planning repos *ship* a method. This one *interrogates* it. Every headline 
 - **"Team-size-agnostic" carrying is geometric, not learned.** Interrogating [TeamHOI](https://splionar.github.io/TeamHOI/) (CVPR 2026): N drones carry a rigid beam through a doorway. A *fixed* formation collapses to 0/60 for every N≥3 (the beam outgrows the gap); one that *reorients* the beam holds 57–60/60 flat across N=2–8 (p≤1.7e-18). What makes cooperative carrying scale to any team size is active formation reshaping — and it costs runway, not cleverness.
 - **…and only where the workspace is convex.** Reorientation makes carrying size-agnostic at a *doorway*, but an *L-corner* obeys the classical ladder-around-a-corner bound `L_max = 2.83·width`: a beam longer than that cannot round the corner in any sequence of moves. So a non-convex passage imposes a hard ceiling `N_max ≈ 2.83·width/spacing` — at corridor width 4 m the corner ties the doorway to N=4 then collapses to 0/60 by N=6, and is restored only by *widening the corridor*, not by a cleverer team.
 - **A learned teammate-token policy is only as symmetry-breaking as its teacher.** Distilling a [TeamHOI](https://splionar.github.io/TeamHOI/)-style permutation-invariant deep set (NumPy, behavioral cloning on *random scenes only*) from a **symmetric** avoider reimports — and *amplifies* — the antipodal deadlock (`8/1/0` of 60 at N=4/6/8, worse than its own teacher despite `bc_mse=1e-4`); the **same** architecture distilled from a right-of-way **convention** clears the unseen hub and generalises zero-shot to N=8 (`60/58/41`, p≤9e-13 between them). The teammate-token network neither creates nor cures the deadlock — it transports whatever convention the training signal had, bounding what "any team size" can come from.
+- **A roundabout can be negotiated locally — but only where symmetry hands over agreement.** A faithful decentralised [Merry-Go-Round](https://arxiv.org/abs/2503.05848) (triggered on a local deadlock, ring centre = the *centroid of the ego's conflict cluster*, no global hub knowledge) breaks the antipodal CBF deadlock 40/40 at every N=4–20 and *ties the fixed-centre roundabout* (p=1.0) — agents agree on a common ring from sensing alone, because on the symmetric hub every local centroid coincides. The catch is the same fact: on dense *unstructured* traffic the centroids disagree, so triggering only *partly* fixes the always-on convention's net liability — it stays safe until persistent gridlock fires a roundabout where no shared centre exists.
 - **ORCA's edge over RVO is structure, not continuity.** Refining RVO's sampling never smooths it; HRVO's side-commitment recovers 4.1× of the gain *and all the safety* while staying sampled — ORCA's LP only polishes the residual.
 - **Risk-aversion's win is just ensembling.** CVaR-MPPI's collision drop is captured entirely by averaging sampled futures; the worst-case tail adds nothing significant.
 
@@ -58,6 +59,11 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 <div align="center">
 <img src="docs/images/swarm_airsim_policy.gif" width="840" alt="The learned teammate-token policy flown in photorealistic AirSim Blocks: four quadrotors swap across one hub and spiral into the convention's roundabout, rotors and shadows visible">
 <br><sub><b>The lab's first learned policy, flown in photoreal 3-D.</b> The <b>same</b> convention-distilled teammate-token deep set above — now driving four quadrotors in <a href="https://github.com/microsoft/AirSim">AirSim</a> (Unreal Engine). The planar policy's rollout is replayed on the fleet while an external camera orbits the converging swarm: the <b>learned right-of-way roundabout</b>, in photorealistic 3-D (<code>scripts/record_airsim_swarm_policy.py</code>).</sub>
+</div>
+
+<div align="center">
+<img src="docs/images/swarm_mgr_roundabout.gif" width="840" alt="The antipodal swap under two controllers: plain CBF freezes in a deadlocked clump at the hub; the decentralized triggered Merry-Go-Round forms a roundabout from local sensing and clears">
+<br><sub><b>A roundabout negotiated from sensing alone.</b> Eight drones swap across one hub. <b>Plain CBF</b> (left) brakes everyone to a safe stop and <b>deadlocks</b> — a frozen clump. The <b>Merry-Go-Round</b> (right, <a href="https://arxiv.org/abs/2503.05848">Zhou et al. 2025</a>) is the <b>same</b> CBF, but each drone detects the local jam and agrees on a common ring <b>centre from sensing only</b> — no handed symmetry — and the fleet spirals through, matching the fixed-centre ring it was never told (<code>scripts/render_mgr_gif.py</code>; a <a href="docs/findings.md#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic">two-sided result</a>).</sub>
 </div>
 
 <div align="center">
@@ -131,7 +137,7 @@ and a `from_config(cfg)` classmethod; the CLI picks it up via `type: name`.
 |---|---|
 | sim | `dummy_2d`, `dummy_3d`, `airsim`, `ros2` |
 | scenario | `grid_world`, `voxel_world`, `multi_drone_{grid,voxel,aerobatic}` |
-| planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi`, `orca`, `rvo`, `vo`, `hrvo`, `bvc`, `cbf`, `apf`, `roundabout` |
+| planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi`, `orca`, `rvo`, `vo`, `hrvo`, `bvc`, `cbf`, `apf`, `roundabout`, `mgr` |
 | sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `noisy_tracker`, `pointcloud_occupancy`, `depth_image_occupancy` |
 | predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity`, `game_theoretic`, `constant_turn` |
 
