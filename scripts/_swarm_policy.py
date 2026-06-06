@@ -155,7 +155,21 @@ def rollout(start, goal, controller, *, max_steps=300, record=False):
 MAX_PEERS = 8
 
 
-def _ego_frame(p, vel, goal, i):
+def _ego_frame(p, vel, goal, i, reflect_canonical=False):
+    """Featurize agent i in its ego-goal frame (goal rotated to +x).
+
+    A pure rotation PRESERVES chirality: "right" is the fixed −y direction here
+    and is the SAME rotational sense for every agent, so a global right-of-way
+    convention can be represented (this is the default, #131).
+
+    ``reflect_canonical`` additionally quotients out the LEFT/RIGHT reflection:
+    the y-axis is flipped so the peers' lateral sum is non-negative. The frame
+    becomes reflection-invariant — a configuration and its mirror map to the
+    SAME features — so "−y" no longer names a globally-consistent rotational
+    sense (each agent flips on its own local peer layout). This is the
+    "relative-only, no chirality" representation: it should be UNABLE to carry
+    a global convention even when distilled from a convention teacher.
+    """
     to_goal = goal[i] - p[i]
     dg = np.linalg.norm(to_goal)
     h = to_goal / dg if dg > 1e-6 else np.array([1.0, 0.0])
@@ -171,10 +185,22 @@ def _ego_frame(p, vel, goal, i):
             de = R @ d
             ve = R @ (vel[j] - vel[i])
             peers.append([de[0], de[1], dist / PEER_R, ve[0], ve[1]])
-    return ego, np.array(peers, dtype=float).reshape(-1, 5), R
+    peers = np.array(peers, dtype=float).reshape(-1, 5)
+    if reflect_canonical:
+        # Flip y so the peers' signed lateral sum is non-negative -> the frame
+        # is invariant to a left/right mirror, erasing the global handedness.
+        lat = float(peers[:, 1].sum()) if len(peers) else 0.0
+        if lat < 0.0:
+            R = np.array([[1.0, 0.0], [0.0, -1.0]]) @ R  # compose a y-reflection
+            ego[2] = -ego[2]                              # ego lateral velocity
+            if len(peers):
+                peers[:, 1] = -peers[:, 1]                # peer lateral position
+                peers[:, 4] = -peers[:, 4]                # peer lateral velocity
+    return ego, peers, R
 
 
-def make_dataset(teacher, *, n_list, n_scenes, seed0, antipodal_frac=0.0):
+def make_dataset(teacher, *, n_list, n_scenes, seed0, antipodal_frac=0.0,
+                 reflect_canonical=False):
     """Roll the teacher on random (and optionally antipodal) scenes, recording
     (ego, peers, teacher-action-in-ego-frame) at every step."""
     egos, peerl, masks, acts = [], [], [], []
@@ -194,7 +220,7 @@ def make_dataset(teacher, *, n_list, n_scenes, seed0, antipodal_frac=0.0):
                 if done[i]:
                     continue
                 a = teacher(p, vel, gl, i)
-                ego, pe, R = _ego_frame(p, vel, gl, i)
+                ego, pe, R = _ego_frame(p, vel, gl, i, reflect_canonical)
                 pad = np.zeros((MAX_PEERS, 5)); m = np.zeros(MAX_PEERS)
                 k = min(len(pe), MAX_PEERS)
                 if k:
@@ -307,12 +333,12 @@ def train_bc(data, *, h=32, epochs=300, batch=256, lr=3e-3, seed=0, verbose=Fals
     return P, stats
 
 
-def make_student_controller(P, stats):
+def make_student_controller(P, stats, reflect_canonical=False):
     """Wrap the trained deep set as a controller(p, vel, goals, i)."""
     em, es, pm, ps = stats["em"], stats["es"], stats["pm"], stats["ps"]
 
     def ctrl(p, vel, goals, i):
-        ego, pe, R = _ego_frame(p, vel, goals, i)
+        ego, pe, R = _ego_frame(p, vel, goals, i, reflect_canonical)
         pad = np.zeros((1, MAX_PEERS, 5)); mask = np.zeros((1, MAX_PEERS))
         k = min(len(pe), MAX_PEERS)
         if k:
