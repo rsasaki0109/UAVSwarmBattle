@@ -182,6 +182,97 @@ def simulate(
     )
 
 
+# --------------------------------------------------------------------------- #
+# L-shaped corner: the "ladder around a corner" (piano-mover) ceiling.
+#
+# A straight doorway lets reorientation make carrying team-size-agnostic (above).
+# An L-corner does NOT: rounding a right-angle junction of two corridors of width
+# a and b, a rigid segment can be maneuvered through iff its length is at most the
+# classical bound L_max = (a^(2/3) + b^(2/3))^(3/2) -- a HARD geometric ceiling no
+# reorientation can beat. With beam length growing in the team size, this caps the
+# maximum team that can round the corner, however the formation reshapes.
+#
+# Free space (L): horizontal corridor {0<=y<=w, x<=W} UNION vertical corridor
+# {W-w<=x<=W, y>=0}; concave inner corner at I=(W-w, w). The optimal rounding
+# motion keeps the beam through I; at orientation theta its span between the two
+# outer walls is a/sin(theta) + b/cos(theta), minimised at the critical angle.
+# --------------------------------------------------------------------------- #
+
+def corner_Lmax(a: float, b: float) -> float:
+    """Longest rigid segment that can round a right-angle a×b corridor corner."""
+    return (a ** (2.0 / 3.0) + b ** (2.0 / 3.0)) ** 1.5
+
+
+def _in_L_free(pts: np.ndarray, w: float, W: float, margin: float) -> bool:
+    """All points inside the L free space (with `margin` clearance from walls)?"""
+    horiz = (pts[:, 1] >= margin) & (pts[:, 1] <= w - margin) & (pts[:, 0] <= W - margin)
+    vert = (pts[:, 0] >= (W - w) + margin) & (pts[:, 0] <= W - margin) & (pts[:, 1] >= margin)
+    return bool(np.all(horiz | vert))
+
+
+def simulate_corner(
+    *,
+    n: int = 4,
+    bar_len: float = 10.0,
+    corridor_w: float = 4.0,
+    seed: int = 0,
+    jitter: float = 0.4,
+    W: float = 30.0,
+    drone_r: float = 0.5,
+    beam_t: float = 0.4,
+    n_theta: int = 120,
+    record: bool = False,
+    beam_samples: int = 31,
+) -> TransportResult:
+    """Round the beam through an L-corner via the optimal (tangent-to-inner-corner)
+    motion. Succeeds iff the beam fits the tightest configuration -- i.e. its length
+    is within the ladder-around-corner bound for the (seed-jittered) corridor widths.
+
+    This is the corner counterpart to `simulate(adaptive=True)`: the formation is
+    free to reorient continuously, but the corner geometry imposes a length ceiling
+    the straight doorway does not.
+    """
+    rng = np.random.default_rng(seed)
+    a = corridor_w + float(rng.normal(0.0, jitter))
+    b = corridor_w + float(rng.normal(0.0, jitter))
+    w = min(a, b)  # render with the binding width; bound uses (a, b)
+    I = np.array([W - w, w])  # inner (concave) corner
+
+    # The rigorous feasibility for a rigid segment rounding a right-angle corner is
+    # the classical ladder bound: it can be maneuvered through iff its length (here
+    # inflated by the drone footprint) does not exceed L_max = (a^2/3 + b^2/3)^3/2.
+    # No reorientation beats this -- it is the geometric ceiling the doorway lacks.
+    L_eff = bar_len + 2.0 * drone_r
+    ok = L_eff <= corner_Lmax(a, b)
+
+    centres: list = []
+    thetas: list = []
+    drones: list = []
+    if record:
+        anchors = _anchors(n, bar_len)
+        # offset the beam centre off the concave corner into free space so the
+        # rendered pivot grazes (not crosses) the inner corner
+        off = (beam_t / 2.0 + drone_r) * np.array([1.0, -1.0]) / math.sqrt(2.0)
+        # the jam (if any) happens at the critical ~45deg configuration
+        crit = math.degrees(math.atan2(b ** (1.0 / 3.0), a ** (1.0 / 3.0)))
+        for k in range(n_theta):
+            theta = math.radians(5.0 + 80.0 * k / (n_theta - 1))
+            dir_ = np.array([math.cos(theta), math.sin(theta)])
+            c = I + off
+            centres.append(c.copy())
+            thetas.append(theta)
+            drones.append(c[None, :] + anchors[:, None] * dir_[None, :])
+            if (not ok) and math.degrees(theta) >= crit:
+                break  # freeze at the jam
+
+    return TransportResult(
+        success=ok, reason="goal" if ok else "collision",
+        n_steps=len(centres) if record else n_theta,
+        centres=centres, thetas=thetas, drones=drones,
+        collide_step=(len(centres) - 1) if (not ok and record) else -1,
+    )
+
+
 if __name__ == "__main__":
     # quick smoke: fixed should fail a sub-bar gap, adaptive should pass.
     for ad in (False, True):
@@ -190,3 +281,9 @@ if __name__ == "__main__":
             for s in range(20)
         )
         print(f"adaptive={ad!s:5}  gap=4.0 bar=10.0  success={ok}/20")
+    # corner: short beam rounds, long beam jams (L_max = 2.83 * width)
+    print(f"L_max(w=4) = {corner_Lmax(4.0, 4.0):.2f}")
+    for bl in (8.0, 11.0, 13.0):
+        ok = sum(simulate_corner(n=4, bar_len=bl, corridor_w=4.0, seed=s).success
+                 for s in range(20))
+        print(f"corner bar_len={bl:5} (w=4)  success={ok}/20")
