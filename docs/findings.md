@@ -106,6 +106,7 @@ different strategies.
 - [BVC and CBF: the convention rescues two more reactive families, and BVC needs a dynamics-aware buffer](#bvc-and-cbf-the-convention-rescues-two-more-reactive-families-and-bvc-needs-a-dynamics-aware-buffer)
 - [The 3-D dissolution of the antipodal deadlock is a planner property, not a geometric one](#the-3-d-dissolution-of-the-antipodal-deadlock-is-a-planner-property-not-a-geometric-one)
 - [Pairwise's dominance over the global convention inverts under a hub-crossing obstacle](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle)
+- [The global convention is comms-free and survives peer dropout; the pairwise one collapses to (and below) the no-rule floor](#the-global-convention-is-comms-free-and-survives-peer-dropout-the-pairwise-one-collapses-to-and-below-the-no-rule-floor)
 - [In 3-D the in-plane convention rescues the reactive planner the extra dimension could not](#in-3-d-the-in-plane-convention-rescues-the-reactive-planner-the-extra-dimension-could-not)
 - [Two reciprocal collision avoiders are less safe mixed than either is alone](#two-reciprocal-collision-avoiders-are-less-safe-mixed-than-either-is-alone)
 - [On the symmetric hub, mixing reciprocal controllers HELPS — protocol heterogeneity is double-edged](#on-the-symmetric-hub-mixing-reciprocal-controllers-helps--protocol-heterogeneity-is-double-edged)
@@ -7781,6 +7782,58 @@ hazard through the conflict point (global).
 
 Reproduce: `python scripts/antipodal_convention_obstacle_robustness_phase.py --n-list 6 8 --global-bias 4 --pairwise-bias 8 --episodes 40`
 (writes `results/antipodal_convention_obstacle_robustness_phase.{json,png}`).
+
+## The global convention is comms-free and survives peer dropout; the pairwise one collapses to (and below) the no-rule floor
+
+The [pairwise winding rule dominates the global veer-right](#a-pairwise-winding-number-right-of-way-strictly-dominates-the-global-veer-right)
+in a fully-observed arena, and that dominance already
+[inverts under a hub obstacle](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle).
+Here is a second, sharper liability of the *local* rule: it is **communication-dependent**.
+The two conventions differ in what they must observe. The GLOBAL rule (`lateral_bias`) tilts each
+drone off its **own goal heading** and never reads a peer — it is **comms-free**. The PAIRWISE rule
+(`pairwise_bias`) accumulates a preferred pass side from the **positions of nearby neighbours** — it
+must *see* each one. Real swarms lose peer observations (packet loss, occlusion, sensing range), so
+the honest question is which convention survives a lossy link.
+
+A new `dropout` sensor models it: each replan, every peer is independently missing with probability
+*p* (Bernoulli packet loss; ego pose stays ground truth). Crucially, both conventions share the same
+MPC avoider, so a dropped peer is lost for collision avoidance *equally* in both arms — the only
+difference is whether the **symmetry-breaker on top** still works. N=6 antipodal swap, MPC +
+constant-velocity, swept over *p*, paired by seed, McNemar exact, n=40:
+
+| p (dropout) | stock (no rule) | global (comms-free) | pairwise (comms-dependent) | global vs pairwise (b/c, p) |
+|-------------|-----------------|---------------------|----------------------------|------------------------------|
+| 0.00 | 22/40 | 38/40 | 30/40 | b=10/c=2, 0.039 |
+| 0.15 | 24/40 | 37/40 | 24/40 | b=15/c=2, 0.0023 |
+| 0.30 | 16/40 | **37/40** | 17/40 | b=20/c=0, **<1e-4** |
+| 0.45 | 10/40 | **36/40** | 11/40 | b=25/c=0, **<1e-4** |
+| 0.60 | 7/40 | **31/40** | 3/40 | b=28/c=0, **<1e-4** |
+
+- **The global convention is essentially immune to dropout.** It holds 38 → 37 → 37 → 36 → 31 across
+  *p* = 0 → 0.6: even when **60 % of peer observations are missing every replan**, the comms-free
+  veer-right keeps building the same clockwise roundabout, and the roundabout's spatial separation
+  means tight reactive avoidance is barely needed — the structure itself is **passive safety**.
+- **The pairwise convention collapses to the no-rule floor.** It falls 30 → 24 → 17 → 11 → 3,
+  tracking `stock` almost exactly (24/17/11 vs 24/16/10) — under dropout the local rule delivers
+  **zero** benefit over having no convention at all, because it can no longer see the neighbours it
+  needs to choose a consistent side. At *p* = 0.6 it drops **below** stock (3 vs 7): the surviving
+  partial neighbour set actively *misleads* the pass-side decision, so a starved local rule is worse
+  than none. The global-vs-pairwise gap is significant at every *p* ≥ 0.15 and widens monotonically
+  (b = 10 → 28).
+
+**Mechanism + scope.** The result is purely about what the symmetry-breaker must observe: the global
+rule's input (the ego's own goal) is never dropped, so its coordination is untouched; the pairwise
+rule's input (neighbour positions) is exactly what the channel loses. This is the comms axis of the
+same "the smarter local rule is more fragile" story as the [hub-obstacle inversion](#pairwises-dominance-over-the-global-convention-inverts-under-a-hub-crossing-obstacle):
+pairwise buys a denser-packing advantage with full observation and pays for it under any degradation.
+Scope: the comms-free *immunity* needs separation margin — a probe at the denser N=12 (where the
+roundabout is tight) finds the global rule still ahead at every *p* but the gap small and both arms
+declining together, since a dense roundabout has no slack to be passively safe. So the takeaway is a
+**design rule**: when the communication/sensing link is unreliable, prefer the convention whose
+coordination signal each agent can compute *alone*.
+
+Reproduce: `python scripts/antipodal_convention_dropout_phase.py --n 6 --p-list 0 0.15 0.3 0.45 0.6 --episodes 40`
+(writes `results/antipodal_convention_dropout_phase.json`; the `dropout` sensor takes `dropout_prob`).
 
 ## In 3-D the in-plane convention rescues the reactive planner the extra dimension could not
 
