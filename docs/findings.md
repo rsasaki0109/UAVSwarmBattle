@@ -152,6 +152,7 @@ different strategies.
 - [The local-reach cure is not free: it buys cohesion with obstacle clearance — a cost that only the worst case sees, and only magnitude removes](#the-local-reach-cure-is-not-free-it-buys-cohesion-with-obstacle-clearance--a-cost-that-only-the-worst-case-sees-and-only-magnitude-removes)
 - [Two cohesive flocks crossing head-on JAM but never collide — the right-of-way convention clears the gridlock, within an operating band](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band)
 - [The crossing-flock jam is gated by encounter angle: it is a head-on phenomenon, and the convention earns its keep only where the jam is](#the-crossing-flock-jam-is-gated-by-encounter-angle-it-is-a-head-on-phenomenon-and-the-convention-earns-its-keep-only-where-the-jam-is)
+- [A K-way flocking hub jams at every fan-in; the roundabout convention clears it — cohesion is the first casualty, collisions only the last](#a-k-way-flocking-hub-jams-at-every-fan-in-the-roundabout-convention-clears-it--cohesion-is-the-first-casualty-collisions-only-the-last)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10182,3 +10183,47 @@ exactly the geometry whose symmetry the convention exists to break.
 
 Reproduce: `python scripts/flocking_crossing_angle_phase.py --mode angle --episodes 40`
 (also `--mode mcnemar`).
+
+## A K-way flocking hub jams at every fan-in; the roundabout convention clears it — cohesion is the first casualty, collisions only the last
+
+The [crossing study](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band)
+was two flocks (a 2-way hub). This places **K** Olfati-Saber flocks evenly on a ring,
+each migrating through the centre to the antipodal side — a K-way intersection, the
+flocking analogue of the [N-drone antipodal hub](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out).
+For point agents, crowding that hub eventually causes **collisions** (the convention's
+density cliff). The question here: what does crowding a *flocking* hub cost? Paired by
+seed (m=40, 10 agents per flock):
+
+| K (flocks) | jam all-passed | roundabout all-passed | jam cohesion | roundabout cohesion | inter-flock min (jam / row) |
+|---|---|---|---|---|---|
+| 2  | 0/40 | 40/40 | 0.94 | 0.83 | 3.92 / 4.86 |
+| 4  | 0/40 | 40/40 | 1.00 | 0.86 | 3.98 / 4.63 |
+| 6  | 0/40 | 40/40 | 1.00 | 0.80 | 3.80 / 4.57 |
+| 8  | 0/40 | 40/40 | 1.00 | 0.76 | 3.55 / 4.31 |
+| 10 | 0/40 | 40/40 | 1.00 | 0.75 | 3.81 / 3.66 |
+| 12 | 0/40 | 40/40 | 1.00 | 0.75 | 0.02 / 0.83 |
+
+- **The jam-break scales to every fan-in.** Without a convention the hub gridlocks
+  totally at every K (all-passed 0/40 — every K-way fan-in jams). The roundabout veer
+  clears it at every K (40/40), a deterministic McNemar break (c=40, b=0, p=1.8e-12).
+  The cohesive-flocking roundabout scales where the [N-drone version has a density cliff](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out).
+- **But the costs onset in a definite order, and structure goes first.** A *jammed* hub
+  keeps every flock intact (cohesion ≈ 1.0 — stuck but whole). The roundabout that frees
+  them **shears** them: cohesion (largest-flock fraction) falls 0.86 → 0.75 as the hub
+  crowds (K = 4 → 8) and then plateaus — the roundabout costs each flock ~20–25 % of its
+  members, the price of threading a contested centre in a stream.
+- **The safety margin is the *last* casualty — a collision cliff far past where cohesion
+  erodes.** Inter-flock spacing holds above contact through K = 10 (0/20 seeds collide),
+  then the hub *saturates*: too many agents thread one point and even the roundabout
+  cannot keep them apart (m=20: K=12 collides in 5/20, K=14 in 18/20). So the point-agent
+  density cliff does reappear for flocks — but only at the most crowded hubs, long after
+  cohesion has already degraded.
+
+So crowding a flocking hub costs **structure before safety**: the roundabout scales the
+jam-break to any fan-in and self-spaces over a wide range, shearing the flocks gradually,
+and only at extreme fan-in does the collision cliff of the point-agent hub finally appear.
+
+![K-way flocking hub](images/swarm_hub.gif)
+
+Reproduce: `python scripts/flocking_hub_phase.py --mode scale --episodes 40`
+(also `--mode cliff` for the collision cliff, `--mode mcnemar`).
