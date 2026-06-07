@@ -145,6 +145,7 @@ different strategies.
 - [RL discovers the right-of-way convention from a symmetric reward — and, like BC transfer, only with a chirality-capable representation](#rl-discovers-the-right-of-way-convention-from-a-symmetric-reward--and-like-bc-transfer-only-with-a-chirality-capable-representation)
 - [Free flocking fragments — and you cannot cohesion-gain your way out; the navigational structure is the fix, not a bigger potential](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
 - [An obstacle splits a migrating flock past a critical radius ≈ r/2 — and the navigational structure that migrates it cannot re-merge the halves](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
+- [A cut flock can be healed — but only by a global term, and only if it waits: a gated rendezvous re-merges what local rules cannot](#a-cut-flock-can-be-healed--but-only-by-a-global-term-and-only-if-it-waits-a-gated-rendezvous-re-merges-what-local-rules-cannot)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9783,3 +9784,66 @@ consistent ratio — reported as a directional invariant, not fitted to a law.)
 Reproduce: `python scripts/flocking_obstacle_split_phase.py --mode radius --episodes 40`
 (also `--mode heal`, `--mode range`); GIF via
 `python scripts/render_flocking_obstacle_gif.py --seed 4`.
+
+## A cut flock can be healed — but only by a global term, and only if it waits: a gated rendezvous re-merges what local rules cannot
+
+The [obstacle study](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
+ended on a claim: once an obstacle severs a flock, the cure "would have to be a term
+that acts *across* the gap, which a range-limited flock does not have." This builds
+that term and tests it — a **rendezvous** pull toward the flock's *global centroid*
+(each agent needs the whole flock's mean position, i.e. global information, unlike the
+comms-free local [convention](#a-comms-free-rule-beats-a-smarter-one-when-sensing-drops-out)).
+It heals the cut — but with a twist that ties the cure back to the obstacle.
+
+**The cure works — baseline vs gated rendezvous, sweep obstacle radius R** (c_rdv=3.0,
+the rendezvous gated to act only once an agent is past the disk; m=40):
+
+| R | baseline | gated rdv | b | c | p |
+|---|---|---|---|---|---|
+| 3 | 28/40 | 34/40 | 1 | 7 | 7.0e-2 |
+| 4 | 17/40 | 30/40 | 1 | 14 | 9.8e-4 |
+| 6 | 8/40 | 27/40 | 0 | 19 | 3.8e-6 |
+| 9 | 4/40 | 16/40 | 0 | 12 | 4.9e-4 |
+| 12 | 2/40 | 9/40 | 0 | 7 | 1.6e-2 |
+
+The gated global term reunites the cut at every radius the obstacle severs (c≫b,
+b≤1 everywhere) — the missing across-the-gap term the [obstacle
+study](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
+named. It is only partial for the largest disks (R=12: 9/40), which split the flock
+so widely that even a global pull is racing a large dispersal.
+
+**The twist — re-cohesion conflicts with passage; timing it is the efficient cure**
+(gated vs always-on rendezvous at matched gain, R=6, m=40):
+
+| c_rdv | always-on | gated | b | c | p |
+|---|---|---|---|---|---|
+| 1.5 | 9/40 | 22/40 | 3 | 16 | 4.4e-3 |
+| 3.0 | 21/40 | 27/40 | 8 | 14 | 0.29 |
+| 6.0 | 20/40 | 31/40 | 5 | 16 | 2.7e-2 |
+| 10.0 | 35/40 | 40/40 | 0 | 5 | 6.3e-2 |
+
+Gated beats always-on at every gain (c>b in all four rows: 16>3, 14>8, 16>5, 5>0),
+and the margin is largest at *weak* coupling (1.5: 22 vs 9). An always-on global pull
+only catches up by brute force — strong enough (c_rdv=10: 35/40) to override the
+detour. The reason is the conflict the [obstacle study](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
+implied: while the flock is splitting *around* the disk, a centroid pull tugs the
+lobes back toward a centre that sits at the obstacle, fighting the very detour that
+gets them past. Wait until each agent has cleared the disk and the same coupling
+re-cohering instead of resisting heals the flock with a fraction of the gain.
+
+- **The cure for a cut is global, and the comms-free convention cannot supply it.**
+  Healing a severed flock needs information that spans the gap — the flock centroid —
+  which is exactly what the [dropout study's](#a-comms-free-rule-beats-a-smarter-one-when-sensing-drops-out)
+  comms-free local rules do not have. Symmetry-breaking is best done with information
+  each agent computes alone; *re-cohesion after a cut* is the opposite — it is
+  irreducibly global. Which tool wins depends on whether the job is to break a
+  symmetry or to bridge a gap.
+- **A global term still has to be timed.** Being unbounded in range is necessary but
+  not sufficient: an always-on global pull conflicts with obstacle passage and only
+  works by overpowering it. The cheap, clean cure is to *separate the two in time* —
+  avoid first, re-cohere second. The lever (global reach) and its *schedule* are both
+  load-bearing.
+
+Reproduce: `python scripts/flocking_rendezvous_phase.py --mode heal --episodes 40`
+(also `--mode timing`); GIF via
+`python scripts/render_flocking_rendezvous_gif.py --seed 7`.
