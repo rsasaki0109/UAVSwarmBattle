@@ -147,6 +147,7 @@ different strategies.
 - [An obstacle splits a migrating flock past a critical radius ≈ r/2 — and the navigational structure that migrates it cannot re-merge the halves](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
 - [A cut flock can be healed — but only by a global term, and only if it waits: a gated rendezvous re-merges what local rules cannot](#a-cut-flock-can-be-healed--but-only-by-a-global-term-and-only-if-it-waits-a-gated-rendezvous-re-merges-what-local-rules-cannot)
 - [The right-of-way convention survives non-holonomic drones — and without it, agility is a non-monotone liability](#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability)
+- [How much convention a non-holonomic fleet needs is set by its agility — sluggish drones self-break symmetry and need less](#how-much-convention-a-non-holonomic-fleet-needs-is-set-by-its-agility--sluggish-drones-self-break-symmetry-and-need-less)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9900,3 +9901,50 @@ are exactly where the convention helps most (c=28 at turn rate 2.0).
 
 Reproduce: `python scripts/nonholonomic_convention_phase.py --n 6 --episodes 40`;
 GIF via `python scripts/render_nonholonomic_gif.py --n 6 --seed 7002 --turn-rate 2.0`.
+
+## How much convention a non-holonomic fleet needs is set by its agility — sluggish drones self-break symmetry and need less
+
+The [non-holonomic study](#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability)
+found that a drone too sluggish to re-aim cannot perform the symmetric mirror-swerve
+that locks an antipodal fleet, so non-holonomy is a *free, partial symmetry-breaker*.
+The natural follow-up: if the dynamics already break symmetry for free, does the fleet
+need *less* convention to finish the job? This sweeps the convention strength
+`lateral_bias` × the turn-rate limit (antipodal N=6, MPC, `dummy_unicycle`, m=40).
+
+| turn rate | bias 0 | bias 0.5 | bias 1.0 | bias 2.0 |
+|---|---|---|---|---|
+| 0.5 (sluggish) | 30/40 | 31/40 | 39/40 | 40/40 |
+| 2.0 | 19/40 | 19/40 | 30/40 | 40/40 |
+| 8.0 (agile) | 19/40 | 25/40 | 32/40 | 40/40 |
+
+Sluggish (0.5) vs agile (8.0) turn rate, paired by seed (c = sluggish-only success):
+
+| bias | sluggish | agile | b | c | p |
+|---|---|---|---|---|---|
+| 0.0 | 30/40 | 19/40 | 5 | 16 | 0.027 |
+| 0.5 | 31/40 | 25/40 | 5 | 11 | 0.21 |
+| 1.0 | 39/40 | 32/40 | 0 | 7 | 0.016 |
+| 2.0 | 40/40 | 40/40 | 0 | 0 | 1.0 |
+
+- **Sluggishness substitutes for the convention.** At no/weak bias the sluggish fleet
+  significantly out-coordinates the agile one (bias 0: 30 vs 19, p=0.027; bias 1.0: 39
+  vs 32, p=0.016) — the agile drones, free to re-aim, perform the symmetric mirror-swerve
+  and re-collide at the hub, while the sluggish ones are committed to their heading and
+  glide past. The dynamics supply for free exactly what the convention would otherwise
+  have to impose.
+- **The bias needed to saturate tracks agility.** Reading the grid down each column:
+  the sluggish fleet is essentially there by bias 1.0 (39/40); the agile fleets still
+  need the full bias 2.0 (at bias 1.0 they sit at 30–32/40). You pay more convention for
+  more manoeuvrability.
+- **At strong convention, agility is irrelevant.** By bias 2.0 every turn rate is 40/40
+  (b=0, c=0, a perfect tie): the convention dominates and the dynamics no longer matter.
+  The interaction lives entirely in the *under-powered* regime.
+- **The required convention is what the dynamics don't break for free.** This is the
+  sharp, counterintuitive reading of the previous result: you would expect harder-to-steer
+  drones to need *more* coordination help, but they need *less*, because the same turning
+  limit that makes them clumsy also makes them unable to mirror each other into deadlock.
+  Convention strength is not an absolute property of the geometry (cf the [density
+  cliff](#the-convention-cliff-is-hub-density-not-drone-count)); it is set against how
+  much symmetry the dynamics already carry.
+
+Reproduce: `python scripts/nonholonomic_bias_interaction_phase.py --episodes 40`.
