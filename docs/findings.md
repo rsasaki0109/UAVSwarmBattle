@@ -93,6 +93,7 @@ different strategies.
 - [The 3D cv collapse is an N=6 symmetry resonance, not a density wall — a goal-blind right-of-way bias rescues it](#the-3d-cv-collapse-is-an-n6-symmetry-resonance-not-a-density-wall--a-goal-blind-right-of-way-bias-rescues-it)
 - [The even-N antipodal resonance recurs at N=8 — there the forecast fails too, and the convention turns harmful where there is no deadlock](#the-even-n-antipodal-resonance-recurs-at-n8--there-the-forecast-fails-too-and-the-convention-turns-harmful-where-there-is-no-deadlock)
 - [The right-of-way convention is robust to speed heterogeneity — a 4×-mismatched fleet still rounds the hub](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
+- [The right-of-way convention is robust to acceleration heterogeneity — until the roundabout out-turns the sluggish drones](#the-right-of-way-convention-is-robust-to-acceleration-heterogeneity--until-the-roundabout-out-turns-the-sluggish-drones)
 - [The right-of-way convention has a density cliff — but a stronger bias pushes it out](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
 - [The 3D antipodal collapse is a non-monotone resonance, not the even-N law](#the-3d-antipodal-collapse-is-a-non-monotone-resonance-not-the-even-n-law)
 - [The right-of-way convention needs near-full adoption — free-riders break it, and tolerance shrinks with density](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
@@ -6977,6 +6978,86 @@ Reproduce: `python scripts/antipodal_hetero_dynamics_phase.py --n 6 --spreads 2 
 (writes `results/antipodal_hetero_dynamics_phase.json`; `--max-steps 1000` gives the slowest
 arm ample clock so any timeout is a genuine jam). Demo:
 `examples/exp_multi_drone_antipodal_hetero_speed.yaml`.
+
+## The right-of-way convention is robust to acceleration heterogeneity — until the roundabout out-turns the sluggish drones
+
+The [speed-heterogeneity result](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
+showed the convention survives a fleet that *cruises* at mixed speeds, because the roundabout it
+builds is **spatial** — a fast drone keeps its own lane rather than lapping a slow one into the
+hub. But speed only sets how fast a drone cruises; it is the **acceleration limit** that sets how
+fast it can *turn*. And a roundabout is made of turning: every drone must continuously bend its
+velocity onto a curved lane. A sluggish drone (low `max_accel`), told to veer, may not be able to
+execute the turn and could cut toward the hub — a failure mode speed spread never exposes. So
+acceleration is the heterogeneity axis that most directly stresses the roundabout *mechanism*.
+This is also the AVO regime (van den Berg et al. 2011, reciprocal avoidance under acceleration
+constraints) and tests a recent claim that "heterogeneity in the controller parameters is not
+sufficient to prevent deadlock on its own" (arXiv:2501.10447) — i.e. mixed dynamics must not be a
+substitute for an explicit symmetry-breaker.
+
+This required a small feature: `simulator.per_drone` (mirrors `planner.per_drone`, wired in the
+multi-drone builder) so each drone's sim can carry its own `max_accel`. `scripts/antipodal_hetero_accel_phase.py`
+then repeats the speed study on the acceleration axis — N=6 antipodal swap, MPC + right-of-way
+`lateral_bias`=2, fleet **mean** `max_accel` held fixed at 6.0 so the comparison is not confounded
+by an overall more/less agile fleet. The ring alternates nimble/sluggish (`max_accel` = 6 ±
+spread/2), paired by seed, McNemar exact, n=40. The key extra knob is cruise speed, because the
+roundabout's centripetal demand scales as **v² / r**.
+
+**At the standard operating point (speed 5) the convention is fully robust to acceleration heterogeneity:**
+
+| arm (N=6, speed 5) | max_accel | success | coll / to | vs homo_b2 (b/c, p) |
+|--------------------|-----------|---------|-----------|----------------------|
+| homo_b0 (no bias)  | 6,6,…     | 26/40   | 14 / 0    | b=14/c=1, **0.0010** |
+| homo_b2 (reference)| 6,6,…     | 39/40   | 1 / 0     | (reference) |
+| het3_b2            | 7.5,4.5,… | 40/40   | 0 / 0     | 0/1, 1.000 (tie) |
+| het6_b2            | 9,3,…     | 39/40   | 1 / 0     | 1/1, 1.000 (tie) |
+| het9_b2            | 10.5,1.5,…| 40/40   | 0 / 0     | 0/1, 1.000 (tie) |
+| hetmax_b0 (no bias)| 10.5,1.5,…| 31/40   | 9 / 0     | b=8/c=0, **0.0078** |
+
+- **Mixed agility, by itself, does not break the convention.** At *every* spread — up to the
+  **7× agility ratio** of 10.5-vs-1.5 — the heterogeneous fleet with the convention is statistically
+  tied with the homogeneous fleet (40/40, 39/40, 40/40 vs 39/40), zero net degradation. The
+  sluggish drones turn slowly, but the roundabout's curvature is so gentle that slow turning is
+  enough.
+- **And the convention is still doing the work.** Mixed accel *without* the bias (`hetmax_b0`)
+  collides ~22 % (31/40, 9 collisions, p=0.0078 worse than the reference); turning the bias on
+  rescues it (c=9/b=0, **p=0.0039**). As the literature anchor predicts, heterogeneity is *not* a
+  sufficient symmetry-breaker on its own — exactly as for speed.
+
+**But raise the cruise speed and the robustness has a boundary — a turning budget, not a free pass:**
+
+| arm (N=6, speed 11) | max_accel | success | coll / to | vs homo_b2 (b/c, p) |
+|---------------------|-----------|---------|-----------|----------------------|
+| homo_b2 (reference) | 6,6,…     | 34/40   | 6 / 0     | (reference) |
+| het3_b2             | 7.5,4.5,… | 35/40   | 5 / 0     | 4/5, 1.000 (tie) |
+| het6_b2             | 9,3,…     | 28/40   | 12 / 0    | 10/4, 0.180 (trend) |
+| het9_b2             | 10.5,1.5,…| **15/40** | 25 / 0  | b=22/c=3, **0.0002** |
+
+At speed 11 the roundabout circulates fast enough that its centripetal demand approaches the
+*sluggish* drones' acceleration budget. A uniformly-nimble fleet still rounds the hub (homo_b2
+34/40), and a mildly-mixed fleet is fine (het3_b2 35/40), but the strongly-mixed fleet — whose
+sluggish members are capped at `max_accel`=1.5 — collapses to **15/40** (a significant 22-pair
+swing against the homogeneous reference, p=0.0002), and the degradation is **monotone in the
+spread** (35 → 28 → 15 as the slow drones get slower). Every failure is a collision, not a
+timeout: the sluggish drones cannot bend onto the lane the convention demands and cut into the
+hub. (Speed 8 is the transition: het9_b2 still ties at 35/40, p=0.45, while `hetmax_b0` has
+already cratered to 13/40.)
+
+**Mechanism.** The convention's robustness to mixed agility is *bounded by the slowest-turning
+drone's budget*, not the fleet mean. Turning is a centripetal cost ∝ v²/r; at the gentle curvature
+and modest speed of the standard roundabout it sits far below even a 1.5-accel drone's limit, so
+acceleration heterogeneity is harmless (robust like speed). Push the speed up and the demand
+crosses the sluggish budget, and only then does mixed agility bite — a **speed-gated, mechanism-specific
+boundary** that the speed-heterogeneity axis never exposed (there, a fast drone simply keeps its
+lane; here, a slow-*turning* drone cannot make the lane at all). This both **extends** the
+[speed-robustness result](#the-right-of-way-convention-is-robust-to-speed-heterogeneity--a-4-mismatched-fleet-still-rounds-the-hub)
+to the harder dynamics axis and **bounds** it: the convention assumes not interchangeable speeds
+but a *shared minimum turning capability*, met by default and broken only when the roundabout is
+driven fast.
+
+Reproduce: `python scripts/antipodal_hetero_accel_phase.py --base-speed 5 --spreads 3 6 9 --episodes 40`
+(robust) and `--base-speed 11` (boundary); writes `results/antipodal_hetero_accel_phase.json`.
+Demo: `examples/exp_multi_drone_antipodal_hetero_accel.yaml` (toggle `lateral_bias` 2→0 to see
+the mixed fleet collide; raise `max_speed` to 11 to see the centripetal boundary).
 
 ## The right-of-way convention has a density cliff — but a stronger bias pushes it out
 
