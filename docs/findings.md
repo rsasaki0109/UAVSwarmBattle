@@ -150,6 +150,7 @@ different strategies.
 - [How much convention a non-holonomic fleet needs is set by its agility — sluggish drones self-break symmetry and need less](#how-much-convention-a-non-holonomic-fleet-needs-is-set-by-its-agility--sluggish-drones-self-break-symmetry-and-need-less)
 - [Healing a cut flock is LOCAL, not global — a comms-free reach rule beats the rendezvous, and the gap widens with the obstacle](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle)
 - [The local-reach cure is not free: it buys cohesion with obstacle clearance — a cost that only the worst case sees, and only magnitude removes](#the-local-reach-cure-is-not-free-it-buys-cohesion-with-obstacle-clearance--a-cost-that-only-the-worst-case-sees-and-only-magnitude-removes)
+- [Two cohesive flocks crossing head-on JAM but never collide — the right-of-way convention clears the gridlock, within an operating band](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10068,3 +10069,66 @@ through the repulsion gain.
 
 Reproduce: `python scripts/flocking_reach_clearance_phase.py --mode tradeoff --episodes 40`
 (also `--mode mechanism`, `--mode fix`).
+
+## Two cohesive flocks crossing head-on JAM but never collide — the right-of-way convention clears the gridlock, within an operating band
+
+This repo's convention thread (MPC, ORCA, HRVO) is built on the antipodal swap
+**deadlock**: two goal-directed agents aimed through a shared point turn into each
+other and collide, and a `lateral_bias` right-of-way convention breaks the symmetry.
+The flocking thread, separately, is about **cohesion**. This connects them: does
+*cohesive flocking* — Olfati-Saber's α-lattice, whose inter-agent potential is
+**universal** (it repels any agent closer than the desired spacing `d`, whatever flock
+it belongs to) — suffer the same antipodal pathology, and does the same cure work?
+
+Drive two Olfati-Saber flocks at each other: group 0 starts left migrating right,
+group 1 starts right migrating left, their moving γ-goals crossing the centre. Score
+`on_time` = both flock centroids cleared the crossing within the time budget *and*
+stayed within `lane_tol` of their lane. Sweeping the right-of-way veer strength
+(N=24, m=40):
+
+| bias | passed | on lane | on_time | inter-flock min dist | mean pass step |
+|---|---|---|---|---|---|
+| 0.0 | 0/40 | 40/40 | **0/40** | 4.39 | 1400 (never) |
+| 0.5 | 26/40 | 40/40 | 26/40 | 4.10 | 1326 |
+| 1.0 | 40/40 | 40/40 | **40/40** | 4.30 | 952 |
+| 1.5 | 40/40 | 33/40 | 33/40 | 4.77 | 788 |
+| 2.0 | 40/40 | 0/40 | **0/40** | 5.92 | 724 |
+| 3.0 | 40/40 | 0/40 | 0/40 | 16.28 | 718 |
+
+- **Cohesive flocking turns the antipodal deadlock into a non-colliding *jam*.** Without
+  a convention the two flocks meet at the centre and **gridlock** — a mutual wall of
+  α-repulsion — stalling there while their goals run on ahead (0/40 clear the crossing
+  in time; mean pass step pinned at the budget). But the inter-flock closest approach
+  never drops below ~4.1 (spacing `d`=7): **they jam, they do not crash.** This is the
+  key difference from the goal-directed lineage — the universal repulsion that *causes*
+  the jam is the same thing that prevents the collision. (Run long enough and the flocks
+  do eventually grind past; the convention is about clearing the crossing *on time*.)
+- **The same right-of-way convention clears the jam — and it generalizes across flock
+  size.** A constant veer to the right of each agent's goal heading turns the head-on
+  stand-off into a pass-on-the-right slip-through. Paired bias=0 vs bias=1, McNemar-exact:
+
+  | N | jam (bias 0) | right-of-way (bias 1) | b | c | p |
+  |---|---|---|---|---|---|
+  | 16 | 0/40 | 40/40 | 0 | 40 | 1.8e-12 |
+  | 24 | 0/40 | 40/40 | 0 | 40 | 1.8e-12 |
+  | 32 | 0/40 | 40/40 | 0 | 40 | 1.8e-12 |
+
+  The cure that fixes the MPC/ORCA antipodal deadlock fixes the flocking jam too —
+  decentralized, comms-free (each agent uses only its own goal direction), at every size.
+- **But it is an operating band, not a switch.** Too weak (bias 0.5) leaves the jam
+  half-unbroken (26/40); too strong (bias ≥ 2) slips the flocks past *but flings them off
+  their lane* (on-lane 40 → 0), the veer accumulating into a large lateral excursion.
+  `on_time` is an inverted-U peaking at bias ≈ 1. The same tunable-band character as the
+  [convention cliff](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out)
+  and ORCA's over-rotation: the convention is a rotation rate you must match to the load,
+  not a free always-on primitive.
+
+So the antipodal deadlock is not special to goal-directed collision avoidance — it
+reappears in cohesive flocking as a non-colliding gridlock, and the same right-of-way
+convention dissolves it. Bridges the [flocking](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
+and [convention](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-) threads.
+
+![two flocks crossing](images/swarm_crossing.gif)
+
+Reproduce: `python scripts/flocking_crossing_phase.py --mode band --episodes 40`
+(also `--mode mcnemar`).
