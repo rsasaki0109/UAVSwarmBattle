@@ -111,16 +111,25 @@ class DummySim(SimInterface):
         self._step_count = 0
         return self._state.copy()
 
-    def step(self, command: np.ndarray) -> tuple[SimState, SimStepInfo]:
-        assert self._state is not None, "call reset() first"
-        cmd = np.asarray(command, dtype=float).reshape(self._ndim)
+    def _update_velocity(self, cmd: np.ndarray) -> None:
+        """Holonomic point-mass: track the velocity setpoint, accel-limited.
 
+        Subclasses override this to impose other kinematics (e.g. the
+        non-holonomic unicycle) while reusing the disturbance / collision /
+        perception machinery in :meth:`step`.
+        """
         dv = cmd - self._state.velocity
         max_dv = self.p.max_accel * self.dt
         norm = float(np.linalg.norm(dv))
         if norm > max_dv:
             dv *= max_dv / norm
         self._state.velocity = self._state.velocity + dv
+
+    def step(self, command: np.ndarray) -> tuple[SimState, SimStepInfo]:
+        assert self._state is not None, "call reset() first"
+        cmd = np.asarray(command, dtype=float).reshape(self._ndim)
+
+        self._update_velocity(cmd)
         # external disturbance: wind + gust. Affects position but does not
         # alter the controller's velocity tracking — the drone is "blown".
         disturbance = self._wind.copy()

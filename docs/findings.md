@@ -146,6 +146,7 @@ different strategies.
 - [Free flocking fragments — and you cannot cohesion-gain your way out; the navigational structure is the fix, not a bigger potential](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
 - [An obstacle splits a migrating flock past a critical radius ≈ r/2 — and the navigational structure that migrates it cannot re-merge the halves](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
 - [A cut flock can be healed — but only by a global term, and only if it waits: a gated rendezvous re-merges what local rules cannot](#a-cut-flock-can-be-healed--but-only-by-a-global-term-and-only-if-it-waits-a-gated-rendezvous-re-merges-what-local-rules-cannot)
+- [The right-of-way convention survives non-holonomic drones — and without it, agility is a non-monotone liability](#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9847,3 +9848,55 @@ re-cohering instead of resisting heals the flock with a fraction of the gain.
 Reproduce: `python scripts/flocking_rendezvous_phase.py --mode heal --episodes 40`
 (also `--mode timing`); GIF via
 `python scripts/render_flocking_rendezvous_gif.py --seed 7`.
+
+## The right-of-way convention survives non-holonomic drones — and without it, agility is a non-monotone liability
+
+Every result in the convention arc — the antipodal deadlock, the global
+`lateral_bias` roundabout, the [density cliff](#the-convention-cliff-is-hub-density-not-drone-count) —
+was measured on HOLONOMIC point-mass drones (`dummy_2d`): a drone changes its
+velocity vector in any direction, so "veer right" is a free sideways nudge. A real
+fixed-wing UAV or wheeled robot is NON-HOLONOMIC — it cannot strafe; to veer right
+it must *turn*, spending heading change and forward progress. This swaps in a
+unicycle simulator (`dummy_unicycle`: forward drive + rate-limited turn) and keeps
+the MPC + lateral_bias controller **identical**, isolating the dynamics. The knob
+is the turn-rate limit `turn_rate_max`: large ≈ holonomic, small = strongly
+non-holonomic. Antipodal swap, N=6, MPC, McNemar-exact (m=40):
+
+| turn rate | no convention | + convention | b | c | p |
+|---|---|---|---|---|---|
+| ∞ (holonomic) | 21/40 | 40/40 | 0 | 19 | 3.8e-6 |
+| 0.5 (sluggish) | 32/40 | 40/40 | 0 | 8 | 7.8e-3 |
+| 1.0 | 22/40 | 38/40 | 2 | 18 | 4.0e-4 |
+| 2.0 | 10/40 | 38/40 | 0 | 28 | 7.4e-9 |
+| 4.0 | 14/40 | 39/40 | 0 | 25 | 6.0e-8 |
+| 8.0 | 19/40 | 40/40 | 0 | 21 | 9.5e-7 |
+
+- **The convention survives non-holonomy intact.** The right-of-way rule drives the
+  fleet to ≈100 % at *every* turn rate (38–40/40), where it had no built-in notion
+  of a turning constraint — the controller is byte-for-byte the holonomic one. c≫b
+  with b≤2 everywhere; the central result of the whole arc carries over to drones
+  that cannot strafe. The "veer right" bias is a *persistent* heading preference, so
+  a drone realises it by turning a little each step — it does not need to side-step.
+- **Without the convention, agility is a non-monotone liability.** The no-convention
+  baseline is **U-shaped in turn rate**, not monotone: the *most* sluggish drones
+  (turn rate 0.5) deadlock the *least* (32/40 — better even than holonomic's 21/40),
+  while an intermediate agility (2.0) is the **worst** (10/40). Non-holonomy is a
+  *free, partial symmetry-breaker*: a drone too sluggish to re-aim cannot perform the
+  symmetric mirror-swerve that locks a holonomic antipodal fleet head-to-head — it is
+  committed to its heading and glides past on a wide arc (the same side-commitment
+  mechanism [HRVO](#hrvo-confirms-it-constructively) adds in the *planner*, here
+  emerging from the *dynamics*). At an intermediate rate the drone is agile enough to
+  turn into the symmetric conflict but too slow to resolve it — the worst of both.
+- **The naive expectation is doubly wrong.** "Non-holonomic constraints make
+  coordination harder, monotonically" is false on both counts: the convention is
+  unharmed, and the constraint itself *helps* the unprotected baseline at the sluggish
+  extreme. The lever that matters is still the convention; the dynamics only reshape
+  the (already inferior) no-rule baseline — into a valley, not a slope.
+
+This is the realism stress-test the whole convention arc had deferred: the
+right-of-way rule is not an artefact of point-mass freedom. It works on drones that
+have to turn — and the cases where non-holonomy bites hardest (intermediate agility)
+are exactly where the convention helps most (c=28 at turn rate 2.0).
+
+Reproduce: `python scripts/nonholonomic_convention_phase.py --n 6 --episodes 40`;
+GIF via `python scripts/render_nonholonomic_gif.py --n 6 --seed 7002 --turn-rate 2.0`.
