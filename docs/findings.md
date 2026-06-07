@@ -122,6 +122,7 @@ different strategies.
 - [Priority deconfliction fails the symmetric hub — it trades deadlock for collision](#priority-deconfliction-fails-the-symmetric-hub--it-trades-deadlock-for-collision)
 - [Sensing noise restores the predictor's relevance under the convention](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
 - [Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture](#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture)
+- [Doorway success is an inverted-U in desired speed: gridlock when too slow, collisions when too fast (faster-is-slower)](#doorway-success-is-an-inverted-u-in-desired-speed-gridlock-when-too-slow-collisions-when-too-fast-faster-is-slower)
 - [The convention is a consensus device — a split right/left rule is worse than no rule](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
 - [The convention is for symmetric convergence only — on unstructured traffic it is a net liability](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability)
 - [A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not](#a-sensing-defect-taxonomy-noise-restores-the-predictor-under-the-convention-delay-does-not)
@@ -8487,6 +8488,52 @@ The robust cross-scenario fix is symmetric participation.
 
 Reproduce: `python scripts/doorway_priority_phase.py --n 3 --gap-list 6 --episodes 30`
 (writes `results/doorway_priority_phase.json`).
+
+## Doorway success is an inverted-U in desired speed: gridlock when too slow, collisions when too fast (faster-is-slower)
+
+Every doorway result above fixed the desired speed and varied the *rule*. This fixes the rule
+(right-of-way on) and varies the **desired speed** — and recovers a classic counter-intuitive crowd
+phenomenon: **faster-is-slower** (Helbing, Farkas & Vicsek, *Simulating dynamical features of escape
+panic*, Nature 2000). At a bottleneck, raising every agent's desired speed does not raise the
+flow — past an optimum it *reduces* it, because greedier agents reach the gap faster than they can be
+deconflicted. The effect transfers here through the **acceleration limit**: `max_accel` is held fixed
+at 6 (the "friction"), so a drone that wants to go faster needs more room to brake; at the gap it
+cannot decelerate in time and collides. Two opposing streams of 4 funnel through a gap-8 doorway,
+MPC + `lateral_bias`, paired by seed, McNemar exact, n=40:
+
+| desired speed | success | coll / timeout | makespan (success) | vs peak v=3 (b/c, p) |
+|---------------|---------|----------------|--------------------|-----------------------|
+| 2  | 11/40 | 2 / **27** | 21.6 | b=15/c=5, **0.041** |
+| 3  | **21/40** | 19 / 0 | 16.0 | (peak) |
+| 4  | 19/40 | 21 / 0 | 12.0 | 14/12, 0.85 (tie) |
+| 5  | 16/40 | 24 / 0 | 11.3 | 14/9, 0.40 (tie) |
+| 6  | 4/40 | 36 / 0 | 10.7 | b=20/c=3, **0.0005** |
+| 8  | 1/40 | 39 / 0 | 7.9 | b=21/c=1, **<1e-4** |
+| 10 | 1/40 | 39 / 0 | 5.3 | b=20/c=0, **<1e-4** |
+
+- **Success is an inverted-U in desired speed.** It peaks at a *moderate* speed (v=3, a plateau over
+  v=3–5) and is significantly worse at *both* ends — gridlocked when too slow (v=2, p=0.041) and
+  collapsing when too fast (v≥6, p≤0.0005). Greedily raising the desired speed past the optimum
+  *destroys* the bottleneck.
+- **The two failure modes are mechanistically distinct, and the collision/timeout split separates
+  them cleanly.** At low speed the failures are **timeouts** (v=2: 27 timeout, 2 collision): the
+  opposing streams meet at the gap and mutually block into a slow **gridlock** that never clears
+  (2500 steps is 6.5× the free-traverse time, so these are genuine jams, not a clock artifact). At
+  high speed the failures are **all collisions, zero timeouts** (v≥6): the drones cannot brake within
+  the gap and pile in. Two different jams bracket one optimum.
+- **Faster-is-slower lives in the *success rate*, not the makespan.** Among the episodes that *do*
+  get through, makespan falls monotonically with speed (21.6 → 5.3) — when a crossing succeeds,
+  faster is genuinely faster. The penalty for greed is paid entirely in collision *risk*: the
+  expected throughput (success × speed) is maximised at the moderate optimum, exactly the classic
+  effect.
+
+So a swarm at a bottleneck has an **optimal cruise speed**, and both flooring it and crawling are
+worse — a single knob, two opposite congestion failures. The practical reading: cap the desired
+speed near the deconfliction-limited optimum rather than the vehicle's top speed; the structure of
+the jam (collision vs gridlock) tells you which way you have erred.
+
+Reproduce: `python scripts/doorway_faster_is_slower_phase.py --n 4 --gap 8 --speeds 2 3 4 5 6 8 10 --episodes 40 --max-steps 2500`
+(writes `results/doorway_faster_is_slower_phase.json`; `max_accel` is the fixed friction).
 
 ## The convention is a consensus device — a split right/left rule is worse than no rule
 
