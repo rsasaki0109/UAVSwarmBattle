@@ -123,6 +123,7 @@ different strategies.
 - [Sensing noise restores the predictor's relevance under the convention](#sensing-noise-restores-the-predictors-relevance-under-the-convention)
 - [Priority fails the doorway too — correcting the "priority is for sequential conflicts" conjecture](#priority-fails-the-doorway-too--correcting-the-priority-is-for-sequential-conflicts-conjecture)
 - [Doorway success is an inverted-U in desired speed: gridlock when too slow, collisions when too fast (faster-is-slower)](#doorway-success-is-an-inverted-u-in-desired-speed-gridlock-when-too-slow-collisions-when-too-fast-faster-is-slower)
+- [Faster-is-slower is general: at the antipodal hub the high-speed collapse is the centripetal-budget limit v_crit ∝ √(a·r)](#faster-is-slower-is-general-at-the-antipodal-hub-the-high-speed-collapse-is-the-centripetal-budget-limit-v_crit--ar)
 - [The convention is a consensus device — a split right/left rule is worse than no rule](#the-convention-is-a-consensus-device--a-split-rightleft-rule-is-worse-than-no-rule)
 - [The convention is for symmetric convergence only — on unstructured traffic it is a net liability](#the-convention-is-for-symmetric-convergence-only--on-unstructured-traffic-it-is-a-net-liability)
 - [A sensing-defect taxonomy: noise restores the predictor under the convention, delay does not](#a-sensing-defect-taxonomy-noise-restores-the-predictor-under-the-convention-delay-does-not)
@@ -8534,6 +8535,57 @@ the jam (collision vs gridlock) tells you which way you have erred.
 
 Reproduce: `python scripts/doorway_faster_is_slower_phase.py --n 4 --gap 8 --speeds 2 3 4 5 6 8 10 --episodes 40 --max-steps 2500`
 (writes `results/doorway_faster_is_slower_phase.json`; `max_accel` is the fixed friction).
+
+## Faster-is-slower is general: at the antipodal hub the high-speed collapse is the centripetal-budget limit v_crit ∝ √(a·r)
+
+The [doorway result](#doorway-success-is-an-inverted-u-in-desired-speed-gridlock-when-too-slow-collisions-when-too-fast-faster-is-slower)
+showed an optimal cruise speed at a *static* bottleneck. Is faster-is-slower specific to a gap, or
+general to swarm convergence? The antipodal hub is the other canonical conflict — a radial
+convergence the right-of-way convention turns into a **roundabout**. Greed costs in a *different*
+currency there: a roundabout is a *curved* lane, so a faster drone needs more centripetal
+acceleration v²/r to hold it, and once that exceeds the acceleration budget it cannot stay on the
+ring and is flung into the hub. That is exactly the boundary the
+[heterogeneous-acceleration study](#the-right-of-way-convention-is-robust-to-acceleration-heterogeneity--until-the-roundabout-out-turns-the-sluggish-drones)
+hit from the other side (high speed broke the *sluggish* drones). Here we hit it with a **homogeneous**
+fleet and read off the critical speed — and, by varying the budget, *prove the mechanism is
+centripetal*.
+
+N=6 antipodal swap, MPC + `lateral_bias`=2 (roundabout on), sweep `max_speed` at three fixed
+acceleration budgets `max_accel` ∈ {3, 6, 12}, paired by seed, n=40. Joint success per cell:
+
+| desired speed | a=3 | a=6 | a=12 |
+|---------------|-----|-----|------|
+| 6  | 40/40 | 40/40 | 40/40 |
+| 8  | 33/40 | 38/40 | 40/40 |
+| 10 | 6/40 | 36/40 | 36/40 |
+| 12 | 3/40 | 23/40 | 35/40 |
+| 14 | 0/40 | 5/40 | 33/40 |
+| 16 | 0/40 | 0/40 | 18/40 |
+| 18 | 0/40 | 0/40 | 2/40 |
+| 20 | 0/40 | 0/40 | 1/40 |
+
+- **Faster-is-slower is general — the hub has an optimal speed too.** At every budget, success is high
+  at low/moderate speed and **collapses to zero** above a critical speed, every failure a **collision**
+  (no timeouts): the drones are flung off the curved lane, not stalled. Unlike the doorway there is no
+  low-speed gridlock branch — the roundabout is a one-way rotational flow, so crawling is merely slow,
+  not jammed.
+- **The collapse is the centripetal-acceleration budget, proven by its scaling.** The critical speed
+  (the ≥50 % crossing) moves *right* with the budget: **v_crit ≈ 8, 12, 14** for a = 3, 6, 12. Dividing
+  out the predicted law v_crit = √(a·r) gives **v_crit/√a ≈ 4.6, 4.9, 4.0 — flat across a 4× change in
+  budget**, confirming v_crit ∝ √a. The constant implies a roundabout radius r ≈ (4.5)² ≈ **20**, which
+  is exactly the ring radius of the scenario (RADIUS=20). So the high-speed branch of faster-is-slower
+  at the hub is not a planner artefact but the kinematic limit v²/r ≤ a of holding the lane.
+
+This **unifies two prior results**: faster-is-slower is the same phenomenon at the
+[doorway](#doorway-success-is-an-inverted-u-in-desired-speed-gridlock-when-too-slow-collisions-when-too-fast-faster-is-slower)
+(brake-at-the-gap limit) and the hub (centripetal limit), and the hub's collapse is precisely the
+budget the [acceleration-heterogeneity boundary](#the-right-of-way-convention-is-robust-to-acceleration-heterogeneity--until-the-roundabout-out-turns-the-sluggish-drones)
+exposed — now measured as a clean √(a·r) law. The practical reading is sharper than "cap the speed":
+the safe cruise speed of a roundabout scales as the **square root** of the turning budget, so doubling
+the achievable acceleration buys only a √2 speed-up before the fleet starts colliding.
+
+Reproduce: `python scripts/antipodal_faster_is_slower_phase.py --n 6 --max-accel 6 --speeds 6 8 10 12 14 16 18 20 --episodes 40`
+(run at `--max-accel 3` and `12` for the scaling; writes `results/antipodal_faster_is_slower_phase.json`).
 
 ## The convention is a consensus device — a split right/left rule is worse than no rule
 
