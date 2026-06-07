@@ -137,6 +137,7 @@ different strategies.
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
 - [A decentralized Merry-Go-Round negotiates its ring from sensing alone — agents agree on the symmetric hub, but the same local agreement is what fails on unstructured traffic](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
 - [The Merry-Go-Round's unstructured-traffic collapse is over-triggering, not disagreement — a symmetry gate restores the off-switch](#the-merry-go-rounds-unstructured-traffic-collapse-is-over-triggering-not-disagreement--a-symmetry-gate-restores-the-off-switch)
+- [The Merry-Go-Round amplifies a hub-crossing obstacle — orbiting the contested centre is worse than a current through it](#the-merry-go-round-amplifies-a-hub-crossing-obstacle--orbiting-the-contested-centre-is-worse-than-a-current-through-it)
 - [A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient](#a-learned-convention-also-needs-a-representation-that-can-represent-handedness--the-teacher-carrying-it-is-necessary-but-not-sufficient)
 - [RL discovers the right-of-way convention from a symmetric reward — and, like BC transfer, only with a chirality-capable representation](#rl-discovers-the-right-of-way-convention-from-a-symmetric-reward--and-like-bc-transfer-only-with-a-chirality-capable-representation)
 ## MPC compute Pareto
@@ -9305,6 +9306,58 @@ primitive: it fires exactly on the symmetric convergence it was built to cure, a
 Reproduce: `python scripts/antipodal_mgr_phase.py --n-list 4 6 8 12 16 20 --episodes 40`
 and `python scripts/unstructured_mgr_phase.py --n-list 8 12 16 --episodes 40` (both now
 include the `mgr_sym` arm; the gate is `planner.require_convergence: true`).
+
+## The Merry-Go-Round amplifies a hub-crossing obstacle — orbiting the contested centre is worse than a current through it
+
+The [peer-rule result](#the-right-of-way-convention-is-a-peer-rule--a-hub-crossing-obstacle-defeats-the-roundabout-it-builds)
+showed the always-on right-of-way convention has a *wrong-threat cap*: it funnels the fleet into
+one clockwise current through the hub, and an external body crossing that hub caps success far
+below the obstacle-free ceiling — no amount of extra bias buys it back, because the bias solves the
+peer deadlock but cannot pay for a non-peer threat sitting on the shared path. The
+[decentralized Merry-Go-Round](#a-decentralized-merry-go-round-negotiates-its-ring-from-sensing-alone--agents-agree-on-the-symmetric-hub-but-the-same-local-agreement-is-what-fails-on-unstructured-traffic)
+breaks the *same* peer deadlock with a different geometry: instead of a current through the centre,
+each drone orbits the centroid of its conflict cluster on a ring of radius ≥ `ring_min`, so the
+fleet circulates *around* the centre. The natural hypothesis: if the cap is a threat-on-the-shared-
+path tax, the mechanism that **vacates** the centre should clear the hub-crossing obstacle the peer
+rule cannot — beat the cap by evacuating the contested space rather than by a stronger peer rule.
+
+`scripts/antipodal_mgr_obstacle_phase.py` tests it head-to-head on the **same CBF base avoider**, so
+the only variable is the deadlock-breaking geometry: `cbf` (none — deadlocks by timeout),
+`cbf_pairwise` (the always-on peer convention, `pairwise_bias`), `mgr` (the triggered ring), crossed
+with obstacle ∈ {none, hub-crossing, far-corner}, N ∈ {6, 8}, paired by seed, McNemar exact, n=40.
+
+| N | arm | none | hub-crossing | far (control) |
+|---|-----|------|--------------|---------------|
+| 6 | cbf | 10/40 (deadlock) | 0/40 | 10/40 |
+| 6 | cbf_pairwise | 40/40 | **26/40** (14 coll) | 40/40 |
+| 6 | mgr | 40/40 | **7/40** (33 coll) | 40/40 |
+| 8 | cbf_pairwise | 40/40 | **9/40** (31 coll) | 40/40 |
+| 8 | mgr | 40/40 | **0/40** (40 coll) | 40/40 |
+
+**The hypothesis is wrong — and backwards.** Both deadlock-breakers reach 40/40 with no obstacle, and
+both are completely unperturbed by the *far* obstacle (40/40, the move-the-stressor control confirming
+the effect is hub-specific). But under the hub-crossing obstacle the Merry-Go-Round is **significantly
+worse** than the peer convention it was supposed to beat: 7/40 vs 26/40 at N=6 (b=20/c=1, **p<1e-4**)
+and a total **0/40 vs 9/40** collapse at N=8 (b=9/c=0, **p=0.0039**) — every MGR seed fails. The
+obstacle hurts MGR far more than the convention at both N (hub effect: convention b=14/b=31, MGR
+b=33/b=40, every test p≤1e-4). Every failure is a collision, not a timeout.
+
+**Mechanism — dwell, not evacuation.** "Vacate the centre" was the wrong picture. The convention
+drives a *current*: each drone transits the hub and continues out toward its goal, so its time in the
+contested centre is brief and the crossing obstacle only catches the few drones it happens to coincide
+with. The Merry-Go-Round, by contrast, *holds* the fleet circulating in the hub neighbourhood until
+each drone's peel-off condition clears — it trades a quick transit for a sustained orbit. Against a
+*reflecting* obstacle that sweeps the centre repeatedly, that prolonged, concentrated presence is
+exactly the wrong response: the orbiting ring keeps drones in the swept region far longer, so the body
+mows down the circulating fleet. It gets worse with N (denser, longer-lived ring): the cure for the
+peer deadlock becomes the **liability** under a hub obstacle. This **bounds the Merry-Go-Round arc** —
+the triggered roundabout is a clean peer-deadlock cure (and its [symmetry gate](#the-merry-go-rounds-unstructured-traffic-collapse-is-over-triggering-not-disagreement--a-symmetry-gate-restores-the-off-switch)
+makes it harmless on unstructured traffic) but it has no answer to a non-peer threat on the hub, and
+unlike the convention it actively amplifies one. The way to beat the wrong-threat cap is not to orbit
+the contested space but to *leave* it.
+
+Reproduce: `python scripts/antipodal_mgr_obstacle_phase.py --n-list 6 8 --episodes 40`
+(writes `results/antipodal_mgr_obstacle_phase.json`).
 
 ## A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient
 
