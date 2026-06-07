@@ -64,3 +64,23 @@ def test_more_cohesion_gain_does_not_reconnect():
     high = _F.simulate(algorithm=1, n=20, seed=1, spread=12.0, c2a=14.0,
                        grad_gain=8.0, steps=800).n_components
     assert high >= low
+
+
+_MIGRATE = dict(algorithm=2, n=24, spread=14.0, c2a=8.0, grad_gain=1.0,
+                c1g=1.0, c2g=0.6, goal=(0.0, 0.0), goal_vel=(5.0, 0.0),
+                goal_moves=True, obs_infl=4.0, c_obs=20.0, steps=1200)
+
+
+def test_migrating_flock_threads_small_obstacle():
+    r = _F.simulate(seed=4, obstacles=((40.0, 0.0, 2.0),), **_MIGRATE)
+    assert r.connected and r.n_components == 1
+
+
+def test_large_obstacle_splits_the_flock():
+    r = _F.simulate(seed=4, obstacles=((40.0, 0.0, 12.0),), **_MIGRATE)
+    assert r.n_components > 1 and not r.connected
+
+
+def test_no_obstacle_control_stays_one_flock():
+    r = _F.simulate(seed=4, obstacles=(), **_MIGRATE)
+    assert r.connected

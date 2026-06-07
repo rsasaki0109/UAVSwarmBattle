@@ -113,6 +113,9 @@ def simulate(
     goal: tuple[float, float] = (0.0, 0.0),
     goal_vel: tuple[float, float] = (0.0, 0.0),
     goal_moves: bool = False,     # advance the γ-agent at goal_vel (a migrating flock)
+    obstacles: tuple = (),        # disk β-agents: each (cx, cy, R) -> repulsion
+    c_obs: float = 20.0,          # β-agent (obstacle) repulsion gain
+    obs_infl: float = 7.0,        # influence margin beyond each disk's radius
     dt: float = 0.02,
     steps: int = 1500,
     vmax: float = 12.0,
@@ -128,6 +131,7 @@ def simulate(
 
     q = rng.uniform(-spread, spread, size=(n, 2))
     p = rng.uniform(-v_spread, v_spread, size=(n, 2)) if v_spread > 0 else np.zeros((n, 2))
+    obs = np.asarray(obstacles, dtype=float).reshape(-1, 3) if len(obstacles) else None
 
     traj = []
     eye = np.eye(n, dtype=bool)
@@ -147,6 +151,15 @@ def simulate(
         u = grad_gain * c1a * grad + c2a * consensus
         if algorithm == 2:
             u += -c1g * _sigma1(q - q_g) - c2g * (p - p_g)
+        if obs is not None:
+            for cx, cy, R in obs:                         # β-agent disk repulsion (APF form)
+                vec = q - np.array([cx, cy])
+                dist = np.sqrt((vec * vec).sum(-1))
+                gap = np.clip(dist - R, 0.05, None)       # surface gap
+                hit = gap < obs_infl
+                if hit.any():
+                    mag = c_obs * (1.0 / gap - 1.0 / obs_infl) / (gap * gap)
+                    u[hit] += (mag[hit, None] * vec[hit] / dist[hit, None])
 
         if goal_moves:
             q_g = q_g + p_g * dt
