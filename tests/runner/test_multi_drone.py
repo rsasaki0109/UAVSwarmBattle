@@ -260,3 +260,35 @@ def test_build_multi_rejects_per_drone_count_mismatch() -> None:
     cfg.planner["per_drone"] = [{}]  # only 1 entry
     with pytest.raises(ValueError, match="planner.per_drone"):
         _build_multi(cfg)
+
+
+def test_build_multi_per_drone_simulator_override() -> None:
+    """`simulator.per_drone` shallow-merges a partial sim override per drone, so a
+    fleet can fly mixed dynamics (e.g. heterogeneous `max_accel`); `{}` leaves
+    the base. Mirrors `planner.per_drone` but for the sim backend."""
+    from uav_nav_lab.runner.multi import _build_multi
+
+    cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone.yaml")  # 2 drones
+    base_accel = float(cfg.simulator.get("max_accel", 50.0))
+    cfg.simulator["per_drone"] = [
+        {"max_accel": 2.0},
+        {},  # drone 1 keeps the shared sim config unchanged
+    ]
+    _, sims, _, _ = _build_multi(cfg)
+
+    # Drone 0 took the sluggish override; drone 1 kept the shared accel limit.
+    assert sims[0].p.max_accel == 2.0
+    assert sims[1].p.max_accel == base_accel
+    # The override must not mutate the shared simulator config in place.
+    assert "per_drone" in cfg.simulator
+    assert cfg.simulator.get("max_accel", 50.0) == base_accel
+
+
+def test_build_multi_rejects_per_drone_simulator_count_mismatch() -> None:
+    """`simulator.per_drone` must match `scenario.n_drones` if provided."""
+    from uav_nav_lab.runner.multi import _build_multi
+
+    cfg = ExperimentConfig.from_yaml(EXAMPLES / "exp_multi_drone.yaml")  # 2 drones
+    cfg.simulator["per_drone"] = [{}]  # only 1 entry
+    with pytest.raises(ValueError, match="simulator.per_drone"):
+        _build_multi(cfg)

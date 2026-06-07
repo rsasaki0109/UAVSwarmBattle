@@ -39,6 +39,19 @@ def _build_multi(
             f"scenario has {n} drones"
         )
 
+    # Heterogeneous *dynamics*: `simulator.per_drone` mirrors `planner.per_drone`
+    # but for the sim backend — each entry is shallow-merged over the shared
+    # `simulator` config (`{}` = unchanged). Because every drone already gets its
+    # own sim instance, this lets a fleet mix any sim knob per index (e.g.
+    # different `max_accel`, so a sluggish drone turns slower than an agile one).
+    base_sim = {k: v for k, v in cfg.simulator.items() if k != "per_drone"}
+    per_drone_sim = cfg.simulator.get("per_drone") or []
+    if per_drone_sim and len(per_drone_sim) != n:
+        raise ValueError(
+            f"simulator.per_drone has {len(per_drone_sim)} entries but the "
+            f"scenario has {n} drones"
+        )
+
     sensor_cfg = dict(cfg.sensor)
     sensor_cfg.setdefault("dt", cfg.simulator.get("dt", 0.05))
     sensor_cls = SENSOR_REGISTRY.get(sensor_cfg.get("type", "perfect"))
@@ -59,7 +72,10 @@ def _build_multi(
     sensors: list[Any] = []
     for i in range(n):
         # Only sim 0 advances the shared scenario; the rest are passive.
-        sim = sim_cls.from_config(cfg.simulator, scenario)
+        scfg = base_sim
+        if per_drone_sim and per_drone_sim[i]:
+            scfg = {**base_sim, **per_drone_sim[i]}
+        sim = sim_cls.from_config(scfg, scenario)
         if i > 0 and hasattr(sim, "_advance_scenario"):
             sim._advance_scenario = False
         if vehicles_cfg and hasattr(sim, "vehicle"):
