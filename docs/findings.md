@@ -149,6 +149,7 @@ different strategies.
 - [The right-of-way convention survives non-holonomic drones — and without it, agility is a non-monotone liability](#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability)
 - [How much convention a non-holonomic fleet needs is set by its agility — sluggish drones self-break symmetry and need less](#how-much-convention-a-non-holonomic-fleet-needs-is-set-by-its-agility--sluggish-drones-self-break-symmetry-and-need-less)
 - [Healing a cut flock is LOCAL, not global — a comms-free reach rule beats the rendezvous, and the gap widens with the obstacle](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle)
+- [The local-reach cure is not free: it buys cohesion with obstacle clearance — a cost that only the worst case sees, and only magnitude removes](#the-local-reach-cure-is-not-free-it-buys-cohesion-with-obstacle-clearance--a-cost-that-only-the-worst-case-sees-and-only-magnitude-removes)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10013,3 +10014,57 @@ that finding's data (the rendezvous heals small cuts) stands, but its interpreta
 
 Reproduce: `python scripts/flocking_local_heal_phase.py --mode heal --episodes 40`
 (also `--mode vs_global`).
+
+## The local-reach cure is not free: it buys cohesion with obstacle clearance — a cost that only the worst case sees, and only magnitude removes
+
+The [local-heal study](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle)
+scored a cut flock by its *topology*: a single connected component after passing the
+obstacle. By that measure adaptive reach is a clean win. But topology is not the only
+thing that matters when a flock threads an obstacle — **what does the cure cost?**
+The boosted attraction reaches *across* the disk to the abandoned lobe, so it adds a
+surface-ward pull: the re-cohering agents heal by **hugging the obstacle**. Same cut as
+before (Algorithm 2 + β-agent, N=24), scoring the worst (minimum) centre-to-surface gap
+over the whole pass; a "clearance violation" is a worst gap below a drone radius ρ = 0.5.
+Both legs paired by seed, McNemar-exact (m=40):
+
+| obstacle R | heal: base → adapt (c, p) | clearance violation: base → adapt (c, p) |
+|---|---|---|
+| 9  | 4/40 → 40/40 (c=36, 2.9e-11) | 0/40 → 24/40 (c=24, 1.2e-7) |
+| 13 | 0/40 → 40/40 (c=40, 1.8e-12) | 0/40 → 24/40 (c=24, 1.2e-7) |
+| 17 | 0/40 → 40/40 (c=40, 1.8e-12) | 2/40 → 22/40 (c=21, 1.1e-5) |
+| 22 | 0/40 → 40/40 (c=40, 1.8e-12) | 2/40 → 18/40 (c=18, 4.0e-4) |
+
+- **The cure trades clearance for cohesion — both legs significant, opposite signs.**
+  Adaptive heals far more (c = 36–40) *and* breaches the safety margin far more (c = 18–24).
+  The base-range flock keeps its distance precisely because it gives up on the trailing
+  lobe; adaptive recovers the lobe by sending it across, against the obstacle. Cohesion and
+  clearance are in tension, and the local-reach rule spends the latter to buy the former.
+- **The cost is a TAIL, not a mean shift — a mean clearance metric hides it, or inverts it.**
+  Averaged over seeds, adaptive's worst-gap is often *larger* than the baseline's
+  (R=9: 1.15 vs 0.64; R=13: 0.85 vs 0.65), because many healed runs route the whole flock
+  *wide* around the disk. Yet the worst case breaches in 18–24/40 seeds where the baseline
+  essentially never does (0–2/40). A mean would certify adaptive as the *safer* policy; the
+  worst case — the only lens that matters for a collision — shows the opposite. (Same
+  offline-metric-≠-outcome trap that recurs across this repo, here on the safety axis.)
+- **It is the boost, not the crossing.** Within the baseline, the few seeds that heal
+  (R=9, 4/40) keep ~full clearance (gap 0.678) — indistinguishable from the seeds that stay
+  cut (0.640). So crossing the obstacle is not inherently the tax; the *boosted reach pulling
+  across the disk* is. The cost is specific to the cure's mechanism, not to re-cohesion as such.
+- **The fix is magnitude, not structure.** The min gap is a force-balance equilibrium at
+  the obstacle's repulsion barrier (a 1/gap singularity), so it cannot be widened away:
+  enlarging the obstacle *influence margin* `obs_infl` — the structural lever — is impotent
+  (min gap flat at ~0.40 across `obs_infl` 4→10, heal kept). Only raising the repulsion
+  *gain* `c_obs` — a pure magnitude lever — restores clearance, lifting the worst gap
+  0.40 → 0.87 at 8× while the flock still heals 12/12. A rare inversion of this repo's usual
+  "the cure is structure, not magnitude" refrain: when the cost is an equilibrium of two
+  opposing forces, the cure genuinely *is* to raise one of them.
+
+This bounds the [local-heal finding](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle):
+adaptive reach heals topology comms-free, but the connectivity score it was judged on hid a
+worst-case safety cost. Re-cohesion and clearance trade off; the trade is tunable, but only
+through the repulsion gain.
+
+![reach-clearance cost](images/swarm_reach_clearance.gif)
+
+Reproduce: `python scripts/flocking_reach_clearance_phase.py --mode tradeoff --episodes 40`
+(also `--mode mechanism`, `--mode fix`).

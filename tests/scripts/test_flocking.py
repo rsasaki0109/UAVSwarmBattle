@@ -119,3 +119,34 @@ def test_reach_boost_one_is_a_noop():
     a = _F.simulate(seed=1, **kw)
     b = _F.simulate(seed=1, reach_boost=1.0, reach_kmin=5, **kw)
     assert a.n_components == b.n_components
+
+
+def _min_surface_gap(res, cx, cy, R):
+    """Worst (smallest) centre-to-surface gap to a disk over a recorded run."""
+    import numpy as np
+    g = np.inf
+    for q in res.traj:
+        v = q - np.array([cx, cy])
+        g = min(g, float((np.sqrt((v * v).sum(-1)) - R).min()))
+    return g
+
+
+def test_adaptive_reach_heals_but_hugs_the_obstacle():
+    # the clearance cost: the boosted reach heals the cut but pulls the
+    # re-cohering agents markedly closer to the disk than the base range does.
+    cut = dict(_MIGRATE, steps=1500, obstacles=((40.0, 0.0, 13.0),), record=True)
+    base = _F.simulate(seed=0, reach_boost=1.0, **cut)
+    adapt = _F.simulate(seed=0, reach_boost=3.0, reach_kmin=5, **cut)
+    assert base.n_components > 1 and adapt.connected          # adaptive heals, base does not
+    assert _min_surface_gap(adapt, 40.0, 0.0, 13.0) < _min_surface_gap(base, 40.0, 0.0, 13.0)
+
+
+def test_stronger_repulsion_restores_clearance_and_keeps_heal():
+    # the cost is a force-balance equilibrium: raising the repulsion gain (a
+    # magnitude lever) widens the worst-case gap while the flock still heals.
+    cut = dict(_MIGRATE, steps=1500, obstacles=((40.0, 0.0, 13.0),), record=True,
+               reach_boost=3.0, reach_kmin=5)
+    weak = _F.simulate(seed=0, **dict(cut, c_obs=20.0))
+    strong = _F.simulate(seed=0, **dict(cut, c_obs=160.0))
+    assert weak.connected and strong.connected               # heal preserved either way
+    assert _min_surface_gap(strong, 40.0, 0.0, 13.0) > _min_surface_gap(weak, 40.0, 0.0, 13.0)
