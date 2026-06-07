@@ -116,6 +116,8 @@ def simulate(
     obstacles: tuple = (),        # disk β-agents: each (cx, cy, R) -> repulsion
     c_obs: float = 20.0,          # β-agent (obstacle) repulsion gain
     obs_infl: float = 7.0,        # influence margin beyond each disk's radius
+    c_rdv: float = 0.0,           # global rendezvous: pull toward the flock centroid
+    rdv_gate_x: float = None,     # if set, rendezvous acts only on agents with q_x > this
     dt: float = 0.02,
     steps: int = 1500,
     vmax: float = 12.0,
@@ -151,6 +153,11 @@ def simulate(
         u = grad_gain * c1a * grad + c2a * consensus
         if algorithm == 2:
             u += -c1g * _sigma1(q - q_g) - c2g * (p - p_g)
+        if c_rdv > 0.0:                                   # global rendezvous toward flock centroid
+            pull = -c_rdv * _sigma1(q - q.mean(axis=0))
+            if rdv_gate_x is not None:
+                pull[q[:, 0] <= rdv_gate_x] = 0.0          # only agents past the gate re-cohere
+            u += pull
         if obs is not None:
             for cx, cy, R in obs:                         # β-agent disk repulsion (APF form)
                 vec = q - np.array([cx, cy])

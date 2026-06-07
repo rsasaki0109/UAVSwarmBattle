@@ -84,3 +84,20 @@ def test_large_obstacle_splits_the_flock():
 def test_no_obstacle_control_stays_one_flock():
     r = _F.simulate(seed=4, obstacles=(), **_MIGRATE)
     assert r.connected
+
+
+def test_gated_rendezvous_heals_a_cut_that_baseline_cannot():
+    cut = dict(_MIGRATE, steps=1500, obstacles=((40.0, 0.0, 9.0),))
+    base = _F.simulate(seed=7, c_rdv=0.0, **cut)
+    gated = _F.simulate(seed=7, c_rdv=3.0, rdv_gate_x=40.0 + 9.0 + 5.0, **cut)
+    assert base.n_components > 1            # local flock stays cut
+    assert gated.n_components < base.n_components   # rendezvous re-merges
+
+
+def test_rendezvous_gate_only_acts_past_the_gate():
+    # with the gate far downstream of the whole run, the term never fires:
+    # the result must match the no-rendezvous baseline exactly.
+    cut = dict(_MIGRATE, steps=1500, obstacles=((40.0, 0.0, 9.0),))
+    base = _F.simulate(seed=3, c_rdv=0.0, **cut)
+    gated_off = _F.simulate(seed=3, c_rdv=3.0, rdv_gate_x=1e9, **cut)
+    assert gated_off.n_components == base.n_components
