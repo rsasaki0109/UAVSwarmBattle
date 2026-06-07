@@ -153,6 +153,7 @@ different strategies.
 - [Two cohesive flocks crossing head-on JAM but never collide — the right-of-way convention clears the gridlock, within an operating band](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band)
 - [The crossing-flock jam is gated by encounter angle: it is a head-on phenomenon, and the convention earns its keep only where the jam is](#the-crossing-flock-jam-is-gated-by-encounter-angle-it-is-a-head-on-phenomenon-and-the-convention-earns-its-keep-only-where-the-jam-is)
 - [A K-way flocking hub jams at every fan-in; the roundabout convention clears it — cohesion is the first casualty, collisions only the last](#a-k-way-flocking-hub-jams-at-every-fan-in-the-roundabout-convention-clears-it--cohesion-is-the-first-casualty-collisions-only-the-last)
+- [Who must follow the roundabout rule? A flock's cohesion makes adoption a placement problem, not a head-count](#who-must-follow-the-roundabout-rule-a-flocks-cohesion-makes-adoption-a-placement-problem-not-a-head-count)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10227,3 +10228,67 @@ and only at extreme fan-in does the collision cliff of the point-agent hub final
 
 Reproduce: `python scripts/flocking_hub_phase.py --mode scale --episodes 40`
 (also `--mode cliff` for the collision cliff, `--mode mcnemar`).
+
+## Who must follow the roundabout rule? A flock's cohesion makes adoption a placement problem, not a head-count
+
+The [K-way hub](#a-k-way-flocking-hub-jams-at-every-fan-in-the-roundabout-convention-clears-it--cohesion-is-the-first-casualty-collisions-only-the-last)
+above hands the right-of-way veer to *every* agent. But a convention is only useful if
+it tolerates partial adoption. The [point-agent convention](#the-right-of-way-convention-needs-near-full-adoption--free-riders-break-it-and-tolerance-shrinks-with-density)
+needed near-full adoption: a single symmetric non-cooperator pair re-jams the hub.
+A flock is different — the α-lattice (velocity consensus) *couples* a non-adopter to
+its flock-mates, so a free-rider can be **dragged** around the roundabout by its
+neighbours. That turns "how many must adopt?" into "**where** are they placed?".
+
+**Within-flock critical mass — a minority per flock suffices** (K=6, m=40, each flock
+biases a fraction *f* of its 10 members, McNemar vs no-adoption):
+
+| adoption per flock | all-passed | b / c | p | cohesion |
+|---|---|---|---|---|
+| 0 % (0/60)  | 0/40  | — | — | 1.00 |
+| 20 % (12/60) | 10/40 | 0 / 10 | 1.95e-03 | 0.89 |
+| 30 % (18/60) | **40/40** | 0 / 40 | 1.82e-12 | 0.82 |
+| 40 % (24/60) | 40/40 | 0 / 40 | 1.82e-12 | 0.81 |
+| 50 % (30/60) | 40/40 | 0 / 40 | 1.82e-12 | 0.79 |
+| 100 % (60/60) | 40/40 | 0 / 40 | 1.82e-12 | 0.80 |
+
+Just **30 % of each flock** following the rule fully clears the hub — the velocity
+consensus drags the other 70 % around the roundabout. The point-agent hub needed a
+near-unanimous fleet; here cohesion does the convention's work.
+
+**Placement at a fixed budget — MIXED beats CLUSTERED** (K=6, m=40, the *same* number
+of rule-followers placed two ways: **MIXED** = spread evenly across every flock,
+**CLUSTERED** = whole flocks adopt and the rest free-ride entirely; paired McNemar,
+c = mixed wins, b = clustered wins):
+
+| adoption budget | mixed | clustered | b / c | p | mix coh / clu coh |
+|---|---|---|---|---|---|
+| 12/60 | 10/40 | 6/40  | 1 / 5  | 2.19e-01 | 0.89 / 0.92 |
+| 15/60 | **28/40** | **14/40** | 1 / 15 | **5.19e-04** | 0.84 / 0.86 |
+| 18/60 | 40/40 | 30/40 | 0 / 10 | 1.95e-03 | 0.82 / 0.84 |
+| 21/60 | 40/40 | 38/40 | 0 / 2  | 5.00e-01 | 0.81 / 0.82 |
+| 24/60 | 40/40 | 40/40 | 0 / 0  | 1.00e+00 | 0.81 / 0.83 |
+
+- **The same rule-follower count clears the hub far more often when spread thin.** At
+  the discriminating budget (15/60) MIXED passes 28/40 against CLUSTERED's 14/40
+  (b=1, c=15, p=5.2e-4); at 18/60, 40/40 vs 30/40 (p=2e-3). MIXED never loses (b ≤ 1
+  at every budget). Below the band both fail (12/60), above it both ceiling (21–24/60).
+- **The mechanism is cohesion drag.** Spread the adopters across every flock and each
+  flock's lattice pulls its own free-riders into the roundabout. Clump them into whole
+  flocks and the un-adopting flocks stay **coherent walls** — exactly the symmetric
+  blockers that re-jam the hub, the flocking echo of the point-agent non-cooperator pair.
+- **The cost flips with placement.** CLUSTERED keeps slightly *higher* cohesion (intact
+  free-rider flocks, 0.86 vs 0.84 at budget 15) but jams more often: spreading the rule
+  shears every flock a little, clumping it keeps the free-riders whole but lets them wall
+  the hub. You trade a little structure for passage — the same structure-vs-passage
+  tension the [hub study](#a-k-way-flocking-hub-jams-at-every-fan-in-the-roundabout-convention-clears-it--cohesion-is-the-first-casualty-collisions-only-the-last)
+  found along the density axis, now along the *adoption-placement* axis.
+
+So for a flock the right-of-way convention is **placement-sensitive, not head-count-sensitive**:
+a thin, uniform sprinkling of rule-followers (≈30 % of each flock) beats the same budget
+concentrated in a few flocks, because cohesion carries the free-riders only when an
+adopter is in the same flock to carry them.
+
+![Placement of rule-followers](images/swarm_critmass.gif)
+
+Reproduce: `python scripts/flocking_critmass_phase.py --mode critmass --episodes 40`
+(also `--mode placement` for the mixed-vs-clustered comparison).

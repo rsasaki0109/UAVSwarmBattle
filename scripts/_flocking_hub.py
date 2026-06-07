@@ -65,6 +65,7 @@ def simulate_hub(
     c1g: float = 1.0,
     c2g: float = 0.6,
     bias: float = 0.0,
+    adopt: np.ndarray = None,     # per-agent bool mask of who applies the bias (None = all)
     sep: float = 40.0,            # radius of the ring the flocks start on
     spread: float = 8.0,
     gv: float = 5.0,
@@ -118,7 +119,10 @@ def simulate_hub(
         if bias != 0.0:
             g_dir = p_g / np.linalg.norm(p_g, axis=1, keepdims=True)
             perp = np.stack([g_dir[:, 1], -g_dir[:, 0]], axis=1)
-            u += bias * perp
+            b_vec = bias * perp
+            if adopt is not None:
+                b_vec = b_vec * adopt[:, None]
+            u += b_vec
 
         g = g + v * dt
         p = p + u * dt
