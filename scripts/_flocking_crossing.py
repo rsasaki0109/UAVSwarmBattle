@@ -73,9 +73,10 @@ def simulate_crossing(
     bias: float = 0.0,            # right-of-way: constant veer right of each agent's goal heading
     sep: float = 40.0,            # initial half-separation of the two flocks along x
     spread: float = 10.0,         # initial spread of each flock
-    gv: float = 5.0,              # goal speed (group 0 +x, group 1 -x)
-    pass_x: float = 30.0,         # centroid must cross beyond this to count as "passed"
-    lane_tol: float = 30.0,       # centroid must stay within this of the x-axis to be "on lane"
+    gv: float = 5.0,              # goal speed
+    encounter_angle: float = 180.0,  # angle (deg) of flock B's road vs flock A's (+x); 180 = head-on
+    pass_x: float = 30.0,         # along-track distance a centroid must travel to count as "passed"
+    lane_tol: float = 30.0,       # max cross-track deviation from a flock's own road to stay "on lane"
     dt: float = 0.02,
     steps: int = 1400,
     vmax: float = 12.0,
@@ -87,14 +88,23 @@ def simulate_crossing(
     r_a = _sigma_norm_scalar(r)
     d_a = _sigma_norm_scalar(d)
     half = n // 2
-    qA = rng.uniform(-spread, spread, size=(half, 2)) + np.array([-sep, 0.0])
-    qB = rng.uniform(-spread, spread, size=(n - half, 2)) + np.array([sep, 0.0])
+    # flock A travels its road along +x; flock B's road is rotated by encounter_angle.
+    # Each flock starts a half-separation BEHIND the centre and migrates through it.
+    uA = np.array([1.0, 0.0])
+    th = np.radians(encounter_angle)
+    uB = np.array([np.cos(th), np.sin(th)])
+    qA = rng.uniform(-spread, spread, size=(half, 2)) + (-sep * uA)
+    qB = rng.uniform(-spread, spread, size=(n - half, 2)) + (-sep * uB)
     q = np.vstack([qA, qB])
     p = np.zeros((n, 2))
     grp = np.array([0] * half + [1] * (n - half))
-    gA = np.array([-sep, 0.0]); gB = np.array([sep, 0.0])
-    vA = np.array([gv, 0.0]); vB = np.array([-gv, 0.0])
+    gA = -sep * uA; gB = -sep * uB
+    vA = gv * uA; vB = gv * uB
     eye = np.eye(n, dtype=bool)
+
+    def _cross_track(c, u):
+        """perpendicular distance of centroid c from its flock's road (direction u)."""
+        return float(np.linalg.norm(c - (c @ u) * u))
 
     traj = []
     max_lat = 0.0
@@ -130,18 +140,18 @@ def simulate_crossing(
         q = q + p * dt
 
         cA_t = q[grp == 0].mean(0); cB_t = q[grp == 1].mean(0)
-        max_lat = max(max_lat, abs(cA_t[1]), abs(cB_t[1]))
+        max_lat = max(max_lat, _cross_track(cA_t, uA), _cross_track(cB_t, uB))
         # collision proxy = closest approach between agents of DIFFERENT flocks
         # (intra-flock spacing is the lattice; only inter-flock contact is a "collision")
         inter = np.sqrt(z2)[np.ix_(grp == 0, grp == 1)]
         min_pair = min(min_pair, float(inter.min()))
-        if pass_step < 0 and cA_t[0] > pass_x and cB_t[0] < -pass_x:
+        if pass_step < 0 and (cA_t @ uA) > pass_x and (cB_t @ uB) > pass_x:
             pass_step = t
         if record and t % 5 == 0:
             traj.append(q.copy())
 
     cA = q[grp == 0].mean(0); cB = q[grp == 1].mean(0)
-    passed = bool(cA[0] > pass_x and cB[0] < -pass_x)
+    passed = bool((cA @ uA) > pass_x and (cB @ uB) > pass_x)
     on_lane = bool(max_lat <= lane_tol)
     kA, _ = _components(q[grp == 0], r)
     kB, _ = _components(q[grp == 1], r)

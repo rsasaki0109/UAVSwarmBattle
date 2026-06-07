@@ -151,6 +151,7 @@ different strategies.
 - [Healing a cut flock is LOCAL, not global — a comms-free reach rule beats the rendezvous, and the gap widens with the obstacle](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle)
 - [The local-reach cure is not free: it buys cohesion with obstacle clearance — a cost that only the worst case sees, and only magnitude removes](#the-local-reach-cure-is-not-free-it-buys-cohesion-with-obstacle-clearance--a-cost-that-only-the-worst-case-sees-and-only-magnitude-removes)
 - [Two cohesive flocks crossing head-on JAM but never collide — the right-of-way convention clears the gridlock, within an operating band](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band)
+- [The crossing-flock jam is gated by encounter angle: it is a head-on phenomenon, and the convention earns its keep only where the jam is](#the-crossing-flock-jam-is-gated-by-encounter-angle-it-is-a-head-on-phenomenon-and-the-convention-earns-its-keep-only-where-the-jam-is)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10131,4 +10132,53 @@ and [convention](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-
 ![two flocks crossing](images/swarm_crossing.gif)
 
 Reproduce: `python scripts/flocking_crossing_phase.py --mode band --episodes 40`
+(also `--mode mcnemar`).
+
+## The crossing-flock jam is gated by encounter angle: it is a head-on phenomenon, and the convention earns its keep only where the jam is
+
+The [crossing study](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band)
+drove two flocks straight at each other (180°). This sweeps the encounter angle to
+bound *when* the jam happens and *where* the convention is worth running — the same
+question the convention thread answered for goal-directed agents ([the bias is a no-op
+on a perpendicular crossing](#the-right-of-way-bias-is-safe-everywhere-and-general-to-head-on-convergence)
+because 90° decomposes into pairwise conflicts that never deadlock). Two axes are
+scored separately, because the convention fixes only one — `passed` (did the flocks
+clear the crossing, the JAM axis) and `on_lane` (did they stay on their road, the
+LANE axis). Flock B's road is rotated by the encounter angle; N=24, m=40:
+
+| angle | passed: bias 0 → 1 | on-lane: bias 0 → 1 | inter-flock min dist |
+|---|---|---|---|
+| 90°  | 40 → 40 | 0 → 0  | 4.85 |
+| 105° | 38 → 40 | 0 → 0  | 4.65 |
+| 120° | 0 → 40  | 0 → 3  | 4.45 |
+| 135° | 0 → 40  | 0 → 23 | 4.48 |
+| 150° | 0 → 40  | 27 → 40 | 4.74 |
+| 165° | 0 → 40  | 40 → 40 | 4.00 |
+| 180° | 0 → 40  | 40 → 40 | 4.39 |
+
+- **The jam is a head-on phenomenon — it onsets near 180°.** At 90–105° the flocks
+  *slip past* without any convention (`passed` at bias 0 = 40/40, 38/40): a perpendicular
+  or shallow-oblique crossing has no symmetric stand-off, so there is nothing to jam.
+  The jam appears abruptly between 105° and 120° (38 → 0) and holds to head-on. This is
+  the cohesive-flocking echo of the convention-arc rule that a deadlock needs symmetric
+  *head-on* convergence; decomposable conflicts do not deadlock.
+- **The convention is a no-op where there is no jam, and a clean break where there is.**
+  Paired bias=0 vs bias=1 on `passed`, McNemar-exact: at 90° it is a tie (40/40 vs 40/40,
+  p=1.0 — the convention does nothing because nothing is stuck); from 120° on it is the
+  full jam-break (0/40 → 40/40, c=40, p=1.8e-12). The right-of-way veer earns its keep
+  exactly on the head-on encounters that actually gridlock — harmless where unneeded.
+- **But breaking the jam and keeping the lane are different thresholds.** The convention
+  clears the *jam* at every angle ≥ 120°, yet clears it *cleanly* (on-lane too) only from
+  ~150°: at 120–135° the veer needed to slip past throws the flocks well off their road
+  (on-lane 3/40, 23/40). So there is a nested structure — slip-through (≤105°), jam broken
+  but off-lane (120–135°), jam broken cleanly (≥150°). No collision at any angle (inter-flock
+  spacing ≥ 4.0 throughout): as before, flocking jams, it does not crash.
+
+This bounds the [crossing finding](#two-cohesive-flocks-crossing-head-on-jam-but-never-collide--the-right-of-way-convention-clears-the-gridlock-within-an-operating-band):
+the jam — and the value of the convention — is specific to near-head-on encounters,
+exactly the geometry whose symmetry the convention exists to break.
+
+![crossing angle gating](images/swarm_crossing_angle.gif)
+
+Reproduce: `python scripts/flocking_crossing_angle_phase.py --mode angle --episodes 40`
 (also `--mode mcnemar`).

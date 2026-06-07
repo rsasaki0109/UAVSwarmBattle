@@ -53,3 +53,18 @@ def test_bias_zero_is_symmetric_baseline():
     # the axis (the jam is on-axis, not a drift).
     r = _C.simulate_crossing(seed=0, bias=0.0)
     assert r.max_lateral < 15.0
+
+
+def test_encounter_angle_180_is_the_head_on_default():
+    # passing encounter_angle=180 explicitly must reproduce the default head-on run.
+    a = _C.simulate_crossing(seed=3, bias=1.0)
+    b = _C.simulate_crossing(seed=3, bias=1.0, encounter_angle=180.0)
+    assert a.passed == b.passed and a.on_lane == b.on_lane
+    assert abs(a.max_lateral - b.max_lateral) < 1e-9
+
+
+def test_perpendicular_crossing_does_not_jam():
+    # at 90 degrees the flocks slip past each other without a convention -- the jam
+    # is a head-on phenomenon, so there is nothing for the convention to break.
+    r = _C.simulate_crossing(seed=0, bias=0.0, encounter_angle=90.0)
+    assert r.passed
