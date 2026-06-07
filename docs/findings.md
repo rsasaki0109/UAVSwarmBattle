@@ -148,6 +148,7 @@ different strategies.
 - [A cut flock can be healed — but only by a global term, and only if it waits: a gated rendezvous re-merges what local rules cannot](#a-cut-flock-can-be-healed--but-only-by-a-global-term-and-only-if-it-waits-a-gated-rendezvous-re-merges-what-local-rules-cannot)
 - [The right-of-way convention survives non-holonomic drones — and without it, agility is a non-monotone liability](#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability)
 - [How much convention a non-holonomic fleet needs is set by its agility — sluggish drones self-break symmetry and need less](#how-much-convention-a-non-holonomic-fleet-needs-is-set-by-its-agility--sluggish-drones-self-break-symmetry-and-need-less)
+- [Healing a cut flock is LOCAL, not global — a comms-free reach rule beats the rendezvous, and the gap widens with the obstacle](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9850,6 +9851,11 @@ Reproduce: `python scripts/flocking_rendezvous_phase.py --mode heal --episodes 4
 (also `--mode timing`); GIF via
 `python scripts/render_flocking_rendezvous_gif.py --seed 7`.
 
+> **Correction.** The data above stand, but the "irreducibly global" interpretation
+> does not: a comms-free *local* reach rule heals the cut at every obstacle size and
+> beats this global rendezvous (which collapses as the obstacle grows). See
+> [Healing a cut flock is LOCAL, not global](#healing-a-cut-flock-is-local-not-global--a-comms-free-reach-rule-beats-the-rendezvous-and-the-gap-widens-with-the-obstacle).
+
 ## The right-of-way convention survives non-holonomic drones — and without it, agility is a non-monotone liability
 
 Every result in the convention arc — the antipodal deadlock, the global
@@ -9948,3 +9954,62 @@ Sluggish (0.5) vs agile (8.0) turn rate, paired by seed (c = sluggish-only succe
   much symmetry the dynamics already carry.
 
 Reproduce: `python scripts/nonholonomic_bias_interaction_phase.py --episodes 40`.
+
+## Healing a cut flock is LOCAL, not global — a comms-free reach rule beats the rendezvous, and the gap widens with the obstacle
+
+The [rendezvous study](#a-cut-flock-can-be-healed--but-only-by-a-global-term-and-only-if-it-waits-a-gated-rendezvous-re-merges-what-local-rules-cannot)
+concluded that healing an obstacle-severed flock is "irreducibly global": a pull
+toward the flock's global centroid re-merges the lobes where local rules could not.
+That conclusion was **wrong** — and instructively so. This revisits it with a *local*
+alternative, **adaptive reach**: an agent that has lost neighbours (degree below
+`reach_kmin` within its base range) enlarges its OWN sensing range to `reach_boost·r`.
+It is comms-free — each agent uses only its own neighbour count, no centroid, no
+global state ([#139](#a-comms-free-rule-beats-a-smarter-one-when-sensing-drops-out)'s
+robust kind of rule). Same migrating-flock cut as before (Algorithm 2 + β-agent
+obstacle, N=24), McNemar-exact (m=40):
+
+| obstacle R | baseline | adaptive local reach | global rendezvous (#144) |
+|---|---|---|---|
+| 9 | 4/40 | 40/40 | 16/40 |
+| 13 | 0/40 | 40/40 | 4/40 |
+| 17 | 0/40 | 40/40 | 1/40 |
+| 22 | 0/40 | 40/40 | 0/40 |
+
+Local reach vs the global rendezvous, paired by seed (c = local-only heal):
+
+| R | global | local | b | c | p |
+|---|---|---|---|---|---|
+| 9 | 16/40 | 40/40 | 0 | 24 | 1.2e-7 |
+| 13 | 4/40 | 40/40 | 0 | 36 | 2.9e-11 |
+| 17 | 1/40 | 40/40 | 0 | 39 | 3.6e-12 |
+| 22 | 0/40 | 40/40 | 0 | 40 | 1.8e-12 |
+
+- **The global rendezvous is the worse healer, and it fails exactly where it matters.**
+  It re-merges only the smallest cuts and collapses as the obstacle grows (16 → 0),
+  while the local reach rule heals **every** obstacle size (40/40). The paired gap widens
+  monotonically with R (c = 24 → 40). #144's "irreducibly global" is not just unnecessary —
+  it is backwards.
+- **Why the centroid is the wrong signal.** The centroid of a flock split into two lobes
+  sits *on the obstacle*, between them. A pull toward it drives each lobe back into the
+  disk and cannot bridge a wide cut — the wider the obstacle, the more the target is
+  buried inside it. The local rule bridges lobe-to-lobe directly, around nothing: an edge
+  agent that has lost neighbours simply senses farther until it re-links with the other
+  lobe. Spanning the gap is a *local* operation; routing through the global centroid is a
+  detour through the very thing that caused the cut.
+- **It is the reach, not the trigger.** A fixed larger sensing range heals just as well
+  (it is [#143](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)'s
+  `r` knob: bigger reach tolerates a bigger obstacle). Adaptive reach simply supplies that
+  reach *comms-free* and *only where it is needed* — low-degree edge agents boost; healthy
+  interior agents (≥ `reach_kmin` neighbours) never do — so it costs nothing on an uncut
+  flock (no-obstacle control 40/40, unchanged).
+- **Same lesson as #139, now for re-cohesion.** Symmetry-breaking is best done with
+  information each agent computes alone; this shows *re-cohesion after a cut* is too. The
+  earlier study's appeal to a global signal was a wrong turn — the gap is bridged by
+  reaching across it, and reaching is local.
+
+This corrects the [rendezvous study](#a-cut-flock-can-be-healed--but-only-by-a-global-term-and-only-if-it-waits-a-gated-rendezvous-re-merges-what-local-rules-cannot):
+that finding's data (the rendezvous heals small cuts) stands, but its interpretation
+("irreducibly global") does not. The cure for a cut is local reach.
+
+Reproduce: `python scripts/flocking_local_heal_phase.py --mode heal --episodes 40`
+(also `--mode vs_global`).

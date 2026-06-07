@@ -118,6 +118,8 @@ def simulate(
     obs_infl: float = 7.0,        # influence margin beyond each disk's radius
     c_rdv: float = 0.0,           # global rendezvous: pull toward the flock centroid
     rdv_gate_x: float = None,     # if set, rendezvous acts only on agents with q_x > this
+    reach_boost: float = 1.0,     # comms-free adaptive reach: low-degree agents enlarge their
+    reach_kmin: int = 3,          #   sensing range to reach_boost*r when they have < reach_kmin neighbours
     dt: float = 0.02,
     steps: int = 1500,
     vmax: float = 12.0,
@@ -143,7 +145,15 @@ def simulate(
         z_sig = _sigma_norm(z2)                        # σ-norm distance
         n_ij = diff / np.sqrt(1.0 + EPS * z2)[..., None]
 
-        a_ij = _bump(z_sig / r_a)
+        if reach_boost > 1.0:
+            # comms-free adaptive reach: an agent that has lost neighbours (degree
+            # below reach_kmin within the base range) enlarges its OWN sensing range
+            # to reach_boost*r — a purely local trigger, no global/centroid info.
+            deg = ((z_sig < r_a) & ~eye).sum(axis=1)
+            r_a_row = np.where(deg < reach_kmin, _sigma_norm_scalar(reach_boost * r), r_a)
+            a_ij = _bump(z_sig / r_a_row[:, None])
+        else:
+            a_ij = _bump(z_sig / r_a)
         a_ij[eye] = 0.0
         phi_a = a_ij * _phi(z_sig - d_a)              # φ_α (already gated by bump)
 

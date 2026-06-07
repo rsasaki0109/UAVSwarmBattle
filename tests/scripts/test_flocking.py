@@ -101,3 +101,21 @@ def test_rendezvous_gate_only_acts_past_the_gate():
     base = _F.simulate(seed=3, c_rdv=0.0, **cut)
     gated_off = _F.simulate(seed=3, c_rdv=3.0, rdv_gate_x=1e9, **cut)
     assert gated_off.n_components == base.n_components
+
+
+def test_adaptive_local_reach_heals_a_cut():
+    # a comms-free local reach boost (low-degree agents enlarge their range)
+    # re-merges a cut the base-range flock cannot.
+    cut = dict(_MIGRATE, steps=1500, obstacles=((40.0, 0.0, 13.0),))
+    base = _F.simulate(seed=2, reach_boost=1.0, **cut)
+    adapt = _F.simulate(seed=2, reach_boost=3.0, reach_kmin=5, **cut)
+    assert base.n_components > 1
+    assert adapt.connected and adapt.n_components == 1
+
+
+def test_reach_boost_one_is_a_noop():
+    # reach_boost == 1.0 must leave the base dynamics untouched.
+    kw = dict(_MIGRATE, steps=600, obstacles=((40.0, 0.0, 9.0),))
+    a = _F.simulate(seed=1, **kw)
+    b = _F.simulate(seed=1, reach_boost=1.0, reach_kmin=5, **kw)
+    assert a.n_components == b.n_components
