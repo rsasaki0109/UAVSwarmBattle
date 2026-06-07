@@ -143,6 +143,7 @@ different strategies.
 - [The Merry-Go-Round amplifies a hub-crossing obstacle — orbiting the contested centre is worse than a current through it](#the-merry-go-round-amplifies-a-hub-crossing-obstacle--orbiting-the-contested-centre-is-worse-than-a-current-through-it)
 - [A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient](#a-learned-convention-also-needs-a-representation-that-can-represent-handedness--the-teacher-carrying-it-is-necessary-but-not-sufficient)
 - [RL discovers the right-of-way convention from a symmetric reward — and, like BC transfer, only with a chirality-capable representation](#rl-discovers-the-right-of-way-convention-from-a-symmetric-reward--and-like-bc-transfer-only-with-a-chirality-capable-representation)
+- [Free flocking fragments — and you cannot cohesion-gain your way out; the navigational structure is the fix, not a bigger potential](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9626,3 +9627,81 @@ comes from. Taught is stronger than found; neither beats the representational re
 
 Reproduce: `python scripts/swarm_rl_emergence_phase.py --train-seeds 6 --iters 250`
 (writes `results/swarm_rl_emergence_phase.json`).
+
+## Free flocking fragments — and you cannot cohesion-gain your way out; the navigational structure is the fix, not a bigger potential
+
+The convention arc keeps landing on one lesson: a swarm pathology is cured by adding
+*structure*, not by turning a magnitude up — ORCA's [half-plane, not finer
+sampling](#orcas-cure-is-the-half-plane-structure-not-continuity-refining-rvos-sampling-does-not-reduce-its-oscillation);
+CHOMP's [RRT init, not a wider clearance band](#chomp-tuning); the
+[right-of-way rule, not a smarter predictor](#the-convention-dominates-the-predictor).
+This is the same lesson in the *other* canonical swarm primitive — flocking — read
+straight off the founding paper.
+
+R. Olfati-Saber ("Flocking for Multi-Agent Dynamic Systems: Algorithms and Theory",
+IEEE TAC 2006) proves that **Algorithm 1** — "free flocking" with only the collective
+potential (cohesion+separation) and velocity consensus (alignment) — **fragments** for
+generic initial states: the group splits into several flocks and never becomes one. The
+cure he proves is **Algorithm 2**: add a navigational-feedback term (a shared objective /
+γ-agent). Not a stronger potential — a different *structure*. We reproduce both
+(`scripts/_flocking.py`, σ-norm smoothed double integrators, N=20, desired spacing d=7,
+interaction range r=1.2d) and ask the naive engineer's question: if the group keeps
+splitting, can't we just turn the cohesion gain up until it holds? Outcome is paired by
+seed and McNemar-exact: the final interaction graph (edge when ‖qᵢ−qⱼ‖ < r) is a **single
+connected component** — one flock, not many.
+
+**The wrong knob — sweep the cohesion/interaction gain on Algorithm 1** (N=20, m=40):
+
+| gradient gain | one flock | mean #flocks | largest-flock share |
+|---|---|---|---|
+| 0.25 | 28/40 | 1.3 | 0.91 |
+| 0.5 | 8/40 | 2.2 | 0.70 |
+| 1.0 | 0/40 | 3.9 | 0.50 |
+| 2.0 | 0/40 | 6.2 | 0.38 |
+| 4.0 | 0/40 | 7.8 | 0.32 |
+| 8.0 | 0/40 | 5.5 | 0.41 |
+
+Connectivity does not rise with cohesion — it **falls, monotonically**. The only regime
+where a free flock holds together is the *low*-gain one (0.25: 28/40), and that is not
+cohesion doing the work: it is alignment (the consensus term) letting a weak-potential
+blob coast as one. The gradient is symmetric (a=b in φ), so scaling "cohesion" scales the
+**repulsion** in equal measure; cranking it scatters the marginal agents and makes
+fragmentation worse. And the deeper reason no gain ever reunites a split flock: the
+potential has **finite support** — an agent past range r of every neighbour feels exactly
+zero force at *any* gain. Best cohesion cell (0.25, 28/40) vs Algorithm 2 (40/40):
+b=0, c=12, p=4.9e-4. No setting of the potential reaches the structural fix.
+
+**The right structure — Algorithm 1 vs Algorithm 2 at matched gain** (grad_gain=1,
+density held by scaling the start box as √N, m=40):
+
+| N | Algo 1: one flock | Algo 2: one flock | b | c | p |
+|---|---|---|---|---|---|
+| 12 | 8/40 | 40/40 | 0 | 32 | 4.7e-10 |
+| 20 | 0/40 | 40/40 | 0 | 40 | 1.8e-12 |
+| 30 | 1/40 | 40/40 | 0 | 39 | 3.6e-12 |
+| 40 | 0/40 | 40/40 | 0 | 40 | 1.8e-12 |
+
+At the *same* potential, the navigational term reunites the flock at every group size
+(c=32..40, b=0, never a single reversal), where free flocking fragments. And it is genuine
+flocking, not a degenerate pile on the goal: Algorithm 2's final mean nearest-neighbour
+distance is 6.94 ≈ d=7 — a spaced α-lattice that *migrates* cohesively after a moving γ
+(see the GIF). The navigational feedback is the one term every agent feels regardless of
+who its neighbours are, so it is exactly the term that can reach an agent the finite-support
+potential has lost.
+
+- **Cohesion is the wrong knob; structure is the fix.** A free flock does not become one
+  flock by wanting it more — more potential is more repulsion and cannot bridge a gap past
+  the interaction range. The fix is a different *kind* of term (a shared objective), not a
+  bigger one. Same shape as ORCA-half-plane-not-sampling and convention-not-predictor: a
+  swarm pathology dissolves under added structure, never under added magnitude.
+- **Connectivity decreases with the magnitude you would naively increase.** The cohesion
+  sweep is monotone *against* intuition — another offline-knob-vs-closed-loop-outcome
+  inversion, this time inside flocking rather than planning or prediction.
+- **It is the same finite-support locality that makes the antipodal convention a [peer
+  rule with a wrong-threat cap](#the-convention-is-a-peer-rule).** A force with bounded
+  range cannot act on what it cannot reach; in both settings the cure is a term defined
+  on the *goal*, not on the neighbours.
+
+Reproduce: `python scripts/flocking_fragmentation_phase.py --mode cohesion --episodes 40`
+and `--mode structure --episodes 40`; GIF via
+`python scripts/render_flocking_gif.py --seed 2`.
