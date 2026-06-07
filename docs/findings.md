@@ -144,6 +144,7 @@ different strategies.
 - [A learned convention also needs a representation that can REPRESENT handedness — the teacher carrying it is necessary but not sufficient](#a-learned-convention-also-needs-a-representation-that-can-represent-handedness--the-teacher-carrying-it-is-necessary-but-not-sufficient)
 - [RL discovers the right-of-way convention from a symmetric reward — and, like BC transfer, only with a chirality-capable representation](#rl-discovers-the-right-of-way-convention-from-a-symmetric-reward--and-like-bc-transfer-only-with-a-chirality-capable-representation)
 - [Free flocking fragments — and you cannot cohesion-gain your way out; the navigational structure is the fix, not a bigger potential](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
+- [An obstacle splits a migrating flock past a critical radius ≈ r/2 — and the navigational structure that migrates it cannot re-merge the halves](#an-obstacle-splits-a-migrating-flock-past-a-critical-radius--r2--and-the-navigational-structure-that-migrates-it-cannot-re-merge-the-halves)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9705,3 +9706,80 @@ potential has lost.
 Reproduce: `python scripts/flocking_fragmentation_phase.py --mode cohesion --episodes 40`
 and `--mode structure --episodes 40`; GIF via
 `python scripts/render_flocking_gif.py --seed 2`.
+
+## An obstacle splits a migrating flock past a critical radius ≈ r/2 — and the navigational structure that migrates it cannot re-merge the halves
+
+The [fragmentation study](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
+showed that the navigational structure (Olfati-Saber's Algorithm 2 γ-agent) reunites
+a flock the *initial spread* had scattered. This adds the third algorithm — **obstacle
+avoidance (β-agents)** — and asks the dynamic question: when a *connected, migrating*
+flock meets an obstacle, does the same structure keep it whole? A disk on the path
+(`scripts/_flocking.py`, APF β-repulsion, N=24, desired spacing d=7, interaction range
+r=1.2d=8.4) sits in front of a flock driven left-to-right by a moving γ. Outcome (paired
+by seed, McNemar-exact): a **single connected component** after the flock has passed.
+
+**The split has a critical radius — sweep the disk radius R** (d=7, m=40):
+
+| R | one flock | vs no obstacle (R=0) |
+|---|---|---|
+| 0 | 40/40 | (control) |
+| 2 | 36/40 | b=4 c=0 p=0.13 |
+| 3 | 30/40 | b=10 c=0 p=1.9e-3 |
+| 4 | 23/40 | b=17 c=0 p=1.5e-5 |
+| 6 | 12/40 | b=28 c=0 p=7.4e-9 |
+| 9 | 5/40 | b=35 c=0 p=5.8e-11 |
+| 14 | 1/40 | b=39 c=0 p=3.6e-12 |
+
+Connectivity collapses monotonically and the obstacle *never* improves it (c=0 at every
+R). Below ~R=3 the flock threads the disk intact; above it the disk splits it.
+
+**The structure migrates the pieces but cannot heal the split — turn the navigational
+gain UP at a split-inducing R=8** (m=40):
+
+| c1g | split flock | intact (R=0, same c1g) |
+|---|---|---|
+| 0.6 | 7/40 | 40/40 (c=33, p=2.3e-10) |
+| 1.0 | 9/40 | 40/40 (c=31, p=9.3e-10) |
+| 2.0 | 2/40 | 40/40 (c=38, p=7.3e-12) |
+| 4.0 | 0/40 | 40/40 (c=40, p=1.8e-12) |
+| 8.0 | 0/40 | 40/40 (c=40, p=1.8e-12) |
+
+Stronger structure does **not** re-merge the halves — it is flat-to-*worse* (a harder
+pull races the lobes forward and widens the lateral gap). This is the
+[fragmentation study's](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
+finite-support wall, now triggered *dynamically*: once the obstacle pushes the two lobes
+beyond range r of each other no α-force bridges them, and the γ-pull — directed at a goal
+*ahead*, not sideways — has too little lateral component to close the gap at any strength.
+The structure that reunites a *spread* flock cannot reunite a *cut* one.
+
+**The threshold is gated by the interaction range — sweep d (so r=1.2d)** (m=40):
+
+| d (r) | R1 | R2 | R3 | R4 | R5 | R6 | R8 | R10 | critical R |
+|---|---|---|---|---|---|---|---|---|---|
+| 5 (6.0) | 39 | 35 | 23 | 16 | 9 | 6 | 1 | 2 | 3 |
+| 7 (8.4) | 40 | 36 | 30 | 23 | 17 | 12 | 9 | 1 | 4 |
+| 10 (12.0) | 38 | 37 | 31 | 25 | 26 | 21 | 9 | 5 | 6 |
+
+The critical radius grows with the interaction range: **critₐR ≈ r/2** (3/4/6 at
+r=6.0/8.4/12.0 — ratio 0.50/0.48/0.50, near-constant across a 2× range). The mechanism
+predicts exactly this: a disk of radius R deflects the flock into two lobes separated
+laterally by ≈2R; they stay in contact (and re-merge for free) only while 2R ≲ r, i.e.
+R ≲ r/2. A flock that reaches farther tolerates a bigger obstacle. (Three points, a
+consistent ratio — reported as a directional invariant, not fitted to a law.)
+
+- **An obstacle is a *cut*, and a cut is permanent.** The same finite support that makes
+  a free flock unable to reconnect from a bad start makes a structured flock unable to
+  reconnect after an obstacle severs it — the navigational term can carry the pieces to
+  the goal but cannot pull them back into each other's range. Adding *more* structure does
+  not help; the cure for a cut would have to be a term that acts across the gap, which a
+  range-limited flock does not have.
+- **The damage threshold is the reach.** Whether an obstacle merely deflects or
+  permanently severs the flock is set by R vs r/2 — a property of the *flock's sensing
+  range*, not of how hard it chases its goal. The lever that fixes [the static
+  case](#free-flocking-fragments--and-you-cannot-cohesion-gain-your-way-out-the-navigational-structure-is-the-fix-not-a-bigger-potential)
+  (the γ-term) is the wrong lever here; the right one (reach) is not the one you would
+  reach for.
+
+Reproduce: `python scripts/flocking_obstacle_split_phase.py --mode radius --episodes 40`
+(also `--mode heal`, `--mode range`); GIF via
+`python scripts/render_flocking_obstacle_gif.py --seed 4`.
