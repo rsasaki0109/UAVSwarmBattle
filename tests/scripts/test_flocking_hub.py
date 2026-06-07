@@ -50,3 +50,37 @@ def test_jammed_flocks_stay_cohesive():
     # a jammed hub keeps each flock intact (the cost lands only when it moves).
     r = _H.simulate_hub(K=6, bias=0.0, seed=0)
     assert r.cohesion > 0.9
+
+
+def _within_mask(K, per_flock, frac):
+    import numpy as np
+    m = np.zeros(K * per_flock, bool)
+    k = int(round(frac * per_flock))
+    for i in range(K):
+        m[i * per_flock: i * per_flock + k] = True
+    return m
+
+
+def test_adopt_mask_none_equals_full_bias():
+    # an all-applied bias is the same as no mask at all (default path).
+    import numpy as np
+    full = _within_mask(6, 10, 1.0)
+    r_mask = _H.simulate_hub(K=6, bias=1.0, adopt=full, seed=0)
+    r_none = _H.simulate_hub(K=6, bias=1.0, seed=0)
+    assert r_mask.all_passed == r_none.all_passed
+    assert np.isclose(r_mask.cohesion, r_none.cohesion)
+
+
+def test_partial_within_flock_adoption_still_clears():
+    # cohesion drag: a minority per flock pulls the rest through the roundabout.
+    r = _H.simulate_hub(K=6, bias=1.0, adopt=_within_mask(6, 10, 0.5), seed=0)
+    assert r.all_passed
+
+
+def test_clustered_free_rider_flocks_can_rejam():
+    # the SAME budget clumped into whole flocks leaves coherent walls that jam.
+    import numpy as np
+    budget = 12
+    clustered = np.zeros(60, bool); clustered[:budget] = True
+    r = _H.simulate_hub(K=6, bias=1.0, adopt=clustered, seed=0)
+    assert not r.all_passed
