@@ -27,6 +27,7 @@ Most planning repos *ship* a method. This one *interrogates* it: every headline 
 - **"Team-size-agnostic" carrying is geometric, not learned.** A fixed formation carrying a beam collapses to 0/60 for N≥3; one that *reorients* holds across N=2–8 — but an L-corner imposes a hard ladder-around-a-corner ceiling no team can beat.
 - **Free flocking fragments — and you can't cohesion-gain your way out.** A bigger potential makes it worse; a navigational *structure* reunites the swarm (0/40→40/40). The recurring theme: swarm pathologies dissolve under added **structure**, never added **magnitude**.
 - **Faster-is-slower.** Raising every drone's desired speed makes a doorway (and the hub roundabout) an inverted-U — too slow gridlocks, too fast collides — and the safe roundabout speed grows only as √(a·r).
+- **And in a *competitive* 1-v-1 dogfight, turn rate wins but speed backfires.** The adversarial counterpoint: two unicycles each chasing the other's six. At parity it's a stalemate (the circle of death); a turn-rate edge wins cleanly (≥2× → 40/40); but a *speed* edge wins **0/40 at every ratio** and at 8× / 4× actually *loses* 6/40 — a faster turn radius `v/ω` overshoots the six. Angles beat energy.
 
 Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/findings.md)** (≈40 studies). Working paper draft: [`docs/paper_a/`](docs/paper_a/).
 
@@ -120,6 +121,11 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 <div align="center">
 <img src="docs/images/swarm_nonholonomic.gif" width="760" alt="The antipodal swap flown by non-holonomic unicycle drones drawn as oriented arrows: without the convention they turn into each other and collide; with the right-of-way convention they form a roundabout and pass cleanly">
 <br><sub><b>The convention works on drones that can't strafe</b> — non-holonomic unicycles turn into each other without it, fly a clean roundabout with it (<a href="docs/findings.md#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability">the stress-test</a>).</sub>
+</div>
+
+<div align="center">
+<img src="docs/images/swarm_dogfight.gif" width="720" alt="Two 1-v-1 dogfights side by side: at equal agility the UAVs lock into a mutual circle (stalemate); with a turn-rate edge one UAV out-turns onto the other's six and wins">
+<br><sub><b>A 1-v-1 dogfight: angles beat energy.</b> The competitive counterpoint to the convention work — two unicycles each chasing the other's six. <b>Matched</b> (left) they lock into the symmetric <b>circle of death</b> (stalemate); a <b>turn-rate edge</b> (right) out-turns onto the opponent's six and wins (≥2× → 40/40). A <i>speed</i> edge, by contrast, wins 0/40 and at 8×/4× even loses — a faster turn radius overshoots the six (<code>scripts/render_dogfight_gif.py</code>; <a href="docs/findings.md#a-1-v-1-uav-dogfight-is-won-by-turn-rate-not-speed--and-a-speed-edge-backfires">the duel</a>).</sub>
 </div>
 
 <div align="center">
