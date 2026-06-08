@@ -156,6 +156,7 @@ different strategies.
 - [Who must follow the roundabout rule? A flock's cohesion makes adoption a placement problem, not a head-count](#who-must-follow-the-roundabout-rule-a-flocks-cohesion-makes-adoption-a-placement-problem-not-a-head-count)
 - [The right-of-way convention breaks the antipodal deadlock under real AirSim flight physics, not just the kinematic sim](#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim)
 - [A shared convention lets heterogeneous controllers interoperate in real AirSim physics too](#a-shared-convention-lets-heterogeneous-controllers-interoperate-in-real-airsim-physics-too)
+- [A 1-v-1 UAV dogfight is won by turn rate, not speed — and a speed edge backfires](#a-1-v-1-uav-dogfight-is-won-by-turn-rate-not-speed--and-a-speed-edge-backfires)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10365,3 +10366,51 @@ Reproduce (running AirSim Blocks with Drone1–4):
 `scripts/run_airsim_heterogeneous_chunked.sh 0.0 0.0 12 42 results/airsim_het_off` and
 `scripts/run_airsim_heterogeneous_chunked.sh 2.0 0.5 12 42 results/airsim_het_on`, then
 `python scripts/paired_analysis_antipodal.py results/airsim_het_off results/airsim_het_on`.
+
+## A 1-v-1 UAV dogfight is won by turn rate, not speed — and a speed edge backfires
+
+Every result above is *cooperative* — agents share a goal-structure and only need to
+not get in each other's way. This is the *competitive* counterpoint: two UAVs with
+**opposing** objectives, each trying to get onto the other's six. Both are planar
+unicycles (forward speed `v`, bounded turn rate `ω`) running the **same** pursuit law
+(steer at the opponent); a UAV wins by holding a *solo* rear position (on the
+opponent's six while the opponent is not on its) for ~0.6 s. A *mutual* lock — the
+symmetric "circle of death" — counts for neither. Seed-paired over random start poses
+(m=40), each axis swept alone:
+
+| P0 turn-rate / P1 (equal speed) | P0 wins | P1 wins | draws |   | P0 speed / P1 (equal ω) | P0 wins | P1 wins | draws |
+|---|---|---|---|---|---|---|---|---|
+| 1.5 / 1.5 (parity) | 0/40 | 0/40 | **40/40** |   | 4 / 4 (parity) | 0/40 | 0/40 | **40/40** |
+| 1.7 / 1.5 | **36/40** | 4/40 | 0/40 |   | 5 / 4 | 0/40 | 2/40 | 38/40 |
+| 2.0 / 1.5 | **40/40** | 0/40 | 0/40 |   | 6 / 4 | 0/40 | 0/40 | 40/40 |
+| 2.5 / 1.5 | **40/40** | 0/40 | 0/40 |   | 8 / 4 | 0/40 | **6/40** | 34/40 |
+| 3.0 / 1.5 | **40/40** | 0/40 | 0/40 |   | 10 / 4 | 0/40 | 0/40 | 40/40 |
+
+- **At parity the duel is a stalemate.** Equal speed and turn rate → the mutual circle,
+  no winner in 40/40 seeds. Two identical pursuers can never break the symmetry — the
+  competitive echo of the antipodal deadlock, with no convention to invoke.
+- **Turn rate is decisive.** A turn-rate edge wins cleanly and monotonically: a 1.7×
+  edge already takes 36/40, and ≥2× takes *every* seed. Out-turning the opponent lets
+  you cut inside its circle and onto its six.
+- **Speed cannot win — and a big speed edge backfires.** A faster UAV wins **0/40 at
+  every ratio** (the duel stays a stalemate), and at an extreme edge it actually *loses*
+  (8 / 4: the faster UAV is out-dueled 6/40, winning none). The reason is geometric: a
+  turn of radius `v/ω` *grows* with speed, so the faster UAV swings wide and overshoots
+  the six it is trying to hold. "Speed is life" is false in a turning fight — **angles
+  beat energy**, exactly the dogfight wisdom, here falling out of minimal unicycle
+  dynamics.
+- **Robust to the pursuit law.** The same verdict (parity → stalemate, turn-rate edge →
+  clean win) holds whether each UAV aims at the opponent's body or at a lag point behind
+  it (`--mode aim`): the *dynamics* decide, not what the controller aims at.
+
+So the competitive duel has the same flavour as the cooperative arc's recurring lesson —
+*more is not better*: the decisive resource is **maneuverability**, and raw speed is a
+liability you have to spend carefully, not an advantage. (Scope: the symmetric
+pure-pursuit duel; an asymmetric *tactic* — deliberate lag pursuit to bleed an opponent's
+energy — is the natural next probe, and would be expected to beat a faster but equally
+agile foe where raw pursuit only draws.)
+
+![A 1-v-1 dogfight: matched stalemate vs an agility win](images/swarm_dogfight.gif)
+
+Reproduce: `python scripts/dogfight_phase.py --mode turn --episodes 40`
+(also `--mode speed`, `--mode aim`).
