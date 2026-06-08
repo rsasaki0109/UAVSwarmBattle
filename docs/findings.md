@@ -154,6 +154,7 @@ different strategies.
 - [The crossing-flock jam is gated by encounter angle: it is a head-on phenomenon, and the convention earns its keep only where the jam is](#the-crossing-flock-jam-is-gated-by-encounter-angle-it-is-a-head-on-phenomenon-and-the-convention-earns-its-keep-only-where-the-jam-is)
 - [A K-way flocking hub jams at every fan-in; the roundabout convention clears it — cohesion is the first casualty, collisions only the last](#a-k-way-flocking-hub-jams-at-every-fan-in-the-roundabout-convention-clears-it--cohesion-is-the-first-casualty-collisions-only-the-last)
 - [Who must follow the roundabout rule? A flock's cohesion makes adoption a placement problem, not a head-count](#who-must-follow-the-roundabout-rule-a-flocks-cohesion-makes-adoption-a-placement-problem-not-a-head-count)
+- [The right-of-way convention breaks the antipodal deadlock under real AirSim flight physics, not just the kinematic sim](#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10292,3 +10293,29 @@ adopter is in the same flock to carry them.
 
 Reproduce: `python scripts/flocking_critmass_phase.py --mode critmass --episodes 40`
 (also `--mode placement` for the mixed-vs-clustered comparison).
+
+## The right-of-way convention breaks the antipodal deadlock under real AirSim flight physics, not just the kinematic sim
+
+The entire right-of-way arc — the [inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap), the [symmetry-breaker](#a-decentralized-right-of-way-lateral-bias-lifts-the-antipodal-swap-to-100-), the [density cliff](#the-right-of-way-convention-has-a-density-cliff--but-a-stronger-bias-pushes-it-out) — ran on the **kinematic `dummy_3d` simulator**: drones are velocity-integrated points, "veer right" is a free sideways nudge, and a collision is two spheres overlapping in a grid. Fair question: is the whole result an artefact of that frictionless point model? This lifts the headline into **AirSim's Blocks Unreal physics** — SimpleFlight quadrotor dynamics (gravity, momentum, motor lag), real mesh-to-mesh collision between vehicles, and the two-phase synchronised clock — with the *same* MPC planner and the *same* `lateral_bias` knob.
+
+Geometry: N=4 drones on a cross at one **uniform altitude** (z=30), each swapping to the antipodal side through the shared centre (30,30,30) — the N=4 antipodal hub = two head-on pairs crossing at one point. (The repo's AirSim crossing demo deliberately *staggers* altitude by ±2 m to dodge this jam; here the uniform altitude forces the genuine symmetric deadlock.) CV peer prediction is **on** in both arms, so the baseline is the strongest stock MPC, not a strawman. Paired by seed (m=16, seeds 42–57); each episode runs as its own process with the Blocks server bounced between episodes, because AirSim's RPC degrades after a handful of sequential resets.
+
+| arm | joint success | per-drone success |
+|---|---|---|
+| **STOCK** (lateral_bias = 0) | 7/16 = **43.8 %** [23.1, 66.8] | 34/64 = 53.1 % |
+| **CONVENTION** (lateral_bias = 2.0) | 16/16 = **100 %** [80.6, 100] | 64/64 = 100 % |
+
+McNemar paired-seed joint success: **b = 0, c = 9, exact p = 3.9e-3** (the convention rescues 9 seeds and never loses one).
+
+- **The deadlock is real in real physics — and CV prediction does not fix it.** Even with peer prediction on, stock MPC collides at the hub on 9 of 16 seeds. The failures are exactly the antipodal signature: either all four converge and collide (`XXXX`), or one head-on pair threads while the *mirror* pair collides (`SXSX`) — the same symmetric mirror-swerve that produces the [predictor inversion](#goal-aware-peer-prediction-wins-head-on-and-inverts-to-a-liability-on-the-symmetric-swap) in the kinematic sim.
+- **The convention is a clean, strict fix.** `lateral_bias = 2.0` clears every seed, every drone — 100 % joint, b = 0 (it never breaks a seed stock got right). The ~10-line decentralised "veer right of the goal heading" rule, validated only on kinematic points, transfers intact to quadrotor flight.
+- **AirSim's own noise supplies the variance.** The outcome is *not* seed-deterministic — the same config run twice can differ — so stock lands at 44 %, not 0 %: a physics fluctuation sometimes breaks the symmetry on its own. That makes the stock arm a moving target and the convention's perfect score the more striking: it removes the dependence on a lucky fluctuation.
+
+So the central convention result is **not an artefact of the point-mass model**. The mechanism — symmetric head-on convergence deadlocks; a shared chirality convention breaks the symmetry — survives gravity, momentum, and real collision geometry. The kinematic sweeps were measuring something physical.
+
+![AirSim N=4 antipodal: stock jam vs convention](images/swarm_airsim_antipodal.gif)
+
+Reproduce (needs a running AirSim Blocks with Drone1–4):
+`scripts/run_airsim_antipodal_chunked.sh 0.0 16 42 results/airsim_antipodal_stock` and
+`scripts/run_airsim_antipodal_chunked.sh 2.0 16 42 results/airsim_antipodal_conv`, then
+`python scripts/paired_analysis_antipodal.py results/airsim_antipodal_stock results/airsim_antipodal_conv`.
