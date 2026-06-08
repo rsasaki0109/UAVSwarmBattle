@@ -1,0 +1,60 @@
+# AirSim N=4 antipodal hub WITH a crosswind — is wind a reliable symmetry-breaker?
+#
+# Same uniform-altitude antipodal hub as exp_airsim_antipodal_n4.yaml, but with
+# a global crosswind (simulator.wind, ENU m/s, applied via simSetWind each reset).
+# A crosswind is an *asymmetric* environmental force: it may break the symmetric
+# antipodal collision on its own (like non-holonomy does), or it may be too noisy
+# to rely on. Sweep {stock, convention} under wind to find out.
+#
+# scripts/run_airsim_wind_chunked.sh seds LATERAL_BIAS and the WIND_* components.
+
+name: airsim_antipodal_wind_n4
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: east,  start: [5.0,  30.0, 30.0], goal: [55.0, 30.0, 30.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 30.0], goal: [5.0,  30.0, 30.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 30.0], goal: [30.0, 5.0,  30.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 500
+  goal_radius: 2.5
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  wind: [WIND_X, WIND_Y, 0.0]
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+
+planner:
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 2.5
+  safety_margin: 0.6
+  use_prediction: true
+  lateral_bias: LATERAL_BIAS
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_antipodal_wind_n4
