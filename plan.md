@@ -5,13 +5,130 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-05-27 (slot-wall swept-radius audit reproducibility)
+> 最終更新: 2026-06-08 (群制御アーク + deep-water AirSim 実物理再現 + 1v1 dogfight)
 
 ---
 
 ## 0. Codex への引き継ぎ要点 (まずここを読む)
 
 このドキュメントを引き継いだ codex への TL;DR。
+
+### 0.0 2026-06-08 現況: 群制御アーク → deep-water AirSim → battle (最重要・まずここ)
+
+> このサブセクションが **最新の作戦状況**。下の §0.1 以降 (〜2026-05-27) は
+> slot-wall / dynamic-obstacle / scaling-law 期の記録で、まだ有効だが
+> *主戦場ではない*。2026-05 末以降の主戦場は **群制御 (multi-drone
+> coordination)** で、ユーザーが prove/disprove サイクルの標準デフォルトに
+> 指定している ([[feedback_swarm_control_focus]] 相当)。
+
+**作業様式 (このアークで固定)**: 1 neta = feature を選ぶ → seed-paired
+McNemar (`uav_nav_lab.analysis.joint_stats.mcnemar_exact_p`) で prove/disprove
+→ docs/findings.md エントリ + TOC + README バレット + GIF + memory ファイル +
+MEMORY.md 行 → **専用 `git worktree` (origin/main 起点)** で開発・コミット
+(`--author="Ryohei Sasaki <rsasaki0109@gmail.com>"`, Co-Authored-By なし,
+AI 署名なし) → PR → ユーザー明示の "merge!" でのみ squash-merge。共有作業
+ツリー (ローカル main) は **5ac5fbd で stale**・かつユーザーが並行編集中なので
+直接触らない (worktree 必須)。
+
+#### (A) 右側通行 (right-of-way) 慣習スレッド — 点エージェント
+コア発見の連鎖。全部 `planner.lateral_bias` (MPC/ORCA/CBF/BVC/APF 共通の
+分散右ofway veer) を軸に McNemar:
+- **反転の発見**: goal-aware 予測子は head-on で勝つが antipodal swap で
+  *liability に反転* (共有対称予測 → 全機ミラー swerve → 同一ハブで再衝突)。
+- **対症の構造**: `lateral_bias` (約10行、global "veer right of goal") が
+  対称ハブを clockwise roundabout に変える → N=2..6 で 0→100%、strict Pareto。
+- **密度 cliff**: 固定 bias は N で減衰、強い bias が cliff を押し出す。
+  実体は **hub 密度 N/R** (matched-density で N によらず同一崩壊)。
+- **採用臨界質量**: 近全員採用が必要 (free-rider tolerance は密度で縮む)。
+- **慣習が予測子を支配**: row on なら cv+row ≈ gt+row (予測無関係)。
+- **pairwise winding** (各近傍を一貫した側で抜く) が global を strict 支配
+  (3D harm/cliff の根を断つ) が、**comms 依存** → dropout で global 以下に
+  崩壊 (global は ego-goal のみ = comms-free で dropout 免疫)。
+- **異種コントローラ相互運用**: MPC+ORCA mix は慣習なしで衝突、共有 row で
+  100% (= 共通プロトコル)。
+- **3D で反転が溶ける**: voxel world に上げると vertical escape で反転消失
+  (ただし高 N で別の対称共鳴 — even-N 共鳴は非単調で「法則化するな、不変量を
+  報告せよ」が教訓: gt は N≥8 で死ぬ、lateral_bias 慣習だけが全 N で 100%)。
+- **MGR (Merry-Go-Round)**: sensing-only で ring 中心を合意 (対称ハブでは
+  局所重心が一致) → CBF deadlock を解消。ただし hub-crossing *障害物* には
+  逆効果 (orbit が掃過域に留まり轢かれる); 対称性 gate で unstructured 無害化。
+- **異種 speed/accel 頑健**: 慣習は速度・加速度の異質性に頑健 (最遅旋回機の
+  budget が境界; 巡航速度を上げると崩れる速度 gate)。
+
+#### (B) フロッキング副アーク — Olfati-Saber standalone (`scripts/_flocking*.py`)
+点エージェント慣習を **凝集フロック**へ移植。全部 standalone NumPy sim:
+- **free-flocking 断片化**: cohesion gain を上げると悪化 (有限 support);
+  fix は構造 (navigational 項) で再統合 (0→40/40)。
+- **障害物 = cut**: critical radius ≈ r/2 でフロック分断、nav 項は再統合
+  できない (lobe が range r を超える)。
+- **cut の治癒は LOCAL**: comms-free adaptive reach が全障害物サイズで治癒
+  (global centroid rendezvous は障害物が大きいと崩壊 — centroid が障害物上)。
+  だが治癒のコストは **clearance の tail** (adaptive は障害物表面を hug)。
+- **crossing jam**: 2 フロック head-on は jam するが衝突しない (普遍 α斥力が
+  壁) → lateral_bias で解消 (operating band, head-on geometry gated)。
+- **K-way hub**: roundabout は全 fan-in にスケール (点エージェント密度 cliff
+  と違う) が **構造が安全より先に犠牲** (cohesion → 衝突 cliff の順)。
+- **採用は配置依存**: 群れ内 30%/flock で十分 (格子が free-rider を引きずる);
+  固定予算では mixed > clustered。
+
+#### (C) ★ deep-water 転換: AirSim 実物理再現 (このセッションの目玉)
+ユーザーの「浅瀬でチャプチャプしてないか?」を受け、**おもちゃ kinematic sim
+から実 AirSim Blocks 飛行物理へ**昇格。重要な気付き: **点エージェント慣習は
+既に実 uav_nav_lab スタック (real MPC/ORCA + multi runner) で回っていた** —
+真のおもちゃは最近のフロッキングだけ。よって deep = AirSim 飛行物理:
+- **#153 homogeneous**: N=4 antipodal hub (uniform alt z=30 = 真の対称
+  deadlock; demo は ±2m stagger で逃げていた), CV 予測 ON 両 arm。
+  stock 7/16=44% vs conv (lateral_bias=2.0) 16/16=100%, McNemar b0 c9
+  p=3.9e-3。**慣習は点質量の産物ではない** (重力・慣性・実メッシュ衝突に survive)。
+- **#155 heterogeneous**: ORCA は 2D 専用 → 3D 異種ペア = **MPC + CBF**。
+  mix-off 0/12 (決定論的 SXSX, CBF ペアが毎回衝突) vs mix-on 12/12,
+  b0 c12 p=4.9e-4。共通プロトコルが実物理でも成立。
+- **#157 wind robustness**: 横風 (=巡航速度 4 m/s) 下で stock 6/12=50%
+  (≈無風44%, 風は信頼できない symmetry-breaker) vs conv 12/12=100%,
+  b0 c6 p=3.1e-2。頑健であって冗長ではない。
+
+#### (D) ★ battle 方向 (adversarial) — リポ初
+ユーザーの「UAV 同士でバトらせるか」から **#156 1v1 dogfight**
+(`scripts/_dogfight.py`, standalone unicycle): 同性能→40/40 膠着
+(circle of death); 旋回優位は決定的に勝つ (≥2×→40/40); **速度優位は 0勝・
+極端で裏目** (8/4 で速い方が 6敗, 旋回半径 v/ω が尾を行き過ぎ)。
+"angles beat energy" を最小力学で再現。協調アークの「more≠better」の対戦版。
+
+#### (E) 学習ポリシー副スレッド (既に main にある, §2.7 周辺)
+teammate-token deep set (BC) と REINFORCE: 慣習は教師・表現 (chirality 可能な
+frame) の両方に必要。MGR は sensing-only ロードアバウト。
+
+#### 運用上の durable な罠 (このアークで踏んだ)
+1. **AirSim Blocks RPC は数回の連続 reset で wedge/激遅化** → chunked runner
+   (`scripts/run_airsim_*_chunked.sh`) で **毎エピソード Blocks を kill+再起動**
+   が必須。ユーザー起動の共有インスタンスを bounce するには **明示許可** が要る
+   (classifier が最初拒否; AskUserQuestion で許可を得た)。sweep 後は Blocks を
+   稼働状態に **復旧** すること。Blocks dir = `/media/sasaki/aiueo/airsim/Blocks/LinuxNoEditor`、
+   settings.json は Drone1-4 のみ (N>4 は再生成+再起動が要る)。
+2. **AirSim は run-to-run 非決定論的** (同 config+seed が衝突/成功で揺れる) →
+   seed-pairing は名目的 (物理ノイズは arm 間で共有されない); McNemar は有効だが
+   stock≠0% になる。
+3. **新しい幾何述語には ground-truth 単体テストを先に書く**: dogfight の
+   `_on_six` が前後コーンを取り違え結論を反転させていたのを characterization
+   テストが出荷前に捕捉。win condition の符号反転は「きれいな結果」に見える。
+4. **CBF は velocity-space bias (~0.5-1.0)**、MPC の cost-space (~2-4) と別
+   スケール; CBF は goal_radius を緩める必要 (横断はクリーンだが settle が緩い)。
+5. **孤立した 0/40 や 0→100% blowout を法則化しない** — 近傍を sweep して
+   不変量を報告 (even-N 共鳴の 3 度の訂正が教訓)。
+
+#### 直近の open / 次の neta 候補 (2026-06-08)
+- **非対称タクティクス lag-pursuit**: dogfight の自然な続き。意図的な lag で
+  速い相手のエネルギーを削れば、raw pursuit が draw する相手に勝てるか。
+- **king-of-the-hill / 競争ゲーム**: 協調慣習が競争で exploit されるか
+  (rule-follower を defector が食う) — 慣習アークへの鋭い反論。
+- **AirSim N>4**: settings.json 再生成 + Blocks 再起動が要る (ユーザー設定変更)。
+  実物理で密度 cliff が出るか。
+- **AirSim pairwise_bias / MPC+APF**: 物理での pairwise vs global、別異種ペア。
+- **#52 (lstm-predictor)**: 1ヶ月放置の scaffold PR の扱い (継続/クローズ)。
+- **star-growth** ([[project_star_growth]]): README は簡素化済み (45.5k→19.6k 字,
+  GIF 全残); GitHub About も平易化済み。残レバー = outreach (ユーザー側)。
+
+---
 
 ### 0.1 リポジトリの今の状態 (2026-05-25)
 
