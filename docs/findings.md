@@ -157,6 +157,7 @@ different strategies.
 - [The right-of-way convention breaks the antipodal deadlock under real AirSim flight physics, not just the kinematic sim](#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim)
 - [A shared convention lets heterogeneous controllers interoperate in real AirSim physics too](#a-shared-convention-lets-heterogeneous-controllers-interoperate-in-real-airsim-physics-too)
 - [A 1-v-1 UAV dogfight is won by turn rate, not speed — and a speed edge backfires](#a-1-v-1-uav-dogfight-is-won-by-turn-rate-not-speed--and-a-speed-edge-backfires)
+- [The convention is robust to a real crosswind — but the wind is not a substitute for it](#the-convention-is-robust-to-a-real-crosswind--but-the-wind-is-not-a-substitute-for-it)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10414,3 +10415,40 @@ agile foe where raw pursuit only draws.)
 
 Reproduce: `python scripts/dogfight_phase.py --mode turn --episodes 40`
 (also `--mode speed`, `--mode aim`).
+
+## The convention is robust to a real crosswind — but the wind is not a substitute for it
+
+A crosswind is an *asymmetric* environmental force, so it might break the symmetric
+antipodal deadlock on its own (the way [non-holonomy](#the-right-of-way-convention-survives-non-holonomic-drones--and-without-it-agility-is-a-non-monotone-liability)
+does) — making the convention redundant. Test it in AirSim: the same N=4 uniform-altitude
+antipodal hub as the [convention reproduction](#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim),
+now with a steady diagonal crosswind (`simulator.wind = [4, 4, 0]` m/s ENU, the drones'
+own cruise speed), `simSetWind` each reset. Paired by seed (m=12):
+
+| arm (with crosswind) | joint success | per-drone |
+|---|---|---|
+| **STOCK** (lateral_bias = 0) | 6/12 = **50 %** | 30/48 = 62.5 % |
+| **CONVENTION** (lateral_bias = 2.0) | 12/12 = **100 %** | 48/48 = 100 % |
+
+McNemar paired-seed joint success: **b = 0, c = 6, exact p = 3.1e-2**.
+
+- **The convention is robust to wind.** With the right-of-way on, the fleet still clears
+  the hub 100 % under a crosswind as strong as its cruise speed — the roundabout bends
+  but holds (every drone, every seed, b = 0).
+- **The wind is *not* a reliable symmetry-breaker.** Stock-with-wind reaches only 50 % —
+  essentially the same as the no-wind baseline (44 %). An incidental asymmetry (which way
+  the wind happens to blow relative to each lane) breaks the deadlock on some seeds and
+  not others; it cannot replace a *designed* convention. The failures even share a
+  structure (the cross-wind lane tends to survive while the along-wind pair still
+  collides), so the wind helps unevenly.
+
+So an environmental asymmetry is a *coincidental*, unreliable symmetry-breaker, whereas
+the convention is a *deliberate* one that holds regardless — and the two do not interfere:
+the convention keeps its 100 % with the wind on. Robustness, not redundancy.
+
+![AirSim antipodal under a crosswind: stock collides, convention clears](images/swarm_airsim_wind.gif)
+
+Reproduce (running AirSim Blocks with Drone1–4):
+`scripts/run_airsim_wind_chunked.sh 0.0 4 4 12 42 results/airsim_wind_stock` and
+`scripts/run_airsim_wind_chunked.sh 2.0 4 4 12 42 results/airsim_wind_conv`, then
+`python scripts/paired_analysis_antipodal.py results/airsim_wind_stock results/airsim_wind_conv`.
