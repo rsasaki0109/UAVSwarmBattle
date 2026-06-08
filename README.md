@@ -23,7 +23,7 @@ Most planning repos *ship* a method. This one *interrogates* it: every headline 
 
 - **The "optimal" planner is the dangerous one.** `rrt_star`'s shortest-path rewiring collides *more* than plain `rrt` in dynamic avoidance (21.7 % vs 76.7 %, ~30× the compute) — the shortest path hugs minimum clearance.
 - **Smarter prediction backfires under symmetry — the fix is a convention, not a better forecast.** A goal-aware predictor wins head-on but *inverts* on the antipodal swap (a shared symmetric forecast makes every drone mirror-swerve into the same hub). A decentralised right-of-way turns the deadlock into a roundabout and reaches 100 %; once it is on, smart and dumb forecasts tie.
-- **…and that convention survives real AirSim flight physics** (quadrotor dynamics, real collision): stock collides on 9/16 seeds, the convention clears every drone every seed (100 %, p=3.9e-3) — the whole arc is not a point-mass artefact.
+- **…and that convention survives real AirSim flight physics** (quadrotor dynamics, real collision): stock collides on 9/16 seeds, the convention clears every drone every seed (100 %, p=3.9e-3) — the whole arc is not a point-mass artefact. It is also a **common protocol for heterogeneous controllers** in AirSim: a mixed MPC + CBF fleet collides deterministically (0/12) without it and clears completely (12/12, p=5e-4) with the shared rule — no shared planner, just an agreed side.
 - **"Team-size-agnostic" carrying is geometric, not learned.** A fixed formation carrying a beam collapses to 0/60 for N≥3; one that *reorients* holds across N=2–8 — but an L-corner imposes a hard ladder-around-a-corner ceiling no team can beat.
 - **Free flocking fragments — and you can't cohesion-gain your way out.** A bigger potential makes it worse; a navigational *structure* reunites the swarm (0/40→40/40). The recurring theme: swarm pathologies dissolve under added **structure**, never added **magnitude**.
 - **Faster-is-slower.** Raising every drone's desired speed makes a doorway (and the hub roundabout) an inverted-U — too slow gridlocks, too fast collides — and the safe roundabout speed grows only as √(a·r).
@@ -60,6 +60,11 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 <div align="center">
 <img src="docs/images/swarm_airsim_antipodal.gif" width="720" alt="N=4 antipodal hub flown in AirSim: with no convention the four drones drive into the centre and collide; with the right-of-way bias they veer and all reach their antipodal goals">
 <br><sub><b>The convention, validated in real flight physics</b> — the N=4 hub in <a href="https://github.com/microsoft/AirSim">AirSim</a>: stock collides (44 %), the right-of-way clears all (100 %, p=3.9e-3) (<a href="docs/findings.md#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim">the result</a>).</sub>
+</div>
+
+<div align="center">
+<img src="docs/images/swarm_airsim_heterogeneous.gif" width="720" alt="N=4 antipodal hub in AirSim with a mixed MPC+CBF fleet: with no convention the two CBF drones collide at the centre; with the shared right-of-way all four clear to their goals">
+<br><sub><b>A shared convention lets heterogeneous controllers interoperate</b> — a mixed <b>MPC + CBF</b> fleet in <a href="https://github.com/microsoft/AirSim">AirSim</a>. No convention (left) the CBF pair collides every seed (0/12); the shared right-of-way (right) clears the mixed fleet completely (12/12, p=5e-4). A common protocol — no shared planner, just an agreed side (<a href="docs/findings.md#a-shared-convention-lets-heterogeneous-controllers-interoperate-in-real-airsim-physics-too">the result</a>).</sub>
 </div>
 
 <div align="center">

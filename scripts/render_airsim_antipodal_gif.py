@@ -44,6 +44,8 @@ def main() -> int:
     ap.add_argument("stock_dir")
     ap.add_argument("conv_dir")
     ap.add_argument("--out", default="docs/images/swarm_airsim_antipodal.gif")
+    ap.add_argument("--title-left", default="STOCK (no convention) — JAM at the hub")
+    ap.add_argument("--title-right", default="RIGHT-OF-WAY convention — ROUNDABOUT")
     args = ap.parse_args()
 
     sp, sc, names = _load_episode(Path(args.stock_dir))
@@ -67,8 +69,8 @@ def main() -> int:
     col = plt.cm.tab10(np.arange(n) % 10)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.2, 5.4))
-    spec = ((ax1, sp, sc, "STOCK (no convention) — JAM at the hub"),
-            (ax2, cp, cc, "RIGHT-OF-WAY convention — ROUNDABOUT"))
+    spec = ((ax1, sp, sc, args.title_left),
+            (ax2, cp, cc, args.title_right))
     trails, heads, rings = [], [], []
     for ax, P, C, title in spec:
         ax.set_aspect("equal"); ax.set_title(title, fontsize=11)

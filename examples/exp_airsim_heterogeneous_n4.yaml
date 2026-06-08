@@ -1,0 +1,70 @@
+# AirSim N=4 antipodal hub with a HETEROGENEOUS fleet: alternating MPC / CBF.
+#
+# Reproduces "a shared convention lets heterogeneous controllers interoperate"
+# (findings.md, which used the MPC/ORCA pair in 2-D) in real AirSim Blocks
+# flight physics. AirSim is inherently 3-D and ORCA is 2-D only, so the 3-D
+# heterogeneous pair is MPC (predict-then-optimize sampling) vs CBF (reactive
+# safety-filter QP) — genuinely different avoidance families. Mixed, they
+# mis-model each other, so without a shared convention they collide at the hub;
+# a shared right-of-way (each controller's own lateral_bias) should rescue them.
+#
+# Drones alternate type via planner.per_drone; biases are seded by
+# scripts/run_airsim_heterogeneous_chunked.sh (MPC_BIAS / CBF_BIAS):
+#   off : MPC_BIAS=0.0  CBF_BIAS=0.0   (no convention -> expect collisions)
+#   on  : MPC_BIAS=2.0  CBF_BIAS=0.5   (shared convention -> expect rescue)
+
+name: airsim_heterogeneous_n4
+seed: 42
+num_episodes: 1
+
+scenario:
+  type: multi_drone_voxel
+  size: [60, 60, 40]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: east,  start: [5.0,  30.0, 30.0], goal: [55.0, 30.0, 30.0], radius: 0.4}
+    - {name: west,  start: [55.0, 30.0, 30.0], goal: [5.0,  30.0, 30.0], radius: 0.4}
+    - {name: north, start: [30.0, 5.0,  30.0], goal: [30.0, 55.0, 30.0], radius: 0.4}
+    - {name: south, start: [30.0, 55.0, 30.0], goal: [30.0, 5.0,  30.0], radius: 0.4}
+
+simulator:
+  type: airsim
+  host: 127.0.0.1
+  port: 41451
+  dt: 0.05
+  max_steps: 600
+  goal_radius: 4.0
+  settle_after_reset: 1.0
+  settle_after_teleport: 0.3
+  vehicles: [Drone1, Drone2, Drone3, Drone4]
+
+planner:
+  # MPC-shaped base; per_drone overrides the type + convention for each drone.
+  type: mpc
+  max_speed: 4.0
+  replan_period: 0.2
+  horizon: 30
+  dt_plan: 0.05
+  n_samples: 16
+  resolution: 1.0
+  inflate: 0
+  goal_radius: 4.0
+  safety_margin: 0.6
+  use_prediction: true
+  lateral_bias: 0.0
+  w_goal: 1.0
+  w_obs: 200.0
+  w_smooth: 0.05
+  per_drone:
+    - {type: mpc, lateral_bias: MPC_BIAS}
+    - {type: cbf, lateral_bias: CBF_BIAS, max_speed: 4.0, radius: 0.4, safety_margin: 0.1, alpha: 2.0, neighbor_dist: 15.0, goal_radius: 4.0}
+    - {type: mpc, lateral_bias: MPC_BIAS}
+    - {type: cbf, lateral_bias: CBF_BIAS, max_speed: 4.0, radius: 0.4, safety_margin: 0.1, alpha: 2.0, neighbor_dist: 15.0, goal_radius: 4.0}
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/airsim_heterogeneous_n4

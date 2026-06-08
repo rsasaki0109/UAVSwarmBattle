@@ -155,6 +155,7 @@ different strategies.
 - [A K-way flocking hub jams at every fan-in; the roundabout convention clears it — cohesion is the first casualty, collisions only the last](#a-k-way-flocking-hub-jams-at-every-fan-in-the-roundabout-convention-clears-it--cohesion-is-the-first-casualty-collisions-only-the-last)
 - [Who must follow the roundabout rule? A flock's cohesion makes adoption a placement problem, not a head-count](#who-must-follow-the-roundabout-rule-a-flocks-cohesion-makes-adoption-a-placement-problem-not-a-head-count)
 - [The right-of-way convention breaks the antipodal deadlock under real AirSim flight physics, not just the kinematic sim](#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim)
+- [A shared convention lets heterogeneous controllers interoperate in real AirSim physics too](#a-shared-convention-lets-heterogeneous-controllers-interoperate-in-real-airsim-physics-too)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10319,3 +10320,48 @@ Reproduce (needs a running AirSim Blocks with Drone1–4):
 `scripts/run_airsim_antipodal_chunked.sh 0.0 16 42 results/airsim_antipodal_stock` and
 `scripts/run_airsim_antipodal_chunked.sh 2.0 16 42 results/airsim_antipodal_conv`, then
 `python scripts/paired_analysis_antipodal.py results/airsim_antipodal_stock results/airsim_antipodal_conv`.
+
+## A shared convention lets heterogeneous controllers interoperate in real AirSim physics too
+
+[Above](#the-right-of-way-convention-breaks-the-antipodal-deadlock-under-real-airsim-flight-physics-not-just-the-kinematic-sim),
+one controller (MPC) crossed the AirSim hub under the convention. But a real swarm is *mixed* —
+different vehicles run different stacks. The kinematic study
+[proved the convention is a common protocol](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
+for an MPC + ORCA fleet in 2-D; does that survive real flight physics? AirSim is inherently 3-D and
+ORCA is 2-D-only, so the 3-D heterogeneous pair is **MPC** (predict-then-optimize sampling) vs **CBF**
+(reactive safety-filter QP) — genuinely different avoidance families that mis-model each other. N=4
+antipodal hub, alternating MPC/CBF, paired by seed (m=12); each controller at its own convention
+strength (MPC `lateral_bias=2.0`, CBF `lateral_bias=0.5`):
+
+| arm | joint success | per-drone |
+|---|---|---|
+| **MIXED, no convention** | 0/12 = **0 %** | 24/48 = 50 % |
+| **MIXED + shared right-of-way** | 12/12 = **100 %** | 48/48 = 100 % |
+
+McNemar paired-seed joint success: **b = 0, c = 12, exact p = 4.9e-4** — a perfectly deterministic,
+strict rescue.
+
+- **A mixed fleet collides deterministically without the convention.** Every one of the 12 seeds is
+  the same `SXSX`: the two MPC drones thread the hub, the two CBF drones collide. The reactive CBF
+  filter and the predict-optimize MPC do not honour each other's avoidance, so at the symmetric hub the
+  CBF pair drives straight in — and AirSim's noise (which made the homogeneous-MPC baseline a coin-flip)
+  cannot save them; the mis-coordination is structural, not stochastic.
+- **The shared convention rescues the mix to 100 %.** The *same* "veer right of your goal" rule,
+  expressed in each controller's own cost/velocity, lets a sampling planner and a QP safety-filter
+  share the hub — 12/12, every drone, every seed (b=0). The convention is a **common protocol** that
+  needs no shared controller, no communication, only an agreed side, and it holds under gravity,
+  momentum and real mesh-to-mesh collision.
+
+This lifts the kinematic [MPC+ORCA interoperability result](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
+into real AirSim flight, with the 3-D-compatible MPC+CBF pair: heterogeneous controllers that cannot
+read each other's intent still coordinate if they agree on a convention — in physics, not just on
+points. (The success criterion uses `goal_radius=4.0`: CBF settles less tightly than MPC, so the tight
+2.5 m circle of the homogeneous study would flag CBF's clean traversals as timeouts; the collision
+result that carries the finding is unaffected by goal tolerance.)
+
+![AirSim heterogeneous MPC+CBF: mixed collides, shared convention clears](images/swarm_airsim_heterogeneous.gif)
+
+Reproduce (running AirSim Blocks with Drone1–4):
+`scripts/run_airsim_heterogeneous_chunked.sh 0.0 0.0 12 42 results/airsim_het_off` and
+`scripts/run_airsim_heterogeneous_chunked.sh 2.0 0.5 12 42 results/airsim_het_on`, then
+`python scripts/paired_analysis_antipodal.py results/airsim_het_off results/airsim_het_on`.
