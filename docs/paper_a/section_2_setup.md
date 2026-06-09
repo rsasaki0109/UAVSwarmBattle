@@ -1,7 +1,7 @@
 # §2. Setup
 
 All experiments in this paper are reproducible from a single Python
-package, `uav-nav-lab`, with one `examples/exp_*.yaml` per cited
+package, `UAVSwarmBattle`, with one `examples/exp_*.yaml` per cited
 finding. A single CLI verb runs the experiment, computes Wilson
 95 % CIs and McNemar paired statistics, and writes the per-episode
 JSON logs that the figures replay. The harness is open source

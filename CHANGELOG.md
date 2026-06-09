@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `uav-nav-lab` are in this file. Format follows
+All notable changes to `UAVSwarmBattle` are in this file. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) loosely;
 versions follow [Semantic Versioning](https://semver.org/).
 
@@ -172,5 +172,5 @@ and `dummy_3d` sims, `grid_world` and `voxel_world` scenarios, Wilson
 95 % CI stats infrastructure, `uav-nav` CLI, GitHub Actions CI on
 Python 3.10/3.11/3.12.
 
-See the [v0.1.0 release notes](https://github.com/rsasaki0109/uav-nav-lab/releases/tag/v0.1.0)
+See the [v0.1.0 release notes](https://github.com/rsasaki0109/UAVSwarmBattle/releases/tag/v0.1.0)
 for the original feature set.

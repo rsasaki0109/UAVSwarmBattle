@@ -1,15 +1,15 @@
 <div align="center">
 
-# uav-nav-lab
+# UAVSwarmBattle
 
 **A Python lab for UAV motion planning that proves — or disproves — what actually works.**
 Swap planners, sensors and swarm rules in YAML; settle every claim with seed-paired McNemar tests and Wilson 95 % CIs.
 
-[![CI](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/uav-nav-lab/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/rsasaki0109/uav-nav-lab)](https://github.com/rsasaki0109/uav-nav-lab/releases)
+[![CI](https://github.com/rsasaki0109/UAVSwarmBattle/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/UAVSwarmBattle/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/rsasaki0109/UAVSwarmBattle/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/rsasaki0109/UAVSwarmBattle)](https://github.com/rsasaki0109/UAVSwarmBattle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/rsasaki0109/uav-nav-lab?style=social)](https://github.com/rsasaki0109/uav-nav-lab/stargazers)
+[![Stars](https://img.shields.io/github/stars/rsasaki0109/UAVSwarmBattle?style=social)](https://github.com/rsasaki0109/UAVSwarmBattle/stargazers)
 
 <img src="docs/images/swarm_convention_compare.gif" alt="Twelve drones swap across one hub: stock ORCA piles into the centre and collides; with a decentralised right-of-way the same fleet spirals into a clean roundabout" width="840">
 
@@ -176,8 +176,8 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 ## Quick start
 
 ```bash
-git clone https://github.com/rsasaki0109/uav-nav-lab
-cd uav-nav-lab
+git clone https://github.com/rsasaki0109/UAVSwarmBattle
+cd UAVSwarmBattle
 pip install -e '.[dev,viz]'        # numpy + pyyaml + matplotlib + pytest
 pytest -q
 

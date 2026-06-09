@@ -23,7 +23,7 @@ combination of:
 - success/failure rates across seeds, plus event logs for closest
   approach, gate passage, and collisions.
 
-For `uav-nav-lab`, a README hero should not be accepted unless the
+For `UAVSwarmBattle`, a README hero should not be accepted unless the
 same seed has at least these controls:
 
 1. `moving`: moving obstacle enabled, planner succeeds.
@@ -55,7 +55,7 @@ same scene, but the best no-obstacle virtual penetration was only
 | [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan) | Aggressive flight framework that turns rough routes into smooth repeat trajectories and locally replans around unmapped or moving obstacles. | Good race demos preserve the intended route while allowing local replan deviations. This maps directly to "race line vs detour" metrics. |
 | [Nav2 MPPI controller](https://docs.ros.org/en/iron/p/nav2_mppi_controller/) | Production MPPI local controller with plugin critics and documented tuning tradeoffs between path alignment and obstacle avoidance. | Exact path tracking can remove the ability to deviate around dynamic obstacles. We should sweep and report path-align vs obstacle penalties instead of only temperature. |
 
-## What Current `uav-nav-lab` Is Missing
+## What Current `UAVSwarmBattle` Is Missing
 
 ### 1. Stronger controls
 

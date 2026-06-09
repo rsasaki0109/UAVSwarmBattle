@@ -1,4 +1,4 @@
-# uav-nav-lab — Plan & Roadmap
+# UAVSwarmBattle — Plan & Roadmap
 
 > **位置付け**: `docs/findings.md` は *終わった研究の記録*、`README.md` は
 > *入口とハイライト*、`CHANGELOG.md` は *バージョン毎の差分*、この
@@ -1697,7 +1697,7 @@ OptiTrack で position feedback を入れる方が前段検証として固い。
 
 ### 4.3 ベンチマーク化
 
-`uav-nav-lab` を benchmark suite として整える (HuggingFace datasets
+`UAVSwarmBattle` を benchmark suite として整える (HuggingFace datasets
 的にエピソード log を公開、leaderboard 的な YAML 集合を提供)。
 論文 v1 公開後、コミュニティの反応次第。
 

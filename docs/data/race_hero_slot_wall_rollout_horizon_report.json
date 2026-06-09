@@ -1,7 +1,7 @@
 {
   "source": {
     "script": "scripts/race_hero_slot_wall_rollout_horizon_report.py",
-    "mechanism_report": "/media/sasaki/aiueo/ai_coding_ws/uav-nav-lab/docs/data/race_hero_slot_wall_failure_mechanism.json"
+    "mechanism_report": "docs/data/race_hero_slot_wall_failure_mechanism.json"
   },
   "focus": {
     "drone": 3,

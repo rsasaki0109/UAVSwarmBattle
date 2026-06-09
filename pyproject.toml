@@ -3,13 +3,13 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uav-nav-lab"
+name = "uav-swarm-battle"
 version = "0.2.0"
-description = "High-speed UAV navigation research framework on top of AirSim / PX4 / ROS2."
+description = "YAML-driven UAV swarm navigation battle lab — prove what works with seed-paired stats."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "uav-nav-lab contributors" }]
+authors = [{ name = "UAVSwarmBattle contributors" }]
 dependencies = [
     "numpy>=1.24",
     "pyyaml>=6.0",

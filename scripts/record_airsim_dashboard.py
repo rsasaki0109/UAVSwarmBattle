@@ -126,7 +126,7 @@ def main() -> int:
                           left=0.04, right=0.985, top=0.92, bottom=0.08)
     axc = fig.add_subplot(gs[0, 0]); axl = fig.add_subplot(gs[0, 1])
     axs = fig.add_subplot(gs[1, 0]); axt = fig.add_subplot(gs[1, 1])
-    fig.suptitle("uav-nav-lab · AirSim live dashboard", color="#e6edf3",
+    fig.suptitle("UAVSwarmBattle · AirSim live dashboard", color="#e6edf3",
                  fontsize=14, fontweight="bold", x=0.5, y=0.985)
 
     def style(ax, title):

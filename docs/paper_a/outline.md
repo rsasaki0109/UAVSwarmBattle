@@ -43,7 +43,7 @@ contradictory planner comparisons.**
 
 ## 2. Setup (1 page)
 
-`uav-nav-lab` harness — single repo, single CLI, all results in this paper
+`UAVSwarmBattle` harness — single repo, single CLI, all results in this paper
 are reproducible from one `examples/exp_*.yaml` each.
 
 - **Simulators**: `dummy_2d`, `dummy_3d`, `airsim_bridge`, `ros2_bridge`.

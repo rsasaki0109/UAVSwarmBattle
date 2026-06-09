@@ -22,7 +22,8 @@ OUT_DIR="${4:-results/airsim_antipodal_stock}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BLOCKS_DIR="${AIRSIM_BLOCKS_DIR:-/media/sasaki/aiueo/airsim/Blocks/LinuxNoEditor}"
-VENV="${UAVNAV_VENV:-/media/sasaki/aiueo/ai_coding_ws/uav-nav-lab/.venv}"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VENV="${UAVNAV_VENV:-$ROOT/.venv}"
 TPL="$REPO_ROOT/examples/exp_airsim_antipodal_n4.yaml"
 
 export PATH="$HOME/.local/bin:$PATH"

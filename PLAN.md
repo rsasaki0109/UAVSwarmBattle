@@ -1,4 +1,4 @@
-# Handoff plan — uav-nav-lab
+# Handoff plan — UAVSwarmBattle
 
 **Snapshot 2026-05-21.** This document hands off the state of the
 repo to whoever picks up next (Codex / Claude-Code / a human). It
@@ -9,7 +9,7 @@ and a prioritised task list with enough detail to start from cold.
 
 ## 0. The 60-second summary
 
-- **`uav-nav-lab`** is a YAML-driven research framework for UAV
+- **`UAVSwarmBattle`** is a YAML-driven research framework for UAV
   motion planning. Same-seed paired ablations across
   sim / scenario / planner / sensor / predictor backends, Wilson
   95 % CIs by default, every example YAML carries its validated
