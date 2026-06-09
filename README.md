@@ -11,9 +11,9 @@ Swap planners in YAML, run paired-seed arenas, read Wilson 95 % CIs and McNemar 
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rsasaki0109/UAVSwarmBattle?style=social)](https://github.com/rsasaki0109/UAVSwarmBattle/stargazers)
 
-<img src="docs/images/swarm_policy_battle_obstacle.gif" alt="OSS policy battle on the hub obstacle: NavRL 0/20, MPC teacher 12/20, swarm_transformer 20/20 — same seed, side by side" width="840">
+<img src="docs/images/swarm_policy_battle_obstacle.gif" alt="Triple crossfire missile defense: NavRL 0/20, MPC teacher 0/20, swarm_transformer 0/20 — all DOWN, same seed, side by side" width="840">
 
-<i><b>Head-to-head on paired seeds.</b> The canonical <b>hub-crossing obstacle</b> cell (50×50 antipodal, n=20): upstream <b>NavRL</b> 0/20 · <b>MPC + game-theoretic</b> teacher 12/20 · <b>swarm_transformer</b> 20/20. Full roster and reproduce commands in <a href="docs/swarm_policy_battle.md">docs/swarm_policy_battle.md</a>.</i>
+<i><b>Head-to-head on paired seeds.</b> <b>Triple crossfire</b> through the hub (3 cruise missiles, 50×50 antipodal, n=20): <b>NavRL</b> 0/20 · <b>MPC + game-theoretic</b> teacher 0/20 · <b>swarm_transformer</b> 0/20 — the single-missile champion (20/20) collapses too; a full triple curriculum retrain (BC + staged RL) also stays 0/20. Contrast: <a href="docs/findings.md#triple-crossfire-collapses-the-single-missile-champion--multi-axis-hub-threat-is-not-a-harder-instance-of-the-same-problem">triple vs single</a> · <a href="docs/findings.md#swarm-transformer-policy-bc--reinforce-beats-mpc-on-antipodal-obstacle-crossing">champion write-up</a>. Reproduce: <a href="docs/swarm_policy_battle.md">docs/swarm_policy_battle.md</a>.</i>
 
 </div>
 
@@ -46,7 +46,7 @@ Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/
 
 <div align="center">
 <img src="docs/images/swarm_policy_battle_obstacle.gif" width="840" alt="NavRL vs MPC vs swarm_transformer battle montage">
-<br><sub><b>OSS three-way</b> — NavRL upstream ckpt · MPC teacher · swarm_transformer (<code>scripts/render_swarm_policy_battle_gif.py</code>; NavRL: <code>bash scripts/setup_navrl_adapter.sh</code>).</sub>
+<br><sub><b>OSS three-way · triple crossfire</b> — 3 hub-crossing missiles · NavRL · MPC teacher · swarm_transformer (<code>scripts/render_swarm_policy_battle_gif.py</code>).</sub>
 </div>
 
 <div align="center">

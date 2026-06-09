@@ -22,17 +22,45 @@ Results → `results/swarm_policy_battle/phase.json`
 | Scenario | orca | orca_conv | hrvo | mgr | mpc_gt | navrl | **swarm_transformer** |
 |----------|------|-----------|------|-----|--------|-------|----------------------|
 | peers | 11/20 | 20/20 | 12/20 | 20/20 | 1/20 | — | **20/20** |
-| obstacle | 1/20 | 0/20 | 2/20 | 0/20 | 12/20 | **0/20** | **20/20** |
+| obstacle · **triple crossfire** | — | — | — | — | **0/20** | **0/20** | **0/20** |
+| obstacle · single missile (legacy) | 1/20 | 0/20 | 2/20 | 0/20 | 12/20 | **0/20** | **20/20** |
 
-NavRL uses the upstream single-agent checkpoint (~40 m maps, 4 m LiDAR); **0/20** on this geometry is expected domain gap. Re-run with parallel arms:
+**Triple crossfire** = three hub-crossing cruise missiles (S/W/E salvos, `DYN_OBS` in
+`scripts/swarm_policy_battle_phase.py`). README battle GIF uses this cell; everyone
+joint-fails on all 20 paired seeds. **Single missile** = south-edge vertical only
+(`examples/exp_multi_drone_antipodal_obstacle.yaml`) — champion training/eval geometry.
+
+NavRL uses the upstream single-agent checkpoint (~40 m maps, 4 m LiDAR); **0/20** on
+either obstacle cell is expected domain gap. Re-run triple crossfire:
 
 ```bash
-python scripts/swarm_policy_battle_phase.py --scenario obstacle --episodes 20 --workers 4 --merge
+python scripts/swarm_policy_battle_phase.py --scenario obstacle --episodes 20 \
+  --arms mpc_gt swarm_transformer navrl --workers 3 --merge
 ```
 
-McNemar vs `swarm_transformer` on obstacle: mpc_gt p≈0.008 (8 seeds where xf wins alone).
+McNemar vs `swarm_transformer` on **single-missile** obstacle: mpc_gt p≈0.008 (8 seeds
+where xf wins alone). Triple crossfire: all arms tied at 0/20 (McNemar p=1).
 
 Montage GIF: `python scripts/render_swarm_policy_battle_gif.py` → `docs/images/swarm_policy_battle_obstacle.gif`
+
+### Triple-crossfire curriculum (retrain champion)
+
+The single-missile champion (`swarm_transformer_framework_obstacle_rl_best.npz`) was
+trained on one vertical threat. To adapt to triple crossfire:
+
+```bash
+# Full pipeline: MPC BC on triple → staged RL (1→2→3 missiles) → hard-seed fine-tune
+python scripts/train_swarm_transformer_triple_curriculum.py
+
+# Faster probe (skip BC, champion warm-start, medium iters)
+python scripts/train_swarm_transformer_triple_curriculum.py --skip-bc --medium
+
+# Eval triple checkpoint
+uav-nav run examples/exp_multi_drone_antipodal_obstacle_triple_swarm_transformer.yaml
+```
+
+Checkpoint: `results/swarm_transformer_framework_triple_rl_best.npz` (when triple
+joint improves without collapsing single-missile eval below 16/20).
 
 ## In-repo arms (ready to battle)
 
@@ -62,7 +90,7 @@ Montage GIF: `python scripts/render_swarm_policy_battle_gif.py` → `docs/images
 | Key | Geometry | Stress |
 |-----|----------|--------|
 | `peers` | 6-drone antipodal, no static obs | Symmetry / convention |
-| `obstacle` | same + hub-crossing dynamic body | Convention + non-peer threat |
+| `obstacle` | same + hub-crossing dynamic bodies (`DYN_OBS`: triple crossfire by default) | Convention + multi-axis non-peer threat |
 
 Eval seeds: `6000 … 6000+episodes-1` (matches published transformer eval).
 

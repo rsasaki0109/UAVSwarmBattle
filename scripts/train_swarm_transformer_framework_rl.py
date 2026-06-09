@@ -28,17 +28,20 @@ from uav_nav_lab.planner import swarm_transformer_core as core  # noqa: E402
 from uav_nav_lab.planner.swarm_transformer_rl import train_from_config  # noqa: E402
 
 OBST_YAML = ROOT / "examples/exp_multi_drone_antipodal_obstacle.yaml"
+TRIPLE_YAML = ROOT / "examples/exp_multi_drone_antipodal_obstacle_triple.yaml"
 EVAL_YAML = ROOT / "examples/exp_multi_drone_antipodal_obstacle_swarm_transformer.yaml"
+TRIPLE_EVAL_YAML = ROOT / "examples/exp_multi_drone_antipodal_obstacle_triple_swarm_transformer.yaml"
 BC_INIT = ROOT / "results/swarm_transformer_framework_threat_pred_conv.npz"
 RL_INIT = ROOT / "results/swarm_transformer_framework_obstacle_rl.npz"
 RL_BEST = ROOT / "results/swarm_transformer_framework_obstacle_rl_best.npz"
+TRIPLE_RL_BEST = ROOT / "results/swarm_transformer_framework_triple_rl_best.npz"
 OUT = RL_INIT
 # Failing eval seeds from 14/20 checkpoint (timeout / collision).
 HARD_SEEDS = (6000, 6003, 6006, 6008, 6012, 6014)
 
 
-def _eval(checkpoint: Path) -> tuple[int, int]:
-    cfg_text = EVAL_YAML.read_text()
+def _eval(checkpoint: Path, *, eval_yaml: Path = EVAL_YAML) -> tuple[int, int]:
+    cfg_text = eval_yaml.read_text()
     tmp = ROOT / "results/_tmp_swarm_rl_eval.yaml"
     lines = []
     in_planner = False
@@ -94,9 +97,12 @@ def main() -> int:
     ap.add_argument("--curriculum-hard", action="store_true")
     ap.add_argument("--seeds", default="", help="comma-separated episode seeds")
     ap.add_argument("--skip-eval", action="store_true")
+    ap.add_argument("--triple", action="store_true", help="train on triple-crossfire YAML")
+    ap.add_argument("--yaml", default="", help="override training YAML path")
     args = ap.parse_args()
 
-    cfg = ExperimentConfig.from_yaml(OBST_YAML)
+    train_yaml = Path(args.yaml) if args.yaml else (TRIPLE_YAML if args.triple else OBST_YAML)
+    cfg = ExperimentConfig.from_yaml(train_yaml)
     init = Path(args.init) if args.init else None
     if init is None:
         if args.curriculum_hard and RL_BEST.is_file():
@@ -117,7 +123,7 @@ def main() -> int:
         print(f"warm-start: {init.name}", flush=True)
 
     print(
-        f"RL on {OBST_YAML.name} ({args.iters} iters x {args.episodes} eps, "
+        f"RL on {train_yaml.name} ({args.iters} iters x {args.episodes} eps, "
         f"sigma={args.sigma})...",
         flush=True,
     )
@@ -142,13 +148,18 @@ def main() -> int:
     print(f"wrote {out}", flush=True)
 
     if not args.skip_eval:
-        jok, total = _eval(out)
-        print(f"eval joint success: {jok}/{total}", flush=True)
-        best = RL_BEST
+        eval_yaml = TRIPLE_EVAL_YAML if args.triple else EVAL_YAML
+        jok, total = _eval(out, eval_yaml=eval_yaml)
+        label = "triple" if args.triple else "single"
+        print(f"eval {label} joint success: {jok}/{total}", flush=True)
+        best = TRIPLE_RL_BEST if args.triple else RL_BEST
         prev = 0
         if best.is_file():
-            prev, _ = _eval(best)
-            print(f"  previous best: {prev}/{total}", flush=True)
+            prev, _ = _eval(best, eval_yaml=eval_yaml)
+            print(f"  previous best ({label}): {prev}/{total}", flush=True)
+        elif args.triple and RL_BEST.is_file():
+            prev, _ = _eval(RL_BEST, eval_yaml=eval_yaml)
+            print(f"  champion baseline ({label}): {prev}/{total}", flush=True)
         if jok > prev:
             core.save_checkpoint(best, params, stats)
             print(f"saved best ({jok}/{total}) → {best.name}", flush=True)

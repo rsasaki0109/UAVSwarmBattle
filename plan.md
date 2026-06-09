@@ -5,7 +5,8 @@
 > `plan.md` は *これから何をやるか / なぜやるか / 引き継ぐ人が何を踏むか*
 > をまとめる作戦ノート。
 >
-> 最終更新: 2026-06-08 (群制御アーク + deep-water AirSim 実物理再現 + 1v1 dogfight)
+> 最終更新: 2026-06-09 (triple crossfire missile defense · README hero GIF ·
+> full curriculum probe · battle montage renderer v2)
 
 ---
 
@@ -13,13 +14,197 @@
 
 このドキュメントを引き継いだ codex への TL;DR。
 
-### 0.0 2026-06-08 現況: 群制御アーク → deep-water AirSim → battle (最重要・まずここ)
+### 0.0 2026-06-09 現況: triple crossfire · policy battle hero · curriculum dead-end (最重要・まずここ)
 
-> このサブセクションが **最新の作戦状況**。下の §0.1 以降 (〜2026-05-27) は
-> slot-wall / dynamic-obstacle / scaling-law 期の記録で、まだ有効だが
-> *主戦場ではない*。2026-05 末以降の主戦場は **群制御 (multi-drone
-> coordination)** で、ユーザーが prove/disprove サイクルの標準デフォルトに
-> 指定している ([[feedback_swarm_control_focus]] 相当)。
+> **このサブセクションが最新の作戦状況。** README 先頭 GIF は
+> `docs/images/swarm_policy_battle_obstacle.gif`（3-way battle montage,
+> triple crossfire, seed 6001）。下の §0.0a (2026-06-08 群制御アーク) 以降は
+> 有効な履歴だが *今の主戦場ではない*。
+
+#### 60 秒サマリ
+
+| 軸 | 状態 |
+|----|------|
+| **README hero** | Triple crossfire 3-panel battle GIF。NavRL / MPC+GT / swarm_transformer 全 **DOWN 0/20**。ミサイル飛行・軌跡・IMPACT 演出あり。 |
+| **単発ミサイル champion** | `swarm_transformer` **20/20**（`obstacle_rl_best.npz`、縦1本 YAML）。変更不要。 |
+| **Triple crossfire eval** | 全 arm **0/20** joint（seeds 6000–6019）。champion も 0/20。 |
+| **バランス調整** | 10+ パターン試行 → 緩和しても transformer ≤8/20、MPC 先に回復。**full-speed triple 採用**（ストーリー最強）。 |
+| **フル curriculum** | BC 106k samples + staged RL (30+40+60+120 iters) 完了 → triple **0/20**、single **12/20**。**新 champion なし。** |
+| **次の筋** | 観測拡張 / より長い triple-only RL / 別アーキテクチャ。README ストーリーは「三面で全滅・再学習でも未突破」で維持。 |
+
+#### (F) Triple crossfire — シナリオ定義
+
+`scripts/swarm_policy_battle_phase.py` の `DYN_OBS`（共有プリセットは
+`scripts/_triple_crossfire.py`）:
+
+| プリセット | ミサイル | 用途 |
+|-----------|---------|------|
+| `SINGLE` | 南縁垂直1本 | champion 学習・eval（`exp_multi_drone_antipodal_obstacle*.yaml`） |
+| `DUAL_WEST` | 縦 + 西水平 | curriculum stage 2 |
+| `TRIPLE` | 縦 + 西 + 東（full crossfire） | battle / README GIF |
+
+共通: 50×50 antipodal N=6、`reflect: true`、半径 1.5 m、速度 ≈4.2–4.5 m/s。
+
+**再現:**
+
+```bash
+python scripts/swarm_policy_battle_phase.py --scenario obstacle --episodes 20 \
+  --arms mpc_gt swarm_transformer navrl --workers 3 --merge
+PYTHONPATH=scripts:. python scripts/render_swarm_policy_battle_gif.py --seed 6001
+```
+
+成果物: `results/swarm_policy_battle/phase.json`、
+`docs/images/swarm_policy_battle_obstacle.gif`。
+
+#### (G) バランス調整 — 採用しなかった緩和版
+
+目標は「champion だけ 12–20/20、他 0/20」だったが、**水平軸を弱めると MPC が先に回復**
+し transformer は 0–8/20 のまま。カリキュラムが縦1本専用のため追加脅威軸は OOD。
+
+| 設定 | swarm_transformer | mpc_gt | 判定 |
+|------|-------------------|--------|------|
+| **現行 triple（採用）** | 0/20 | 0/20 | README・findings 採用 |
+| slow_horiz | 0/20 | 10/20 | MPC 優位 |
+| offset_wave | 4/20 | 10/20 | — |
+| one_horiz_west（2本） | 4/20 | 12/20 | — |
+| diag_wave | **8/20** | **12/20** | 最良だが MPC 上 |
+
+**結論:** 「単発 champion 20/20 → 三面同時で全滅」の対比を README で採用。
+緩和版は findings の tuning probe としてのみ記載。
+
+#### (H) README hero GIF — レンダラ v2 (2026-06-09)
+
+ユーザー指摘「ミサイルが飛んでいる感じがない」に対し
+`scripts/render_swarm_policy_battle_gif.py` を改修:
+
+- **予測軌道**を 36 step → 8 step、点線・低 alpha（巨大静止矢印に見えていた原因）
+- **アニメ開始**を発射パッド直後ではなくハブ交差ドラマ付近（`_flight_start` /
+  `_hub_drama_center`）
+- ミサイル本体 = **光る三角 + glow + 長い煙軌跡 + 排気 quiver**
+- アラート: `▶ FIRE M*` / `INBOUND` / `◆ IMPACT`
+- 静止の `LAUNCH` マーカーを `PAD` ラベルに縮小
+
+再生成: seed **6001**, ~3.4 MB, NavRL 含む3-way。
+
+#### (I) swarm_transformer triple curriculum — フル学習プローブ
+
+**パイプライン** (`scripts/train_swarm_transformer_triple_curriculum.py`):
+
+1. MPC BC on triple（120 ep × 120 epochs）→ `triple_bc.npz`
+2. REINFORCE warm-start from **single champion**（`obstacle_rl_best.npz`）
+3. Staged RL: single(30) → dual_west(40) → triple(60) iters
+4. Hard-seed fine-tune on triple, seeds 6000–6019（120 iters）
+5. 保存条件: triple 改善 **かつ** single ≥ 16/20
+
+**YAML:**
+
+- `examples/exp_multi_drone_antipodal_obstacle_triple.yaml` — MPC 教師
+- `examples/exp_multi_drone_antipodal_obstacle_triple_swarm_transformer.yaml` — eval
+
+**2026-06-09 フル実行結果**（~2.5 h, 16:49–18:35）:
+
+| 段階 | triple joint | single joint |
+|------|--------------|--------------|
+| champion baseline | 0/20 | 20/20 |
+| BC 後（未単独 eval） | — | — |
+| staged RL 各段 | 0/20 | 7→11/20（劣化） |
+| **最終** | **0/20** | **12/20** |
+
+`swarm_transformer_framework_triple_rl_best.npz` は **未作成**（triple が一度も改善せず）。
+
+**短縮プローブ（参考）:**
+
+| 実行 | triple | single |
+|------|--------|--------|
+| quick（BC+RL, triple BC init） | 0/20 | 3/20 |
+| medium（skip BC, champion init） | 0/20 | 8/20 |
+| direct triple RL 80 iter | — | 4/20（single eval のみ） |
+
+**推論（findings と一致）:**
+
+- 三面同時 hub 占有は「難しい単発」ではなく **質的ステップ変更**。
+- 縦1本で学習した threat token は水平ミサイルを OOD 扱いしやすい。
+- MPC 教師 BC だけでは triple で single スキルも洗い流される。
+- champion checkpoint からの staged RL でも triple joint は動かない。
+
+**再現:**
+
+```bash
+# フル（数時間、BC 含む）
+python scripts/train_swarm_transformer_triple_curriculum.py
+
+# 高速プローブ（BC スキップ）
+python scripts/train_swarm_transformer_triple_curriculum.py --skip-bc --medium
+
+# single と同型の direct triple RL（triple eval 付き）
+python scripts/train_swarm_transformer_framework_rl.py --triple --curriculum-hard \
+  --iters 180 --episodes 6 --sigma 0.08 \
+  --init results/swarm_transformer_framework_obstacle_rl_best.npz
+```
+
+#### (J) ドキュメント同期済み
+
+| ファイル | 内容 |
+|---------|------|
+| `README.md` | hero GIF + 「フル curriculum でも 0/20」キャプション |
+| `docs/findings.md` | §Triple crossfire + curriculum probe 表 |
+| `docs/swarm_policy_battle.md` | single vs triple 表、curriculum 再現コマンド |
+| `scripts/train_swarm_transformer_framework_rl.py` | `--triple`、triple eval、`TRIPLE_RL_BEST` |
+
+#### 運用上の罠（このアークで踏んだ）
+
+1. **BC 収集は遅い** — triple 上で MPC 教師 120 ep ≈ 60–90 分。quick は 40 ep に削減可。
+2. **RL init は champion 必須** — triple BC を RL init にすると single スキルが崩れる。
+   curriculum スクリプトは REINFORCE を常に `obstacle_rl_best.npz` から warm-start。
+3. **best 保存の baseline** — `prev_triple=-1` だと 0/20 でも保存してしまうバグを修正。
+   triple > baseline(0) かつ single ≥ 16 のときのみ `triple_rl_best.npz`。
+4. **GIF は同ファイル参照** — README 14 行目と gallery 48 行目は同一 GIF。
+   gallery の alt 文言は古いまま（揃えるなら別 PR）。
+5. **NavRL レンダー** — `.venv` + `torchrl` + `third_party/NavRL` が必要。
+   無いと NavRL パネルなし2-way にフォールバック。
+
+#### 直近の open / 次の neta 候補 (2026-06-09)
+
+**採用済みストーリー（変更不要 unless breakthrough）:**
+
+> 単発ミサイル champion **20/20** → triple crossfire **0/20**（全 arm）。
+> フル curriculum 再学習でも triple **0/20**。「多軸 hub 脅威は学習済み回避の外」。
+
+**次に筋がいい候補（優先順）:**
+
+1. **観測拡張** — `swarm_transformer_core.build_tokens` にミサイル ID /
+   multi-threat 正規化。MAX_PEERS=8 は足りるが学習分布が1 threat 偏重。
+2. **Triple-only RL 長期** — single と同規模 180 hard-seed iter、ただし
+   single ≥18/20 制約付き eval。`--triple` path は実装済み。
+3. **MPC 教師の triple BC + 単発 champion の ensemble init** — BC 単独は
+   single を 0/20 に落とした。混合 init は未試。
+4. **diag_wave 正式化** — 緩和版を別 battle cell に（8/20 vs 12/20）。
+   README は full triple のまま、findings に副セル。
+5. **演出のみ** — 着弾爆発・CRT・弾道残像（スコア不変）。
+6. **lag-pursuit / king-of-the-hill** — §0.0a の dogfight / 競争ゲーム続き。
+
+**やらない（今）:**
+
+- triple を弱めて champion だけ勝たせるバランス（MPC が先に勝つため却下済み）
+- `triple_rl_best.npz` を README battle に差し替え（存在しない / 0/20 のまま）
+- findings の champion 20/20 数値の書き換え
+
+---
+
+### 0.0a 2026-06-08 現況: 群制御アーク → deep-water AirSim → dogfight
+
+> 2026-06-08 時点の主戦場。**§0.0 (triple crossfire) が現在の最前線。**
+> 群制御・慣習・AirSim 実物理の知見は findings に残り、peer cell では
+> 依然 valid（swarm_transformer peers **20/20** 等）。
+
+**作業様式 (このアークで固定)**: 1 neta = feature を選ぶ → seed-paired
+McNemar (`uav_nav_lab.analysis.joint_stats.mcnemar_exact_p`) で prove/disprove
+→ docs/findings.md エントリ + TOC + README バレット + GIF + memory ファイル +
+MEMORY.md 行 → **専用 `git worktree` (origin/main 起点)** で開発・コミット
+(`--author="Ryohei Sasaki <rsasaki0109@gmail.com>"`, Co-Authored-By なし,
+AI 署名なし) → PR → ユーザー明示の "merge!" でのみ squash-merge。共有作業
+ツリー (ローカル main) は **5ac5fbd で stale**・かつユーザーが並行編集中なので
+直接触らない (worktree 必須)。
 
 **作業様式 (このアークで固定)**: 1 neta = feature を選ぶ → seed-paired
 McNemar (`uav_nav_lab.analysis.joint_stats.mcnemar_exact_p`) で prove/disprove
@@ -94,9 +279,16 @@ AI 署名なし) → PR → ユーザー明示の "merge!" でのみ squash-merg
 極端で裏目** (8/4 で速い方が 6敗, 旋回半径 v/ω が尾を行き過ぎ)。
 "angles beat energy" を最小力学で再現。協調アークの「more≠better」の対戦版。
 
-#### (E) 学習ポリシー副スレッド (既に main にある, §2.7 周辺)
-teammate-token deep set (BC) と REINFORCE: 慣習は教師・表現 (chirality 可能な
-frame) の両方に必要。MGR は sensing-only ロードアバウト。
+#### (E) 学習ポリシー副スレッド — single-missile champion 確定、triple は未突破
+
+teammate-token transformer (`swarm_transformer`): BC + REINFORCE curriculum で
+**単発縦ミサイル obstacle 20/20**（MPC teacher 12/20 を上回る）。
+checkpoint: `results/swarm_transformer_framework_obstacle_rl_best.npz`。
+
+**2026-06-09 追記:** triple crossfire では 0/20。フル curriculum（§0.0 I）でも
+突破せず。champion は **単発 YAML 専用**として維持; battle README は triple
+全滅ストーリー。詳細: findings §「Triple crossfire collapses the single-missile
+champion」。
 
 #### 運用上の durable な罠 (このアークで踏んだ)
 1. **AirSim Blocks RPC は数回の連続 reset で wedge/激遅化** → chunked runner
@@ -116,17 +308,16 @@ frame) の両方に必要。MGR は sensing-only ロードアバウト。
 5. **孤立した 0/40 や 0→100% blowout を法則化しない** — 近傍を sweep して
    不変量を報告 (even-N 共鳴の 3 度の訂正が教訓)。
 
-#### 直近の open / 次の neta 候補 (2026-06-08)
-- **非対称タクティクス lag-pursuit**: dogfight の自然な続き。意図的な lag で
-  速い相手のエネルギーを削れば、raw pursuit が draw する相手に勝てるか。
-- **king-of-the-hill / 競争ゲーム**: 協調慣習が競争で exploit されるか
-  (rule-follower を defector が食う) — 慣習アークへの鋭い反論。
-- **AirSim N>4**: settings.json 再生成 + Blocks 再起動が要る (ユーザー設定変更)。
-  実物理で密度 cliff が出るか。
-- **AirSim pairwise_bias / MPC+APF**: 物理での pairwise vs global、別異種ペア。
-- **#52 (lstm-predictor)**: 1ヶ月放置の scaffold PR の扱い (継続/クローズ)。
-- **star-growth** ([[project_star_growth]]): README は簡素化済み (45.5k→19.6k 字,
-  GIF 全残); GitHub About も平易化済み。残レバー = outreach (ユーザー側)。
+#### 直近の open / 次の neta 候補 (2026-06-08 → 2026-06-09 に §0.0 へ移管)
+
+triple crossfire / curriculum / GIF の open は **§0.0 末尾**を参照。群制御アーク
+残り:
+
+- **非対称タクティクス lag-pursuit**: dogfight の自然な続き。
+- **king-of-the-hill / 競争ゲーム**: 慣習が競争で exploit されるか。
+- **AirSim N>4**: settings.json 再生成 + Blocks 再起動。
+- **#52 (lstm-predictor)**: scaffold PR の扱い。
+- **star-growth**: outreach（ユーザー側）。
 
 ---
 
@@ -1535,6 +1726,44 @@ chokepoint cell (cvg=3.6° で uniform を推すが、実測 best は argmin 0.1
   構成として自然。
 
 **判定**: 完了。次は paper draft を単一 manuscript に組み上げる段階。
+
+### 2.9 候補 I: **Triple crossfire — champion 突破 or ストーリー固定** (2026-06-09)
+
+**動機**: README hero は「三面ミサイルで全 arm 0/20、単発 champion は 20/20」。
+フル curriculum を回しても triple joint は 0/20 のまま。次は **突破** か
+**固定ナラティブの深化** を選ぶ。
+
+**完了 (2026-06-09)**:
+
+- [x] `DYN_OBS` triple crossfire を battle phase + renderer に統合
+- [x] バランス調整 10+ パターン → full-speed triple 採用
+- [x] `train_swarm_transformer_triple_curriculum.py` + triple YAML 2 本
+- [x] フル BC+RL 学習プローブ（triple 0/20、single 12/20）
+- [x] README hero GIF レンダラ v2（ミサイル飛行が見える）
+- [x] findings / swarm_policy_battle.md 同期
+
+**open (優先順)**:
+
+1. **P0 — 観測・表現**  
+   threat token に axis / salvo index を足すか、multi-missile 専用 BC
+   （triple のみ 200+ ep）を champion から fine-tune。成功指標: triple ≥4/20
+   かつ single ≥18/20。
+
+2. **P1 — 180 iter direct triple RL**  
+   `train_swarm_transformer_framework_rl.py --triple --curriculum-hard --iters 180`
+   （フル curriculum より軽いが single 同型）。eval は triple YAML。
+
+3. **P2 — diag_wave 副 cell**  
+   緩和版を `scripts/_triple_crossfire.py` に `DIAG_WAVE` として固定し、
+   battle phase の `--preset` 化。findings に「緩和でも MPC>transformer」表。
+
+4. **P3 — 演出**  
+   爆発・CRT・残像。スコア不変で README インパクトのみ。
+
+**判定**: P0 が研究として一番筋。README は現状の 0/20 全滅で **十分強い**
+ので急いで数値を盛る必要はない。
+
+---
 
 ### 2.8 候補 H: **Scaling-law refactor campaign — S3/V 完了、W は後回し** (2026-05-23..24)
 

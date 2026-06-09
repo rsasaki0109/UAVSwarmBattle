@@ -36,9 +36,20 @@ HUB = "#484f58"
 @dataclass
 class _Rollout:
     drones: list[np.ndarray]
-    obstacle: list[np.ndarray]
+    obstacles: list[np.ndarray]  # per frame: (M, 2)
     goals: np.ndarray
     joint: str
+
+    @property
+    def obstacle(self) -> list[np.ndarray]:
+        """First missile trajectory — backward compat for single-threat GIFs."""
+        out: list[np.ndarray] = []
+        for frame in self.obstacles:
+            if frame.size:
+                out.append(np.asarray(frame[0], float))
+            else:
+                out.append(np.zeros(2))
+        return out
 
 
 def _rollout(cfg: ExperimentConfig, seed: int, *, planner: dict | None = None) -> _Rollout:
@@ -75,7 +86,11 @@ def _rollout(cfg: ExperimentConfig, seed: int, *, planner: dict | None = None) -
         scenario.set_targets([drone_hist[k][i] for i in range(n)])
         dyn = scenario.dynamic_obstacles
         if dyn:
-            obs_hist.append(np.asarray(dyn[0]["position"], dtype=float)[:2])
+            obs_hist.append(np.stack([
+                np.asarray(d["position"], dtype=float)[:2] for d in dyn
+            ]))
+        else:
+            obs_hist.append(np.empty((0, 2)))
         if k + 1 < nf:
             scenario.advance(dt)
 
@@ -87,7 +102,7 @@ def _rollout(cfg: ExperimentConfig, seed: int, *, planner: dict | None = None) -
     else:
         joint = "timeout"
 
-    return _Rollout(drones=drone_hist, obstacle=obs_hist, goals=goals, joint=joint)
+    return _Rollout(drones=drone_hist, obstacles=obs_hist, goals=goals, joint=joint)
 
 
 def _pick_seed(cfg: ExperimentConfig, prefer: int) -> int:
@@ -156,9 +171,13 @@ def main() -> int:
               for i in range(n)]
     scat = ax.scatter(run.drones[0][:, 0], run.drones[0][:, 1], s=70, c=colors,
                       edgecolors="white", linewidths=0.5, zorder=5)
-    o0 = run.obstacle[0] if run.obstacle else np.array([25.0, 2.0])
-    threat = Circle(tuple(o0), 1.5, fc=THREAT, ec="white", lw=0.8, alpha=0.85, zorder=4)
-    ax.add_patch(threat)
+    n_obs = run.obstacles[0].shape[0] if run.obstacles else 0
+    threats = []
+    for mi in range(n_obs):
+        o0 = run.obstacles[0][mi]
+        c = Circle(tuple(o0), 1.5, fc=THREAT, ec="white", lw=0.8, alpha=0.85, zorder=4)
+        ax.add_patch(c)
+        threats.append(c)
 
     title_c = GOAL_C if run.joint == "success" else THREAT
     ax.set_title(
@@ -173,9 +192,11 @@ def main() -> int:
         for i, tr in enumerate(trails):
             hist = np.array([run.drones[j][i] for j in range(f + 1)])
             tr.set_data(hist[:, 0], hist[:, 1])
-        if f < len(run.obstacle):
-            threat.center = tuple(run.obstacle[f])
-        return trails + [scat, threat]
+        if f < len(run.obstacles):
+            for mi, threat in enumerate(threats):
+                if mi < run.obstacles[f].shape[0]:
+                    threat.center = tuple(run.obstacles[f][mi])
+        return trails + [scat] + threats
 
     anim = FuncAnimation(fig, update, frames=nf, interval=1000 / args.fps, blit=True)
     out = Path(args.out)

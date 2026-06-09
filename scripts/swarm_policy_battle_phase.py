@@ -37,7 +37,14 @@ DRONES = [
     {"name": "d4", "start": [15.0, 7.68], "goal": [35.0, 42.32], "radius": 0.4, "start_jitter": 0.8},
     {"name": "d5", "start": [35.0, 7.68], "goal": [15.0, 42.32], "radius": 0.4, "start_jitter": 0.8},
 ]
-DYN_OBS = [{"start": [25.0, 2.0], "velocity": [0.0, 4.5], "radius": 1.5, "reflect": True}]
+# Triple crossfire through the hub (battle / README GIF).  Single-missile baseline
+# for training + champion eval: examples/exp_multi_drone_antipodal_obstacle*.yaml
+# (south-edge vertical only — swarm_transformer 20/20, mpc_gt 12/20 on n=20).
+DYN_OBS = [
+    {"start": [25.0, 2.0], "velocity": [0.0, 4.5], "radius": 1.5, "reflect": True},
+    {"start": [2.0, 25.0], "velocity": [4.2, 0.0], "radius": 1.5, "reflect": True},
+    {"start": [48.0, 25.0], "velocity": [-4.2, 0.0], "radius": 1.5, "reflect": True},
+]
 
 ALL_ARMS = ("orca", "orca_conv", "hrvo", "mgr", "mpc_gt", "swarm_transformer", "navrl")
 ARM_META = {

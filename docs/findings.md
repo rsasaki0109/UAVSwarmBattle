@@ -160,7 +160,7 @@ different strategies.
 - [A 1-v-1 UAV dogfight is won by turn rate, not speed — and a speed edge backfires](#a-1-v-1-uav-dogfight-is-won-by-turn-rate-not-speed--and-a-speed-edge-backfires)
 - [The convention is robust to a real crosswind — but the wind is not a substitute for it](#the-convention-is-robust-to-a-real-crosswind--but-the-wind-is-not-a-substitute-for-it)
 - [Swarm transformer policy: BC + REINFORCE beats MPC on antipodal obstacle crossing](#swarm-transformer-policy-bc--reinforce-beats-mpc-on-antipodal-obstacle-crossing)
- c3d932a (Add swarm transformer, NavRL battle arm, and README swarm GIF gallery.)
+- [Triple crossfire collapses the single-missile champion — multi-axis hub threat is not a harder instance of the same problem](#triple-crossfire-collapses-the-single-missile-champion--multi-axis-hub-threat-is-not-a-harder-instance-of-the-same-problem)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -10458,8 +10458,7 @@ Reproduce (running AirSim Blocks with Drone1–4):
 `scripts/run_airsim_wind_chunked.sh 0.0 4 4 12 42 results/airsim_wind_stock` and
 `scripts/run_airsim_wind_chunked.sh 2.0 4 4 12 42 results/airsim_wind_conv`, then
 `python scripts/paired_analysis_antipodal.py results/airsim_wind_stock results/airsim_wind_conv`.
-- [Swarm transformer policy: BC + REINFORCE beats MPC on antipodal obstacle crossing](#swarm-transformer-policy-bc--reinforce-beats-mpc-on-antipodal-obstacle-crossing)
- c3d932a (Add swarm transformer, NavRL battle arm, and README swarm GIF gallery.)
+
 ## Swarm transformer policy: BC + REINFORCE beats MPC on antipodal obstacle crossing
 
 A TeamHOI-style **teammate-token transformer** (`swarm_transformer` planner)
@@ -10508,3 +10507,69 @@ Checkpoint: `results/swarm_transformer_framework_obstacle_rl_best.npz`
 Figure: `docs/images/swarm_transformer_obstacle.gif` · compare:
 `docs/images/swarm_transformer_obstacle_compare.gif` · battle:
 `docs/images/swarm_policy_battle_obstacle.gif`
+
+## Triple crossfire collapses the single-missile champion — multi-axis hub threat is not a harder instance of the same problem
+
+The policy-battle obstacle cell was upgraded from one south-edge cruise missile to
+**three simultaneous hub-crossing salvos** (vertical + west + east, all reflecting
+in-box). Same 50×50 antipodal geometry, same eval seeds 6000–6019, same checkpoint.
+
+| Threat layout | `swarm_transformer` | `mpc_gt` | `navrl` |
+|---------------|---------------------|----------|---------|
+| **Single missile** (training YAML) | **20/20** | 12/20 | 0/20 |
+| **Triple crossfire** (battle `DYN_OBS`) | **0/20** | **0/20** | **0/20** |
+
+**Confirmed.** On paired seeds, every arm joint-fails under triple crossfire
+(`results/swarm_policy_battle/phase.json`, obstacle cell). Per-drone success on
+transformer runs is often high (many drones reach goal) but **one hub-axis hit
+breaks joint** — the failure mode is geometric stacking, not a single bad seed.
+
+**Tuning probe (not adopted).** Slowing or offsetting the horizontal salvos
+raises MPC joint rate (up to ~11/20) while the RL champion stays near 0–4/20.
+The curriculum trained on the **vertical-only** threat; extra axes read as
+out-of-distribution even when visually “easier.” Keeping full-speed triple
+crossfire for the README montage preserves the clearest contrast: a policy that
+**beats its teacher on one crossing body** still **dies with everyone else** when
+three bodies converge on the hub at once.
+
+**Takeaway.** Adding missiles is not a smooth difficulty ramp — simultaneous
+multi-axis hub occupancy is a **qualitative** step. Distilling one threat
+geometry does not generalise to a crossfire without retraining on that layout.
+
+Reproduce:
+
+```bash
+python scripts/swarm_policy_battle_phase.py --scenario obstacle --episodes 20 \
+  --arms mpc_gt swarm_transformer navrl --workers 3 --merge
+python scripts/render_swarm_policy_battle_gif.py
+```
+
+Single-missile champion eval:
+`uav-nav run examples/exp_multi_drone_antipodal_obstacle_swarm_transformer.yaml`
+
+**Curriculum follow-up (probe, not yet a new champion).** Triple-specific
+retraining is wired in `scripts/train_swarm_transformer_triple_curriculum.py`:
+MPC BC on the battle geometry, staged REINFORCE (single → dual\_west → triple),
+then hard-seed fine-tune on seeds 6000–6019. REINFORCE warm-starts from the
+single-missile champion; best triple checkpoints are only kept if triple joint
+*improves* and single-missile eval stays ≥16/20.
+
+| Probe | triple joint | single joint |
+|-------|--------------|--------------|
+| Champion (no retrain) | 0/20 | **20/20** |
+| Medium curriculum (`--skip-bc --medium`) | 0/20 | 8/20 |
+| Triple BC only (MPC teacher) | 0/20 | 0/20 |
+| Direct triple RL (80 iter, hard seeds) | — | 4/20 (single eval; triple TBD) |
+
+**Inference.** Short/medium curricula do not lift triple joint above 0/20; the
+full single-missile recipe (180 hard-seed iters) likely needs to be replayed on
+triple geometry, possibly with longer BC collection. Until then, the README
+montage correctly shows the champion at **0/20** on triple crossfire.
+
+```bash
+python scripts/train_swarm_transformer_triple_curriculum.py
+python scripts/train_swarm_transformer_framework_rl.py --triple --curriculum-hard --iters 180
+uav-nav run examples/exp_multi_drone_antipodal_obstacle_triple_swarm_transformer.yaml
+```
+
+Figure: `docs/images/swarm_policy_battle_obstacle.gif`

@@ -1,0 +1,70 @@
+# Antipodal (6 drones) + triple crossfire through the hub + MPC teacher.
+#
+# Three reflecting cruise missiles (S/W/E salvos) cross the hub while the fleet
+# converges on antipodes. Same geometry as swarm_policy_battle obstacle cell.
+#
+# Train triple curriculum:
+#   python scripts/train_swarm_transformer_triple_curriculum.py
+name: antipodal_obstacle_triple_demo
+seed: 6000
+num_episodes: 20
+
+scenario:
+  type: multi_drone_grid
+  size: [50, 50]
+  resolution: 1.0
+  obstacles:
+    type: none
+  dynamic_obstacles:
+    - start: [25.0, 2.0]
+      velocity: [0.0, 4.5]
+      radius: 1.5
+      reflect: true
+    - start: [2.0, 25.0]
+      velocity: [4.2, 0.0]
+      radius: 1.5
+      reflect: true
+    - start: [48.0, 25.0]
+      velocity: [-4.2, 0.0]
+      radius: 1.5
+      reflect: true
+  drones:
+    - {name: d0, start: [45.0, 25.0],   goal: [5.0, 25.0],    radius: 0.4, start_jitter: 0.8}
+    - {name: d1, start: [35.0, 42.32],  goal: [15.0, 7.68],   radius: 0.4, start_jitter: 0.8}
+    - {name: d2, start: [15.0, 42.32],  goal: [35.0, 7.68],   radius: 0.4, start_jitter: 0.8}
+    - {name: d3, start: [5.0, 25.0],    goal: [45.0, 25.0],   radius: 0.4, start_jitter: 0.8}
+    - {name: d4, start: [15.0, 7.68],   goal: [35.0, 42.32],  radius: 0.4, start_jitter: 0.8}
+    - {name: d5, start: [35.0, 7.68],   goal: [15.0, 42.32],  radius: 0.4, start_jitter: 0.8}
+
+simulator:
+  type: dummy_2d
+  dt: 0.05
+  max_steps: 1000
+  max_accel: 6.0
+  goal_radius: 1.5
+  drone_radius: 0.4
+
+planner:
+  type: mpc
+  max_speed: 5.0
+  replan_period: 0.2
+  horizon: 40
+  dt_plan: 0.05
+  n_samples: 32
+  resolution: 1.0
+  inflate: 1
+  goal_radius: 1.5
+  safety_margin: 0.5
+  use_prediction: true
+  w_goal: 1.0
+  w_obs: 100.0
+  w_smooth: 0.05
+  lateral_bias: 4.0
+  predictor:
+    type: game_theoretic
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/antipodal_obstacle_triple_demo
