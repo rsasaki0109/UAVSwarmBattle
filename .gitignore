@@ -12,3 +12,6 @@ dist/
 # Personal scratch briefs under docs/ (underscore-prefixed); kept locally
 # as conversation context, not part of the public docset.
 docs/_*.md
+
+# Vendored OSS adapters (clone via scripts/setup_navrl_adapter.sh)
+third_party/

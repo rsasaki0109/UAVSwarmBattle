@@ -1,0 +1,45 @@
+# Toy-scale antipodal (matches scripts/_swarm_policy.py training geometry).
+#
+# The 50x50 antipodal YAMLs use a different scale than BC training; this cell
+# is sized like the NumPy probe (ring ~6 m, max_speed 1) so the checkpoint can
+# show non-zero joint success inside uav-nav.
+name: swarm_transformer_toy_antipodal
+seed: 42
+num_episodes: 20
+
+scenario:
+  type: multi_drone_grid
+  size: [20, 20]
+  resolution: 1.0
+  obstacles:
+    type: none
+  drones:
+    - {name: d0, start: [16.0, 10.0], goal: [4.0, 10.0],   radius: 0.5, start_jitter: 0.3}
+    - {name: d1, start: [13.0, 15.2], goal: [7.0, 4.8],   radius: 0.5, start_jitter: 0.3}
+    - {name: d2, start: [7.0, 15.2],  goal: [13.0, 4.8], radius: 0.5, start_jitter: 0.3}
+    - {name: d3, start: [4.0, 10.0],  goal: [16.0, 10.0], radius: 0.5, start_jitter: 0.3}
+    - {name: d4, start: [7.0, 4.8],   goal: [13.0, 15.2], radius: 0.5, start_jitter: 0.3}
+    - {name: d5, start: [13.0, 4.8],  goal: [7.0, 15.2],  radius: 0.5, start_jitter: 0.3}
+
+simulator:
+  type: dummy_2d
+  dt: 0.1
+  max_steps: 400
+  max_accel: 10.0
+  goal_radius: 0.6
+  drone_radius: 0.5
+
+planner:
+  type: swarm_transformer
+  max_speed: 1.0
+  neighbor_dist: 8.0
+  interaction_radius: 4.0
+  goal_radius: 0.6
+  replan_period: 0.1
+  checkpoint: results/swarm_transformer_conv.npz
+
+sensor:
+  type: perfect
+
+output:
+  dir: results/swarm_transformer_toy_antipodal

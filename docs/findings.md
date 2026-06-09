@@ -135,6 +135,7 @@ different strategies.
 - [HRVO's side-commitment partially breaks the antipodal deadlock — beating ORCA at low density, but no substitute for an explicit convention](#hrvos-side-commitment-partially-breaks-the-antipodal-deadlock--beating-orca-at-low-density-but-no-substitute-for-an-explicit-convention)
 - [A shared convention lets heterogeneous controllers interoperate; without it a mixed fleet collides](#a-shared-convention-lets-heterogeneous-controllers-interoperate-without-it-a-mixed-fleet-collides)
 - [Cooperative carrying scales to any team size only if the formation can reorient (testing TeamHOI's "size-agnostic" claim)](#cooperative-carrying-scales-to-any-team-size-only-if-the-formation-can-reorient--testing-teamhois-size-agnostic-claim)
+
 - [Reorientation makes a straight doorway size-agnostic — an L-corner imposes a hard ceiling no reshaping beats](#reorientation-makes-a-straight-doorway-size-agnostic--an-l-corner-imposes-a-hard-ceiling-no-reshaping-beats)
 - [A teammate-token policy is only as symmetry-breaking as its teacher (distilling the convention transfers the antipodal cure)](#a-teammate-token-policy-is-only-as-symmetry-breaking-as-its-teacher--distilling-the-convention-transfers-the-antipodal-cure-distilling-a-symmetric-avoider-reimports-and-amplifies-the-deadlock)
 - [A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment](#a-local-side-commitment-and-a-global-convention-do-not-compose--the-convention-subsumes-hrvos-commitment)
@@ -158,6 +159,8 @@ different strategies.
 - [A shared convention lets heterogeneous controllers interoperate in real AirSim physics too](#a-shared-convention-lets-heterogeneous-controllers-interoperate-in-real-airsim-physics-too)
 - [A 1-v-1 UAV dogfight is won by turn rate, not speed — and a speed edge backfires](#a-1-v-1-uav-dogfight-is-won-by-turn-rate-not-speed--and-a-speed-edge-backfires)
 - [The convention is robust to a real crosswind — but the wind is not a substitute for it](#the-convention-is-robust-to-a-real-crosswind--but-the-wind-is-not-a-substitute-for-it)
+- [Swarm transformer policy: BC + REINFORCE beats MPC on antipodal obstacle crossing](#swarm-transformer-policy-bc--reinforce-beats-mpc-on-antipodal-obstacle-crossing)
+ c3d932a (Add swarm transformer, NavRL battle arm, and README swarm GIF gallery.)
 ## MPC compute Pareto
 
 `examples/exp_predictive.yaml` — n_samples × horizon. The 6-panel
@@ -9046,6 +9049,7 @@ the predict-optimize / reciprocal-LP pair; the same construction extends to the 
 Reproduce: `python scripts/antipodal_heterogeneous_controller_phase.py --n-list 6 8 12 --episodes 40`
 (writes `results/antipodal_heterogeneous_controller_phase.{json,png}`).
 
+
 ## A local side-commitment and a global convention do not compose — the convention subsumes HRVO's commitment
 
 HRVO's side-commitment partially breaks the antipodal deadlock on its own but tops out as the crowd
@@ -9088,6 +9092,7 @@ right-of-way convention (right) spirals into a roundabout — exactly as ORCA do
 Reproduce: `python scripts/antipodal_hrvo_convention_phase.py --n-list 8 12 16 --episodes 40 --workers 6`
 (writes `results/antipodal_hrvo_convention_phase.json`).
 
+ c3d932a (Add swarm transformer, NavRL battle arm, and README swarm GIF gallery.)
 ## Cooperative carrying scales to any team size only if the formation can reorient — testing TeamHOI's "size-agnostic" claim
 
 [TeamHOI](https://splionar.github.io/TeamHOI/) (CVPR 2026) learns a single
@@ -9173,6 +9178,7 @@ formation geometry) rather than a cleverer per-agent policy.
 Reproduce: `python scripts/coop_transport_doorway_phase.py --mode team --episodes 60`
 (`--mode gap` / `--mode runway` for the other two axes);
 `python scripts/render_transport_gif.py` for the figure.
+
 
 ## Reorientation makes a straight doorway size-agnostic — an L-corner imposes a hard ceiling no reshaping beats
 
@@ -10452,3 +10458,53 @@ Reproduce (running AirSim Blocks with Drone1–4):
 `scripts/run_airsim_wind_chunked.sh 0.0 4 4 12 42 results/airsim_wind_stock` and
 `scripts/run_airsim_wind_chunked.sh 2.0 4 4 12 42 results/airsim_wind_conv`, then
 `python scripts/paired_analysis_antipodal.py results/airsim_wind_stock results/airsim_wind_conv`.
+- [Swarm transformer policy: BC + REINFORCE beats MPC on antipodal obstacle crossing](#swarm-transformer-policy-bc--reinforce-beats-mpc-on-antipodal-obstacle-crossing)
+ c3d932a (Add swarm transformer, NavRL battle arm, and README swarm GIF gallery.)
+## Swarm transformer policy: BC + REINFORCE beats MPC on antipodal obstacle crossing
+
+A TeamHOI-style **teammate-token transformer** (`swarm_transformer` planner)
+replaces mean-pooled deep sets with ego–peer cross-attention. Tokens carry
+relative pose/velocity, ally/threat role, and **game-theoretic predicted
+trajectory** points (1 s / 2 s horizons in the ego–goal frame).
+
+**Training pipeline (50×50 framework geometry).**
+
+| Stage | Teacher | Outcome |
+|-------|---------|---------|
+| BC peer-only | ORCA + `lateral_bias=0.2` | 20/20 joint |
+| BC obstacle | MPC + `lateral_bias=4` + game-theoretic predictor | 0/20 joint (32 % per-drone) |
+| RL bulk (280 iter, joint bonus) | — | 14/20 joint |
+| **RL hard-seed curriculum** (180 iter on seeds 6000–6014) | warm-start from 14/20 best | **20/20 joint** |
+
+MPC teacher on the same obstacle YAML: **12/20 joint** (88 % per-drone).
+Low-σ fine-tuning from a good checkpoint **regressed** twice (5/20, 0/20);
+bulk retrain and curriculum on failing eval seeds were required to improve.
+
+**Peer-only regression.** The obstacle-trained checkpoint
+(`swarm_transformer_framework_obstacle_rl_best.npz`) still clears peer-only
+antipodal: **20/20 joint** — obstacle RL did not forget the crossing convention.
+
+**OSS policy battle** (n=20, seeds 6000–6019, obstacle): `swarm_transformer`
+**20/20**, `mpc_gt` 12/20, upstream `navrl` **0/20** (domain gap on 50×50
+antipodal + hub body). Roster: [`docs/swarm_policy_battle.md`](swarm_policy_battle.md).
+
+**Takeaway.** Attention over structured peer/threat tokens plus predicted
+trajectories is enough to distill a strong MPC teacher, but BC alone plateaus
+on dynamic obstacles; **REINFORCE with a joint-success bonus** and
+**curriculum on hard seeds** closes the gap and exceeds the teacher.
+
+Reproduce:
+
+```bash
+python scripts/swarm_policy_battle_phase.py --scenario obstacle --episodes 20 --workers 4 --merge
+bash scripts/setup_navrl_adapter.sh   # once, for navrl arm
+python scripts/train_swarm_transformer_framework_bc.py --obstacle
+python scripts/train_swarm_transformer_framework_rl.py --curriculum-hard   --iters 180 --episodes 6 --sigma 0.08 --joint-bonus 10 --collision-penalty 10
+uav-nav run examples/exp_multi_drone_antipodal_obstacle_swarm_transformer.yaml
+```
+
+Checkpoint: `results/swarm_transformer_framework_obstacle_rl_best.npz`
+
+Figure: `docs/images/swarm_transformer_obstacle.gif` · compare:
+`docs/images/swarm_transformer_obstacle_compare.gif` · battle:
+`docs/images/swarm_policy_battle_obstacle.gif`

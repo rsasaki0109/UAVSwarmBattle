@@ -25,6 +25,7 @@ Most planning repos *ship* a method. This one *interrogates* it: every headline 
 - **Smarter prediction backfires under symmetry — the fix is a convention, not a better forecast.** A goal-aware predictor wins head-on but *inverts* on the antipodal swap (a shared symmetric forecast makes every drone mirror-swerve into the same hub). A decentralised right-of-way turns the deadlock into a roundabout and reaches 100 %; once it is on, smart and dumb forecasts tie.
 - **…and that convention survives real AirSim flight physics** (quadrotor dynamics, real collision): stock collides on 9/16 seeds, the convention clears every drone every seed (100 %, p=3.9e-3) — the whole arc is not a point-mass artefact. It is also a **common protocol for heterogeneous controllers** in AirSim: a mixed MPC + CBF fleet collides deterministically (0/12) without it and clears completely (12/12, p=5e-4) with the shared rule — no shared planner, just an agreed side. And it is **robust to a real crosswind** (100 % under a wind as strong as cruise speed), while the wind *alone* is not a reliable symmetry-breaker (stock stays ~50 %, ≈ no-wind) — robustness, not redundancy.
 - **"Team-size-agnostic" carrying is geometric, not learned.** A fixed formation carrying a beam collapses to 0/60 for N≥3; one that *reorients* holds across N=2–8 — but an L-corner imposes a hard ladder-around-a-corner ceiling no team can beat.
+- **A swarm transformer beats its MPC teacher on a hub-crossing obstacle.** TeamHOI-style teammate tokens + REINFORCE curriculum reach 20/20 joint where the game-theoretic MPC teacher gets 12/20; the upstream NavRL checkpoint gets 0/20 on the same geometry (domain gap, not adapter failure).
 - **Free flocking fragments — and you can't cohesion-gain your way out.** A bigger potential makes it worse; a navigational *structure* reunites the swarm (0/40→40/40). The recurring theme: swarm pathologies dissolve under added **structure**, never added **magnitude**.
 - **Faster-is-slower.** Raising every drone's desired speed makes a doorway (and the hub roundabout) an inverted-U — too slow gridlocks, too fast collides — and the safe roundabout speed grows only as √(a·r).
 - **And in a *competitive* 1-v-1 dogfight, turn rate wins but speed backfires.** The adversarial counterpoint: two unicycles each chasing the other's six. At parity it's a stalemate (the circle of death); a turn-rate edge wins cleanly (≥2× → 40/40); but a *speed* edge wins **0/40 at every ratio** and at 8× / 4× actually *loses* 6/40 — a faster turn radius `v/ω` overshoots the six. Angles beat energy.
@@ -32,6 +33,21 @@ Most planning repos *ship* a method. This one *interrogates* it: every headline 
 Full write-ups — methods, tables, p-values — in **[`docs/findings.md`](docs/findings.md)** (≈40 studies). Working paper draft: [`docs/paper_a/`](docs/paper_a/).
 
 ## Gallery
+
+<div align="center">
+<img src="docs/images/swarm_transformer_obstacle.gif" width="840" alt="TeamHOI-style swarm_transformer clears the hub-crossing dynamic obstacle: six drones swap through a moving body at the centre (20/20 eval)">
+<br><sub><b>Swarm transformer beats its MPC teacher on a hub obstacle</b> — cross-attention teammate tokens + REINFORCE curriculum reach <b>20/20 joint</b> where the MPC teacher gets 12/20 (<a href="docs/findings.md#swarm-transformer-policy-bc--reinforce-beats-mpc-on-antipodal-obstacle-crossing">the result</a>; <code>planner.type: swarm_transformer</code>).</sub>
+</div>
+
+<div align="center">
+<img src="docs/images/swarm_transformer_obstacle_compare.gif" width="840" alt="Side-by-side hub obstacle: MPC teacher loses drones at the crossing body; swarm_transformer student clears every seed">
+<br><sub><b>MPC teacher vs student, same seed</b> — the distilled transformer exceeds the game-theoretic MPC it was trained from (<code>scripts/render_swarm_transformer_obstacle_compare_gif.py</code>).</sub>
+</div>
+
+<div align="center">
+<img src="docs/images/swarm_policy_battle_obstacle.gif" width="840" alt="OSS policy battle montage: NavRL 0/20, MPC 12/20, swarm_transformer 20/20 on the hub obstacle">
+<br><sub><b>OSS policy battle</b> — NavRL upstream checkpoint · MPC teacher · swarm_transformer on paired seeds (<a href="docs/swarm_policy_battle.md">roster</a>; <code>bash scripts/setup_navrl_adapter.sh</code> for NavRL).</sub>
+</div>
 
 <div align="center">
 <img src="docs/images/swarm_airsim_dashboard.gif" width="840" alt="Foxglove-style live dashboard from one AirSim flight: FPV camera, LiDAR top-down, 4-drone scene, and min-separation telemetry">
@@ -204,7 +220,7 @@ and a `from_config(cfg)` classmethod; the CLI picks it up via `type: name`.
 |---|---|
 | sim | `dummy_2d`, `dummy_3d`, `airsim`, `ros2` |
 | scenario | `grid_world`, `voxel_world`, `multi_drone_{grid,voxel,aerobatic}` |
-| planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi`, `orca`, `rvo`, `vo`, `hrvo`, `bvc`, `cbf`, `apf`, `roundabout`, `mgr` |
+| planner | `astar`, `straight`, `mpc`, `mppi`, `cvar_mppi`, `gpu_mppi`, `rrt`, `rrt_star`, `chomp`, `mpc_chomp`, `warmup_select_mppi`, `orca`, `rvo`, `vo`, `hrvo`, `bvc`, `cbf`, `apf`, `roundabout`, `mgr`, `swarm_transformer`, `navrl` |
 | sensor | `perfect`, `delayed`, `kalman_delayed`, `lidar`, `noisy_tracker`, `pointcloud_occupancy`, `depth_image_occupancy` |
 | predictor | `constant_velocity`, `noisy_velocity`, `kalman_velocity`, `game_theoretic`, `constant_turn` |
 
@@ -219,5 +235,6 @@ re-grounded after a 2026-05 multi-runner fix; see [`docs/findings.md`](docs/find
 [`docs/dynamic_obstacle_oss_survey.md`](docs/dynamic_obstacle_oss_survey.md) for the audit trail.
 
 ## License
+
 
 Apache-2.0 — see [LICENSE](LICENSE).

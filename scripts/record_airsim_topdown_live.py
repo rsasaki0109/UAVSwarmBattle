@@ -6,6 +6,7 @@ which point the drones are parked at their goals. This one launches `uav-nav run
 as a subprocess and grabs top-down frames concurrently for the whole flight.
 
 Run from the project root with an AirSim server up and
+
 ~/Documents/AirSim/settings.json declaring Drone1..Drone4 *and* a camera named
 "topdown" on Drone1 (any pose — this script re-aims it). The named camera is
 required: simGetImages against a camera name not in settings.json SIGSEGVs the
@@ -15,6 +16,7 @@ Unreal engine. Minimal settings.json camera entry::
                 "Height": 405, "FOV_Degrees": 90}],
                 "X": 0, "Y": 0, "Z": -40, "Pitch": -90, "Roll": 0, "Yaw": 0}
 
+ c3d932a (Add swarm transformer, NavRL battle arm, and README swarm GIF gallery.)
   python scripts/record_airsim_topdown_live.py
 """
 from __future__ import annotations
